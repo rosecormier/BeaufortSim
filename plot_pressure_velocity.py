@@ -2,7 +2,7 @@
 Rosalie Cormier, 2023
 """
 
-#IMPORTS
+#IMPORTS AND SETTINGS
 
 import sys
 import os
@@ -13,7 +13,9 @@ from os.path import expanduser, join
 
 from ecco_visualization import *
 
-###############
+plt.rcParams["font.size"] = 12
+
+##############################
 
 #PARSE COMMAND-LINE INPUT AND SET GLOBAL VARIABLES
 

@@ -143,7 +143,6 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
                                 ds_grid.YC, v_plot, new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, \
                                 new_grid_delta_lon, fill_value = np.NaN, mapping_method = 'nearest_neighbor', radius_of_influence = 120000)
     
-    #print(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest)
     quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', transform=ccrs.PlateCarree(), scale=1, regrid_shape=1000)
     
     ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
