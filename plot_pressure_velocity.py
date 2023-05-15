@@ -10,6 +10,8 @@ import sys
 import os
 import argparse
 import ecco_v4_py as ecco
+import glob
+import xarray as xr
 import matplotlib.pyplot as plt
 
 from os.path import expanduser, join
@@ -76,24 +78,57 @@ grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
 
 month_index = month_val_list.index(startmo)
 i = month_key_list[month_index]
+year = startyr
 
+#Iterate over all specified months
 while i < mos:
-    
+
     month = month_dict[i % 12]
     endmonth = month_end_dict[month]
+    yearstr = str(year)
     
     #Download the monthly-averaged velocity file
-    ecco_podaac_download(ShortName=vel_monthly_shortname, StartDate="2000-"+month+"-02", 
-                         EndDate="2000-"+month+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
+    ecco_podaac_download(ShortName=vel_monthly_shortname, StartDate=yearstr+"-"+month+"-02", 
+                         EndDate=yearstr+"-"+month+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
     
     #Download the monthly-averaged density-/pressure-anomaly file
-    ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate="2000-"+month+"-02", 
-                         EndDate="2000-"+month+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
+    ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate=yearstr+"-"+month+"-02", 
+                         EndDate=yearstr+"-"+month+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
     
-    i += 1 #Next month
+    if i == "12":
+        year += 1 #Go to next year
+        
+    i += 1 #Go to next month
+    
+#Save final date
+endmo, endyr = month_dict[i % 12], yearstr
     
 #Download ECCO grid parameters
 ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-01", 
                      download_root_dir=datdir, n_workers=6, force_redownload=False)
+
+##############################
+
+#LOAD DOWNLOADED FILES
+
+vel_dir = join(datdir, vel_monthly_shortname)
+curr_vel_files = list(glob.glob(join(vel_dir, '*nc')))
+
+#Load velocity file into workspace
+ds_vel_mo = xr.open_mfdataset(curr_vel_files, parallel=True, data_vars='minimal', coords='minimal', 
+                              compat='override')
+
+denspress_dir = join(datdir, denspress_monthly_shortname)
+curr_denspress_files = list(glob.glob(join(denspress_dir, '*nc')))
+
+#Load density-/pressure-anomaly file into workspace
+ds_denspress_mo = xr.open_mfdataset(curr_denspress_files, parallel=True, data_vars='minimal', coords='minimal', 
+                                    compat='override')
+
+grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
+grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
+
+#Load grid parameters
+ds_grid = xr.open_dataset(grid_params_file_path)
