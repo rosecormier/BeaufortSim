@@ -12,14 +12,11 @@ import argparse
 import ecco_v4_py as ecco
 import glob
 import xarray as xr
-#import matplotlib.pyplot as plt
 
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
 from ecco_visualization import *
-
-#plt.rcParams["font.size"] = 12
 
 ##############################
 
@@ -159,5 +156,5 @@ for m in range(mos):
     
     #Plot velocity and pressure fields
     ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
+                           vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)

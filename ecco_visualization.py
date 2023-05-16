@@ -5,6 +5,9 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import ecco_v4_py as ecco
 
+plt.rcParams['font.size'] = 12
+plt.rcParams['text.usetex'] = True
+
 def cmap_zerocent_scale(plot, scale_factor):
     
     """
@@ -75,7 +78,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     plt.savefig(vis_dir + filename + '.pdf')
     plt.close()
     
-def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, outfile="", latmin=65, latmax=85, lonmin=-180, lonmax=-90, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
+def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, monthstr, yearstr, outfile="", latmin=65, latmax=85, lonmin=-180, lonmax=-90, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
     ecco_ds_grid = ECCO grid
@@ -146,12 +149,20 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     
     quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)
     
-    #ax.set_extent([-180, -90, latmin, latmax], ccrs.PlateCarree())
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
     
-    cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1))
+    if k_plot == 0:
+        depthstr = 'ocean surface'
+        
+    elif k_plot != 0:
+        depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
+        depthstr = str(depth) + ' m depth'
+    
+    ax.set_title('Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format(depthstr, yearstr, monthstr))
+    
+    cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$')
     
     if outfile != "":
         plt.savefig(outfile)
