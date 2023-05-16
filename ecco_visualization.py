@@ -78,7 +78,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     plt.savefig(vis_dir + filename + '.pdf')
     plt.close()
     
-def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, monthstr, yearstr, outfile="", latmin=65, latmax=85, lonmin=-180, lonmax=-90, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
+def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, monthstr, yearstr, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
     ecco_ds_grid = ECCO grid

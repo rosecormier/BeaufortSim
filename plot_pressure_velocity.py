@@ -25,7 +25,7 @@ from ecco_visualization import *
 parser = argparse.ArgumentParser(description="Plot pressure and velocity fields in Beaufort Gyre",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[67.5, 89.0])
+parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.0, 85.0])
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
