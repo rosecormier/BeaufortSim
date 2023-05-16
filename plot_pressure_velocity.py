@@ -28,8 +28,8 @@ from ecco_visualization import *
 parser = argparse.ArgumentParser(description="Plot pressure and velocity fields in Beaufort Gyre",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[65.0, 85.0])
-parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[90.0, 180.0])
+parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[67.5, 89.0])
+parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
@@ -112,7 +112,7 @@ while i < mos:
 endmo = month_dict[i % 12]
     
 #Download ECCO grid parameters (date is arbitrary)
-ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-01", 
+ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", 
                      download_root_dir=datdir, n_workers=6, force_redownload=False)
 
 ##############################
@@ -159,4 +159,5 @@ for m in range(mos):
     
     #Plot velocity and pressure fields
     ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)))
+                           vir_nanmasked, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
+                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)

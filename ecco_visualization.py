@@ -65,7 +65,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels), transform=ccrs.PlateCarree(), extend='both', cmap='viridis')
     cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, colors='r', alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels))
     
-    ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
+    #ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
@@ -75,7 +75,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     plt.savefig(vis_dir + filename + '.pdf')
     plt.close()
     
-def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, outfile="", no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
+def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, outfile="", latmin=65, latmax=85, lonmin=-180, lonmax=-90, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
     ecco_ds_grid = ECCO grid
@@ -111,17 +111,17 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     
     new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
     
-    new_grid_min_lat = -89
-    new_grid_max_lat = 89
+    new_grid_min_lat = latmin
+    new_grid_max_lat = latmax
 
-    new_grid_min_lon = -180
-    new_grid_max_lon = 180
+    new_grid_min_lon = lonmin
+    new_grid_max_lon = lonmax
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, field_nearest = ecco.resample_to_latlon(ds_grid.XC, \
                                 ds_grid.YC, tmp_plot, new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, \
                                 new_grid_delta_lon, fill_value = np.NaN, mapping_method = 'nearest_neighbor', radius_of_influence = 120000)
     
-    field_copy = tmp_plot.isel(tile=6).squeeze().values.copy()
+    field_copy = field_nearest.copy()
     field_copy = field_copy[~np.isnan(field_copy)]
     
     vmax = scale_factor * np.max(field_copy)
@@ -129,9 +129,10 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     
     fig = plt.figure(figsize=(12, 6), dpi=90)
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
+    ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
     cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels), transform=ccrs.PlateCarree(), extend='both', cmap='viridis')
-    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, colors='r', alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels))
+    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, colors='r', alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
     
     u_plot = (velE).squeeze()
     v_plot = (velN).squeeze()
@@ -143,9 +144,9 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
                                 ds_grid.YC, v_plot, new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, \
                                 new_grid_delta_lon, fill_value = np.NaN, mapping_method = 'nearest_neighbor', radius_of_influence = 120000)
     
-    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', transform=ccrs.PlateCarree(), scale=1, regrid_shape=1000)
+    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)
     
-    ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
+    #ax.set_extent([-180, -90, latmin, latmax], ccrs.PlateCarree())
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
