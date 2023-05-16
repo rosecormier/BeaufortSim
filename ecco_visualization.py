@@ -75,7 +75,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     plt.savefig(vis_dir + filename + '.pdf')
     plt.close()
     
-def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, vis_dir, filename, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
+def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, xvec_attr, yvec_attr, resolution, cmap, outfile="", no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
     ecco_ds_grid = ECCO grid
@@ -102,7 +102,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     ds_grid = ds_grid.load()
     
     XGCM_grid = ecco.get_llc_grid(ds_grid)
-    velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr].isel(k=k_plot), 'Y': ecco_ds_vector[yvec_attr].isel(k=k_plot)}, boundary='fill')
+    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_plot), 'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_plot)}, boundary='fill')
     
     velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
     velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
@@ -152,5 +152,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     
     cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1))
     
-    plt.savefig(vis_dir + filename + '.pdf')
+    if outfile != "":
+        plt.savefig(outfile)
+        
     plt.close()
