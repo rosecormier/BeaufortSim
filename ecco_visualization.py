@@ -92,8 +92,12 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     yvec_attr = string corresponding to y-comp of vector to plot
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
-    vis_dir = visualization directory
-    filename = output file name, no extension
+    monthstr = month to plot
+    yearstr = year to plot
+    outfile = output file name
+    vmin = minimum of scalar data
+    vmax = maximum of scalar data
+    lat/lonmin/max = latitude/longitude bounds
     no_levels = number of contour levels
     scale_factor = colorbar multiplier
     arrow_spacing = quiver arrow spacing in gridpoints
@@ -162,22 +166,40 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     elif k_plot != 0:
         depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
         depthstr = str(depth) + ' m depth'
-    
-    #if outfile != "":
        
     ax.set_title('Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format(depthstr, yearstr, monthstr))
         
     cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$')
     
     plt.savefig(outfile)
-    """
-    elif outfile == "":
-        
-        return fig, ax
-    """
     plt.close()
     
-def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, nrows=3, ncols=4):
+def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=0.5, nrows=3, ncols=4):
+    
+    """
+    ecco_ds_grid = ECCO grid
+    k_plot = depth index to plot at
+    ecco_ds_scalars = scalar DataSets
+    ecco_ds_vectors = vector DataSets
+    scalar_attr = string corresponding to scalar attribute to plot
+    vmin = minimum of scalar attribute
+    vmax = maximum of scalar attribute
+    xvec_attr = string corresponding to x-comp of vector to plot
+    yvec_attr = string corresponding to y-comp of vector to plot
+    resolution = resolution (both lat and lon) in degrees
+    cmap = colormap name
+    monthstrs = strings of months to plot
+    yearstrs = strings of years to plot
+    outfile = output file name
+    lat/lonmin/max = latitude/longitude bounds
+    no_levels = number of contour levels
+    scale_factor = colorbar multiplier
+    arrow_spacing = quiver arrow spacing in gridpoints
+    quiv_scale = quiver plot scale
+    nrows, ncols = number of rows and columns (resp.) in grid
+    """
+    
+    plt.rcParams['font.size'] = 20
     
     mainfig = plt.figure(figsize=(44, 36))
     
@@ -251,6 +273,10 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         elif k_plot != 0:
             depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
             depthstr = str(depth) + ' m depth'
+            
+        ax.set_title('Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format(depthstr, yearstr, monthstr))
 
     mainfig.savefig(outfile)
     plt.close()
+    
+    plt.rcdefaults()
