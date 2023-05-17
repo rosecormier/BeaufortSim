@@ -67,8 +67,8 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     fig = plt.figure(figsize=(6, 8), dpi=90)
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     #curr_obj = ecco.plot_proj_to_latlon_grid(ds_grid.XC, ds_grid.YC, tmp_plot, projection_type='stereo', plot_type='contourf', cmin=cmin, cmax=cmax, cmap=cmap, show_colorbar=True, lat_lim=65,zorder=50)
-    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels), transform=ccrs.PlateCarree(), extend='both', cmap='viridis')
-    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, colors='r', alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)),no_levels))
+    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), transform=ccrs.PlateCarree(), extend='both', cmap='viridis')
+    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, colors='r', alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
     
     #ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
     ax.add_feature(cfeature.LAND)
@@ -137,7 +137,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
         vmax = scale_factor * np.max(field_copy)
         vmin = scale_factor * np.min(field_copy)
     
-    fig = plt.figure(figsize=(20, 20))
+    fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
@@ -199,7 +199,17 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     nrows, ncols = number of rows and columns (resp.) in grid
     """
     
-    plt.rcParams['font.size'] = 20
+    plt.rcParams['font.size'] = 40
+    
+    monthnames = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", "06": "June",
+                 "07": "July", "08": "August", "09": "September", "10": "October", "11": "November", "12": "December"}
+    
+    if k_plot == 0:
+        depthstr = 'ocean surface'
+
+    elif k_plot != 0:
+        depth = - (ecco_ds_scalars[0][scalar_attr]).Z[k_plot].values
+        depthstr = str(depth) + ' m depth'
     
     mainfig = plt.figure(figsize=(44, 36))
     
@@ -207,7 +217,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     row, col = -1, 0
     
     for i in range(nplots):
-        
         if i % ncols == 0:
             row += 1
             col = 0
@@ -266,16 +275,10 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ax.add_feature(cfeature.LAND)
         ax.coastlines()
         ax.gridlines()
+        
+        ax.set_title('{} {}'.format(monthnames[monthstr], yearstr))
 
-        if k_plot == 0:
-            depthstr = 'ocean surface'
-
-        elif k_plot != 0:
-            depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
-            depthstr = str(depth) + ' m depth'
-            
-        ax.set_title('Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format(depthstr, yearstr, monthstr))
-
+    mainfig.suptitle('Pressure anomaly and water velocity in Arctic Circle at {}'.format(depthstr), size=80)
     mainfig.savefig(outfile)
     plt.close()
     
