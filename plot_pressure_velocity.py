@@ -165,7 +165,7 @@ for m in range(mos):
                            vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
-##Testing
+#Plot all months
 ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, monthstrs, yearstrs, outfile='test.png',
+                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
