@@ -138,6 +138,8 @@ xgcm_grid = ecco.get_llc_grid(ds_grid)
 vir_nanmasked = plt.get_cmap('viridis').copy()
 vir_nanmasked.set_bad('black')
 
+ds_vels, ds_pressures = [], []
+
 for m in range(mos):
     
     monthstr = monthstrs[m]
@@ -150,11 +152,20 @@ for m in range(mos):
     #Interpolate velocities to centres of grid cells
     ds_vel_mo.UVEL.data, ds_vel_mo.VVEL.data = ds_vel_mo.UVEL.values, ds_vel_mo.VVEL.values
     
+    ds_vels.append(ds_vel_mo)
+    
     #Load monthly density-/pressure-anomaly file into workspace
     ds_denspress_mo = xr.open_mfdataset(curr_denspress_files[m], parallel=True, data_vars='minimal', coords='minimal', 
                                     compat='override')
     
+    ds_pressures.append(ds_denspress_mo)
+    
     #Plot velocity and pressure fields
     ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
+                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+
+##Testing
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 50, 100, 'UVEL', 'VVEL', resolution, 
+                           vir_nanmasked, monthstrs, yearstrs, outfile='test.png',
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
