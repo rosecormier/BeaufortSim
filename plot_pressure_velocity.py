@@ -135,7 +135,7 @@ xgcm_grid = ecco.get_llc_grid(ds_grid)
 
 #CREATE MONTHLY PLOTS OF VELOCITY AND PRESSURE ANOMALY
 
-vir_nanmasked = plt.get_cmap('viridis').copy()
+vir_nanmasked = plt.get_cmap('viridis_r').copy()
 vir_nanmasked.set_bad('black')
 
 ds_vels, ds_pressures = [], []
@@ -166,6 +166,6 @@ for m in range(mos):
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 ##Testing
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 50, 100, 'UVEL', 'VVEL', resolution, 
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile='test.png',
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
