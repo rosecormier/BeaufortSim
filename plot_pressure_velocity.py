@@ -94,7 +94,7 @@ while i < mos:
     ecco_podaac_download(ShortName=vel_monthly_shortname, StartDate=yearstr+"-"+monthstr+"-02", 
                          EndDate=yearstr+"-"+monthstr+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
-    
+     
     #Download the monthly-averaged density-/pressure-anomaly file
     ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate=yearstr+"-"+monthstr+"-02", 
                          EndDate=yearstr+"-"+monthstr+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
@@ -105,9 +105,6 @@ while i < mos:
         
     i += 1 #Go to next month
     
-#Save final month
-endmo = month_dict[i % 12]
-    
 #Download ECCO grid parameters (date is arbitrary)
 ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", 
                      download_root_dir=datdir, n_workers=6, force_redownload=False)
@@ -117,10 +114,7 @@ ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", En
 #GET FILE LISTS AND LOAD GRID
 
 vel_dir = join(datdir, vel_monthly_shortname)
-curr_vel_files = list(glob.glob(join(vel_dir, '*nc')))
-
 denspress_dir = join(datdir, denspress_monthly_shortname)
-curr_denspress_files = list(glob.glob(join(denspress_dir, '*nc')))
 
 grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
 grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
@@ -145,8 +139,13 @@ for m in range(mos):
     monthstr = monthstrs[m]
     yearstr = yearstrs[m]
     
+    curr_vel_file = join(vel_dir, "OCEAN_VELOCITY_mon_mean_"+yearstr+
+                         "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+    curr_denspress_file = join(denspress_dir, "OCEAN_DENS_STRAT_PRESS_mon_mean_"+
+                               yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+
     #Load monthly velocity file into workspace
-    ds_vel_mo = xr.open_mfdataset(curr_vel_files[m], parallel=True, data_vars='minimal', coords='minimal', 
+    ds_vel_mo = xr.open_mfdataset(curr_vel_file, parallel=True, data_vars='minimal', coords='minimal', 
                               compat='override')
     
     #Interpolate velocities to centres of grid cells
@@ -155,7 +154,7 @@ for m in range(mos):
     ds_vels.append(ds_vel_mo)
     
     #Load monthly density-/pressure-anomaly file into workspace
-    ds_denspress_mo = xr.open_mfdataset(curr_denspress_files[m], parallel=True, data_vars='minimal', coords='minimal', 
+    ds_denspress_mo = xr.open_mfdataset(curr_denspress_file, parallel=True, data_vars='minimal', coords='minimal', 
                                     compat='override')
     
     ds_pressures.append(ds_denspress_mo)

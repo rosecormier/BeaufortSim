@@ -217,6 +217,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     row, col = -1, 0
     
     for i in range(nplots):
+        
         if i % ncols == 0:
             row += 1
             col = 0
