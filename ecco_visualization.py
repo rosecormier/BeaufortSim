@@ -174,7 +174,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     plt.savefig(outfile)
     plt.close()
     
-def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4):
+def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, title=""):
     
     """
     ecco_ds_grid = ECCO grid
@@ -279,10 +279,95 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
 
-    mainfig.suptitle('Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n'.format(depthstr), size=80)
+    if title == "":
+        title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr) #Default title
+        
+    mainfig.suptitle(title, size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
     mainfig.savefig(outfile)
     plt.close()
     
     plt.rcdefaults()
+    
+def time_avg_scalar_fld(ecco_ds_scalars, scalar_attr, ecco_ds_grid, k_plot):
+    
+    """
+    Computes temporal mean of scalar quantity.
+    ecco_ds_scalars = scalar DataSets
+    scalar_attr = string corresponding to scalar attribute to average
+    ecco_ds_grid = ECCO grid
+    k_plot = depth level to plot at
+    """
+    
+    ecco_ds_scalar_k_0 = (ecco_ds_scalars[0].copy()).isel(k=k_plot)
+    time_avg_scalar = ecco_ds_scalar_k_0.squeeze()
+    time_avg_scalar[scalar_attr] = ecco_ds_scalar_k_0[scalar_attr] * 0
+    
+    for dataset in ecco_ds_scalars:
+        
+        ecco_ds_scalar_k = dataset.isel(k=k_plot)
+
+        ds_grid = ecco_ds_grid.copy()
+        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
+        ds_grid = ds_grid.load()
+        
+        field = (ds_grid.squeeze())[scalar_attr]
+        time_avg_scalar[scalar_attr] += field / len(ecco_ds_scalars)
+    
+    return time_avg_scalar.to_array()
+
+def time_avg_2D_vec_fld(ecco_ds_vectors, xvec_attr, yvec_attr, ecco_ds_grid, k_plot):
+    
+    """
+    Computes temporal mean of vector quantity.
+    ecco_ds_vectors = vector DataSets
+    xvec_attr = string corresponding to x-component of attribute to average
+    yvec_attr = string corresponding to y-component of attribute to average
+    ecco_ds_grid = ECCO grid
+    k_plot = depth level to plot at
+    """
+    
+    #avg_magnitude = (ecco_ds_vectors[0].copy()).isel(k=k_plot)
+    #vector_sum_x, vector_sum_y = (ecco_ds_vectors[0].copy()).isel(k=k_plot), (ecco_ds_vectors[0].copy()).isel(k=k_plot)
+    
+    ecco_ds_vector_k_0 = (ecco_ds_vectors[0].copy()).isel(k=k_plot)
+    time_avg_vector = ecco_ds_vector_k_0.squeeze()
+    time_avg_vector['avg_magnitude'] = np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * 0
+    time_avg_vector['vec_sum_x'] = ecco_ds_vector_k_0[xvec_attr] * 0
+    time_avg_vector['vec_sum_y'] = ecco_ds_vector_k_0[yvec_attr] * 0
+    time_avg_vector['x_dir'] = ecco_ds_vector_k_0[xvec_attr] / np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * 0
+    time_avg_vector['y_dir'] = ecco_ds_vector_k_0[yvec_attr] / np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * 0
+    time_avg_vector[xvec_attr] = np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * ecco_ds_vector_k_0[xvec_attr] / np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * 0
+    time_avg_vector[yvec_attr] = ecco_ds_vector_k_0[yvec_attr] * ecco_ds_vector_k_0[yvec_attr] / np.sqrt(ecco_ds_vector_k_0[xvec_attr]**2 + ecco_ds_vector_k_0[yvec_attr]**2) * 0
+    
+    for dataset in ecco_ds_vectors:
+        
+        ecco_ds_vector_k = dataset.isel(k=k_plot)
+        ds_grid = ecco_ds_grid.copy()
+        ds_grid[xvec_attr] = ecco_ds_vector_k[xvec_attr]
+        ds_grid[yvec_attr] = ecco_ds_vector_k[yvec_attr]
+        ds_grid = ds_grid.load()
+        #XGCM_grid = ecco.get_llc_grid(ds_grid)
+        #velc = XGCM_grid.interp_2d_vector({'X': (dataset[xvec_attr]).isel(k=k_plot), 'Y': (dataset[yvec_attr]).isel(k=k_plot)}, boundary='fill')
+        
+        xvec_field = (ds_grid.squeeze())[xvec_attr]#.isel(k=k_plot) #velc['X'], velc['Y']
+        yvec_field = (ds_grid.squeeze())[yvec_attr]#.isel(k=k_plot)
+        
+        magnitude_field = np.sqrt(xvec_field**2 + yvec_field**2)
+        time_avg_vector['avg_magnitude'] = magnitude_field / len(ecco_ds_vectors)
+        
+        time_avg_vector['vec_sum_x'] += xvec_field
+        #field = (ds_grid.squeeze())[scalar_attr]
+        time_avg_vector['vec_sum_y'] += yvec_field
+        
+    #Normalize to get unit vector components in average direction
+    
+    sum_magnitude = np.sqrt(time_avg_vector['vec_sum_x']**2 + time_avg_vector['vec_sum_y']**2)
+    time_avg_vector['x_dir'] += time_avg_vector['vec_sum_x'] / sum_magnitude
+    time_avg_vector['y_dir'] += time_avg_vector['vec_sum_y'] / sum_magnitude
+    
+    time_avg_vector[xvec_attr] += time_avg_vector['avg_magnitude'] * time_avg_vector['x_dir']
+    time_avg_vector[yvec_attr] += time_avg_vector['avg_magnitude'] * time_avg_vector['y_dir']
+        
+    return time_avg_vector.to_array()

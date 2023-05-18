@@ -158,7 +158,7 @@ for m in range(mos):
                                     compat='override')
     
     ds_pressures.append(ds_denspress_mo)
-    
+
     #Plot velocity and pressure fields
     ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
@@ -167,4 +167,22 @@ for m in range(mos):
 #Plot all months
 ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
+                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+
+#Compute annual mean pressure and velocity
+
+annual_mean_pressure = time_avg_scalar_fld(ds_pressures, 'PHIHYDcR', ds_grid, 1)
+annual_mean_vel = time_avg_2D_vec_fld(ds_vels, 'UVEL', 'VVEL', ds_grid, 1)
+
+#Compute residuals of the above averages
+
+ds_vel_residuals = ds_vels - annual_mean_vel
+ds_press_residuals = ds_pressures - annual_mean_pressure
+
+#Title for residual plot
+title = ''
+
+#Plot residuals (pressure and velocity) for all months
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_press_residuals, ds_vel_residuals, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
+                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
