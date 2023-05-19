@@ -122,9 +122,6 @@ grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
 #Load grid parameters
 ds_grid = xr.open_dataset(grid_params_file_path)
 
-#Create xgcm Grid object
-xgcm_grid = ecco.get_llc_grid(ds_grid)
-
 ##############################
 
 #CREATE MONTHLY PLOTS OF VELOCITY AND PRESSURE ANOMALY
@@ -160,23 +157,32 @@ for m in range(mos):
     ds_pressures.append(ds_denspress_mo)
 
     #Plot velocity and pressure fields
-    ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
-                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-"""
-#Plot all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
-                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, resid=True)
-"""
-#Compute annual mean pressure and velocity
+    
+    press_vel_title = 'Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format('replace', \
+                                                                                                yearstr, \
+                                                                                                monthstr)
+    
+    ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, title=press_vel_title)
 
+#Plot all months
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 97], 'UVEL', 'VVEL', resolution, 
+                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
+                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+
+#Compute annual mean pressure and velocity
 annual_mean_pressure = comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')
 annual_mean_u = comp_temporal_mean(ds_grid, 1, ds_vels, 'UVEL')
 annual_mean_v = comp_temporal_mean(ds_grid, 1, ds_vels, 'VVEL')
+ds_press_copy, ds_vel_copy = ds_denspress_mo.copy() * 0, ds_vel_mo.copy() * 0
+ds_press_copy['PHIHYDcR'] += annual_mean_pressure
+ds_vel_copy['UVEL'] += annual_mean_u
+ds_vel_copy['VVEL'] += annual_mean_v
 
 #Plot annual averages
 
+ArcCir_contourf_quiver(ds_grid, 1, ds_press_copy, ds_vel_copy, 'PHIHYDcR', 'UVEL', 'VVEL',
+                       resolution, vir_nanmasked, [93, 97], outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+                       
 #Compute and plot residuals of annual averages
 
 """
