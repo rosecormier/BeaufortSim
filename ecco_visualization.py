@@ -76,7 +76,34 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     
     plt.savefig(vis_dir + filename + '.pdf')
     plt.close()
+
+def comp_temporal_mean(ecco_ds_grid, k_val, ecco_ds_scalars, scalar_attr):
     
+    """
+    ecco_ds_grid = ECCO grid
+    k_val = depth value of interest
+    ecco_ds_scalars = scalar DataSets
+    scalar_attr = string corresponding to scalar attribute of interest
+    """ 
+    
+    ecco_ds_scalar_k = ecco_ds_scalars[0].isel(k=k_val)
+    ds_grid = ecco_ds_grid.copy()
+    ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr] * 0
+    ds_grid = ds_grid.load()
+        
+    mean_field = ds_grid[scalar_attr].squeeze()
+    
+    all_fields = []
+        
+    for dataset in ecco_ds_scalars:
+        
+        curr_field = ds_grid[scalar_attr].squeeze()
+
+        mean_field += curr_field / len(ecco_ds_scalars)
+        all_fields.append(curr_field)
+        
+    return mean_field, all_fields
+
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, monthstr, yearstr, outfile="", \
                            vmin=0, vmax=0, latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
@@ -239,19 +266,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     
     nplots = nrows * ncols   
     row, col = -1, 0
-    
-    if resid:
-        
-        ecco_ds_scalar_k = ecco_ds_scalars[0].isel(k=k_plot)
-        ds_grid = ecco_ds_grid.copy()
-        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr] * 0
-        ds_grid = ds_grid.load()
-        
-        mean_plot = ds_grid[scalar_attr].squeeze()
-        
-        resid_fig = plt.figure(figsize=(48, 40))
-        
-        tmp_plots = [] #change name - actual?
         
     for i in range(nplots):
         
@@ -280,10 +294,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
 
         tmp_plot = ds_grid[scalar_attr].squeeze()
-        
-        if resid:
-            mean_plot += tmp_plot / nplots
-            tmp_plots.append(tmp_plot)
 
         new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
 
@@ -340,7 +350,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
                             label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
     mainfig.savefig(outfile)
     plt.close()
-    
+    """
     if resid:
         
         absmax = 1.8
@@ -385,5 +395,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
                                 label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
         resid_fig.savefig('test.png')
         plt.close()
+    """
     
     plt.rcdefaults()
