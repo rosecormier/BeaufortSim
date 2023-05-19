@@ -174,34 +174,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     plt.savefig(outfile)
     plt.close()
     
-def time_avg_scalar_fld(ecco_ds_scalars, scalar_attr, ecco_ds_grid, k_plot):
-    
-    """
-    Computes temporal mean of scalar quantity.
-    ecco_ds_scalars = scalar DataSets
-    scalar_attr = string corresponding to scalar attribute to average
-    ecco_ds_grid = ECCO grid
-    k_plot = depth level to plot at
-    """
-    
-    ecco_ds_scalar_k_0 = (ecco_ds_scalars[0].copy()).isel(k=k_plot)
-    time_avg_scalar = ecco_ds_scalar_k_0.squeeze()
-    time_avg_scalar[scalar_attr] = ecco_ds_scalar_k_0[scalar_attr] * 0
-    
-    for dataset in ecco_ds_scalars:
-        
-        ecco_ds_scalar_k = dataset.isel(k=k_plot)
-
-        ds_grid = ecco_ds_grid.copy()
-        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
-        ds_grid = ds_grid.load()
-        
-        field = (ds_grid.squeeze())[scalar_attr]
-        time_avg_scalar[scalar_attr] += field / len(ecco_ds_scalars)
-    
-    return time_avg_scalar.to_array()
-    
-def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, title="", resid=False):
+def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, resid=False):
     
     """
     ecco_ds_grid = ECCO grid
@@ -224,6 +197,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     arrow_spacing = quiver arrow spacing in gridpoints
     quiv_scale = quiver plot scale
     nrows, ncols = number of rows and columns (resp.) in grid
+    resid = whether to plot residuals w.r.t. temporal mean
     """
     
     plt.rcParams['font.size'] = 40
@@ -243,7 +217,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     nplots = nrows * ncols   
     row, col = -1, 0
     
-    if resid: #
+    if resid:
         
         ecco_ds_scalar_k = ecco_ds_scalars[0].isel(k=k_plot)
         ds_grid = ecco_ds_grid.copy()
@@ -282,7 +256,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
 
         tmp_plot = ds_grid[scalar_attr].squeeze()
         
-        if resid: #
+        if resid:
             mean_plot += tmp_plot / nplots
             tmp_plots.append(tmp_plot)
 
@@ -322,7 +296,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
 
-    if title == "":
+    if not resid:
         title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr) #Default title
         
     mainfig.suptitle(title, size=80)
@@ -331,7 +305,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     mainfig.savefig(outfile)
     plt.close()
     
-    ##
     if resid:
     
         for i in range(nplots):
@@ -364,19 +337,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         resid_fig.savefig('test.png')
         plt.close()
     
-    ##
-    
     plt.rcdefaults()
-    
-    ####
-    """   
-        new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, mean_field = ecco.resample_to_latlon(ds_grid.XC, \
-                                    ds_grid.YC, tmp_plot, new_grid_min_lat, new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, \
-                                    new_grid_delta_lon, fill_value = np.NaN, mapping_method = 'nearest_neighbor', radius_of_influence = 120000)
-        
-        time_avg_scalar_fld(ecco_ds_scalars, scalar_attr, ds_grid, k_plot)
-        print(time_avg_scalar_fld)
-    """
 
 def time_avg_2D_vec_fld(ecco_ds_vectors, xvec_attr, yvec_attr, ecco_ds_grid, k_plot):
     
