@@ -9,6 +9,31 @@ from matplotlib.gridspec import GridSpec
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
+
+def get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr):
+    
+    """
+    """
+
+def get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr):
+    
+    """
+    ecco_ds_grid = ECCO grid
+    k_plot = depth index of interest
+    ecco_ds_vector = DataSet containing vector field
+    xvec_attr = name of x-comp of vector field
+    yvec_attr = name of y-comp of vector field
+    """
+
+    ds_grid = ecco_ds_grid.copy()
+    ds_grid = ds_grid.load()
+    
+    XGCM_grid = ecco.get_llc_grid(ds_grid)
+    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_plot), \
+                                       'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_plot)}, \
+                                      boundary='fill')
+    
+    return velc
         
 def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, no_levels, \
                     vis_dir, filename, scale_factor=1):
@@ -137,23 +162,15 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
     ds_grid = ds_grid.load()
     
-    XGCM_grid = ecco.get_llc_grid(ds_grid)
-    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_plot), \
-                                       'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_plot)}, \
-                                      boundary='fill')
-    
+    velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
     velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
     velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
     
     tmp_plot = ds_grid[scalar_attr].squeeze()
     
     new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-    
-    new_grid_min_lat = latmin
-    new_grid_max_lat = latmax
-
-    new_grid_min_lon = lonmin
-    new_grid_max_lon = lonmax
+    new_grid_min_lat, new_grid_max_lat = latmin, latmax
+    new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
     field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plot, new_grid_min_lat, \
@@ -284,24 +301,16 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ds_grid = ecco_ds_grid.copy()
         ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
         ds_grid = ds_grid.load()
-
-        XGCM_grid = ecco.get_llc_grid(ds_grid)
-        velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_plot), \
-                                           'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_plot)}, \
-                                          boundary='fill')
-
+        
+        velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
         velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
 
         tmp_plot = ds_grid[scalar_attr].squeeze()
 
         new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-
-        new_grid_min_lat = latmin
-        new_grid_max_lat = latmax
-
-        new_grid_min_lon = lonmin
-        new_grid_max_lon = lonmax
+        new_grid_min_lat, new_grid_max_lat = latmin, latmax
+        new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
         field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plot, new_grid_min_lat, \

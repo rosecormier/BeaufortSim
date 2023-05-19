@@ -171,10 +171,13 @@ ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 9
 
 #Compute annual mean pressure and velocity
 
-#annual_mean_pressure = time_avg_scalar_fld(ds_pressures, 'PHIHYDcR', ds_grid, 1)
-#annual_mean_vel = time_avg_2D_vec_fld(ds_vels, 'UVEL', 'VVEL', ds_grid, 1)
+annual_mean_pressure = comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')
+annual_mean_u = comp_temporal_mean(ds_grid, 1, ds_vels, 'UVEL')
+annual_mean_v = comp_temporal_mean(ds_grid, 1, ds_vels, 'VVEL')
 
-#Compute residuals of the above averages
+#Plot annual averages
+
+#Compute and plot residuals of annual averages
 
 """
 ds_vel_residuals = ds_vels - annual_mean_vel
