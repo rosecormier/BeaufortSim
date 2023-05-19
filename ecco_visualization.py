@@ -304,6 +304,8 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     plt.close()
     
     if resid:
+        
+        absmax = 2
     
         for i in range(nplots):
 
@@ -320,8 +322,8 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
             ax = resid_fig.add_subplot(nrows, ncols, i + 1, projection=ccrs.NorthPolarStereo())
             ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
 
-            cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, resid, transform=ccrs.PlateCarree(), levels=np.linspace(-2, 2, no_levels), extend='both', cmap='seismic')
-            cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, resid, colors='r', alpha=0.8, linewidths=1.0, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(-2, 2, no_levels))
+            cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, resid, transform=ccrs.PlateCarree(), levels=np.linspace(-absmax, absmax, no_levels), extend='both', cmap='seismic')
+            cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, resid, colors='r', alpha=0.8, linewidths=1.0, zorder=100, transform=ccrs.PlateCarree(), levels=np.linspace(-absmax, absmax, no_levels))
 
             ax.add_feature(cfeature.LAND)
             ax.coastlines()
@@ -329,9 +331,11 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
             
             ax.set_title('\n {} {}'.format(monthnames[monthstrs[i]], yearstrs[i]))
 
-        #resid_fig.suptitle(title, size=80)
+        resid_title = "Monthly residuals of mean pressure anomaly and water velocity, relative to annual mean, \n in Arctic Circle at {} \n".format(depthstr)
+            
+        resid_fig.suptitle(resid_title, size=80)
         resid_fig.tight_layout()
-        cbar = mainfig.colorbar(cs1, ax=resid_fig.get_axes(), aspect=40, pad=0.05, label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
+        cbar = mainfig.colorbar(cs1, ax=resid_fig.get_axes(), aspect=40, pad=0.05, ticks=range(-absmax, absmax, 1), label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
         resid_fig.savefig('test.png')
         plt.close()
     
