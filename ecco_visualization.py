@@ -296,9 +296,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
 
-    if not resid:
-        title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr) #Default title
-        
+    title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr)
     mainfig.suptitle(title, size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
