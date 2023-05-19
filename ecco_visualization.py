@@ -328,7 +328,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
             ax.add_feature(cfeature.LAND)
             ax.coastlines()
             ax.gridlines()
-            
+             
             ax.set_title('\n {} {}'.format(monthnames[monthstrs[i]], yearstrs[i]))
 
         resid_title = "Monthly residuals of mean pressure anomaly and water velocity, relative to annual mean, \n in Arctic Circle at {} \n".format(depthstr)
