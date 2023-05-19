@@ -163,12 +163,12 @@ for m in range(mos):
     ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-
+"""
 #Plot all months
 ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, resid=True)
-
+"""
 #Compute annual mean pressure and velocity
 
 annual_mean_pressure = comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')

@@ -10,12 +10,23 @@ from matplotlib.gridspec import GridSpec
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
 
-def get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr):
+def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     
     """
+    ecco_ds_grid = ECCO grid
+    k_plot = depth index of interest
+    ecco_ds_scalar = DataSet containing field
+    scalar_attr = name of field
     """
 
-def get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr):
+    ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_val)
+    ds_grid = ecco_ds_grid.copy()
+    ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
+    ds_grid = ds_grid.load()
+    
+    return ds_grid
+    
+def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     ecco_ds_grid = ECCO grid
@@ -29,8 +40,8 @@ def get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
     ds_grid = ds_grid.load()
     
     XGCM_grid = ecco.get_llc_grid(ds_grid)
-    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_plot), \
-                                       'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_plot)}, \
+    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_val), \
+                                       'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_val)}, \
                                       boundary='fill')
     
     return velc
@@ -51,42 +62,34 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     scale_factor = colorbar multiplier
     """
     
-    ecco_ds_k = ecco_ds.isel(k=k_plot)
-
-    ds_grid = ecco_ds_grid.copy()
-    ds_grid[attribute] = ecco_ds_k[attribute]
-    ds_grid = ds_grid.load()
-
-    tmp_plot = ds_grid[attribute].squeeze()
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds, attribute)
+    
+    field = ds_grid[attribute].squeeze()
     
     new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-    
-    new_grid_min_lat = -90
-    new_grid_max_lat = 90
-
-    new_grid_min_lon = -180
-    new_grid_max_lon = 180
+    new_grid_min_lat, new_grid_max_lat = -90, 90
+    new_grid_min_lon, new_grid_max_lon = -180, 180
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, \
-    new_grid_lat_edges, field_nearest_quarter_deg = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plot, new_grid_min_lat, \
+    new_grid_lat_edges, field_nearest = \
+    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, field, new_grid_min_lat, \
                             new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
                             new_grid_max_lon, new_grid_delta_lon, fill_value = np.NaN, \
                             mapping_method = 'nearest_neighbor', \
                             radius_of_influence = 120000)
     
-    field_copy = tmp_plot.isel(tile=6).squeeze().values.copy()
+    field_copy = field.isel(tile=6).squeeze().values.copy()
     field_copy = field_copy[~np.isnan(field_copy)]
     
-    vmax = scale_factor * np.max(field_copy)
-    vmin = scale_factor * np.min(field_copy)
+    vmax, vmin = scale_factor * np.max(field_copy), scale_factor * np.min(field_copy)
     
     fig = plt.figure(figsize=(6, 8), dpi=90)
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
-    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, \
+    
+    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
                       levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
                       transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
-    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest_quarter_deg, \
+    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
                      colors='r', alpha=0.8, linewidths=0.5, zorder=100, \
                      transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), \
                                                                       int(np.ceil(vmax)), \
@@ -110,12 +113,8 @@ def comp_temporal_mean(ecco_ds_grid, k_val, ecco_ds_scalars, scalar_attr):
     ecco_ds_scalars = scalar DataSets
     scalar_attr = string corresponding to scalar attribute of interest
     """ 
-    
-    ecco_ds_scalar_k = ecco_ds_scalars[0].isel(k=k_val)
-    ds_grid = ecco_ds_grid.copy()
-    ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr] * 0
-    ds_grid = ds_grid.load()
-        
+
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalars[0], scalar_attr)
     mean_field = ds_grid[scalar_attr].squeeze()
     
     all_fields = []
@@ -123,7 +122,6 @@ def comp_temporal_mean(ecco_ds_grid, k_val, ecco_ds_scalars, scalar_attr):
     for dataset in ecco_ds_scalars:
         
         curr_field = ds_grid[scalar_attr].squeeze()
-
         mean_field += curr_field / len(ecco_ds_scalars)
         all_fields.append(curr_field)
         
@@ -156,24 +154,20 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     quiv_scale = quiver plot scale
     """
     
-    ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_plot)
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr)
 
-    ds_grid = ecco_ds_grid.copy()
-    ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
-    ds_grid = ds_grid.load()
-    
     velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
     velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
     velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
     
-    tmp_plot = ds_grid[scalar_attr].squeeze()
+    curr_field = ds_grid[scalar_attr].squeeze()
     
     new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
     new_grid_min_lat, new_grid_max_lat = latmin, latmax
     new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plot, new_grid_min_lat, \
+    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, new_grid_min_lat, \
                                             new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
                                             new_grid_max_lon, new_grid_delta_lon, \
                                             fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
@@ -183,7 +177,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
         
         field_copy = field_nearest.copy()
         field_copy = field_copy[~np.isnan(field_copy)]
-        
+
         vmax = scale_factor * np.max(field_copy)
         vmin = scale_factor * np.min(field_copy)
     
@@ -198,8 +192,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
                      alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
     
-    u_plot = (velE).squeeze()
-    v_plot = (velN).squeeze()
+    u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
     
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
     ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, new_grid_min_lat, new_grid_max_lat, \
@@ -237,10 +230,10 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     plt.close()
     
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
-                                vmin, vmax, xvec_attr, yvec_attr, resolution, cmap, monthstrs, yearstrs, \
-                                outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
-                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, nrows=3, \
-                                ncols=4, resid=False):
+                                scalar_bounds, xvec_attr, xvec_bounds, yvec_attr, yvec_bounds, resolution, \
+                                cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, \
+                                lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, \
+                                arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, title=""):
     
     """
     ecco_ds_grid = ECCO grid
@@ -248,10 +241,11 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     ecco_ds_scalars = scalar DataSets
     ecco_ds_vectors = vector DataSets
     scalar_attr = string corresponding to scalar attribute to plot
-    vmin = minimum of scalar attribute
-    vmax = maximum of scalar attribute
+    scalar_bounds = bounds on scalar attribute
     xvec_attr = string corresponding to x-comp of vector to plot
+    xvec_bounds = bounds on x-comp of vector
     yvec_attr = string corresponding to y-comp of vector to plot
+    yvec_bounds = bounds on y-comp of vector
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
     monthstrs = strings of months to plot
@@ -263,7 +257,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     arrow_spacing = quiver arrow spacing in gridpoints
     quiv_scale = quiver plot scale
     nrows, ncols = number of rows and columns (resp.) in grid
-    resid = whether to plot residuals w.r.t. temporal mean
     """
     
     plt.rcParams['font.size'] = 40
@@ -297,23 +290,20 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         monthstr = monthstrs[i]
         yearstr = yearstrs[i]
         
-        ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_plot)
-        ds_grid = ecco_ds_grid.copy()
-        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
-        ds_grid = ds_grid.load()
+        get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr)
         
         velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
         velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
 
-        tmp_plot = ds_grid[scalar_attr].squeeze()
+        curr_field = ds_grid[scalar_attr].squeeze()
 
         new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
         new_grid_min_lat, new_grid_max_lat = latmin, latmax
         new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-        field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plot, new_grid_min_lat, \
+        field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, new_grid_min_lat, \
                                                 new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
                                                 new_grid_max_lon, new_grid_delta_lon, \
                                                 fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
@@ -329,8 +319,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
                          linewidths=1.0, zorder=100, transform=ccrs.PlateCarree(), \
                          levels=np.linspace(vmin, vmax, no_levels))
 
-        u_plot = (velE).squeeze()
-        v_plot = (velN).squeeze()
+        u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
         ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, new_grid_min_lat, new_grid_max_lat, \
@@ -352,7 +341,9 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
 
-    title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr)
+    if title == "":
+        title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr)
+    
     mainfig.suptitle(title, size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
