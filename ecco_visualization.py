@@ -10,7 +10,7 @@ from matplotlib.gridspec import GridSpec
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
 
-def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
+def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val=-1):
     
     """
     Loads scalar field in xy-grid.
@@ -20,15 +20,23 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     ecco_ds_scalar = DataSet containing field
     scalar_attr = name of field
     """
-
-    ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_val)
+    
     ds_grid = ecco_ds_grid.copy()
-    ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
+
+    if k_val < 0:
+        
+        ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
+    
+    elif k_val >= 0:
+        
+        ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_val)
+        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
+        
     ds_grid = ds_grid.load()
     
     return ds_grid
     
-def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
+def get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr, k_val=-1):
     
     """
     Loads vector field in xy-grid.
@@ -42,9 +50,14 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
 
     ds_grid = ecco_ds_grid.copy()
     ds_grid = ds_grid.load()
-    
     XGCM_grid = ecco.get_llc_grid(ds_grid)
-    velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_val), \
+    
+    if k_val < 0:
+        velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr], \
+                                           'Y': ecco_ds_vector[yvec_attr]}, boundary='fill')
+    
+    elif k_val >= 0:
+        velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_val), \
                                        'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_val)}, \
                                       boundary='fill')
     
@@ -68,7 +81,7 @@ def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, 
     scale_factor = colorbar multiplier
     """
     
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds, attribute)
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds, attribute, k_val=k_plot)
     
     field = ds_grid[attribute].squeeze()
     
@@ -122,22 +135,29 @@ def comp_temporal_mean(ecco_ds_grid, k_val, ecco_ds_scalars, scalar_attr):
     scalar_attr = string corresponding to scalar attribute of interest
     """ 
 
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalars[0], scalar_attr)
-    field = ds_grid[scalar_attr].squeeze()
+    if k_val == 0:
+            depthstr = 'ocean surface'
     
-    mean_field = field.copy() * 0
-        
+    elif k_val != 0:
+        depth = - ((ecco_ds_scalars[0])[scalar_attr]).Z[k_val].values
+        depthstr = str(depth) + ' m depth'
+    
+    concat_field = ((ecco_ds_scalars[0]).copy()).isel(k=k_val)* 0
+    
     for dataset in ecco_ds_scalars:
         
-        curr_field = ((get_scalar_in_xy(ecco_ds_grid, k_val, dataset, scalar_attr))[scalar_attr]).squeeze()
-        mean_field += curr_field / len(ecco_ds_scalars)
+        curr_field = (dataset.isel(k=k_val))
+        concat_field = xr.concat((concat_field, curr_field), dim='time')
 
-    return mean_field
+    mean_field = (concat_field[scalar_attr]).sum(dim=['time']) / len(ecco_ds_scalars)
+    
+    return mean_field, depthstr
 
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, \
                            outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
-                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, title=""):
+                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, title="", \
+                           zplane=False, zplanedepth=0):
     
     """
     Creates contourf plot of scalar variable in a subdomain of the Arctic,
@@ -163,9 +183,16 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     title = plot title
     """
     
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr)
+    if zplane:
+        k_val = -1
+        depthstr = zplanedepth
+        
+    else:
+        k_val = k_plot
+    
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val=k_val)
 
-    velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
+    velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr, k_val=k_val)
     velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
     velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
     
@@ -183,15 +210,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
                                             radius_of_influence = 120000)
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    """
-    if vmin == vmax:
-        
-        field_copy = field_nearest.copy()
-        field_copy = field_copy[~np.isnan(field_copy)]
 
-        vmax = scale_factor * np.max(field_copy)
-        vmin = scale_factor * np.min(field_copy)
-    """
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
@@ -223,12 +242,14 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, ecco_ds_scalar, ecco_ds_vector,
     ax.coastlines()
     ax.gridlines()
     
-    if k_plot == 0:
-        depthstr = 'ocean surface'
+    if not zplane:
         
-    elif k_plot != 0:
-        depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
-        depthstr = str(depth) + ' m depth'
+        if k_plot == 0:
+            depthstr = 'ocean surface'
+        
+        elif k_plot != 0:
+            depth = - (ecco_ds_scalar[scalar_attr]).Z[k_plot].values
+            depthstr = str(depth) + ' m depth'
     
     ax.set_title(title)
         
@@ -301,9 +322,9 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         monthstr = monthstrs[i]
         yearstr = yearstrs[i]
         
-        ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr)
+        ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val=k_plot)
         
-        velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
+        velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr, k_val=k_plot)
         velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
 

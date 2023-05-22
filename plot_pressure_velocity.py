@@ -144,11 +144,11 @@ for m in range(mos):
     #Load monthly velocity file into workspace
     ds_vel_mo = xr.open_mfdataset(curr_vel_file, parallel=True, data_vars='minimal', coords='minimal', 
                               compat='override')
-    
+    ds_vels.append(ds_vel_mo) #
     #Interpolate velocities to centres of grid cells
     ds_vel_mo.UVEL.data, ds_vel_mo.VVEL.data = ds_vel_mo.UVEL.values, ds_vel_mo.VVEL.values
     
-    ds_vels.append(ds_vel_mo)
+    #ds_vels.append(ds_vel_mo)
     
     #Load monthly density-/pressure-anomaly file into workspace
     ds_denspress_mo = xr.open_mfdataset(curr_denspress_file, parallel=True, data_vars='minimal', coords='minimal', 
@@ -170,30 +170,45 @@ ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Compute annual mean pressure and velocity
-annual_mean_pressure = comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')
-annual_mean_u = comp_temporal_mean(ds_grid, 1, ds_vels, 'UVEL')
-annual_mean_v = comp_temporal_mean(ds_grid, 1, ds_vels, 'VVEL')
-ds_press_copy, ds_vel_copy = ds_denspress_mo.copy() * 0, ds_vel_mo.copy() * 0
-ds_press_copy['PHIHYDcR'] += annual_mean_pressure
-ds_vel_copy['UVEL'] += annual_mean_u
-ds_vel_copy['VVEL'] += annual_mean_v
+
+ds_press_mean = (ds_pressures[0]).copy() * 0
+ds_vel_mean = (ds_vels[0]).copy() * 0
+ds_press_mean['PHIHYDcR'] = comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')[0]
+ds_vel_mean['UVEL'] = comp_temporal_mean(ds_grid, 1, ds_vels, 'UVEL')[0]
+ds_vel_mean['VVEL'] = comp_temporal_mean(ds_grid, 1, ds_vels, 'VVEL')[0]
+
+#Interpolate velocities to centres of grid cells
+ds_vel_mean.UVEL.data, ds_vel_mean.VVEL.data = ds_vel_mean.UVEL.values, ds_vel_mean.VVEL.values
 
 #Plot annual averages
-
-ArcCir_contourf_quiver(ds_grid, 1, ds_press_copy, ds_vel_copy, 'PHIHYDcR', 'UVEL', 'VVEL',
-                       resolution, vir_nanmasked, [93, 97], outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-                       
+ArcCir_contourf_quiver(ds_grid, 1, ds_press_mean, ds_vel_mean, 'PHIHYDcR', 'UVEL', 'VVEL',
+                       resolution, vir_nanmasked, [93, 97], outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, zplane=True, zplanedepth=comp_temporal_mean(ds_grid, 1, ds_pressures, 'PHIHYDcR')[1])
+                    
 #Compute and plot residuals of annual averages
 
-"""
-ds_vel_residuals = ds_vels - annual_mean_vel
-ds_press_residuals = ds_pressures - annual_mean_pressure
+ds_press_residuals = []
+ds_vel_residuals = []
+
+for pressure in ds_pressures:
+    residual = pressure.copy() * 0
+    concat_pressure = xr.concat((pressure, -1*ds_press_mean), dim='time')
+    residual_press = concat_pressure['PHIHYDcR'].sum(dim=['time'])
+    residual['PHIHYDcR'] = residual_press
+    ds_press_residuals.append(residual)
+    
+for vel in ds_vels:
+    residual = vel.copy() * 0
+    concat_vel = xr.concat((vel, -1*ds_vel_mean), dim='time')
+    residual_u = concat_vel['UVEL'].sum(dim=['time'])
+    residual_v = concat_vel['VVEL'].sum(dim=['time'])
+    residual['UVEL'] = residual_u
+    residual['VVEL'] = residual_v
+    ds_vel_residuals.append(residual)
 
 #Title for residual plot
 title = ''
 
 #Plot residuals (pressure and velocity) for all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_press_residuals, ds_vel_residuals, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_press_residuals, ds_vel_residuals, 'PHIHYDcR', [-2, 2], 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-"""
