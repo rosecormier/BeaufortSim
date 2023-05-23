@@ -194,11 +194,10 @@ def comp_temp_mean_vector(k_val, ecco_ds_vectors, xvec_attr, yvec_attr):
     
     return mean_fields, skip_k
 
-def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalar, ecco_ds_vector, scalar_attr, \
+def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, \
                            outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
-                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, title="",
-                           skip_k_scalar=False, skip_k_vector=False):
+                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, title=""):
     
     """
     Creates contourf plot of scalar variable in a subdomain of the Arctic,
@@ -224,6 +223,20 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalar, ecco_ds_vector, 
     title = plot title
     skip_k_scalar/vector = whether to skip isolating for k
     """
+    
+    skip_k_scalar, skip_k_vector = False, False
+    
+    if len(ecco_ds_scalars) == 1:
+        ecco_ds_scalar = ecco_ds_scalars[0]
+        
+    elif len(ecco_ds_scalars) > 1:
+        ecco_ds_scalar, skip_k_scalar = comp_temp_mean_scalar(1, ecco_ds_scalars, scalar_attr)
+        
+    if len(ecco_ds_vectors) == 1:
+        ecco_ds_vector = ecco_ds_vectors[0]
+        
+    elif len(ecco_ds_vectors) > 1:
+        ecco_ds_vector, skip_k_vector = comp_temp_mean_vector(1, ecco_ds_vectors, xvec_attr, yvec_attr)
     
     ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=skip_k_scalar)
     curr_field = (ds_grid[scalar_attr]).squeeze()
