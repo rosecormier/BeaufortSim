@@ -68,68 +68,7 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, 
                                                  boundary='fill')
 
     return velc
-"""      
-def ArcCir_contourf(k_plot, ecco_ds, attribute, ecco_ds_grid, resolution, cmap, no_levels, \
-                    vis_dir, filename, scale_factor=1):
-    
-    
-    Creates contourf plot of scalar variable in a subdomain of the Arctic.
-    
-    k_plot = depth index to plot at
-    ecco_ds = DataSet
-    attribute = string corresponding to attribute to plot
-    ecco_ds_grid = ECCO grid
-    resolution = resolution (both lat and lon) in degrees
-    cmap = colormap name
-    no_levels = number of contour levels
-    vis_dir = visualization directory
-    filename = output file name
-    scale_factor = colorbar multiplier
-    
-    
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds, attribute, k_val=k_plot) 
-    
-    field = ds_grid[attribute].squeeze()
-    
-    new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-    new_grid_min_lat, new_grid_max_lat = -90, 90
-    new_grid_min_lon, new_grid_max_lon = -180, 180
 
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, \
-    new_grid_lat_edges, field_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, field, new_grid_min_lat, \
-                            new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
-                            new_grid_max_lon, new_grid_delta_lon, fill_value = np.NaN, \
-                            mapping_method = 'nearest_neighbor', \
-                            radius_of_influence = 120000)
-    
-    field_copy = field.isel(tile=6).squeeze().values.copy()
-    field_copy = field_copy[~np.isnan(field_copy)]
-    
-    vmax, vmin = scale_factor * np.max(field_copy), scale_factor * np.min(field_copy)
-    
-    fig = plt.figure(figsize=(6, 8), dpi=90)
-    ax = plt.axes(projection=ccrs.NorthPolarStereo())
-    
-    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
-                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
-                      transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
-    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
-                     colors='r', alpha=0.8, linewidths=0.5, zorder=100, \
-                     transform=ccrs.PlateCarree(), levels=np.linspace(int(np.floor(vmin)), \
-                                                                      int(np.ceil(vmax)), \
-                                                                      no_levels))
-    
-    ax.set_extent([-180, 180, 65, 90], ccrs.PlateCarree())
-    ax.add_feature(cfeature.LAND)
-    ax.coastlines()
-    ax.gridlines()
-    
-    cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1))
-    
-    plt.savefig(vis_dir + filename + '.pdf')
-    plt.close()
-"""
 def comp_temp_mean_scalar(k_val, ecco_ds_scalars, scalar_attr):
     
     """
