@@ -122,9 +122,6 @@ grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
 #Load grid parameters
 ds_grid = xr.open_dataset(grid_params_file_path)
 
-#Create xgcm Grid object
-xgcm_grid = ecco.get_llc_grid(ds_grid)
-
 ##############################
 
 #CREATE MONTHLY PLOTS OF VELOCITY AND PRESSURE ANOMALY
@@ -148,23 +145,37 @@ for m in range(mos):
     ds_vel_mo = xr.open_mfdataset(curr_vel_file, parallel=True, data_vars='minimal', coords='minimal', 
                               compat='override')
     
+    ds_vels.append(ds_vel_mo) 
+    
     #Interpolate velocities to centres of grid cells
     ds_vel_mo.UVEL.data, ds_vel_mo.VVEL.data = ds_vel_mo.UVEL.values, ds_vel_mo.VVEL.values
-    
-    ds_vels.append(ds_vel_mo)
     
     #Load monthly density-/pressure-anomaly file into workspace
     ds_denspress_mo = xr.open_mfdataset(curr_denspress_file, parallel=True, data_vars='minimal', coords='minimal', 
                                     compat='override')
     
     ds_pressures.append(ds_denspress_mo)
-    
+
     #Plot velocity and pressure fields
-    ArcCir_contourf_quiver(ds_grid, 1, ds_denspress_mo, ds_vel_mo, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, monthstr, yearstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), 
-                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+    
+    press_vel_title = 'Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format('replace', \
+                                                                                                yearstr, \
+                                                                                                monthstr)
+    
+    ArcCir_contourf_quiver(ds_grid, 1, [ds_denspress_mo], [ds_vel_mo], 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 93, 97, 'UVEL', 'VVEL', resolution, 
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 97], 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+
+#Plot annual averages
+press_mean, vel_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+
+#Compute residuals of monthly averages
+
+press_residuals = comp_residuals(['PHIHYDcR'], ds_pressures, press_mean)
+vel_residuals = comp_residuals(['UVEL', 'VVEL'], ds_vels, vel_mean)
+
+#Plot residuals for all months
+ArcCir_contourf_quiver_grid(ds_grid, 1, press_residuals, vel_residuals, 'PHIHYDcR', [-2, 2], 'UVEL', 'VVEL', resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
