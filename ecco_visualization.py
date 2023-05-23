@@ -128,12 +128,40 @@ def comp_temp_mean_vector(k_val, ecco_ds_vectors, xvec_attr, yvec_attr):
     
     return mean_fields, skip_k
 
+def comp_residuals(attributes, datasets, mean_dataset):
+    
+    """
+    Computes residuals relative to a mean.
+    
+    attributes = variables to compute residuals of
+    datasets = datasets to compute residuals for
+    mean_dataset = mean of all attributes
+    """
+        
+    residual_list = []
+        
+    for dataset in datasets:
+            
+        residual = dataset.copy() * 0 
+            
+        concat_attr = xr.concat((dataset, -1*mean_dataset), dim='time')
+        
+        for attribute in attributes:
+            residual_field = (concat_attr[attribute]).sum(dim=['time'])
+            residual_field = residual_field.where(residual_field != 0)
+            residual[attribute] = residual_field
+            (residual[attribute]).data = (residual[attribute]).values
+            
+        residual_list.append(residual)
+    
+    return residual_list
+
 def cbar_label(scalar_attr):
     
     """
     Returns label for plot colorbar.
     
-    scalar_attr = variable that colorbar corresponds to
+    scalar_attr = variable that the colorbar corresponds to
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$'}
@@ -207,12 +235,14 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
         
     elif len(ecco_ds_scalars) > 1:
         ecco_ds_scalar, skip_k_scalar = comp_temp_mean_scalar(1, ecco_ds_scalars, scalar_attr)
+        scalar_mean = ecco_ds_scalar
         
     if len(ecco_ds_vectors) == 1:
         ecco_ds_vector = ecco_ds_vectors[0]
         
     elif len(ecco_ds_vectors) > 1:
         ecco_ds_vector, skip_k_vector = comp_temp_mean_vector(1, ecco_ds_vectors, xvec_attr, yvec_attr)
+        vector_mean = ecco_ds_vector
     
     ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=skip_k_scalar)
     curr_field = (ds_grid[scalar_attr]).squeeze()
@@ -273,6 +303,9 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     
     plt.savefig(outfile)
     plt.close()
+    
+    if len(ecco_ds_scalars) > 1 and len(ecco_ds_scalars) > 1:
+        return scalar_mean, vector_mean
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                                 scalar_bounds, xvec_attr, yvec_attr, resolution, \

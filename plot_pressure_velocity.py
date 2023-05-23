@@ -170,35 +170,12 @@ ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot annual averages
-ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-"""   
-#Compute and plot residuals of annual averages
+press_mean, vel_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
-ds_press_residuals = []
-ds_vel_residuals = []
+#Compute residuals of monthly averages
 
-for pressure in ds_pressures:
-    residual = pressure.copy() * 0
-    concat_pressure = xr.concat((pressure, -1*ds_press_mean), dim='time')
-    residual_press = concat_pressure['PHIHYDcR'].sum(dim=['time'])
-    residual['PHIHYDcR'] = residual_press
-    ds_press_residuals.append(residual)
-    
-for vel in ds_vels:
-    residual = vel.copy() * 0
-    concat_vel = xr.concat((vel, -1*ds_vel_mean), dim='time')
-    residual_u = concat_vel['UVEL'].sum(dim=['time'])
-    residual_v = concat_vel['VVEL'].sum(dim=['time'])
-    residual['UVEL'] = residual_u
-    residual['VVEL'] = residual_v
-    ds_vel_residuals.append(residual)
+press_residuals = comp_residuals(['PHIHYDcR'], ds_pressures, press_mean)
+vel_residuals = comp_residuals(['UVEL', 'VVEL'], ds_vels, vel_mean)
 
-#Title for residual plot
-title = ''
-
-#Plot residuals (pressure and velocity) for all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_press_residuals, ds_vel_residuals, 'PHIHYDcR', [-2, 2], 'UVEL', 'VVEL', resolution, 
-                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.png'.format(yearstr)),
-                           latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-                           
-"""
+#Plot residuals for all months
+ArcCir_contourf_quiver_grid(ds_grid, 1, press_residuals, vel_residuals, 'PHIHYDcR', [-2, 2], 'UVEL', 'VVEL', resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
