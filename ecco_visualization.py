@@ -133,10 +133,44 @@ def comp_temp_mean_vector(k_val, ecco_ds_vectors, xvec_attr, yvec_attr):
     
     return mean_fields, skip_k
 
+def cbar_label(scalar_attr):
+    
+    """
+    Returns label for plot colorbar.
+    
+    scalar_attr = variable that colorbar corresponds to
+    """
+    
+    cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$'}
+    label = cbar_label_dict[scalar_attr]
+    
+    return label
+
+def contourf_quiver_title(ecco_ds_grid, k_plot, datestr):
+    
+    """
+    Returns title for contourf-quiver plot.
+    
+    ecco_ds_grid = ECCO grid
+    k_plot = k-value to plot at
+    datestr = string containing date
+    """
+    
+    if k_plot == 0:
+        depthstr = 'ocean surface'
+    
+    elif k_plot != 0:
+        depth = - ecco_ds_grid.Z[k_plot].values
+        depthstr = str(depth) + ' m depth'
+        
+    title = "Pressure anomaly and water velocity in Arctic Circle \n at {}, {} \n".format(depthstr, datestr)
+    
+    return title
+
 def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
-                           xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, \
+                           xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, \
                            outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
-                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1, title=""):
+                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
     Creates contourf plot of scalar variable in a subdomain of the Arctic,
@@ -151,16 +185,14 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     yvec_attr = string corresponding to y-comp of vector to plot
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
+    scalar_bounds = min/max of scalar data
+    datestr = date string to be used in plot title
     outfile = output file name
-    vmin = minimum of scalar data
-    vmax = maximum of scalar data
     lat/lonmin/max = latitude/longitude bounds
     no_levels = number of contour levels
     scale_factor = colorbar multiplier
     arrow_spacing = quiver arrow spacing in gridpoints
     quiv_scale = quiver plot scale
-    title = plot title
-    skip_k_scalar/vector = whether to skip isolating for k
     """
     
     skip_k_scalar, skip_k_vector = False, False
@@ -229,20 +261,11 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
-    """
-    if k_val == 0:
-        depthstr = 'ocean surface'
-    
-    elif k_val != 0:
-        depth = - (ecco_ds_scalar[scalar_attr]).Z[k_val].values
-        depthstr = str(depth) + ' m depth'
-    """
-    depthstr = ''
 
-    ax.set_title(title)
+    ax.set_title(contourf_quiver_title(ds_grid, k_val, datestr))
         
     cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
-                        label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$')
+                        label=cbar_label(scalar_attr))
     
     plt.savefig(outfile)
     plt.close()
