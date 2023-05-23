@@ -31,8 +31,8 @@ parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=1.0)
-parser.add_argument("--datdir", type=str, help="Directory (relative to home) to store ECCO data", default="Downloads")
-parser.add_argument("--outdir", type=str, help="Output directory (relative to here)", default="visualization")
+parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
+parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -66,6 +66,13 @@ month_val_list = list(month_dict.values())
 month_end_dict = {"01": "31", "02": "28", "03": "31", "04": "30",
                  "05": "31", "06": "30", "07": "31", "08": "31",
                  "09": "30", "10": "31", "11": "30", "12": "31"} #Ideally fix Feb. at some point
+
+#Set parameters
+
+k = 1
+scalar_attr = 'PHIHYDcR'
+xvec_attr = 'UVEL'
+yvec_attr = 'VVEL'
     
 ##############################
 
@@ -73,6 +80,7 @@ month_end_dict = {"01": "31", "02": "28", "03": "31", "04": "30",
 
 vel_monthly_shortname = "ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4"
 denspress_monthly_shortname = "ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4"
+
 grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
 
 month_index = month_val_list.index(startmo)
@@ -148,7 +156,7 @@ for m in range(mos):
     ds_vels.append(ds_vel_mo) 
     
     #Interpolate velocities to centres of grid cells
-    ds_vel_mo.UVEL.data, ds_vel_mo.VVEL.data = ds_vel_mo.UVEL.values, ds_vel_mo.VVEL.values
+    (ds_vel_mo[xvec_attr]).data, (ds_vel_mo[yvec_attr]).data = (ds_vel_mo[xvec_attr]).values, (ds_vel_mo[yvec_attr]).values
     
     #Load monthly density-/pressure-anomaly file into workspace
     ds_denspress_mo = xr.open_mfdataset(curr_denspress_file, parallel=True, data_vars='minimal', coords='minimal', 
@@ -156,26 +164,21 @@ for m in range(mos):
     
     ds_pressures.append(ds_denspress_mo)
 
-    #Plot velocity and pressure fields
-    
-    press_vel_title = 'Pressure anomaly and water velocity in Arctic Circle \n at {} ({}-{})'.format('replace', \
-                                                                                                yearstr, \
-                                                                                                monthstr)
-    
-    ArcCir_contourf_quiver(ds_grid, 1, [ds_denspress_mo], [ds_vel_mo], 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+    #Plot vector and scalar fields
+    ArcCir_contourf_quiver(ds_grid, 1, [ds_denspress_mo], [ds_vel_mo], scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 97], 'UVEL', 'VVEL', resolution, 
+ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, scalar_attr, [93, 97], xvec_attr, yvec_attr, resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot annual averages
-press_mean, vel_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+press_mean, vel_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Compute residuals of monthly averages
 
-press_residuals = comp_residuals(['PHIHYDcR'], ds_pressures, press_mean)
-vel_residuals = comp_residuals(['UVEL', 'VVEL'], ds_vels, vel_mean)
+press_residuals = comp_residuals([scalar_attr], ds_pressures, press_mean)
+vel_residuals = comp_residuals([xvec_attr, yvec_attr], ds_vels, vel_mean)
 
 #Plot residuals for all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, press_residuals, vel_residuals, 'PHIHYDcR', [-2, 2], 'UVEL', 'VVEL', resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+ArcCir_contourf_quiver_grid(ds_grid, 1, press_residuals, vel_residuals, scalar_attr, [-2, 2], xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
