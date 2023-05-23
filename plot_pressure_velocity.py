@@ -163,17 +163,11 @@ for m in range(mos):
                                                                                                 monthstr)
     
     ArcCir_contourf_quiver(ds_grid, 1, [ds_denspress_mo], [ds_vel_mo], 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-"""
+
 #Plot all months
 ArcCir_contourf_quiver_grid(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', [93, 97], 'UVEL', 'VVEL', resolution, 
                            vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
-"""
-#mean_press_field, press_skip_k = comp_temp_mean_scalar(1, ds_pressures, 'PHIHYDcR')
-#mean_vel_field, vel_skip_k = comp_temp_mean_vector(1, ds_vels, 'UVEL', 'VVEL')
-
-#Plot annual averages
-#ArcCir_contourf_quiver(ds_grid, 1, mean_press_field, mean_vel_field, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, skip_k_scalar=press_skip_k, skip_k_vector=vel_skip_k)
 
 #Plot annual averages
 ArcCir_contourf_quiver(ds_grid, 1, ds_pressures, ds_vels, 'PHIHYDcR', 'UVEL', 'VVEL', resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)

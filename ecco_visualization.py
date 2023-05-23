@@ -26,11 +26,9 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=Fa
     ds_grid = ecco_ds_grid.copy()
 
     if skip_k:
-        
         ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
     
     else:
-        
         ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_val)
         ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
         
@@ -52,12 +50,10 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, 
     """
 
     ds_grid = ecco_ds_grid.copy()
-    
     ds_grid = ds_grid.load()
     XGCM_grid = ecco.get_llc_grid(ds_grid)
     
     if skip_k:
-        
         velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr], \
                                            'Y': ecco_ds_vector[yvec_attr]}, \
                                            boundary='fill')
@@ -83,7 +79,6 @@ def comp_temp_mean_scalar(k_val, ecco_ds_scalars, scalar_attr):
     concat_field = ((ecco_ds_scalars[0]).copy()).isel(k=k_val) * 0
     
     for dataset in ecco_ds_scalars:
-        
         curr_field = dataset.isel(k=k_val)
         concat_field = xr.concat((concat_field, curr_field), dim='time')
 
@@ -146,7 +141,7 @@ def cbar_label(scalar_attr):
     
     return label
 
-def contourf_quiver_title(ecco_ds_grid, k_plot, datestr):
+def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr, resid=False):
     
     """
     Returns title for contourf-quiver plot.
@@ -163,7 +158,17 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr):
         depth = - ecco_ds_grid.Z[k_plot].values
         depthstr = str(depth) + ' m depth'
         
-    title = "Pressure anomaly and water velocity in Arctic Circle \n at {}, {} \n".format(depthstr, datestr)
+    scalar_dict = {'PHIHYDcR': 'Pressure anomaly'}
+    scalar_str = scalar_dict[scalar_attr]
+    
+    vector_dict = {'UVEL': 'water velocity'}
+    vector_str = vector_dict[xvec_attr]
+    
+    if resid:
+        title = scalar_str + ' and ' + vector_str + ' residuals (relative to annual mean) \n in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
+
+    else:
+        title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
@@ -261,8 +266,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
-
-    ax.set_title(contourf_quiver_title(ds_grid, k_val, datestr))
+    ax.set_title(contourf_quiver_title(ds_grid, k_val, datestr, scalar_attr, xvec_attr))
         
     cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
                         label=cbar_label(scalar_attr))
@@ -274,7 +278,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
                                 scalar_bounds, xvec_attr, yvec_attr, resolution, \
                                 cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, \
                                 lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, \
-                                arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, title=""):
+                                arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, resid=False):
     
     """
     Creates array of contourf plots of scalar variable in a subdomain of the Arctic,
@@ -286,12 +290,10 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     ecco_ds_vectors = vector DataSets
     scalar_attr = string corresponding to scalar attribute to plot
     scalar_bounds = bounds on scalar attribute
-    xvec_attr = string corresponding to x-comp of vector to plot
-    yvec_attr = string corresponding to y-comp of vector to plot
+    xvec/yvec_attr = string corresponding to x/y-comp of vector to plot
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
-    monthstrs = strings of months to plot
-    yearstrs = strings of years to plot
+    month/yearstrs = strings of months/years to plot
     outfile = output file name
     lat/lonmin/max = latitude/longitude bounds
     no_levels = number of contour levels
@@ -299,21 +301,16 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     arrow_spacing = quiver arrow spacing in gridpoints
     quiv_scale = quiver plot scale
     nrows, ncols = number of rows and columns (resp.) in grid
-    title = plot title
+    resid = whether this is a residual plot
     """
     
     plt.rcParams['font.size'] = 40
     
+    skip_k_scalar, skip_k_vector = False, False
+    
     monthnames = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", \
                   "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", \
                   "11": "November", "12": "December"}
-    
-    if k_plot == 0:
-        depthstr = 'ocean surface'
-
-    elif k_plot != 0:
-        depth = - (ecco_ds_scalars[0][scalar_attr]).Z[k_plot].values
-        depthstr = str(depth) + ' m depth'
     
     mainfig = plt.figure(figsize=(48, 40))
     
@@ -333,13 +330,12 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         monthstr = monthstrs[i]
         yearstr = yearstrs[i]
         
-        ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val=k_plot)
+        ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr, skip_k=skip_k_scalar)
+        curr_field = (ds_grid[scalar_attr]).squeeze()
         
         velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
         velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
-
-        curr_field = ds_grid[scalar_attr].squeeze()
 
         new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
         new_grid_min_lat, new_grid_max_lat = latmin, latmax
@@ -383,63 +379,13 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ax.add_feature(cfeature.LAND)
         ax.coastlines()
         ax.gridlines()
-        
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
-
-    if title == "":
-        title = "Monthly mean pressure anomaly and water velocity in Arctic Circle at {} \n".format(depthstr)
-    
-    mainfig.suptitle(title, size=80)
+        
+    mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=True), size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
-                            label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
+                            label=cbar_label(scalar_attr), location='bottom')
     mainfig.savefig(outfile)
     plt.close()
-    """
-    if resid:
-        
-        absmax = 1.8
-    
-        for i in range(nplots):
-
-            if i % ncols == 0:
-                row += 1
-                col = 0
-            else:
-                col += 1
-
-            new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, resid = \
-            ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, tmp_plots[i] - mean_plot, new_grid_min_lat, \
-                                    new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
-                                    new_grid_max_lon, new_grid_delta_lon, fill_value = np.NaN, \
-                                    mapping_method = 'nearest_neighbor', radius_of_influence = 120000)
-
-            ax = resid_fig.add_subplot(nrows, ncols, i + 1, projection=ccrs.NorthPolarStereo())
-            ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
-
-            cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, resid, \
-                              transform=ccrs.PlateCarree(), levels=np.linspace(-absmax, absmax, no_levels), \
-                              extend='both', cmap='seismic')
-            cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, resid, colors='r', alpha=0.8, \
-                             linewidths=1.0, zorder=100, transform=ccrs.PlateCarree(), \
-                             levels=np.linspace(-absmax, absmax, no_levels))
-
-            ax.add_feature(cfeature.LAND)
-            ax.coastlines()
-            ax.gridlines()
-             
-            ax.set_title('\n {} {}'.format(monthnames[monthstrs[i]], yearstrs[i]))
-
-        resid_title = "Monthly residuals of mean pressure anomaly and water velocity, relative to annual \
-        mean, \n in Arctic Circle at {} \n".format(depthstr)
-            
-        resid_fig.suptitle(resid_title, size=80)
-        resid_fig.tight_layout()
-        cbar = mainfig.colorbar(cs1, ax=resid_fig.get_axes(), aspect=40, pad=0.05, \
-                                ticks=range(int(np.ceil(-absmax)), int(np.floor(absmax))), \
-                                label=r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', location='bottom')
-        resid_fig.savefig('test.png')
-        plt.close()
-    """
     
     plt.rcdefaults()
