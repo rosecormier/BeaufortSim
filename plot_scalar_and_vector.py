@@ -17,8 +17,9 @@ import matplotlib.pyplot as plt
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_visualization import *
-from ecco_field_variables import *
+from ecco_general import load_grid, get_month_end, comp_residuals, get_starting_i
+from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
+from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 
 ##############################
 
@@ -65,16 +66,11 @@ outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
-    
-month_dict = {0: "01", 1: "02", 2: "03", 3: "04", 4: "05", 5: "06",
-              6: "07", 7: "08", 8: "09", 9: "10", 10: "11", 11: "12"}
-month_key_list, month_val_list = list(month_dict.keys()), list(month_dict.values())
 
 #Set parameters and get associated variables
 
 scalar_attr = 'PHIHYDcR'
-xvec_attr = 'UVEL'
-yvec_attr = 'VVEL'
+xvec_attr, yvec_attr = 'UVEL', 'VVEL'
 
 vector_monthly_shortname, vector_monthly_nc_str, vector_variable = \
     get_vector_field_vars(xvec_attr, yvec_attr)
@@ -88,10 +84,10 @@ variables_str = vector_variable + '_' + scalar_variable
 
 ds_grid = load_grid(datdir)
 
-month_index = month_val_list.index(startmo)
-i = month_key_list[month_index]
 year = startyr
 monthstrs, yearstrs = [], []
+    
+i = get_starting_i(startmo)
     
 #Iterate over all specified months
 while i < mos:

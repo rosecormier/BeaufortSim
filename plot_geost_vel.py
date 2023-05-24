@@ -12,6 +12,7 @@ import argparse
 
 from os.path import expanduser, join
 
+from ecco_general import load_grid, get_month_end, get_starting_i
 from ecco_field_variables import *
 
 ##############################
@@ -20,11 +21,16 @@ from ecco_field_variables import *
 
 parser = argparse.ArgumentParser(description="Plot geostrophic velocity in Beaufort Gyre", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
+parser.add_argument("start", type=int, help="Start year")
+
 args = parser.parse_args()
 config = vars(args)
+
+startmo, startyr = config['month'], config['start']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -47,4 +53,7 @@ vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars(
 
 ds_grid = load_grid(datdir)
 
-month_index = 
+year = startyr
+monthstrs, yearstrs = [], []
+
+i = get_starting_i(startmo)
