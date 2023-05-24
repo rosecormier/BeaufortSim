@@ -1,17 +1,32 @@
 """
-Rosalie Cormier, 2023
+Rosalie Cormier, 2023, based on code by Andrew Delman
 """
 
+import numpy as np
 import ecco_v4_py as ecco
 import xgcm
 
-def pressure_derivs(ecco_ds_grid, pressure):
+Omega = (2 * np.pi) / 86164 #Earth angular velocity
+
+def to_radians(angle):
+    
+    """
+    Converts to radians.
+    
+    angle = angle in degrees
+    """
+    
+    return angle * np.pi / 180
+
+def comp_geos_vel(ecco_ds_grid, pressure, dens, ds_vel):
     
     """
     Computes derivatives of pressure.
     
     ecco_ds_grid = grid dataset
     pressure = pressure data to differentiate
+    dens = density data
+    ds_vel = DataSet containing velocities
     """
     
     xgcm_grid = ecco.get_llc_grid(ecco_ds_grid)
@@ -27,10 +42,33 @@ def pressure_derivs(ecco_ds_grid, pressure):
     d_press_dy.data = d_press_dy.values
     
     #Interpolate to centres of grid cells
-    press_grads_interp = xgcm_grid.interp_2d_vector({"X": d_press_dx, "Y": d_press_dy}, boundary='extend')
+    press_grads_interp = xgcm_grid.interp_2d_vector({'X': d_press_dx, 'Y': d_press_dy}, boundary='extend')
     
     dp_dx, dp_dy = press_grads_interp['X'], press_grads_interp['Y']
     dp_dx.name = 'dp_dx'
     dp_dy.name = 'dp_dy'
     
-    return dp_dx, dp_dy
+    #Compute RHS of geostrophic-balance equations
+    
+    GB_RHS_1, GB_RHS_2 = dp_dx / dens, - dp_dy / dens
+    GB_RHS_1 = GB_RHS_1.where(ecco_ds_grid.maskC) #Mask land areas
+    GB_RHS_2 = GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
+    
+    #Interpolate velocities to centres of grid cells
+    
+    ds_vel.UVEL.data, ds_vel.VVEL.data = ds_vel.UVEL.values, ds_vel.VVEL.values
+    vel_interp = xgcm_grid.interp_2d_vector({'X': ds_vel.UVEL, 'Y': ds_vel.VVEL}, boundary='extend')
+    u, v = vel_interp['X'], vel_interp['Y']
+    
+    #Compute Coriolis param. from latitudes of grid cell centres
+    
+    lat = to_radians(ecco_ds_grid.YC)
+    f = 2 * Omega * np.sin(lat)
+    
+    #Compute geostrophic velocity components
+    
+    u_g, v_g = GB_RHS_2 / f, GB_RHS_1 / f
+    u_g = u_g.where(ecco_ds_grid.maskC) #Mask land areas
+    v_g = v_g.where(ecco_ds_grid.maskC) #Mask land areas
+    
+    return u_g, v_g
