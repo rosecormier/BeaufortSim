@@ -72,3 +72,19 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens, ds_vel):
     v_g = v_g.where(ecco_ds_grid.maskC) #Mask land areas
     
     return u_g, v_g
+
+def comp_delta_u_norm(u, v, u_g, v_g):
+    
+    """
+    Computes Delta-u diagnostic for geostrophic balance.
+    
+    u, v = components of velocity
+    u_g, v_g = components of geostrophic velocity
+    """
+    
+    num_x, num_y = u - u_g, v - v_g
+    norm_num = np.sqrt(num_x**2 + num_y**2)
+    denom_x, denom_y = u, v
+    norm_denom = np.sqrt(denom_x**2 + denom_y**2)
+    
+    return norm_num / norm_denom
