@@ -10,6 +10,8 @@ from xgcm import Grid
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
+vir_nanmasked = plt.get_cmap('viridis_r').copy()
+vir_nanmasked.set_bad('black')
 
 def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=False):
     

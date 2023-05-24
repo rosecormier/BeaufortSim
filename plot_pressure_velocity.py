@@ -71,7 +71,6 @@ month_key_list, month_val_list = list(month_dict.keys()), list(month_dict.values
 
 #Set parameters and get associated variables
 
-k = 1
 scalar_attr = 'PHIHYDcR'
 xvec_attr = 'UVEL'
 yvec_attr = 'VVEL'
@@ -84,15 +83,30 @@ variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
 
-#DOWNLOAD ECCO FILES FOR SPECIFIED MONTHS
+#LOAD GRID
 
 grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
+
+#Download ECCO grid parameters (date is arbitrary)
+ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
+                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
+                     force_redownload=False)
+
+grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
+grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
+
+#Load grid parameters
+ds_grid = xr.open_dataset(grid_params_file_path)
+
+##############################
+
+#DOWNLOAD VARIABLE FILES
 
 month_index = month_val_list.index(startmo)
 i = month_key_list[month_index]
 year = startyr
 monthstrs, yearstrs = [], []
-
+    
 #Iterate over all specified months
 while i < mos:
 
@@ -121,92 +135,92 @@ while i < mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
-    
-#Download ECCO grid parameters (date is arbitrary)
-ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
-                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
-                     force_redownload=False)
 
 ##############################
 
-#GET FILE LISTS AND LOAD GRID
+#GET FILE LISTS
 
 vector_dir = join(datdir, vector_monthly_shortname)
 scalar_dir = join(datdir, scalar_monthly_shortname)
-
-grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
-
-#Load grid parameters
-ds_grid = xr.open_dataset(grid_params_file_path)
 
 ##############################
 
 #CREATE MONTHLY PLOTS OF VELOCITY AND PRESSURE ANOMALY
 
-vir_nanmasked = plt.get_cmap('viridis_r').copy()
-vir_nanmasked.set_bad('black')
+#Iterate over all specified depths
+for k in range(kmin, kmax + 1):
 
-ds_vectors, ds_scalars = [], []
+    ds_vectors, ds_scalars = [], []
 
-for m in range(mos):
-    
-    monthstr = monthstrs[m]
-    yearstr = yearstrs[m]
-    
-    curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+ \
-                            "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
-    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+ \
-                            "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+    for m in range(mos):
 
-    #Load monthly velocity file into workspace
-    ds_vector_mo = xr.open_mfdataset(curr_vector_file, parallel=True, \
-                                     data_vars='minimal', coords='minimal', \
-                                     compat='override')
-    
-    ds_vectors.append(ds_vector_mo) 
-    
-    #Interpolate velocities to centres of grid cells
-    (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
-        (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
-    
-    #Load monthly density-/pressure-anomaly file into workspace
-    ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, parallel=True, \
-                                     data_vars='minimal', coords='minimal', \
-                                     compat='override')
-    
-    ds_scalars.append(ds_scalar_mo)
+        monthstr = monthstrs[m]
+        yearstr = yearstrs[m]
 
-    #Plot vector and scalar fields
-    ArcCir_contourf_quiver(ds_grid, k, [ds_scalar_mo], [ds_vector_mo], scalar_attr, \
-                           xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], \
-                           yearstr+"-"+monthstr, \
-                           outfile=join(outdir, '{}_{}-{}.pdf'.format(variables_str, \
-                                                                      monthstr, yearstr)), \
-                           lats_lons=lats_lons)
+        curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+ \
+                                "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+        curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+ \
+                                "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
-#Plot all months
-ArcCir_contourf_quiver_grid(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, [93, 97], \
-                            xvec_attr, yvec_attr, resolution, vir_nanmasked, monthstrs, yearstrs, \
-                            outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)), \
-                            lats_lons=lats_lons)
+        #Load monthly velocity file into workspace
+        ds_vector_mo = xr.open_mfdataset(curr_vector_file, parallel=True, \
+                                         data_vars='minimal', coords='minimal', \
+                                         compat='override')
 
-#Plot annual averages
-scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, \
-                                                  xvec_attr, yvec_attr, resolution, vir_nanmasked, \
-                                                  [93, 97], yearstrs[0]+" average", \
-                                                  outfile=join(outdir, '{}_avg{}.pdf'.format(variables_str, \
+        ds_vectors.append(ds_vector_mo) 
+
+        #Interpolate velocities to centres of grid cells
+        (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
+            (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
+
+        #Load monthly density-/pressure-anomaly file into workspace
+        ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, parallel=True, \
+                                         data_vars='minimal', coords='minimal', \
+                                         compat='override')
+
+        ds_scalars.append(ds_scalar_mo)
+
+        #Plot vector and scalar fields
+        ArcCir_contourf_quiver(ds_grid, k, [ds_scalar_mo], [ds_vector_mo], \
+                               scalar_attr, xvec_attr, yvec_attr, resolution, \
+                               vir_nanmasked, [93, 97], yearstr+"-"+monthstr, \
+                               outfile=join(outdir, \
+                                            '{}_k{}_{}-{}.pdf'.format(variables_str, \
+                                                                      str(k), \
+                                                                      monthstr, \
+                                                                      yearstr)), \
+                               lats_lons=lats_lons)
+
+    #Plot all months
+    ArcCir_contourf_quiver_grid(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, \
+                                [93, 97], xvec_attr, yvec_attr, resolution, vir_nanmasked, \
+                                monthstrs, yearstrs, \
+                                outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
+                                                                               str(k), \
+                                                                               yearstr)), \
+                                lats_lons=lats_lons)
+
+    #Plot annual averages
+    scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, k, ds_scalars, ds_vectors, \
+                                                      scalar_attr, xvec_attr, yvec_attr, \
+                                                      resolution, vir_nanmasked, [93, 97], \
+                                                      yearstrs[0]+" average", \
+                                                      outfile=join(outdir, \
+                                                                   '{}_k{}_avg{}.pdf'.format(variables_str, \
+                                                                                             str(k), \
                                                                                              yearstr)), \
-                                                  lats_lons=lats_lons)
+                                                      lats_lons=lats_lons)
 
-#Compute residuals of monthly averages
+    #Compute residuals of monthly averages
 
-scalar_residuals = comp_residuals([scalar_attr], ds_scalars, scalar_mean)
-vector_residuals = comp_residuals([xvec_attr, yvec_attr], ds_vectors, vector_mean)
+    scalar_residuals = comp_residuals([scalar_attr], ds_scalars, scalar_mean)
+    vector_residuals = comp_residuals([xvec_attr, yvec_attr], ds_vectors, vector_mean)
 
-#Plot residuals for all months
-ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vector_residuals, scalar_attr, [-2, 2], \
-                            xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, \
-                            outfile=join(outdir, '{}_resids_all{}.pdf'.format(variables_str, \
-                                                                              yearstr)), \
-                            lats_lons=lats_lons)
+    #Plot residuals for all months
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vector_residuals, \
+                                scalar_attr, [-2, 2], xvec_attr, yvec_attr, resolution, \
+                                'seismic', monthstrs, yearstrs, \
+                                outfile=join(outdir, '{}_k{}_resids_all{}.pdf'.format(variables_str, \
+                                                                                      str(k), \
+                                                                                      yearstr)), \
+                                lats_lons=lats_lons)
