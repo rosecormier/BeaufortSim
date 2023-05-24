@@ -193,17 +193,20 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     vector_str = vector_dict[xvec_attr]
     
     if resid:
-        title = scalar_str + ' and ' + vector_str + ' residuals (relative to annual mean) \n in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
+        title = scalar_str + ' and ' + vector_str + \
+            ' residuals (relative to annual mean) \n in Arctic Circle at {}, {} \n'.format(depthstr, \
+                                                                                           datestr)
 
     else:
-        title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, datestr)
+        title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, \
+                                                                                               datestr)
     
     return title
 
 def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
-                           xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, \
-                           outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
-                           no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
+                           xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, outfile="", \
+                           lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
+                           arrow_spacing=10, quiv_scale=1):
     
     """
     Creates contourf plot of scalar variable in a subdomain of the Arctic,
@@ -255,15 +258,11 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     
     delta_lat, delta_lon = resolution, resolution
     latmin, latmax, lonmin, lonmax = lats_lons
-    #new_grid_min_lat, new_grid_max_lat = latmin, latmax
-    #new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, \
-                                            latmax, delta_lat, lonmin, \
-                                            lonmax, delta_lon, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', \
-                                            radius_of_influence=120000)
+    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, delta_lat, \
+                                            lonmin, lonmax, delta_lon, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
 
@@ -281,14 +280,12 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, \
-                            delta_lat, lonmin, lonmax, delta_lon, \
-                            fill_value=np.NaN, mapping_method='nearest_neighbor', \
+    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, delta_lat, lonmin, \
+                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
                             radius_of_influence=120000)
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, \
-                            delta_lat, lonmin, lonmax, delta_lon, \
-                            fill_value=np.NaN, mapping_method='nearest_neighbor', \
+    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, delta_lat, lonmin, \
+                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
                             radius_of_influence=120000)
             
     quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
@@ -309,9 +306,10 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
         return scalar_mean, vector_mean
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
-                                scalar_bounds, xvec_attr, yvec_attr, resolution, \
-                                cmap, monthstrs, yearstrs, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=15, scale_factor=1, \
-                                arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, resid=False):
+                                scalar_bounds, xvec_attr, yvec_attr, resolution, cmap, monthstrs, \
+                                yearstrs, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
+                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, \
+                                nrows=3, ncols=4, resid=False):
     
     """
     Creates array of contourf plots of scalar variable in a subdomain of the Arctic,
@@ -372,13 +370,10 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
 
         delta_lat, delta_lon = resolution, resolution
         latmin, latmax, lonmin, lonmax = lats_lons
-        #new_grid_min_lat, new_grid_max_lat = latmin, latmax
-        #new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
         field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, \
-                                                latmax, delta_lat, lonmin, \
-                                                lonmax, delta_lon, \
+                                                latmax, delta_lat, lonmin, lonmax, delta_lon, \
                                                 fill_value=np.NaN, mapping_method='nearest_neighbor', \
                                                 radius_of_influence=120000)
 
@@ -397,14 +392,12 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, \
-                                delta_lat, lonmin, lonmax, delta_lon, \
-                                fill_value=np.NaN, mapping_method='nearest_neighbor', \
+        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, delta_lat, lonmin, lonmax, \
+                                delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
                                 radius_of_influence=120000)
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, \
-                                delta_lat, lonmin, lonmax, delta_lon, \
-                                fill_value=np.NaN, mapping_method='nearest_neighbor', \
+        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, delta_lat, lonmin, lonmax, \
+                                delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
                                 radius_of_influence=120000)
 
         quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
@@ -415,7 +408,8 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ax.gridlines()
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
         
-    mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=True), size=80)
+    mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=True), \
+                     size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
                             label=cbar_label(scalar_attr), location='bottom')

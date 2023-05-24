@@ -26,14 +26,19 @@ from ecco_field_variables import *
 parser = argparse.ArgumentParser(description="Plot scalar and vector fields in Beaufort Gyre",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.0, 85.0])
-parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-180.0, -90.0])
+parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
+                    default=[70.0, 85.0])
+parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
+                    default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
-parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=1.0)
-parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
-parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
+parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
+                    default=1.0)
+parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", \
+                    default="Downloads")
+parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
+                    default="visualization")
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -71,8 +76,10 @@ scalar_attr = 'PHIHYDcR'
 xvec_attr = 'UVEL'
 yvec_attr = 'VVEL'
 
-vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
-scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
+vector_monthly_shortname, vector_monthly_nc_str, vector_variable = \
+    get_vector_field_vars(xvec_attr, yvec_attr)
+scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = \
+    get_scalar_field_vars(scalar_attr)
 variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
@@ -97,13 +104,17 @@ while i < mos:
     yearstrs.append(yearstr)
     
     #Download the monthly-averaged velocity file
-    ecco_podaac_download(ShortName=vector_monthly_shortname, StartDate=yearstr+"-"+monthstr+"-02", 
-                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
+    ecco_podaac_download(ShortName=vector_monthly_shortname, \
+                         StartDate=yearstr+"-"+monthstr+"-02", 
+                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, \
+                         download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
      
     #Download the monthly-averaged density-/pressure-anomaly file
-    ecco_podaac_download(ShortName=scalar_monthly_shortname, StartDate=yearstr+"-"+monthstr+"-02", 
-                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, download_root_dir=datdir, n_workers=6, 
+    ecco_podaac_download(ShortName=scalar_monthly_shortname, \
+                         StartDate=yearstr+"-"+monthstr+"-02", 
+                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, \
+                         download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
     
     if i == "12":
@@ -112,8 +123,9 @@ while i < mos:
     i += 1 #Go to next month
     
 #Download ECCO grid parameters (date is arbitrary)
-ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", 
-                     download_root_dir=datdir, n_workers=6, force_redownload=False)
+ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
+                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
+                     force_redownload=False)
 
 ##############################
 
@@ -142,36 +154,50 @@ for m in range(mos):
     monthstr = monthstrs[m]
     yearstr = yearstrs[m]
     
-    curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+
-                         "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
-    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+
-                               yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+    curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+ \
+                            "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+ \
+                            "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
     #Load monthly velocity file into workspace
-    ds_vector_mo = xr.open_mfdataset(curr_vector_file, parallel=True, data_vars='minimal', coords='minimal', 
-                              compat='override')
+    ds_vector_mo = xr.open_mfdataset(curr_vector_file, parallel=True, \
+                                     data_vars='minimal', coords='minimal', \
+                                     compat='override')
     
     ds_vectors.append(ds_vector_mo) 
     
     #Interpolate velocities to centres of grid cells
-    (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
+    (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
+        (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
     
     #Load monthly density-/pressure-anomaly file into workspace
-    ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, parallel=True, data_vars='minimal', coords='minimal', 
-                                    compat='override')
+    ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, parallel=True, \
+                                     data_vars='minimal', coords='minimal', \
+                                     compat='override')
     
     ds_scalars.append(ds_scalar_mo)
 
     #Plot vector and scalar fields
-    ArcCir_contourf_quiver(ds_grid, k, [ds_scalar_mo], [ds_vector_mo], scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, '{}_{}-{}.pdf'.format(variables_str, monthstr, yearstr)), lats_lons=lats_lons)
-
-#Plot all months
-ArcCir_contourf_quiver_grid(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, [93, 97], xvec_attr, yvec_attr, resolution, 
-                           vir_nanmasked, monthstrs, yearstrs, outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)),
+    ArcCir_contourf_quiver(ds_grid, k, [ds_scalar_mo], [ds_vector_mo], scalar_attr, \
+                           xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], \
+                           yearstr+"-"+monthstr, \
+                           outfile=join(outdir, '{}_{}-{}.pdf'.format(variables_str, \
+                                                                      monthstr, yearstr)), \
                            lats_lons=lats_lons)
 
+#Plot all months
+ArcCir_contourf_quiver_grid(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, [93, 97], \
+                            xvec_attr, yvec_attr, resolution, vir_nanmasked, monthstrs, yearstrs, \
+                            outfile=join(outdir, 'u_p_anom_all{}.png'.format(yearstr)), \
+                            lats_lons=lats_lons)
+
 #Plot annual averages
-scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, '{}_avg{}.pdf'.format(variables_str, yearstr)), lats_lons=lats_lons)
+scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, k, ds_scalars, ds_vectors, scalar_attr, \
+                                                  xvec_attr, yvec_attr, resolution, vir_nanmasked, \
+                                                  [93, 97], yearstrs[0]+" average", \
+                                                  outfile=join(outdir, '{}_avg{}.pdf'.format(variables_str, \
+                                                                                             yearstr)), \
+                                                  lats_lons=lats_lons)
 
 #Compute residuals of monthly averages
 
@@ -179,4 +205,8 @@ scalar_residuals = comp_residuals([scalar_attr], ds_scalars, scalar_mean)
 vector_residuals = comp_residuals([xvec_attr, yvec_attr], ds_vectors, vector_mean)
 
 #Plot residuals for all months
-ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vector_residuals, scalar_attr, [-2, 2], xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, '{}_resids_all{}.pdf'.format(variables_str, yearstr)), lats_lons=lats_lons)
+ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vector_residuals, scalar_attr, [-2, 2], \
+                            xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, \
+                            outfile=join(outdir, '{}_resids_all{}.pdf'.format(variables_str, \
+                                                                              yearstr)), \
+                            lats_lons=lats_lons)
