@@ -72,8 +72,9 @@ scalar_attr = 'PHIHYDcR'
 xvec_attr = 'UVEL'
 yvec_attr = 'VVEL'
 
-vector_monthly_shortname, vector_monthly_nc_str = get_vector_field_vars(xvec_attr, yvec_attr)
-scalar_monthly_shortname, scalar_monthly_nc_str = get_scalar_field_vars(scalar_attr)
+vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
+scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
+variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
 
@@ -163,7 +164,7 @@ for m in range(mos):
     ds_scalars.append(ds_scalar_mo)
 
     #Plot vector and scalar fields
-    ArcCir_contourf_quiver(ds_grid, 1, [ds_scalar_mo], [ds_vector_mo], scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, 'u_p_anom_{}-{}.pdf'.format(monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+    ArcCir_contourf_quiver(ds_grid, 1, [ds_scalar_mo], [ds_vector_mo], scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, outfile=join(outdir, '{}_{}-{}.pdf'.format(variables_str, monthstr, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot all months
 ArcCir_contourf_quiver_grid(ds_grid, 1, ds_scalars, ds_vectors, scalar_attr, [93, 97], xvec_attr, yvec_attr, resolution, 
@@ -171,7 +172,7 @@ ArcCir_contourf_quiver_grid(ds_grid, 1, ds_scalars, ds_vectors, scalar_attr, [93
                            latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Plot annual averages
-scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_scalars, ds_vectors, scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, 'u_p_anom_avg{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+scalar_mean, vector_mean = ArcCir_contourf_quiver(ds_grid, 1, ds_scalars, ds_vectors, scalar_attr, xvec_attr, yvec_attr, resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average", outfile=join(outdir, '{}_avg{}.pdf'.format(variables_str, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
 
 #Compute residuals of monthly averages
 
@@ -179,4 +180,4 @@ scalar_residuals = comp_residuals([scalar_attr], ds_scalars, scalar_mean)
 vector_residuals = comp_residuals([xvec_attr, yvec_attr], ds_vectors, vector_mean)
 
 #Plot residuals for all months
-ArcCir_contourf_quiver_grid(ds_grid, 1, scalar_residuals, vector_residuals, scalar_attr, [-2, 2], xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, 'u_p_resids_all{}.pdf'.format(yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
+ArcCir_contourf_quiver_grid(ds_grid, 1, scalar_residuals, vector_residuals, scalar_attr, [-2, 2], xvec_attr, yvec_attr, resolution, 'seismic', monthstrs, yearstrs, outfile=join(outdir, '{}_resids_all{}.pdf'.format(variables_str, yearstr)), latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax)
