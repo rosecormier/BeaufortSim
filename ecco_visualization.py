@@ -202,7 +202,7 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
 
 def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, \
-                           outfile="", latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, \
+                           outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
                            no_levels=30, scale_factor=1, arrow_spacing=10, quiv_scale=1):
     
     """
@@ -221,7 +221,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     scalar_bounds = min/max of scalar data
     datestr = date string to be used in plot title
     outfile = output file name
-    lat/lonmin/max = latitude/longitude bounds
+    lats_lons = latmin, latmax, lonmin, lonmax
     no_levels = number of contour levels
     scale_factor = colorbar multiplier
     arrow_spacing = quiver arrow spacing in gridpoints
@@ -253,16 +253,17 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
     velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
     
-    new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-    new_grid_min_lat, new_grid_max_lat = latmin, latmax
-    new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
+    delta_lat, delta_lon = resolution, resolution
+    latmin, latmax, lonmin, lonmax = lats_lons
+    #new_grid_min_lat, new_grid_max_lat = latmin, latmax
+    #new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, new_grid_min_lat, \
-                                            new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
-                                            new_grid_max_lon, new_grid_delta_lon, fill_value = np.NaN, \
-                                            mapping_method = 'nearest_neighbor', \
-                                            radius_of_influence = 120000)
+    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, \
+                                            latmax, delta_lat, lonmin, \
+                                            lonmax, delta_lon, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', \
+                                            radius_of_influence=120000)
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
 
@@ -280,15 +281,15 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, new_grid_min_lat, new_grid_max_lat, \
-                            new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon, \
-                            fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
-                            radius_of_influence = 120000)
+    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, \
+                            delta_lat, lonmin, lonmax, delta_lon, \
+                            fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                            radius_of_influence=120000)
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, new_grid_min_lat, new_grid_max_lat, \
-                            new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon, \
-                            fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
-                            radius_of_influence = 120000)
+    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, \
+                            delta_lat, lonmin, lonmax, delta_lon, \
+                            fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                            radius_of_influence=120000)
             
     quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
                      transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)
@@ -309,8 +310,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                                 scalar_bounds, xvec_attr, yvec_attr, resolution, \
-                                cmap, monthstrs, yearstrs, outfile="", latmin=70.0, latmax=85.0, \
-                                lonmin=-180.0, lonmax=-90.0, no_levels=15, scale_factor=1, \
+                                cmap, monthstrs, yearstrs, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=15, scale_factor=1, \
                                 arrow_spacing=10, quiv_scale=0.3, nrows=3, ncols=4, resid=False):
     
     """
@@ -328,7 +328,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     cmap = colormap name
     month/yearstrs = strings of months/years to plot
     outfile = output file name
-    lat/lonmin/max = latitude/longitude bounds
+    lats_lons = latmin, latmax, lonmin, lonmax
     no_levels = number of contour levels
     scale_factor = colorbar multiplier
     arrow_spacing = quiver arrow spacing in gridpoints
@@ -370,16 +370,17 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
         velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
 
-        new_grid_delta_lat, new_grid_delta_lon = resolution, resolution
-        new_grid_min_lat, new_grid_max_lat = latmin, latmax
-        new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
+        delta_lat, delta_lon = resolution, resolution
+        latmin, latmax, lonmin, lonmax = lats_lons
+        #new_grid_min_lat, new_grid_max_lat = latmin, latmax
+        #new_grid_min_lon, new_grid_max_lon = lonmin, lonmax
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-        field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, new_grid_min_lat, \
-                                                new_grid_max_lat, new_grid_delta_lat, new_grid_min_lon, \
-                                                new_grid_max_lon, new_grid_delta_lon, \
-                                                fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
-                                                radius_of_influence = 120000)
+        field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, \
+                                                latmax, delta_lat, lonmin, \
+                                                lonmax, delta_lon, \
+                                                fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                                                radius_of_influence=120000)
 
         ax = mainfig.add_subplot(nrows, ncols, i + 1, projection=ccrs.NorthPolarStereo())
         ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
@@ -396,15 +397,15 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, new_grid_min_lat, new_grid_max_lat, \
-                                new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon, \
-                                fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
-                                radius_of_influence = 120000)
+        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, \
+                                delta_lat, lonmin, lonmax, delta_lon, \
+                                fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                                radius_of_influence=120000)
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, new_grid_min_lat, new_grid_max_lat, \
-                                new_grid_delta_lat, new_grid_min_lon, new_grid_max_lon, new_grid_delta_lon, \
-                                fill_value = np.NaN, mapping_method = 'nearest_neighbor', \
-                                radius_of_influence = 120000)
+        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, \
+                                delta_lat, lonmin, lonmax, delta_lon, \
+                                fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                                radius_of_influence=120000)
 
         quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
                          transform=ccrs.PlateCarree(), scale=1, regrid_shape=30, zorder=150)
