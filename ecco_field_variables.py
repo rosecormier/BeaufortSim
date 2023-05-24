@@ -1,23 +1,6 @@
-def get_month_end(monthstr, yearstr):
-    
-    """
-    Return string representing last day of specified month.
-    """
-    
-    month_end_dict = {"01": "31", "03": "31", "04": "30",
-                 "05": "31", "06": "30", "07": "31", "08": "31",
-                 "09": "30", "10": "31", "11": "30", "12": "31"}
-    
-    if monthstr != "02":
-        endmonth = month_end_dict[monthstr]
-        
-    elif monthstr == "02":
-        if int(yearstr) % 4 == 0:
-            endmonth = "29"
-        else: 
-            endmonth = "28"
-    
-    return endmonth
+"""
+Rosalie Cormier, 2023
+"""
 
 def get_scalar_field_vars(scalar_attr):
     

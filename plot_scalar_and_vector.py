@@ -84,24 +84,9 @@ variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
 
-#LOAD GRID
+#LOAD GRID AND DOWNLOAD VARIABLE FILES
 
-grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
-
-#Download ECCO grid parameters (date is arbitrary)
-ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
-                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
-                     force_redownload=False)
-
-grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
-
-#Load grid parameters
-ds_grid = xr.open_dataset(grid_params_file_path)
-
-##############################
-
-#DOWNLOAD VARIABLE FILES
+ds_grid = load_grid(datdir)
 
 month_index = month_val_list.index(startmo)
 i = month_key_list[month_index]
