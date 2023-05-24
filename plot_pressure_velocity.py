@@ -12,6 +12,7 @@ import argparse
 import ecco_v4_py as ecco
 import glob
 import xarray as xr
+import matplotlib.pyplot as plt
 
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download

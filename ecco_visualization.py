@@ -239,14 +239,14 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
         ecco_ds_scalar = ecco_ds_scalars[0]
         
     elif len(ecco_ds_scalars) > 1:
-        ecco_ds_scalar, skip_k_scalar = comp_temp_mean_scalar(1, ecco_ds_scalars, scalar_attr)
+        ecco_ds_scalar, skip_k_scalar = comp_temp_mean_scalar(k_val, ecco_ds_scalars, scalar_attr)
         scalar_mean = ecco_ds_scalar
         
     if len(ecco_ds_vectors) == 1:
         ecco_ds_vector = ecco_ds_vectors[0]
         
     elif len(ecco_ds_vectors) > 1:
-        ecco_ds_vector, skip_k_vector = comp_temp_mean_vector(1, ecco_ds_vectors, xvec_attr, yvec_attr)
+        ecco_ds_vector, skip_k_vector = comp_temp_mean_vector(k_val, ecco_ds_vectors, xvec_attr, yvec_attr)
         vector_mean = ecco_ds_vector
     
     ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=skip_k_scalar)
