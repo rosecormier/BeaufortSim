@@ -48,6 +48,17 @@ def get_starting_i(startmo):
     
     return i
 
+def get_monthstr(i):
+    
+    """
+    Returns a string corresponding to month i.
+    """
+    
+    month_dict = {1: "01", 2: "02", 3: "03", 4: "04", 5: "05", 6: "06",
+              7: "07", 8: "08", 9: "09", 10: "10", 11: "11", 0: "12"}
+    
+    return month_dict[i % 12]
+
 def get_month_end(monthstr, yearstr):
     
     """
@@ -68,6 +79,16 @@ def get_month_end(monthstr, yearstr):
             endmonth = "28"
     
     return endmonth
+
+def load_dataset(curr_file):
+
+    """
+    Opens ECCO dataset given a file.
+    """
+    
+    dataset = xr.open_mfdataset(curr_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    
+    return dataset
 
 def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=False):
     

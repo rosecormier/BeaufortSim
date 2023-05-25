@@ -17,9 +17,12 @@ import matplotlib.pyplot as plt
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_month_end, comp_residuals, get_starting_i
+from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, comp_residuals, get_starting_i
 from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
+
+vir_nanmasked = plt.get_cmap('viridis_r').copy()
+vir_nanmasked.set_bad('black')
 
 ##############################
 
@@ -90,30 +93,29 @@ monthstrs, yearstrs = [], []
 i = get_starting_i(startmo)
     
 #Iterate over all specified months
-while i < mos:
+while i <= mos:
 
-    monthstr = month_dict[i % 12]
-    yearstr = str(year)
+    monthstr, yearstr = get_monthstr(i), str(year)
     endmonth = get_month_end(monthstr, yearstr)
     
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
     
-    #Download the monthly-averaged velocity file
+    StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
+    
+    #Download the monthly-averaged vector file
     ecco_podaac_download(ShortName=vector_monthly_shortname, \
-                         StartDate=yearstr+"-"+monthstr+"-02", 
-                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, \
+                         StartDate=StartDate, EndDate=EndDate, \
                          download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
      
-    #Download the monthly-averaged density-/pressure-anomaly file
+    #Download the monthly-averaged scalar file
     ecco_podaac_download(ShortName=scalar_monthly_shortname, \
-                         StartDate=yearstr+"-"+monthstr+"-02", 
-                         EndDate=yearstr+"-"+monthstr+"-"+endmonth, \
+                         StartDate=StartDate, EndDate=EndDate, \
                          download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
     
-    if i == "12":
+    if i % 12 == 0:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
@@ -136,29 +138,24 @@ for k in range(kmin, kmax + 1):
 
     for m in range(mos):
 
-        monthstr = monthstrs[m]
-        yearstr = yearstrs[m]
+        monthstr, yearstr = monthstrs[m], yearstrs[m]
 
         curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+ \
                                 "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+ \
                                 "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
-        #Load monthly velocity file into workspace
-        ds_vector_mo = xr.open_mfdataset(curr_vector_file, parallel=True, \
-                                         data_vars='minimal', coords='minimal', \
-                                         compat='override')
+        #Load monthly vector file into workspace
+        ds_vector_mo = load_dataset(curr_vector_file)
 
         ds_vectors.append(ds_vector_mo) 
 
-        #Interpolate velocities to centres of grid cells
+        #Interpolate vectors to centres of grid cells
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
 
-        #Load monthly density-/pressure-anomaly file into workspace
-        ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, parallel=True, \
-                                         data_vars='minimal', coords='minimal', \
-                                         compat='override')
+        #Load monthly scalar file into workspace
+        ds_scalar_mo = load_dataset(curr_scalar_file)
 
         ds_scalars.append(ds_scalar_mo)
 

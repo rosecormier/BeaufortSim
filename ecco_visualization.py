@@ -8,12 +8,10 @@ import ecco_v4_py as ecco
 from matplotlib.gridspec import GridSpec
 from xgcm import Grid
 
-from ecco_general import comp_temp_mean_scalar, comp_temp_mean_vector
+from ecco_general import get_scalar_in_xy, get_vector_in_xy, comp_temp_mean_scalar, comp_temp_mean_vector
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
-vir_nanmasked = plt.get_cmap('viridis_r').copy()
-vir_nanmasked.set_bad('black')
 
 def cbar_label(scalar_attr):
     
