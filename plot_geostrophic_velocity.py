@@ -67,8 +67,6 @@ denspress_monthly_shortname, denspress_monthly_nc_str, denspress_variable = get_
 
 rho_ref = 1029.0 #Reference density (kg/m^3)
 
-k_val = 1
-
 ##############################
 
 #LOAD GRID AND DOWNLOAD VARIABLE FILES
@@ -125,8 +123,7 @@ for k in range(kmin, kmax + 1):
         curr_vel_file = join(vel_dir, vel_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         curr_denspress_file = join(denspress_dir, denspress_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         
-        #Load monthly velocity file into workspace
-        ds_vel_mo = load_dataset(curr_vel_file)
+        ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
         
         ds_vels.append(ds_vel_mo)
         
@@ -150,14 +147,9 @@ for k in range(kmin, kmax + 1):
         press = rho_ref * pressanom #Quantity to differentiate
         
         #Compute geostrophic velocity
-        
         u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
     
-        #Compute Delta-u
-        Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g)
-        #ds_Delta_u = ds_vel_mo.copy()#.isel(k=1)
-        #(ds_Delta_u.isel(k=1)['UVEL']).data = Delta_u.values
-        #ds_Delta_u['UVEL'].data = ds_Delta_u['UVEL'].values
+        Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g) #Compute Delta-u
          
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
     field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, Delta_u.values.squeeze(), 70, 89, 0.25, \
