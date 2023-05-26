@@ -12,9 +12,7 @@ Omega = (2 * np.pi) / 86164 #Earth angular velocity
 def to_radians(angle):
     
     """
-    Converts to radians.
-    
-    angle = angle in degrees
+    Converts degrees to radians.
     """
     
     return angle * np.pi / 180

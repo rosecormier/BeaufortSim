@@ -169,85 +169,37 @@ def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, ski
     
     return velE, velN
 
-def comp_temp_mean_scalar(k_val, ecco_ds_scalars, scalar_attr):
+def comp_temp_mean(timeseries):
     
     """
-    Computes temporal mean of a scalar field.
-
-    k_val = depth value of interest
-    ecco_ds_scalars = scalar Datasets
-    scalar_attr = string corresponding to scalar attribute of interest
+    Computes temporal mean of a field.
     """ 
     
-    mean_field = ((ecco_ds_scalars[0]).copy()) * 0 
-    concat_field = ((ecco_ds_scalars[0]).copy()).isel(k=k_val) * 0
+    mean = (timeseries[0]).copy()
     
-    for dataset in ecco_ds_scalars:
-        curr_field = dataset.isel(k=k_val)
-        concat_field = xr.concat((concat_field, curr_field), dim='time')
-
-    mean_scalar_field = (concat_field[scalar_attr]).sum(dim=['time']) / len(ecco_ds_scalars)
-    mean_scalar_field = mean_scalar_field.where(mean_scalar_field != 0)
-    mean_field[scalar_attr] = mean_scalar_field
-    (mean_field[scalar_attr]).data = (mean_field[scalar_attr]).values
-
-    skip_k = True
-    
-    return mean_field, skip_k
-
-def comp_temp_mean_vector(k_val, ecco_ds_vectors, xvec_attr, yvec_attr):
-    
-    """
-    Computes temporal mean of a vector field.
-    
-    k_val = depth value of interest
-    ecco_ds_vectors = vector Datasets
-    xvec_attr = string corresponding to x-comp of attribute of interest
-    yvec_attr = string corresponding to y-comp of attribute of interest
-    """
-    
-    mean_fields = ((ecco_ds_vectors[0]).copy()) * 0
-    concat_x_field = ((ecco_ds_vectors[0]).copy()).isel(k=k_val) * 0
-    concat_y_field = ((ecco_ds_vectors[0]).copy()).isel(k=k_val) * 0
-    
-    for dataset in ecco_ds_vectors:
+    for i in range(len(timeseries)):
+        mean += (timeseries[i]).copy() / len(timeseries)
         
-        curr_x_field = dataset.isel(k=k_val)
-        curr_y_field = dataset.isel(k=k_val)
-        
-        concat_x_field = xr.concat((concat_x_field, curr_x_field), dim='time')
-        concat_y_field = xr.concat((concat_y_field, curr_y_field), dim='time')
-        
-    mean_x_field = (concat_x_field[xvec_attr]).sum(dim=['time']) / len(ecco_ds_vectors)
-    mean_x_field = mean_x_field.where(mean_x_field != 0)
-    mean_y_field = (concat_y_field[yvec_attr]).sum(dim=['time']) / len(ecco_ds_vectors)
-    mean_y_field = mean_y_field.where(mean_y_field != 0)
-    
-    mean_fields[xvec_attr] = mean_x_field
-    (mean_fields[xvec_attr]).data = (mean_fields[xvec_attr]).values
-    mean_fields[yvec_attr] = mean_y_field
-    (mean_fields[yvec_attr]).data = (mean_fields[yvec_attr]).values
-    
-    skip_k = True
-    
-    return mean_fields, skip_k
+    return mean
 
-def comp_residuals(attributes, datasets, mean_dataset):
+def comp_residuals(fields, mean):
     
     """
     Computes residuals relative to a mean.
     
-    attributes = variables to compute residuals of
-    datasets = datasets to compute residuals for
-    mean_dataset = mean of all attributes
+    fields = data to compute residuals for
+    mean = mean of all in fields
     """
         
     residual_list = []
         
-    for dataset in datasets:
+    for field in fields:
             
-        residual = dataset.copy() * 0 
-            
+        residual = field.copy() - mean.copy()
+        residual_list.append(residual)
+        
+    return residual_list
+"""
         concat_attr = xr.concat((dataset, -1*mean_dataset), dim='time')
         
         for attribute in attributes:
@@ -259,3 +211,4 @@ def comp_residuals(attributes, datasets, mean_dataset):
         residual_list.append(residual)
     
     return residual_list
+"""

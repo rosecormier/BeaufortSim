@@ -1,4 +1,6 @@
 """
+Compute and plot yearly average geostrophic velocity and Delta-u.
+
 Rosalie Cormier, 2023, based on code by Andrew Delman
 """
 
@@ -114,7 +116,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    ds_vels, ds_denspressures = [], []
+    u_g_list, v_g_list, norm_u_g_list = [], [], []
     
     for m in range(mos):
         
@@ -124,13 +126,11 @@ for k in range(kmin, kmax + 1):
         curr_denspress_file = join(denspress_dir, denspress_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         
         ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
-        ds_vels.append(ds_vel_mo)
         
         #Interpolate velocities to centres of grid cells
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
         
         ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
-        ds_denspressures.append(ds_denspress_mo)
         
         densanom = ds_denspress_mo.RHOAnoma #Get density data
         dens = densanom + rho_ref #Compute absolute density
@@ -145,7 +145,19 @@ for k in range(kmin, kmax + 1):
         
         #Compute geostrophic velocity
         u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
+        
+        u_g_list.append(u_g)
+        v_g_list.append(v_g)
     
+    #Compute average water speeds 
+    for i in range(len(u_g_list)):
+        
+        u_g, v_g = u_g_list[i], v_g_list[i]
+        norm_u_g_list[i] = np.sqrt(u_g**2 + v_g**2)
+    
+    #Plot annual averages
+    norm_u_g_mean, u_g_mean = ArcCir_contourf_quiver(ds_grid, k, u_g_list, v_g_list, 'U
+        """
         Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g) #Compute Delta-u
          
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
@@ -164,3 +176,4 @@ for k in range(kmin, kmax + 1):
         ax.coastlines()
         ax.gridlines()
         plt.savefig('test.png')
+        """
