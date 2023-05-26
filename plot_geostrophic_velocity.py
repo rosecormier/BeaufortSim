@@ -95,7 +95,7 @@ while i <= mos:
     #Download monthly-averaged density/pressure file
     ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
     
-    if i % 12 == 0:
+    if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month

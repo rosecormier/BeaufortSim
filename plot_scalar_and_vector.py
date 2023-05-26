@@ -93,7 +93,7 @@ monthstrs, yearstrs = [], []
 i = get_starting_i(startmo)
     
 #Iterate over all specified months
-while i <= mos:
+while i < get_starting_i(startmo) + mos:
 
     monthstr, yearstr = get_monthstr(i), str(year)
     endmonth = get_month_end(monthstr, yearstr)
@@ -115,7 +115,7 @@ while i <= mos:
                          download_root_dir=datdir, n_workers=6, 
                          force_redownload=False)
     
-    if i % 12 == 0:
+    if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
@@ -145,8 +145,7 @@ for k in range(kmin, kmax + 1):
         curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+ \
                                 "-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
-        #Load monthly vector file into workspace
-        ds_vector_mo = load_dataset(curr_vector_file)
+        ds_vector_mo = load_dataset(curr_vector_file) #Load monthly vector file into workspace
 
         ds_vectors.append(ds_vector_mo) 
 
@@ -154,8 +153,7 @@ for k in range(kmin, kmax + 1):
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
 
-        #Load monthly scalar file into workspace
-        ds_scalar_mo = load_dataset(curr_scalar_file)
+        ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
 
         ds_scalars.append(ds_scalar_mo)
 

@@ -26,8 +26,7 @@ def load_grid(datdir):
     grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
     grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
 
-    #Load grid parameters
-    ds_grid = xr.open_dataset(grid_params_file_path)
+    ds_grid = xr.open_dataset(grid_params_file_path) #Load grid parameters
     
     return ds_grid
 
@@ -54,8 +53,8 @@ def get_monthstr(i):
     Returns a string corresponding to month i.
     """
     
-    month_dict = {1: "01", 2: "02", 3: "03", 4: "04", 5: "05", 6: "06",
-              7: "07", 8: "08", 9: "09", 10: "10", 11: "11", 0: "12"}
+    month_dict = {0: "01", 1: "02", 2: "03", 3: "04", 4: "05", 5: "06",
+              6: "07", 7: "08", 8: "09", 9: "10", 10: "11", 11: "12"}
     
     return month_dict[i % 12]
 
