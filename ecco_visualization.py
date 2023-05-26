@@ -8,7 +8,7 @@ import ecco_v4_py as ecco
 from matplotlib.gridspec import GridSpec
 from xgcm import Grid
 
-from ecco_general import get_scalar_in_xy, get_vector_in_xy, comp_temp_mean_scalar, comp_temp_mean_vector
+from ecco_general import get_scalar_in_xy, rotate_vector, comp_temp_mean_scalar, comp_temp_mean_vector
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
@@ -108,11 +108,9 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     curr_field = (ds_grid[scalar_attr]).squeeze()
     
     ds_grid = ecco_ds_grid.copy()
-
-    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=skip_k_vector)
-    velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
-    velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
     
+    velE, velN = rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=skip_k_vector)
+
     delta_lat, delta_lon = resolution, resolution
     latmin, latmax, lonmin, lonmax = lats_lons
 
@@ -221,9 +219,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ds_grid = get_scalar_in_xy(ecco_ds_grid, k_plot, ecco_ds_scalar, scalar_attr, skip_k=skip_k_scalar)
         curr_field = (ds_grid[scalar_attr]).squeeze()
         
-        velc = get_vector_in_xy(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr)
-        velE = velc['X'] * ds_grid['CS'] - velc['Y'] * ds_grid['SN']
-        velN = velc['X'] * ds_grid['SN'] + velc['Y'] * ds_grid['CS']
+        velE, velN = rotate_vector(ecco_ds_grid, k_plot, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=False)
 
         delta_lat, delta_lon = resolution, resolution
         latmin, latmax, lonmin, lonmax = lats_lons

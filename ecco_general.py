@@ -143,6 +143,24 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, 
 
     return velc
 
+def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k):
+    
+    """
+    Gets eastward and northward components of xy-vector.
+    
+    ecco_ds_grid = grid DataSet
+    k_val = depth value of index
+    ecco_ds_vector = DataSet containing vector
+    x/yvec_attr = attributes corresponding to vector components
+    skip_k = whether to skip isolation for k
+    """
+    
+    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=skip_k)
+    velE = velc['X'] * ecco_ds_grid['CS'] - velc['Y'] * ecco_ds_grid['SN']
+    velN = velc['X'] * ecco_ds_grid['SN'] + velc['Y'] * ecco_ds_grid['CS']
+    
+    return velE, velN
+
 def comp_temp_mean_scalar(k_val, ecco_ds_scalars, scalar_attr):
     
     """
