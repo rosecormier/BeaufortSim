@@ -60,6 +60,21 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     
     return title
 
+def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vmax, no_levels, cmap):
+    
+    """
+    Gets contour lines and fill objects given an ax.
+    """
+    
+    filled_contours = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field, \
+                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
+                      transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
+    contour_lines = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field, colors='r', \
+                     alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
+                     levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
+    
+    return filled_contours, contour_lines
+
 def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, outfile="", \
                            lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
@@ -125,13 +140,15 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
+    filled_contours, contour_lines = get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field_nearest, vmin, vmax, no_levels, cmap)
+    """
     cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
                       levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
                       transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
     cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, colors='r', \
                      alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
-    
+    """
     u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
 
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
@@ -151,7 +168,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     ax.gridlines()
     ax.set_title(contourf_quiver_title(ds_grid, k_val, datestr, scalar_attr, xvec_attr))
         
-    cbar = fig.colorbar(cs1, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
+    cbar = fig.colorbar(filled_contours, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
                         label=cbar_label(scalar_attr))
     
     plt.savefig(outfile)
