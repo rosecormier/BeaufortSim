@@ -265,7 +265,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ax.gridlines()
         ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
         
-    mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=True), \
+    mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
                      size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \

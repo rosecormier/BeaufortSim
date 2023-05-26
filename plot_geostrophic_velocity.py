@@ -5,16 +5,28 @@ Rosalie Cormier, 2023, based on code by Andrew Delman
 ##############################
 
 #IMPORTS AND SETTINGS
-
+ 
+import xgcm
 import os
 import sys
 import argparse
+import xarray as xr
+import matplotlib.pyplot as plt #
+import matplotlib.colors as colors #
+import ecco_v4_py as ecco #
+import cartopy.crs as ccrs #
+import numpy as np #
+import cartopy.feature as cfeature #
 
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
 from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset
-from ecco_field_variables import *
+from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
+from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
+
+plt.rcParams['font.size'] = 12
+plt.rcParams['text.usetex'] = True
 
 ##############################
 
@@ -24,7 +36,7 @@ parser = argparse.ArgumentParser(description="Plot geostrophic velocity in Beauf
 
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[20, 21])
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
@@ -52,6 +64,10 @@ if not os.path.exists(outdir):
 
 vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL')
 denspress_monthly_shortname, denspress_monthly_nc_str, denspress_variable = get_scalar_field_vars('PHIHYDcR')
+
+rho_ref = 1029.0 #Reference density (kg/m^3)
+
+k_val = 1
 
 ##############################
 
@@ -95,7 +111,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 
 ##############################
 
-#
+#CREATE MONTHLY PLOTS OF GEOSTROPHIC VELOCITY
 
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
@@ -121,3 +137,41 @@ for k in range(kmin, kmax + 1):
         ds_denspress_mo = load_dataset(curr_denspress_file)
         
         ds_denspressures.append(ds_denspress_mo)
+        
+        densanom = ds_denspress_mo.RHOAnoma #Get density data
+        dens = densanom + rho_ref #Compute absolute density
+        
+        #Update density DataArray
+        
+        dens.name = 'RHO'
+        dens.attrs.update({'long_name': 'In-situ seawater density', 'units': 'kg m-3'})
+        
+        pressanom = ds_denspress_mo.PHIHYDcR #Get pressure data
+        press = rho_ref * pressanom #Quantity to differentiate
+        
+        #Compute geostrophic velocity
+        
+        u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
+    
+        #Compute Delta-u
+        Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g)
+        #ds_Delta_u = ds_vel_mo.copy()#.isel(k=1)
+        #(ds_Delta_u.isel(k=1)['UVEL']).data = Delta_u.values
+        #ds_Delta_u['UVEL'].data = ds_Delta_u['UVEL'].values
+         
+        new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
+    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, Delta_u.values.squeeze(), 70, 89, 0.25, \
+                                            -180, -90, 0.25, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+            
+            
+        fig = plt.figure()
+        ax = fig.add_subplot(projection=ccrs.NorthPolarStereo())
+        cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
+                      transform=ccrs.PlateCarree(), extend='both', cmap='viridis_r', levels=np.linspace(0.01, 1, 20))
+        cbar = fig.colorbar(cs1)
+        ax.set_title(r'$|\Delta u|$')
+        ax.add_feature(cfeature.LAND)
+        ax.coastlines()
+        ax.gridlines()
+        plt.savefig('test.png')

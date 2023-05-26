@@ -202,4 +202,4 @@ for k in range(kmin, kmax + 1):
                                 outfile=join(outdir, '{}_k{}_resids_all{}.pdf'.format(variables_str, \
                                                                                       str(k), \
                                                                                       yearstr)), \
-                                lats_lons=lats_lons)
+                                lats_lons=lats_lons, resid=True)
