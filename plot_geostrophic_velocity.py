@@ -124,15 +124,12 @@ for k in range(kmin, kmax + 1):
         curr_denspress_file = join(denspress_dir, denspress_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         
         ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
-        
         ds_vels.append(ds_vel_mo)
         
         #Interpolate velocities to centres of grid cells
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
         
-        #Load monthly density-/pressure-anomaly file into workspace
-        ds_denspress_mo = load_dataset(curr_denspress_file)
-        
+        ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
         ds_denspressures.append(ds_denspress_mo)
         
         densanom = ds_denspress_mo.RHOAnoma #Get density data

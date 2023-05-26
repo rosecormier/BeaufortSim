@@ -8,7 +8,7 @@ import ecco_v4_py as ecco
 from matplotlib.gridspec import GridSpec
 from xgcm import Grid
 
-from ecco_general import get_scalar_in_xy, rotate_vector, comp_temp_mean_scalar, comp_temp_mean_vector
+from ecco_general import get_month_name, get_scalar_in_xy, rotate_vector, comp_temp_mean_scalar, comp_temp_mean_vector
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
@@ -75,6 +75,36 @@ def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vm
     
     return filled_contours, contour_lines
 
+def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, delta_lat, lonmin, lonmax, delta_lon):
+    
+    """
+    Gets quiver object given an ax.
+    """
+    
+    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
+    ecco.resample_to_latlon(ecco_ds_grid.XC, ecco_ds_grid.YC, u_plot, latmin, latmax, delta_lat, lonmin, \
+                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                            radius_of_influence=120000)
+    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
+    ecco.resample_to_latlon(ecco_ds_grid.XC, ecco_ds_grid.YC, v_plot, latmin, latmax, delta_lat, lonmin, \
+                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
+                            radius_of_influence=120000)
+            
+    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
+                     transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)
+    
+    return quiv
+
+def plot_geography(ax):
+    
+    """
+    Adds land, coastlines, and grid to an ax.
+    """
+    
+    ax.add_feature(cfeature.LAND)
+    ax.coastlines()
+    ax.gridlines()
+
 def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors, scalar_attr, \
                            xvec_attr, yvec_attr, resolution, cmap, scalar_bounds, datestr, outfile="", \
                            lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
@@ -133,39 +163,18 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_val, ecco_ds_scalars, ecco_ds_vectors
     field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, delta_lat, \
                                             lonmin, lonmax, delta_lon, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
-    
-    vmin, vmax = scalar_bounds[0], scalar_bounds[1]
 
     fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
+    vmin, vmax = scalar_bounds[0], scalar_bounds[1]
     filled_contours, contour_lines = get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field_nearest, vmin, vmax, no_levels, cmap)
-    """
-    cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
-                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
-                      transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
-    cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, colors='r', \
-                     alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
-                     levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
-    """
-    u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
-
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, delta_lat, lonmin, \
-                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                            radius_of_influence=120000)
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, delta_lat, lonmin, \
-                            lonmax, delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                            radius_of_influence=120000)
-            
-    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
-                     transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)
     
-    ax.add_feature(cfeature.LAND)
-    ax.coastlines()
-    ax.gridlines()
+    u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
+    quiv = get_quiver(ax, ds_grid, u_plot, v_plot, latmin, latmax, delta_lat, lonmin, lonmax, delta_lon)
+    
+    plot_geography(ax)
     ax.set_title(contourf_quiver_title(ds_grid, k_val, datestr, scalar_attr, xvec_attr))
         
     cbar = fig.colorbar(filled_contours, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
@@ -211,10 +220,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
     
     skip_k_scalar, skip_k_vector = False, False
     
-    monthnames = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", \
-                  "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", \
-                  "11": "November", "12": "December"}
-    
     mainfig = plt.figure(figsize=(48, 40))
     
     nplots = nrows * ncols   
@@ -251,37 +256,18 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, ecco_ds_scalars, ecco_ds_v
         ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
         
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-        
-        cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
-                          levels=np.linspace(vmin, vmax, no_levels), transform=ccrs.PlateCarree(), \
-                          extend='both', cmap=cmap)
-        cs2 = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field_nearest, colors='r', alpha=0.8, \
-                         linewidths=1.0, zorder=100, transform=ccrs.PlateCarree(), \
-                         levels=np.linspace(vmin, vmax, no_levels))
+        filled_contours, contour_lines = get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field_nearest, vmin, vmax, no_levels, cmap)
 
         u_plot, v_plot = (velE).squeeze(), (velN).squeeze()
-
-        new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, delta_lat, lonmin, lonmax, \
-                                delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                                radius_of_influence=120000)
-        new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-        ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, delta_lat, lonmin, lonmax, \
-                                delta_lon, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                                radius_of_influence=120000)
-
-        quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
-                         transform=ccrs.PlateCarree(), scale=1, regrid_shape=30, zorder=150)
-
-        ax.add_feature(cfeature.LAND)
-        ax.coastlines()
-        ax.gridlines()
-        ax.set_title('\n {} {}'.format(monthnames[monthstr], yearstr))
+        quiv = get_quiver(ax, ds_grid, u_plot, v_plot, latmin, latmax, delta_lat, lonmin, lonmax, delta_lon)
+    
+        plot_geography(ax)
+        ax.set_title('\n {} {}'.format(get_month_name(monthstr), yearstr))
         
     mainfig.suptitle(contourf_quiver_title(ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
                      size=80)
     mainfig.tight_layout()
-    cbar = mainfig.colorbar(cs1, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
+    cbar = mainfig.colorbar(filled_contours, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
                             label=cbar_label(scalar_attr), location='bottom')
     mainfig.savefig(outfile)
     plt.close()
