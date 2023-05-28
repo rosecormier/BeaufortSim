@@ -150,8 +150,8 @@ for k in range(kmin, kmax + 1):
         #Interpolate vectors to centres of grid cells
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
-        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr)#, skip_k=False)
-        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
+        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr)
+        vecE, vecN = (vecE.isel(k=k)).squeeze(), (vecN.isel(k=k)).squeeze()
         
         ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
         

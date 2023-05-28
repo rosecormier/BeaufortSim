@@ -181,7 +181,7 @@ def comp_temp_mean(timeseries):
     mean = (timeseries[0]).copy()
     
     for i in range(len(timeseries)):
-        mean += (timeseries[i]).copy() / len(timeseries)
+        mean = mean + (timeseries[i]).copy() / len(timeseries)
         
     return mean
 

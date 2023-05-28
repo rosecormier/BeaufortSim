@@ -23,7 +23,7 @@ import cartopy.feature as cfeature #
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, get_vector_in_xy
+from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, get_vector_in_xy, comp_temp_mean
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
 
@@ -116,7 +116,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    u_list, u_g_list = [], []
+    u_g_list, u_a_list = [], [] #Geostrophic and ageostrophic velocities
     
     for m in range(mos):
         
@@ -149,8 +149,15 @@ for k in range(kmin, kmax + 1):
         #Compute geostrophic velocity
         u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
         
-        u_list.append(u + 1j * v)
+        #Compute ageostrophic velocity 
+        u_a, v_a = u - u_g, v - v_g
+
         u_g_list.append(u_g + 1j * v_g)
+        u_a_list.append(u_a + 1j * v_a)
+        
+    #Temporally average geostrophic and ageostrophic velocities
+    u_g_mean = comp_temp_mean(u_g_list)
+    u_a_mean = comp_temp_mean(u_a_list)
     """
     #Compute average (temporal) water speeds 
     for i in range(len(u_g_list)):
