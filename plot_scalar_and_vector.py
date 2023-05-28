@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, comp_residuals, get_starting_i, rotate_vector
-from ecco_visualization import cbar_label, contourf_quiver_title, ds_to_field, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
+from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
+from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
@@ -150,13 +150,13 @@ for k in range(kmin, kmax + 1):
         #Interpolate vectors to centres of grid cells
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
-        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr, skip_k=False)
-        vecE, vecN = vecE.squeeze(), vecN.squeeze()
+        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr)#, skip_k=False)
+        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
         
         ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
         
         #Convert scalar DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo, scalar_attr, k, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, k, latmin, latmax, lonmin, lonmax, resolution)
         
         scalars.append(scalar)
         vecEs.append(vecE) 

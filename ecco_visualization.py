@@ -8,7 +8,7 @@ import ecco_v4_py as ecco
 from matplotlib.gridspec import GridSpec
 from xgcm import Grid
 
-from ecco_general import get_month_name, get_scalar_in_xy, comp_temp_mean
+from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
@@ -61,24 +61,6 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
                                                                                                datestr)
     
     return title
-    
-def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val, latmin, latmax, lonmin, lonmax, resolution):
-    
-    """
-    Resamples scalar field to lat-lon grid and 
-    """
-    
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=False)
-    curr_field = (ds_grid[scalar_attr]).squeeze()
-    
-    ds_grid = ecco_ds_grid.copy()
-    
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
-    
-    return new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, field_nearest
 
 def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vmax, no_levels, cmap):
     

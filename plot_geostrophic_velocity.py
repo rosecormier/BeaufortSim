@@ -23,7 +23,7 @@ import cartopy.feature as cfeature #
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset
+from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, get_vector_in_xy
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
 
@@ -116,7 +116,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    u_g_list, v_g_list, norm_u_g_list = [], [], []
+    u_list, u_g_list = [], []
     
     for m in range(mos):
         
@@ -128,7 +128,10 @@ for k in range(kmin, kmax + 1):
         ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
         
         #Interpolate velocities to centres of grid cells
+        
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
+        velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
+        u, v = velocity_interp['X'], velocity_interp['Y']
         
         ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
         
@@ -146,18 +149,19 @@ for k in range(kmin, kmax + 1):
         #Compute geostrophic velocity
         u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
         
-        u_g_list.append(u_g)
-        v_g_list.append(v_g)
-    
-    #Compute average water speeds 
+        u_list.append(u + 1j * v)
+        u_g_list.append(u_g + 1j * v_g)
+    """
+    #Compute average (temporal) water speeds 
     for i in range(len(u_g_list)):
         
         u_g, v_g = u_g_list[i], v_g_list[i]
         norm_u_g_list[i] = np.sqrt(u_g**2 + v_g**2)
     
     #Plot annual averages
+        
     norm_u_g_mean, u_g_mean = ArcCir_contourf_quiver(ds_grid, k, u_g_list, v_g_list, 'U
-        """
+        
         Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g) #Compute Delta-u
          
         new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \

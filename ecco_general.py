@@ -2,6 +2,7 @@
 Rosalie Cormier, 2023
 """
 
+import numpy as np
 import xarray as xr
 import ecco_v4_py as ecco
 
@@ -97,7 +98,7 @@ def load_dataset(curr_file):
     
     return dataset
 
-def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=False):
+def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     
     """
     Loads scalar field in xy-grid.
@@ -106,23 +107,15 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr, skip_k=Fa
     k_val = depth index of interest
     ecco_ds_scalar = DataSet containing field
     scalar_attr = name of field
-    skip_k = whether to skip isolating a value of k (True if value has already been isolated)
     """
     
     ds_grid = ecco_ds_grid.copy()
-
-    if skip_k:
-        ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
-    
-    else:
-        ecco_ds_scalar_k = ecco_ds_scalar.isel(k=k_val)
-        ds_grid[scalar_attr] = ecco_ds_scalar_k[scalar_attr]
-        
+    ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
     ds_grid = ds_grid.load()
     
     return ds_grid
     
-def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=False):
+def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Loads vector field in xy-grid.
@@ -132,26 +125,19 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, 
     ecco_ds_vector = DataSet containing vector field
     xvec_attr = name of x-comp of vector field
     yvec_attr = name of y-comp of vector field
-    skip_k = whether to skip isolating a value of k (True if already isolated)
     """
 
     ds_grid = ecco_ds_grid.copy()
     ds_grid = ds_grid.load()
     XGCM_grid = ecco.get_llc_grid(ds_grid)
-    
-    if skip_k:
-        velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr], \
+
+    velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr], \
                                            'Y': ecco_ds_vector[yvec_attr]}, \
                                            boundary='fill')
-                                           
-    else:
-        velc = XGCM_grid.interp_2d_vector({'X': (ecco_ds_vector[xvec_attr]).isel(k=k_val), \
-                                                 'Y': (ecco_ds_vector[yvec_attr]).isel(k=k_val)}, \
-                                                 boundary='fill')
 
     return velc
 
-def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k):
+def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Gets eastward and northward components of xy-vector.
@@ -160,14 +146,31 @@ def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, ski
     k_val = depth value of index
     ecco_ds_vector = DataSet containing vector
     x/yvec_attr = attributes corresponding to vector components
-    skip_k = whether to skip isolation for k
     """
     
-    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr, skip_k=skip_k)
+    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr)
     velE = velc['X'] * ecco_ds_grid['CS'] - velc['Y'] * ecco_ds_grid['SN']
     velN = velc['X'] * ecco_ds_grid['SN'] + velc['Y'] * ecco_ds_grid['CS']
     
     return velE, velN
+
+def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val, latmin, latmax, lonmin, lonmax, resolution):
+    
+    """
+    Resamples scalar DataSet attribute to lat-lon grid
+    """
+    
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr)#, skip_k=False)
+    curr_field = (ds_grid[scalar_attr]).squeeze()
+    
+    ds_grid = ecco_ds_grid.copy()
+    
+    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
+    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, resolution, \
+                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    
+    return new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, field_nearest
 
 def comp_temp_mean(timeseries):
     
@@ -199,16 +202,3 @@ def comp_residuals(fields, mean):
         residual_list.append(residual)
         
     return residual_list
-"""
-        concat_attr = xr.concat((dataset, -1*mean_dataset), dim='time')
-        
-        for attribute in attributes:
-            residual_field = (concat_attr[attribute]).sum(dim=['time'])
-            residual_field = residual_field.where(residual_field != 0)
-            residual[attribute] = residual_field
-            (residual[attribute]).data = (residual[attribute]).values
-            
-        residual_list.append(residual)
-    
-    return residual_list
-"""
