@@ -14,15 +14,16 @@ import sys
 import argparse
 import xarray as xr
 import matplotlib.pyplot as plt
+import ecco_v4_py as ecco
 import numpy as np 
 
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean
+from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, rotate_vector, comp_temp_mean
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
-from ecco_visualization import ArcCir_contourf_quiver
+from ecco_visualization import ArcCir_contourf_quiver, ArcCir_contourf
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
 vir_nanmasked.set_bad('black')
@@ -122,7 +123,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    u_list, u_g_list, u_a_list = [], [], [] #Geostrophic and ageostrophic velocities
+    u_list, u_g_list, u_a_list = [], [], []
     
     for m in range(mos):
         
@@ -136,11 +137,13 @@ for k in range(kmin, kmax + 1):
         #Interpolate velocities to centres of grid cells
         
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
-        u, v = velocity_interp['X'], velocity_interp['Y']
+        #velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
+        u, v = rotate_vector(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') #velocity_interp['X'], velocity_interp['Y']
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
+        #u, v = u.squeeze(), v.squeeze()
         
-        ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
+        #Load monthly density-/pressure-anomaly file into workspace
+        ds_denspress_mo = load_dataset(curr_denspress_file) 
         
         densanom = ds_denspress_mo.RHOAnoma #Get density data
         dens = densanom + rho_ref #Compute absolute density
@@ -153,8 +156,13 @@ for k in range(kmin, kmax + 1):
         pressanom = ds_denspress_mo.PHIHYDcR #Get pressure data
         press = rho_ref * pressanom #Quantity to differentiate
         
-        #Compute geostrophic velocity
+        #Compute geostrophic velocity components
+        
         u_g, v_g = comp_geos_vel(ds_grid, press, dens)
+        u_g.data, v_g.data = u_g.values, v_g.values
+        u_g_copy, v_g_copy = u_g, v_g#.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
+        u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
+        v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
         u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
         
         #Convert pressure-anomaly DataSet to useful field
@@ -168,6 +176,7 @@ for k in range(kmin, kmax + 1):
         u_a_list.append(u_a + 1j * v_a)
         
     #Temporally average geostrophic and ageostrophic velocities, and regular velocity
+    
     u_g_mean = comp_temp_mean(u_g_list)
     u_a_mean = comp_temp_mean(u_a_list)
     u_mean = comp_temp_mean(u_list)
@@ -177,5 +186,17 @@ for k in range(kmin, kmax + 1):
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
-    
+
+    #Compute Delta-u metric
     Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean)
+    
+    #Plot Delta-u
+    
+    ds_grid_copy = ds_grid.copy()
+    lon_centers, lat_centers, lon_edges, lat_edges, \
+    Delta_u_plot = ecco.resample_to_latlon(ds_grid_copy.XC, ds_grid_copy.YC, Delta_u, latmin, latmax, resolution, \
+                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    
+    #Plot Delta-u over domain
+    ArcCir_contourf(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 0.75], lon_centers, lat_centers, lon_edges, lat_edges)

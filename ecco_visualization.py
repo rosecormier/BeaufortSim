@@ -69,11 +69,11 @@ def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vm
     """
     
     filled_contours = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field, \
-                      levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels), \
+                      levels=np.linspace(vmin, vmax, no_levels), \
                       transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
     contour_lines = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field, colors='r', \
                      alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
-                     levels=np.linspace(int(np.floor(vmin)), int(np.ceil(vmax)), no_levels))
+                     levels=np.linspace(vmin, vmax, no_levels))
     
     return filled_contours, contour_lines
 
@@ -109,6 +109,32 @@ def plot_geography(ax):
     ax.coastlines()
     ax.gridlines()
 
+def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
+    
+    if len(scalars) == 1:
+        scalar = scalars[0]
+        
+    elif len(scalars) > 1:
+        scalar_mean = comp_temp_mean(scalars)
+        scalar = scalar_mean
+        
+    latmin, latmax, lonmin, lonmax = lats_lons
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = plt.axes(projection=ccrs.NorthPolarStereo())
+    ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
+    
+    vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+    filled_contours, contour_lines = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap)
+    
+    plot_geography(ax)
+    
+    cbar = fig.colorbar((filled_contours), ticks=np.arange(vmin, vmax, 0.1))#, \
+                        #label=cbar_label(scalar_attr))
+    
+    plt.savefig(outfile)
+    plt.close()
+    
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, scalar_bounds, datestr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', outfile="", \
                            lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
