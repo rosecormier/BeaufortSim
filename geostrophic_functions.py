@@ -53,12 +53,6 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     GB_RHS_1 = GB_RHS_1.where(ecco_ds_grid.maskC) #Mask land areas
     GB_RHS_2 = GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
     
-    #Interpolate velocities to centres of grid cells
-    
-    #ds_vel.UVEL.data, ds_vel.VVEL.data = ds_vel.UVEL.values, ds_vel.VVEL.values
-    #vel_interp = xgcm_grid.interp_2d_vector({'X': ds_vel.UVEL, 'Y': ds_vel.VVEL}, boundary='extend')
-    #u, v = vel_interp['X'], vel_interp['Y']
-    
     #Compute Coriolis param. from latitudes of grid cell centres
     
     lat = to_radians(ecco_ds_grid.YC)
@@ -72,7 +66,17 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
-def comp_delta_u_norm(ecco_ds_grid, k_val, u_complex, u_g_complex):
+
+def mask_delta_u(mask_threshold, u_complex):
+    
+    u, v = np.real(u_complex), np.imag(u_complex)
+    speed = np.sqrt(u**2 + v**2)
+    
+    mask_small_speed = (speed < mask_threshold)
+
+    return mask_small_speed
+
+def comp_delta_u_norm(ecco_ds_grid, k_val, u_complex, u_g_complex, mask=None):
     
     """
     Computes Delta-u diagnostic for geostrophic balance.
@@ -90,6 +94,9 @@ def comp_delta_u_norm(ecco_ds_grid, k_val, u_complex, u_g_complex):
     vel_complex = u + (1j * v)
     vel_diff_abs = np.abs(vel_diff_complex)
     vel_abs = np.abs(vel_complex)
-    vel_diff_norm = vel_diff_abs/vel_abs
+    vel_diff_norm = vel_diff_abs / vel_abs
+
+    if mask is not None:
+        vel_diff_norm = np.where(mask, np.nan, vel_diff_norm)
     
     return vel_diff_norm

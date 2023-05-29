@@ -1,11 +1,13 @@
 import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import ecco_v4_py as ecco
 
 from matplotlib.gridspec import GridSpec
+from matplotlib.colors import ListedColormap
 from xgcm import Grid
 
 from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean
@@ -114,6 +116,8 @@ def plot_geography(ax):
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     ax.gridlines()
+    
+    return ax
 
 def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
     
@@ -127,15 +131,17 @@ def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_boun
     latmin, latmax, lonmin, lonmax = lats_lons
 
     fig = plt.figure(figsize=(8, 8))
-    ax = plt.axes(projection=ccrs.NorthPolarStereo())
+    ax = plt.axes(projection=ccrs.NorthPolarStereo())    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    filled_contours = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap, lines=False)
+    #filled_contours = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap, lines=False)
+    ax.pcolormesh(lon_centers, lat_centers, scalar, \
+                      transform=ccrs.PlateCarree(), cmap=cmap)
     
-    plot_geography(ax)
+    ax = plot_geography(ax)
     
-    cbar = fig.colorbar((filled_contours), ticks=np.arange(vmin, vmax, 0.1))#, \
+    #cbar = fig.colorbar((filled_contours), ticks=np.arange(vmin, vmax, 0.1))#, \
                         #label=cbar_label(scalar_attr))
     
     plt.savefig(outfile)

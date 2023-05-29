@@ -22,7 +22,7 @@ from ecco_download import ecco_podaac_download
 
 from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, rotate_vector, comp_temp_mean
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
-from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
+from geostrophic_functions import comp_geos_vel, comp_delta_u_norm, mask_delta_u
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_contourf
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
@@ -40,8 +40,8 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[2, 3])
-parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=1.0)
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[12, 13])
+parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
@@ -137,11 +137,10 @@ for k in range(kmin, kmax + 1):
         #Interpolate velocities to centres of grid cells
         
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        #velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
-        u, v = rotate_vector(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') #velocity_interp['X'], velocity_interp['Y']
+        velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
+        u, v = velocity_interp['X'], velocity_interp['Y']
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
-        #u, v = u.squeeze(), v.squeeze()
-        
+
         #Load monthly density-/pressure-anomaly file into workspace
         ds_denspress_mo = load_dataset(curr_denspress_file) 
         
@@ -187,7 +186,10 @@ for k in range(kmin, kmax + 1):
                                                                       yearstr)))
 
     #Compute Delta-u metric
-    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean)
+    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
+    
+    red_nanmasked = plt.get_cmap("Reds").copy()
+    red_nanmasked.set_bad('grey')
     
     #Plot Delta-u
     
@@ -197,5 +199,4 @@ for k in range(kmin, kmax + 1):
                                             lonmin, lonmax, resolution, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    #Plot Delta-u over domain
-    ArcCir_contourf(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 0.75], lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_contourf(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, [0, 0.75], lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
