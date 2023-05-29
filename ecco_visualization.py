@@ -77,7 +77,7 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
     variable_dict = {'Delta_u': r'$|\Delta u|_n$'}
     variable_name = variable_dict[variable]
     
-    title = variable_name + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, datestr)
+    title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
