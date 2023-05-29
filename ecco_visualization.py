@@ -62,7 +62,7 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     
     return title
 
-def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vmax, no_levels, cmap):
+def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vmax, no_levels, cmap, lines=True):
     
     """
     Gets contour lines and fill objects given an ax.
@@ -71,11 +71,17 @@ def get_contours(ax, new_grid_lon_centers, new_grid_lat_centers, field, vmin, vm
     filled_contours = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field, \
                       levels=np.linspace(vmin, vmax, no_levels), \
                       transform=ccrs.PlateCarree(), extend='both', cmap=cmap)
-    contour_lines = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field, colors='r', \
-                     alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
-                     levels=np.linspace(vmin, vmax, no_levels))
     
-    return filled_contours, contour_lines
+    if lines:
+        
+        contour_lines = ax.contour(new_grid_lon_centers, new_grid_lat_centers, field, colors='r', \
+                         alpha=0.8, linewidths=0.5, zorder=100, transform=ccrs.PlateCarree(), \
+                         levels=np.linspace(vmin, vmax, no_levels))
+    
+        return filled_contours, contour_lines
+    
+    else:
+        return filled_contours
 
 def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax, resolution):
     
@@ -125,7 +131,7 @@ def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_boun
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    filled_contours, contour_lines = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap)
+    filled_contours = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap, lines=False)
     
     plot_geography(ax)
     
