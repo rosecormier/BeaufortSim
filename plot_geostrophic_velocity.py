@@ -13,22 +13,19 @@ import os
 import sys
 import argparse
 import xarray as xr
-import matplotlib.pyplot as plt #
-import matplotlib.colors as colors #
-import ecco_v4_py as ecco #
-import cartopy.crs as ccrs #
-import numpy as np #
-import cartopy.feature as cfeature #
+import matplotlib.pyplot as plt
+import numpy as np 
 
 from os.path import expanduser, join
 from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, get_vector_in_xy, comp_temp_mean
+from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm
+from ecco_visualization import ArcCir_contourf_quiver
 
-plt.rcParams['font.size'] = 12
-plt.rcParams['text.usetex'] = True
+vir_nanmasked = plt.get_cmap('viridis_r').copy()
+vir_nanmasked.set_bad('black')
 
 ##############################
 
@@ -36,9 +33,14 @@ plt.rcParams['text.usetex'] = True
 
 parser = argparse.ArgumentParser(description="Plot geostrophic velocity in Beaufort Gyre", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
+                    default=[70.0, 85.0])
+parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
+                    default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[20, 21])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[2, 3])
+parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=1.0)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
@@ -47,8 +49,11 @@ parser.add_argument("start", type=int, help="Start year")
 args = parser.parse_args()
 config = vars(args)
 
+latmin, latmax = config['lats'][0], config['lats'][1]
+lonmin, lonmax = config['lons'][0], config['lons'][1]
 startmo, startyr, mos = config['month'], config['start'], config['months']
 kmin, kmax = config['kvals'][0], config['kvals'][1]
+resolution = config['res']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -64,8 +69,9 @@ if not os.path.exists(outdir):
     
 #Get variables associated with velocity and density/pressure
 
-vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL')
+vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL', geostrophic=True)
 denspress_monthly_shortname, denspress_monthly_nc_str, denspress_variable = get_scalar_field_vars('PHIHYDcR')
+variables_str = vel_variable + '_' + denspress_variable
 
 rho_ref = 1029.0 #Reference density (kg/m^3)
 
@@ -132,6 +138,8 @@ for k in range(kmin, kmax + 1):
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
         velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
+        #u, v = rotate_vector(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL')
+        u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
         
         ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
         
@@ -147,7 +155,12 @@ for k in range(kmin, kmax + 1):
         press = rho_ref * pressanom #Quantity to differentiate
         
         #Compute geostrophic velocity
-        u_g, v_g = comp_geos_vel(ds_grid, press, dens, ds_vel_mo)
+        u_g, v_g = comp_geos_vel(ds_grid, press, dens)
+        u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
+        print(u_g)
+        
+        #Convert pressure-anomaly DataSet to useful field
+        lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', k, latmin, latmax, lonmin, lonmax, resolution)
         
         #Compute ageostrophic velocity 
         u_a, v_a = u - u_g, v - v_g
@@ -158,33 +171,9 @@ for k in range(kmin, kmax + 1):
     #Temporally average geostrophic and ageostrophic velocities
     u_g_mean = comp_temp_mean(u_g_list)
     u_a_mean = comp_temp_mean(u_a_list)
-    """
-    #Compute average (temporal) water speeds 
-    for i in range(len(u_g_list)):
-        
-        u_g, v_g = u_g_list[i], v_g_list[i]
-        norm_u_g_list[i] = np.sqrt(u_g**2 + v_g**2)
     
-    #Plot annual averages
-        
-    norm_u_g_mean, u_g_mean = ArcCir_contourf_quiver(ds_grid, k, u_g_list, v_g_list, 'U
-        
-        Delta_u = comp_delta_u_norm(ds_grid, 1, ds_vel_mo, u_g, v_g) #Compute Delta-u
-         
-        new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, Delta_u.values.squeeze(), 70, 89, 0.25, \
-                                            -180, -90, 0.25, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
-            
-            
-        fig = plt.figure()
-        ax = fig.add_subplot(projection=ccrs.NorthPolarStereo())
-        cs1 = ax.contourf(new_grid_lon_centers, new_grid_lat_centers, field_nearest, \
-                      transform=ccrs.PlateCarree(), extend='both', cmap='viridis_r', levels=np.linspace(0.01, 1, 20))
-        cbar = fig.colorbar(cs1)
-        ax.set_title(r'$|\Delta u|$')
-        ax.add_feature(cfeature.LAND)
-        ax.coastlines()
-        ax.gridlines()
-        plt.savefig('test.png')
-        """
+    #Plot geostrophic velocity with pressure
+    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+                                                                      str(k), \
+                                                                      monthstr, \
+                                                                      yearstr)))

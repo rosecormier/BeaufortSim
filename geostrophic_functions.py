@@ -17,7 +17,7 @@ def to_radians(angle):
     
     return angle * np.pi / 180
 
-def comp_geos_vel(ecco_ds_grid, pressure, dens, ds_vel):
+def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     """
     Computes derivatives of pressure.
@@ -55,9 +55,9 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens, ds_vel):
     
     #Interpolate velocities to centres of grid cells
     
-    ds_vel.UVEL.data, ds_vel.VVEL.data = ds_vel.UVEL.values, ds_vel.VVEL.values
-    vel_interp = xgcm_grid.interp_2d_vector({'X': ds_vel.UVEL, 'Y': ds_vel.VVEL}, boundary='extend')
-    u, v = vel_interp['X'], vel_interp['Y']
+    #ds_vel.UVEL.data, ds_vel.VVEL.data = ds_vel.UVEL.values, ds_vel.VVEL.values
+    #vel_interp = xgcm_grid.interp_2d_vector({'X': ds_vel.UVEL, 'Y': ds_vel.VVEL}, boundary='extend')
+    #u, v = vel_interp['X'], vel_interp['Y']
     
     #Compute Coriolis param. from latitudes of grid cell centres
     

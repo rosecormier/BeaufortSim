@@ -52,7 +52,6 @@ config = vars(args)
 
 latmin, latmax = config['lats'][0], config['lats'][1]
 lonmin, lonmax = config['lons'][0], config['lons'][1]
-#lats_lons = [latmin, latmax, lonmin, lonmax]
 startmo, startyr, mos = config['month'], config['start'], config['months']
 kmin, kmax = config['kvals'][0], config['kvals'][1]
 resolution = config['res']
@@ -162,6 +161,7 @@ for k in range(kmin, kmax + 1):
         vecEs.append(vecE) 
         vecNs.append(vecN)
         
+        #Plot scalar with vector
         ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \

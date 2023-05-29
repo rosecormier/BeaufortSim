@@ -14,7 +14,7 @@ def get_scalar_field_vars(scalar_attr):
     
     return scalar_monthly_shortname, scalar_monthly_nc_string, scalar_variable
     
-def get_vector_field_vars(xvec_attr, yvec_attr):
+def get_vector_field_vars(xvec_attr, yvec_attr, geostrophic=False):
     
     if xvec_attr == 'UVEL' and yvec_attr == 'VVEL':
         vec_field_name = 'velocity'
@@ -29,5 +29,8 @@ def get_vector_field_vars(xvec_attr, yvec_attr):
     vector_monthly_shortname = monthly_shortnames[vec_field_name]
     vector_monthly_nc_string = monthly_nc_strings[vec_field_name]
     vector_variable = variables[vec_field_name]
+    
+    if geostrophic:
+        vector_variable = vector_variable + "_g"
     
     return vector_monthly_shortname, vector_monthly_nc_string, vector_variable
