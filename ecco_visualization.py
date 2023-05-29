@@ -23,7 +23,8 @@ def cbar_label(scalar_attr):
     scalar_attr = variable that the colorbar corresponds to
     """
     
-    cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$'}
+    cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
+                      'u_g': r'$|\Delta u|_n$'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -61,6 +62,22 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     else:
         title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, \
                                                                                                datestr)
+    
+    return title
+
+def pcolormesh_title(ds_grid, k_plot, variable, datestr):
+    
+    if k_plot == 0:
+        depthstr = 'ocean surface'
+    
+    elif k_plot != 0:
+        depth = - ds_grid.Z[k_plot].values
+        depthstr = str(depth) + ' m depth'
+        
+    variable_dict = {'Delta_u': r'$|\Delta u|_n$'}
+    variable_name = variable_dict[variable]
+    
+    title = variable_name + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
@@ -119,7 +136,7 @@ def plot_geography(ax):
     
     return ax
 
-def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='PHIHYDcR', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
     
     if len(scalars) == 1:
         scalar = scalars[0]
@@ -135,14 +152,12 @@ def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_boun
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
     vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    #filled_contours = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap, lines=False)
-    ax.pcolormesh(lon_centers, lat_centers, scalar, \
-                      transform=ccrs.PlateCarree(), cmap=cmap)
+    color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
     
     ax = plot_geography(ax)
+    ax.set_title(pcolormesh_title(ecco_ds_grid, k_plot, 'Delta_u', datestr))
     
-    #cbar = fig.colorbar((filled_contours), ticks=np.arange(vmin, vmax, 0.1))#, \
-                        #label=cbar_label(scalar_attr))
+    cbar = fig.colorbar((color), ticks=np.arange(vmin, vmax, 1), label=cbar_label(scalar_attr), extend='both')
     
     plt.savefig(outfile)
     plt.close()
