@@ -109,7 +109,7 @@ def plot_geography(ax):
     ax.coastlines()
     ax.gridlines()
 
-def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
+def ArcCir_contourf(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
     
     if len(scalars) == 1:
         scalar = scalars[0]

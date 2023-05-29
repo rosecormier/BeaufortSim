@@ -182,9 +182,8 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
                                                                       str(k), \
-                                                                      monthstr, \
                                                                       yearstr)))
 
     #Compute Delta-u metric
@@ -199,4 +198,4 @@ for k in range(kmin, kmax + 1):
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     #Plot Delta-u over domain
-    ArcCir_contourf(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 0.75], lon_centers, lat_centers, lon_edges, lat_edges)
+    ArcCir_contourf(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 0.75], lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
