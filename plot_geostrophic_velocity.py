@@ -122,7 +122,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    u_g_list, u_a_list = [], [] #Geostrophic and ageostrophic velocities
+    u_list, u_g_list, u_a_list = [], [], [] #Geostrophic and ageostrophic velocities
     
     for m in range(mos):
         
@@ -138,7 +138,6 @@ for k in range(kmin, kmax + 1):
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
         velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
-        #u, v = rotate_vector(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL')
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
         
         ds_denspress_mo = load_dataset(curr_denspress_file) #Load monthly density-/pressure-anomaly file into workspace
@@ -157,7 +156,6 @@ for k in range(kmin, kmax + 1):
         #Compute geostrophic velocity
         u_g, v_g = comp_geos_vel(ds_grid, press, dens)
         u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
-        print(u_g)
         
         #Convert pressure-anomaly DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', k, latmin, latmax, lonmin, lonmax, resolution)
@@ -165,15 +163,19 @@ for k in range(kmin, kmax + 1):
         #Compute ageostrophic velocity 
         u_a, v_a = u - u_g, v - v_g
 
+        u_list.append(u + 1j * v)
         u_g_list.append(u_g + 1j * v_g)
         u_a_list.append(u_a + 1j * v_a)
         
-    #Temporally average geostrophic and ageostrophic velocities
+    #Temporally average geostrophic and ageostrophic velocities, and regular velocity
     u_g_mean = comp_temp_mean(u_g_list)
     u_a_mean = comp_temp_mean(u_a_list)
+    u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
     ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
+    
+    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean)

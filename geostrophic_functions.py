@@ -72,7 +72,7 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
-def comp_delta_u_norm(ecco_ds_grid, k_val, ds_vel, u_g, v_g):
+def comp_delta_u_norm(ecco_ds_grid, k_val, u_complex, u_g_complex):
     
     """
     Computes Delta-u diagnostic for geostrophic balance.
@@ -82,11 +82,12 @@ def comp_delta_u_norm(ecco_ds_grid, k_val, ds_vel, u_g, v_g):
     ds_vel = DataSet containing velocity components
     u_g, v_g = components of geostrophic velocity
     """
+    """
     xgcm_grid = ecco.get_llc_grid(ecco_ds_grid)
     ds_vel.UVEL.data, ds_vel.VVEL.data = ds_vel.UVEL.values, ds_vel.VVEL.values
     vel_interp = xgcm_grid.interp_2d_vector({'X': ds_vel.UVEL, 'Y': ds_vel.VVEL}, boundary='extend')
     u, v = vel_interp['X'], vel_interp['Y']
-    
+    """
     #num_x = (xr.concat((u.isel(k=k_val), -1*u_g.isel(k=k_val)), dim='time')).sum(dim=['time'])
     #num_y = (xr.concat((v.isel(k=k_val), -1*v_g.isel(k=k_val)), dim='time')).sum(dim=['time'])
     #num_sq = (xr.concat((num_x**2, num_y**2), dim='time')).sum(dim=['time'])
@@ -94,7 +95,10 @@ def comp_delta_u_norm(ecco_ds_grid, k_val, ds_vel, u_g, v_g):
     #denom_x, denom_y = u.isel(k=k_val), v.isel(k=k_val)
     #denom_sq = (xr.concat((denom_x**2, denom_y**2), dim='time')).sum(dim=['time'])
     #denom = np.sqrt(denom_sq)
-    u, v, u_g, v_g = u.isel(k=k_val), v.isel(k=k_val), u_g.isel(k=k_val), v_g.isel(k=k_val)
+    #u, v, u_g, v_g = u.isel(k=k_val), v.isel(k=k_val), u_g.isel(k=k_val), v_g.isel(k=k_val)
+    u, v = np.real(u_complex), np.imag(u_complex)
+    u_g, v_g = np.real(u_g_complex), np.imag(u_g_complex)
+    
     u_diff = u - u_g
     v_diff = v - v_g
     vel_diff_complex = u_diff + (1j * v_diff)
