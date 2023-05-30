@@ -27,6 +27,9 @@ from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
 vir_nanmasked.set_bad('black')
 
+red_nanmasked = plt.get_cmap("Reds").copy()
+red_nanmasked.set_bad('grey')
+
 ##############################
 
 #PARSE COMMAND-LINE INPUT AND SET GLOBAL VARIABLES
@@ -188,9 +191,6 @@ for k in range(kmin, kmax + 1):
     
     #Repeat with small velocities masked
     Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
-    
-    red_nanmasked = plt.get_cmap("Reds").copy()
-    red_nanmasked.set_bad('grey')
     
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, \
