@@ -13,7 +13,7 @@ import ecco_v4_py as ecco
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field, comp_temp_mean
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field, comp_temp_mean, comp_residuals
 from ecco_field_variables import get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh
 from vorticity_functions import comp_vorticity
@@ -116,6 +116,12 @@ for k in range(kmin, kmax + 1):
         lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
         zetas.append(zeta)
 
-    #Plot annual average vorticity
-    ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
-        
+    #Compute and plot annual average vorticity
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    
+    #Compute residuals of monthly averages
+    zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
+    
+    #Compute and plot annual average W
+    
+    

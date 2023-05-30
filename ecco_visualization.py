@@ -25,7 +25,7 @@ def cbar_label(scalar_attr):
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
                       'Delta_u': r'$|\Delta u|_n$', \
-                      'zeta': 'Vorticity (units?)'}
+                      'zeta': 'Vorticity (1/s)'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -163,6 +163,8 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     
     plt.savefig(outfile)
     plt.close()
+    
+    return scalar_mean
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=None, outfile="", \
