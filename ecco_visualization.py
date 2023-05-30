@@ -136,7 +136,7 @@ def plot_geography(ax):
     
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='PHIHYDcR', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='PHIHYDcR', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
     if len(scalars) == 1:
         scalar = scalars[0]

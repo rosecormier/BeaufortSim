@@ -13,8 +13,9 @@ import ecco_v4_py as ecco
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field
 from ecco_field_variables import get_vector_field_vars
+from ecco_visualization import ArcCir_pcolormesh
 from vorticity_functions import comp_vorticity
 
 ##############################
@@ -23,9 +24,14 @@ from vorticity_functions import comp_vorticity
 
 parser = argparse.ArgumentParser(description="Plot vorticity and Okubo-Weiss in Beaufort Gyre", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
+parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
+                    default=[70.0, 85.0])
+parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
+                    default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[12, 13])
+parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
@@ -34,8 +40,11 @@ parser.add_argument("start", type=int, help="Start year")
 args = parser.parse_args()
 config = vars(args)
 
+latmin, latmax = config['lats'][0], config['lats'][1]
+lonmin, lonmax = config['lons'][0], config['lons'][1]
 startmo, startyr, mos = config['month'], config['start'], config['months']
 kmin, kmax = config['kvals'][0], config['kvals'][1]
+resolution = config['res']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -97,8 +106,13 @@ for k in range(kmin, kmax + 1):
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
         velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
-        #u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
-        print(comp_vorticity(xgcm_grid, ds_vel_mo.UVEL, ds_vel_mo.VVEL, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k))
+        #Compute vorticity
+        ds_vel_mo['zeta'] = comp_vorticity(xgcm_grid, ds_vel_mo.UVEL, ds_vel_mo.VVEL, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
+        
+        lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
+        
+        ArcCir_pcolormesh(ds_grid, k, [zeta], resolution, 'PuOr', [-1, 1], lon_centers, lat_centers, lon_edges, lat_edges, '', scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
+        
