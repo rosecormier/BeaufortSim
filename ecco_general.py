@@ -122,7 +122,7 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     
     return ds_grid
     
-def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): 
+def get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr): 
     
     """
     Loads vector field in xy-grid.
@@ -144,18 +144,17 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
 
     return velc
 
-def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): #rm k?
+def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Gets eastward and northward components of xy-vector.
     
     ecco_ds_grid = grid DataSet
-    k_val = depth value of index
     ecco_ds_vector = DataSet containing vector
     x/yvec_attr = attributes corresponding to vector components
     """
     
-    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr)
+    velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr)
     velE = velc['X'] * ecco_ds_grid['CS'] - velc['Y'] * ecco_ds_grid['SN']
     velN = velc['X'] * ecco_ds_grid['SN'] + velc['Y'] * ecco_ds_grid['CS']
     

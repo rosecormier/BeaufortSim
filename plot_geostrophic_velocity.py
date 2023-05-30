@@ -19,7 +19,7 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, rotate_vector, comp_temp_mean
+from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean#, rotate_vector
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm, mask_delta_u
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
@@ -77,7 +77,7 @@ rho_ref = 1029.0 #Reference density (kg/m^3)
 
 ##############################
 
-#LOAD GRID AND DOWNLOAD VARIABLE FILES
+#LOAD GRID AND GET LISTS OF MONTHS/YEARS
 
 ds_grid = load_grid(datdir)
 
@@ -90,8 +90,6 @@ i = get_starting_i(startmo)
 while i <= mos:
     
     monthstr, yearstr = get_monthstr(i), str(year)
-    endmonth = get_month_end(monthstr, yearstr)
-    
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
 
@@ -128,7 +126,7 @@ for k in range(kmin, kmax + 1):
         #Interpolate velocities to centres of grid cells
         
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
+        velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
 
@@ -150,7 +148,7 @@ for k in range(kmin, kmax + 1):
         
         u_g, v_g = comp_geos_vel(ds_grid, press, dens)
         u_g.data, v_g.data = u_g.values, v_g.values
-        u_g_copy, v_g_copy = u_g, v_g#.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
+        u_g_copy, v_g_copy = u_g.copy(), v_g.copy()
         u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
         v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
         u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()

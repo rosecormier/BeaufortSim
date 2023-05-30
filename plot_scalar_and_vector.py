@@ -13,10 +13,11 @@ import ecco_v4_py as ecco
 import glob
 import xarray as xr
 import matplotlib.pyplot as plt
+import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
 from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 
@@ -77,7 +78,7 @@ variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
 
-#LOAD GRID AND DOWNLOAD VARIABLE FILES
+#LOAD GRID AND GET LISTS OF MONTHS/YEARS
 
 ds_grid = load_grid(datdir)
 
@@ -90,8 +91,6 @@ i = get_starting_i(startmo)
 while i < get_starting_i(startmo) + mos:
 
     monthstr, yearstr = get_monthstr(i), str(year)
-    endmonth = get_month_end(monthstr, yearstr)
-    
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
 
@@ -130,7 +129,7 @@ for k in range(kmin, kmax + 1):
         #Interpolate vectors to centres of grid cells
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
-        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr)
+        vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
         vecE, vecN = (vecE.isel(k=k)).squeeze(), (vecN.isel(k=k)).squeeze()
         
         ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
@@ -164,7 +163,11 @@ for k in range(kmin, kmax + 1):
                                                                    '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
                                                                                              yearstr)))
-
+    
+    #Compute annual average magnitude of vector field
+    magnitude_mean = np.sqrt(vecE_mean**2 + vecN_mean**2)
+    print("Vector maximum magnitude =", np.nanmax(magnitude_mean), "; vector minimum magnitude =", np.nanmin(magnitude_mean))
+    
     #Compute residuals of monthly averages
     scalar_residuals = comp_residuals(scalars, scalar_mean)
     vecE_residuals, vecN_residuals = comp_residuals(vecEs, vecE_mean), comp_residuals(vecNs, vecN_mean)
