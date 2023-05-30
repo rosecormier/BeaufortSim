@@ -24,7 +24,8 @@ def cbar_label(scalar_attr):
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
-                      'u_g': r'$|\Delta u|_n$'}
+                      'u_g': r'$|\Delta u|_n$', \
+                      'zeta': 'Vorticity (units?)'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -74,7 +75,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
         depth = - ds_grid.Z[k_plot].values
         depthstr = str(depth) + ' m depth'
         
-    variable_dict = {'Delta_u': r'$|\Delta u|_n$'}
+    variable_dict = {'Delta_u': r'$|\Delta u|_n$', \
+                    'zeta': 'Vorticity'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
