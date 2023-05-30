@@ -138,14 +138,10 @@ def plot_geography(ax):
     
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bounds, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='PHIHYDcR', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='Delta_u', scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
-    if len(scalars) == 1:
-        scalar = scalars[0]
-        
-    elif len(scalars) > 1:
-        scalar_mean = comp_temp_mean(scalars)
-        scalar = scalar_mean
+    scalar_mean = comp_temp_mean(scalars)
+    scalar = scalar_mean
         
     latmin, latmax, lonmin, lonmax = lats_lons
 
@@ -153,19 +149,23 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, scalar_bo
     ax = plt.axes(projection=ccrs.NorthPolarStereo())    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+    if scalar_bounds is None:
+        vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
+    else:
+        vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+        
     color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
     
     ax = plot_geography(ax)
-    ax.set_title(pcolormesh_title(ecco_ds_grid, k_plot, 'Delta_u', datestr))
+    ax.set_title(pcolormesh_title(ecco_ds_grid, k_plot, scalar_attr, datestr))
     
-    cbar = fig.colorbar((color), ticks=np.arange(vmin, vmax, 1), label=cbar_label(scalar_attr), extend='both')
+    cbar = fig.colorbar((color), label=cbar_label(scalar_attr), extend='both')
     
     plt.savefig(outfile)
     plt.close()
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, scalar_bounds, datestr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', outfile="", \
+                           resolution, cmap, datestr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=None, outfile="", \
                            lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=1):
     
@@ -182,20 +182,12 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     scalar_bounds = min/max of scalar data
     datestr = date string to be used in plot title
     """
-    
-    if len(scalars) == 1:
-        scalar = scalars[0]
+
+    scalar_mean = comp_temp_mean(scalars)
+    scalar = scalar_mean
         
-    elif len(scalars) > 1:
-        scalar_mean = comp_temp_mean(scalars)
-        scalar = scalar_mean
-        
-    if len(vecEs) == 1:
-        vecE, vecN = vecEs[0], vecNs[0]
-        
-    elif len(vecEs) > 1:
-        vecE_mean, vecN_mean = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
-        vecE, vecN = vecE_mean, vecN_mean
+    vecE_mean, vecN_mean = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
+    vecE, vecN = vecE_mean, vecN_mean
 
     latmin, latmax, lonmin, lonmax = lats_lons
 
@@ -203,7 +195,11 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     ax = plt.axes(projection=ccrs.NorthPolarStereo())
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+    if scalar_bounds is None:
+        vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
+    else:
+        vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+        
     filled_contours, contour_lines = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap)
     
     quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution)
@@ -211,18 +207,16 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     plot_geography(ax)
     ax.set_title(contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
         
-    cbar = fig.colorbar(filled_contours, ticks=range(int(np.floor(vmin)), int(np.ceil(vmax)), 1), \
-                        label=cbar_label(scalar_attr))
+    cbar = fig.colorbar(filled_contours, label=cbar_label(scalar_attr))
     
     plt.savefig(outfile)
     plt.close()
     
-    if len(scalars) > 1 and len(vecEs) > 1:
-        return scalar_mean, vecE_mean, vecN_mean
+    return scalar_mean, vecE_mean, vecN_mean
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                                scalar_bounds, resolution, cmap, monthstrs, \
-                                yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
+                                resolution, cmap, monthstrs, \
+                                yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
                                 no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=0.3, \
                                 nrows=3, ncols=4, resid=False):
     
@@ -265,7 +259,11 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
         ax = mainfig.add_subplot(nrows, ncols, i + 1, projection=ccrs.NorthPolarStereo())
         ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
         
-        vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+        if scalar_bounds is None:
+            vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
+        else:
+            vmin, vmax = scalar_bounds[0], scalar_bounds[1]
+            
         filled_contours, contour_lines = get_contours(ax, lon_centers, lat_centers, scalar, vmin, vmax, no_levels, cmap)
 
         quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution)
@@ -276,7 +274,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
                      size=80)
     mainfig.tight_layout()
-    cbar = mainfig.colorbar(filled_contours, ax=mainfig.get_axes(), aspect=40, pad=0.05, ticks=range(vmin, vmax, 1), \
+    cbar = mainfig.colorbar(filled_contours, ax=mainfig.get_axes(), aspect=40, pad=0.05, \
                             label=cbar_label(scalar_attr), location='bottom')
     mainfig.savefig(outfile)
     plt.close()

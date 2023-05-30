@@ -184,10 +184,11 @@ def comp_temp_mean(timeseries):
     Computes temporal mean of a field.
     """ 
     
-    mean = (timeseries[0]).copy()
+    mean = (timeseries[0]).copy() / len(timeseries)
     
-    for i in range(len(timeseries)):
-        mean = mean + (timeseries[i]).copy() / len(timeseries)
+    if len(timeseries) > 1:
+        for i in range(1, len(timeseries)):
+            mean = mean + (timeseries[i]).copy() / len(timeseries)
         
     return mean
 

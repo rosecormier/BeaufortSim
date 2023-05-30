@@ -37,7 +37,7 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
                     default=1.0)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", \
@@ -142,29 +142,31 @@ for k in range(kmin, kmax + 1):
         vecNs.append(vecN)
         
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
 
     #Plot all months
-    ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs,
-                                [93, 97], resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, \
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
+                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], \
                                 outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)))
 
     #Plot annual averages
     scalar_mean, vecE_mean, vecN_mean = ArcCir_contourf_quiver(ds_grid, k, scalars, vecEs, vecNs, \
-                                                      resolution, vir_nanmasked, [93, 97], \
-                                                      yearstrs[0]+" average", \
-                                                      lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, \
+                                                              resolution, vir_nanmasked, \
+                                                              yearstrs[0]+" average", \
+                                                              lon_centers, lat_centers, lon_edges, lat_edges, 
+                                                            scalar_bounds=[90, 97], outfile=join(outdir, \
                                                                    '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
                                                                                              yearstr)))
     
-    #Compute annual average magnitude of vector field
+    #Compute annual average magnitudes of scalar and vector fields
+    
+    print("Scalar maximum magnitude =", np.nanmax(scalar_mean), "; scalar minimum magnitude =", np.nanmin(scalar_mean))
     magnitude_mean = np.sqrt(vecE_mean**2 + vecN_mean**2)
     print("Vector maximum magnitude =", np.nanmax(magnitude_mean), "; vector minimum magnitude =", np.nanmin(magnitude_mean))
     
@@ -173,9 +175,8 @@ for k in range(kmin, kmax + 1):
     vecE_residuals, vecN_residuals = comp_residuals(vecEs, vecE_mean), comp_residuals(vecNs, vecN_mean)
 
     #Plot residuals for all months
-    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals,
-                                [-2, 2], resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, \
-                                outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
+                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[-0.5, 0.5], \
+                                outfile=join(outdir, '{}_k{}_resids_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)), resid=True)

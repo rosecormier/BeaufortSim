@@ -114,5 +114,5 @@ for k in range(kmin, kmax + 1):
         
         lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
         
-        ArcCir_pcolormesh(ds_grid, k, [zeta], resolution, 'PuOr', [-1e-6, 1e-6], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
+        ArcCir_pcolormesh(ds_grid, k, [zeta], resolution, 'PuOr', [-5e-7, 5e-7], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
         
