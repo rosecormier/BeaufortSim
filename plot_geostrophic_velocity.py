@@ -170,7 +170,7 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
+    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       yearstr)))
 
@@ -185,7 +185,7 @@ for k in range(kmin, kmax + 1):
                                             lonmin, lonmax, resolution, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 2], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="u_g", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Repeat with small velocities masked
     Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
@@ -196,4 +196,4 @@ for k in range(kmin, kmax + 1):
                                             lonmin, lonmax, resolution, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, [0, 2], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="u_g", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))

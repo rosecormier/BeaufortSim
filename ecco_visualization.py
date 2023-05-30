@@ -24,7 +24,7 @@ def cbar_label(scalar_attr):
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
-                      'u_g': r'$|\Delta u|_n$', \
+                      'Delta_u': r'$|\Delta u|_n$', \
                       'zeta': 'Vorticity (units?)'}
     label = cbar_label_dict[scalar_attr]
     
