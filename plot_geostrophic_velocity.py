@@ -18,7 +18,6 @@ import ecco_v4_py as ecco
 import numpy as np 
 
 from os.path import expanduser, join
-from ecco_download import ecco_podaac_download
 
 from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, rotate_vector, comp_temp_mean
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
@@ -59,9 +58,6 @@ resolution = config['res']
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
-
-if not os.path.exists(datdir):
-    os.makedirs(datdir)
     
 outdir = join(".", config['outdir'], 'geostrophic')
 
@@ -95,15 +91,7 @@ while i <= mos:
     
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
-    
-    StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
-    
-    #Download monthly-averaged velocity file
-    ecco_podaac_download(ShortName=vel_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
-    
-    #Download monthly-averaged density/pressure file
-    ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
-    
+
     if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         

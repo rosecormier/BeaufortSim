@@ -31,6 +31,13 @@ def load_grid(datdir):
     
     return ds_grid
 
+def get_vector_partner(x_comp):
+    
+    y_comps = {'UVEL': 'VVEL'}
+    y_comp = y_comps[x_comp]
+    
+    return y_comp
+
 def get_starting_i(startmo):
 
     """
@@ -115,7 +122,7 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     
     return ds_grid
     
-def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): #rm k?
+def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): 
     
     """
     Loads vector field in xy-grid.

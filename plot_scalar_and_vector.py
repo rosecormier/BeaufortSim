@@ -15,7 +15,6 @@ import xarray as xr
 import matplotlib.pyplot as plt
 
 from os.path import expanduser, join
-from ecco_download import ecco_podaac_download
 
 from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
 from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
@@ -58,12 +57,8 @@ resolution = config['res']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
-
-if not os.path.exists(datdir):
-    os.makedirs(datdir)
-    
+  
 outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
@@ -99,21 +94,7 @@ while i < get_starting_i(startmo) + mos:
     
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
-    
-    StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
-    
-    #Download the monthly-averaged vector file
-    ecco_podaac_download(ShortName=vector_monthly_shortname, \
-                         StartDate=StartDate, EndDate=EndDate, \
-                         download_root_dir=datdir, n_workers=6, 
-                         force_redownload=False)
-     
-    #Download the monthly-averaged scalar file
-    ecco_podaac_download(ShortName=scalar_monthly_shortname, \
-                         StartDate=StartDate, EndDate=EndDate, \
-                         download_root_dir=datdir, n_workers=6, 
-                         force_redownload=False)
-    
+
     if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
