@@ -13,7 +13,7 @@ import ecco_v4_py as ecco
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field, comp_temp_mean
 from ecco_field_variables import get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh
 from vorticity_functions import comp_vorticity
@@ -93,6 +93,8 @@ vel_dir = join(datdir, vel_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
+    UVELs, VVELs, zetas = [], [], []
+    
     for m in range(mos):
         
         monthstr, yearstr = monthstrs[m], yearstrs[m]
@@ -102,17 +104,18 @@ for k in range(kmin, kmax + 1):
         ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
         
         #Interpolate velocities to centres of grid cells
-        
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL') 
-        u, v = velocity_interp['X'], velocity_interp['Y']
-
+        UVELs.append(ds_vel_mo.UVEL)
+        VVELs.append(ds_vel_mo.VVEL)
+        
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
         #Compute vorticity
         ds_vel_mo['zeta'] = comp_vorticity(xgcm_grid, ds_vel_mo.UVEL, ds_vel_mo.VVEL, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
         
         lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
-        
-        ArcCir_pcolormesh(ds_grid, k, [zeta], resolution, 'PuOr', [-5e-7, 5e-7], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
+        zetas.append(zeta)
+
+    #Plot annual average vorticity
+    ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', outfile="test.png", lats_lons=[70.0, 85.0, -180.0, -90.0])
         
