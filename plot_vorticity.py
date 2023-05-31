@@ -11,6 +11,7 @@ import sys
 import argparse
 import ecco_v4_py as ecco
 import numpy as np
+import xarray as xr
 
 from os.path import expanduser, join
 
@@ -94,7 +95,7 @@ vel_dir = join(datdir, vel_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    UVELs, VVELs, zetas = [], [], []
+    ds_vels, zetas = [], []
     
     for m in range(mos):
         
@@ -103,13 +104,11 @@ for k in range(kmin, kmax + 1):
         curr_vel_file = join(vel_dir, vel_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
         
         ds_vel_mo = load_dataset(curr_vel_file) #Load monthly velocity file into workspace
+        ds_vels.append(ds_vel_mo)
         
         #Interpolate velocities to centres of grid cells
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        
-        UVELs.append(ds_vel_mo.UVEL)
-        VVELs.append(ds_vel_mo.VVEL)
-        
+
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
         #Compute vorticity and resample to lat-lon grid
@@ -120,13 +119,19 @@ for k in range(kmin, kmax + 1):
         zetas.append(zeta_field)
     
     #Compute and plot annual average vorticity
-    #zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
-    """
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
     
-    #Compute and plot annual average W
+    #Concatenate and average velocities
     
-    mean_u, mean_v = comp_temp_mean(UVELs), comp_temp_mean(VVELs)
-    W = comp_OkuboWeiss(xgcm_grid, mean_u, mean_v, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
-    """
+    ds_vels_concat = xr.concat(ds_vels, dim='time')
+    ds_vels_mean = ds_vels_concat.sum(dim='time') / len(ds_vels)
+    (ds_vels_mean['UVEL']).data, (ds_vels_mean['VVEL']).data = (ds_vels_mean['UVEL']).values, (ds_vels_mean['VVEL']).values
+
+    #Compute and plot annual average W
+
+    W = comp_OkuboWeiss(xgcm_grid, ds_grid, ds_vels_mean['UVEL'], ds_vels_mean['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.dxG, ds_grid.dyG, ds_grid.hFacW, ds_grid.hFacS, ds_grid.drF, ds_grid.rA, ds_grid.rAz, k, latmin, latmax, lonmin, lonmax, resolution)
+    print(W)
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, 'seismic', lon_centers, lat_centers, yearstr, outfile=join(outdir, 'test.png'), lats_lons=[70.0, 85.0, -180.0, 90.0])
