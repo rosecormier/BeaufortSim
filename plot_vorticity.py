@@ -18,7 +18,7 @@ from os.path import expanduser, join
 from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, rotate_vector, ds_to_field, comp_temp_mean, comp_residuals
 from ecco_field_variables import get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh
-from vorticity_functions import comp_vorticity, comp_OkuboWeiss
+from vorticity_functions import comp_vorticity, comp_total_strain, comp_OkuboWeiss
 
 ##############################
 
@@ -32,7 +32,7 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[12, 13])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
@@ -119,7 +119,7 @@ for k in range(kmin, kmax + 1):
         zetas.append(zeta_field)
     
     #Compute and plot annual average vorticity
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
@@ -130,8 +130,13 @@ for k in range(kmin, kmax + 1):
     ds_vels_mean = ds_vels_concat.sum(dim='time') / len(ds_vels)
     (ds_vels_mean['UVEL']).data, (ds_vels_mean['VVEL']).data = (ds_vels_mean['UVEL']).values, (ds_vels_mean['VVEL']).values
 
-    #Compute and plot annual average W
-
+    #Compute annual average W
     W = comp_OkuboWeiss(xgcm_grid, ds_grid, ds_vels_mean['UVEL'], ds_vels_mean['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.dxG, ds_grid.dyG, ds_grid.hFacW, ds_grid.hFacS, ds_grid.drF, ds_grid.rA, ds_grid.rAz, k, latmin, latmax, lonmin, lonmax, resolution)
-    print(W)
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, 'seismic', lon_centers, lat_centers, yearstr, outfile=join(outdir, 'test.png'), lats_lons=[70.0, 85.0, -180.0, 90.0])
+    
+    #Indicate regions of positive and negative W
+    
+    W = np.where(W > 0, 1.0, W)
+    W = np.where(W < 0, -1.0, W)
+    
+    #Plot annual average W
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, 'seismic', lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.75, 1.75], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
