@@ -15,7 +15,7 @@ import xarray as xr
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, rotate_vector, ds_to_field, comp_temp_mean, comp_residuals
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, rotate_vector, ds_to_field, comp_temp_mean, comp_residuals, ecco_resample
 from ecco_field_variables import get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh
 from vorticity_functions import comp_vorticity, comp_total_strain, comp_OkuboWeiss
@@ -114,7 +114,7 @@ for k in range(kmin, kmax + 1):
         #Compute vorticity and resample to lat-lon grid
         
         zeta = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
-        lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, zeta.isel(k=k), latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
+        lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
 
         zetas.append(zeta_field)
     

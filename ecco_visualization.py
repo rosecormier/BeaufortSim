@@ -116,14 +116,8 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
     
     ds_grid = ecco_ds_grid.copy()
     
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, u_plot, latmin, latmax, resolution, lonmin, \
-                            lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                            radius_of_influence=120000)
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, v_nearest = \
-    ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, v_plot, latmin, latmax, resolution, lonmin, \
-                            lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', \
-                            radius_of_influence=120000)
+    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = ecco_resample(ds_grid, u_plot, latmin, latmax, lonmin, lonmax, resolution)
+    v_nearest = ecco_resample(ds_grid, v_plot, latmin, latmax, lonmin, lonmax, resolution)[4]
             
     quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
                      transform=ccrs.PlateCarree(), scale=1, regrid_shape=60, zorder=150)

@@ -19,7 +19,7 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean#, rotate_vector
+from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from geostrophic_functions import comp_geos_vel, comp_delta_u_norm, mask_delta_u
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
@@ -180,10 +180,7 @@ for k in range(kmin, kmax + 1):
     #Plot Delta-u
     
     ds_grid_copy = ds_grid.copy()
-    lon_centers, lat_centers, lon_edges, lat_edges, \
-    Delta_u_plot = ecco.resample_to_latlon(ds_grid_copy.XC, ds_grid_copy.YC, Delta_u, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
@@ -192,8 +189,6 @@ for k in range(kmin, kmax + 1):
     
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, \
-    Delta_u_plot = ecco.resample_to_latlon(ds_grid_copy.XC, ds_grid_copy.YC, Delta_u, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
