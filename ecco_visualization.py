@@ -138,7 +138,7 @@ def plot_geography(ax):
     
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, lon_edges, lat_edges, datestr, scalar_attr='Delta_u', scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
     scalar_mean = comp_temp_mean(scalars)
     scalar = scalar_mean

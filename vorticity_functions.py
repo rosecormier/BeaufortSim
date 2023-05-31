@@ -13,7 +13,7 @@ import xarray as xr
 def comp_vorticity(grid_llc, mean_u, mean_v, dxC, dyC, cell_area, k_val):
     
     zeta = (-grid_llc.diff(mean_u * dxC, 'Y') + grid_llc.diff(mean_v * dyC, 'X')) / cell_area
-    zeta = zeta.isel(k=k_val).squeeze()
+    zeta = zeta.squeeze()#.isel(k=k_val).squeeze()
     
     return zeta
 

@@ -13,10 +13,10 @@ import ecco_v4_py as ecco
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, ds_to_field, comp_temp_mean, comp_residuals
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, rotate_vector, ds_to_field, comp_temp_mean, comp_residuals
 from ecco_field_variables import get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh
-from vorticity_functions import comp_vorticity
+from vorticity_functions import comp_vorticity, comp_OkuboWeiss
 
 ##############################
 
@@ -93,7 +93,7 @@ vel_dir = join(datdir, vel_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    UVELs, VVELs, zetas = [], [], []
+    velEs, velNs, zetas = [], [], []
     
     for m in range(mos):
         
@@ -105,23 +105,31 @@ for k in range(kmin, kmax + 1):
         
         #Interpolate velocities to centres of grid cells
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        UVELs.append(ds_vel_mo.UVEL)
-        VVELs.append(ds_vel_mo.VVEL)
+        velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL')
+        #velE, velN = rotate_vector(ds_grid, ds_vel_mo, 'UVEL', 'VVEL')
+        #velE, velN = (velE.isel(k=k)).squeeze(), (velN.isel(k=k)).squeeze()
+        #velEs.append(velE)
+        #velNs.append(velN)
+        u, v = velocity_interp['X'], velocity_interp['Y']
+        u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
         
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
         #Compute vorticity
-        ds_vel_mo['zeta'] = comp_vorticity(xgcm_grid, ds_vel_mo.UVEL, ds_vel_mo.VVEL, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
-        
-        lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
-        zetas.append(zeta)
+        zeta = comp_vorticity(xgcm_grid, u, v, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
+        print(zeta)
 
-    #Compute and plot annual average vorticity
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+        #lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
+        #zetas.append(zeta)
     
+    #Compute and plot annual average vorticity
+    #zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    """
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
     
     #Compute and plot annual average W
     
-    
+    mean_u, mean_v = comp_temp_mean(UVELs), comp_temp_mean(VVELs)
+    W = comp_OkuboWeiss(xgcm_grid, mean_u, mean_v, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
+    """
