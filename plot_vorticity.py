@@ -10,6 +10,7 @@ import os
 import sys
 import argparse
 import ecco_v4_py as ecco
+import numpy as np
 
 from os.path import expanduser, join
 
@@ -93,7 +94,7 @@ vel_dir = join(datdir, vel_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    velEs, velNs, zetas = [], [], []
+    UVELs, VVELs, zetas = [], [], []
     
     for m in range(mos):
         
@@ -105,22 +106,18 @@ for k in range(kmin, kmax + 1):
         
         #Interpolate velocities to centres of grid cells
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL')
-        #velE, velN = rotate_vector(ds_grid, ds_vel_mo, 'UVEL', 'VVEL')
-        #velE, velN = (velE.isel(k=k)).squeeze(), (velN.isel(k=k)).squeeze()
-        #velEs.append(velE)
-        #velNs.append(velN)
-        u, v = velocity_interp['X'], velocity_interp['Y']
-        u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
+        
+        UVELs.append(ds_vel_mo.UVEL)
+        VVELs.append(ds_vel_mo.VVEL)
         
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
-        #Compute vorticity
-        zeta = comp_vorticity(xgcm_grid, u, v, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
-        print(zeta)
+        #Compute vorticity and resample to lat-lon grid
+        
+        zeta = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz, k)
+        lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, zeta.isel(k=k), latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
 
-        #lon_centers, lat_centers, lon_edges, lat_edges, zeta = ds_to_field(ds_grid, ds_vel_mo, 'zeta', k, latmin, latmax, lonmin, lonmax, resolution)
-        #zetas.append(zeta)
+        zetas.append(zeta_field)
     
     #Compute and plot annual average vorticity
     #zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr='zeta', scalar_bounds=[-3e-7, 3e-7], outfile=join(outdir, 'zeta_k{}_avg{}.pdf'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])

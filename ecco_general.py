@@ -105,7 +105,7 @@ def load_dataset(curr_file):
     
     return dataset
 
-def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
+def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr): #rm k
     
     """
     Loads scalar field in xy-grid.
