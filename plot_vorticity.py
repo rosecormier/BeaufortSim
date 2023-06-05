@@ -153,4 +153,4 @@ for k in range(kmin, kmax + 1):
     #Plot annual average W
     ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1e-2, 1e-2], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[-1e-2, 1e-2], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
+    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1e-2, 1e-2], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)

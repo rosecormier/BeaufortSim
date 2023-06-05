@@ -51,7 +51,8 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
         depth = - ds_grid.Z[k_plot].values
         depthstr = str(depth) + ' m depth'
         
-    scalar_dict = {'PHIHYDcR': 'Pressure anomaly'}
+    scalar_dict = {'PHIHYDcR': 'Pressure anomaly', 
+                  'W': 'Okubo-Weiss parameter'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity'}
