@@ -10,7 +10,7 @@ from matplotlib.gridspec import GridSpec
 from matplotlib.colors import ListedColormap
 from xgcm import Grid
 
-from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean
+from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample
 
 plt.rcParams['font.size'] = 12
 plt.rcParams['text.usetex'] = True
