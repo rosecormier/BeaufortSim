@@ -35,7 +35,7 @@ parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
-parser.add_argument("--months", type=int, help="Total number of months", default=12)
+parser.add_argument("--months", type=int, help="Total number of months", default=24)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
