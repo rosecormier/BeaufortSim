@@ -145,12 +145,14 @@ for k in range(kmin, kmax + 1):
     
     W[np.isnan(W)] = 0
     W = W * 1e12 #Useful for computing standard deviation
+    W[W > 0] = 1.0
+    W[W < 0] = -1.0
     W[W == 0] = np.nan
     
     #Set Okubo-Weiss threshold
     sigma_W = 0.2 * np.std(W) #Not used at the moment
     
     #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1e-2, 1e-2], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1e-2, 1e-2], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
+    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
