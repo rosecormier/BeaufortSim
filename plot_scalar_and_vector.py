@@ -173,7 +173,7 @@ for k in range(kmin, kmax + 1):
     #Compute residuals of monthly averages
     scalar_residuals = comp_residuals(scalars, scalar_mean)
     vecE_residuals, vecN_residuals = comp_residuals(vecEs, vecE_mean), comp_residuals(vecNs, vecN_mean)
-
+    print(scalar_residuals)
     #Plot residuals for all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
                                 monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[-0.5, 0.5], \

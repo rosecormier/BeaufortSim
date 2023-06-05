@@ -208,7 +208,7 @@ def comp_residuals(fields, mean):
         residual = field.copy() - mean.copy()
         residual_list.append(residual)
         
-    return 
+    return residual_list
 
 def ecco_resample(ds_grid, field, latmin, latmax, lonmin, lonmax, resolution):
     
