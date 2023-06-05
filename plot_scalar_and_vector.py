@@ -135,7 +135,7 @@ for k in range(kmin, kmax + 1):
         ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
         
         #Convert scalar DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, k, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
         
         scalars.append(scalar)
         vecEs.append(vecE) 

@@ -105,7 +105,7 @@ def load_dataset(curr_file):
     
     return dataset
 
-def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr): #rm k
+def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
     
     """
     Loads scalar field in xy-grid.
@@ -160,13 +160,13 @@ def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
     
     return velE, velN
 
-def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val, latmin, latmax, lonmin, lonmax, resolution):
+def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, latmin, latmax, lonmin, lonmax, resolution):
     
     """
     Resamples scalar DataSet attribute to lat-lon grid
     """
     
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr)
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr)
     curr_field = (ds_grid[scalar_attr]).squeeze()
     
     ds_grid = ecco_ds_grid.copy()

@@ -154,7 +154,7 @@ for k in range(kmin, kmax + 1):
         u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
         
         #Convert pressure-anomaly DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', k, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', latmin, latmax, lonmin, lonmax, resolution)
         
         #Compute ageostrophic velocity 
         u_a, v_a = u - u_g, v - v_g
@@ -188,7 +188,6 @@ for k in range(kmin, kmax + 1):
     Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
     
     ds_grid_copy = ds_grid.copy()
-    lon_centers, lat_centers, lon_edges, lat_edges, \
-    Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
+    lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
