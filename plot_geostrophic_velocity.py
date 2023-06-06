@@ -21,7 +21,7 @@ from os.path import expanduser, join
 
 from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
-from geostrophic_functions import comp_geos_vel, comp_delta_u_norm, mask_delta_u
+from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g, comp_delta_u_norm, mask_delta_u
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
@@ -133,25 +133,10 @@ for k in range(kmin, kmax + 1):
         #Load monthly density-/pressure-anomaly file into workspace
         ds_denspress_mo = load_dataset(curr_denspress_file) 
         
-        densanom = ds_denspress_mo.RHOAnoma #Get density data
-        dens = densanom + rho_ref #Compute absolute density
+        dens, press = get_density_and_pressure(ds_denspress_mo)
         
-        #Update density DataArray
-        
-        dens.name = 'RHO'
-        dens.attrs.update({'long_name': 'In-situ seawater density', 'units': 'kg m-3'})
-        
-        pressanom = ds_denspress_mo.PHIHYDcR #Get pressure data
-        press = rho_ref * pressanom #Quantity to differentiate
-        
-        #Compute geostrophic velocity components
-        
-        u_g, v_g = comp_geos_vel(ds_grid, press, dens)
-        u_g.data, v_g.data = u_g.values, v_g.values
-        u_g_copy, v_g_copy = u_g.copy(), v_g.copy()
-        u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
-        v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
-        u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
+        u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
+        u_g, v_g = rotate_u_g(ds_grid, u_g, v_g, k)
         
         #Convert pressure-anomaly DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', latmin, latmax, lonmin, lonmax, resolution)

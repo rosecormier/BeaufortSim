@@ -17,6 +17,27 @@ def to_radians(angle):
     
     return angle * np.pi / 180
 
+def get_density_and_pressure(ds_denspress, rho_ref=1029.0):
+    
+    """
+    Gets density and pressure attributes from DataSet.
+    
+    rho_ref = reference density (kg/m^3)
+    """
+    
+    densanom = ds_denspress['RHOAnoma'] #Get density data
+    dens = densanom + rho_ref #Compute absolute density
+    
+    #Update density DataArray
+    
+    dens.name = 'RHO'
+    dens.attrs.update({'long_name': 'In-situ seawater density', 'units': 'kg m-3'})
+    
+    pressanom = ds_denspress.PHIHYDcR #Get pressure data
+    press = rho_ref * pressanom #Quantity to differentiate
+    
+    return dens, press
+
 def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     """
@@ -47,26 +68,37 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     dp_dx.name = 'dp_dx'
     dp_dy.name = 'dp_dy'
     
-    #Compute RHS of geostrophic-balance equations
-    
-    GB_RHS_1, GB_RHS_2 = dp_dx / dens, - dp_dy / dens
-    GB_RHS_1 = GB_RHS_1.where(ecco_ds_grid.maskC) #Mask land areas
-    GB_RHS_2 = GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
+    GB_RHS_1, GB_RHS_2 = dp_dx / dens, - dp_dy / dens #Compute RHS of geostrophic-balance equations
+
+    #Mask land areas
+    GB_RHS_1, GB_RHS_2 = GB_RHS_1.where(ecco_ds_grid.maskC), GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
     
     #Compute Coriolis param. from latitudes of grid cell centres
     
     lat = to_radians(ecco_ds_grid.YC)
     f = 2 * Omega * np.sin(lat)
     
-    #Compute geostrophic velocity components
+    u_g, v_g = GB_RHS_2 / f, GB_RHS_1 / f #Compute geostrophic velocity components
     
-    u_g, v_g = GB_RHS_2 / f, GB_RHS_1 / f
-    u_g = u_g.where(ecco_ds_grid.maskC) #Mask land areas
-    v_g = v_g.where(ecco_ds_grid.maskC) #Mask land areas
+    #Mask land areas
+    u_g, v_g = u_g.where(ecco_ds_grid.maskC), v_g.where(ecco_ds_grid.maskC)
     
     return u_g, v_g
 
+def rotate_u_g(ds_grid, u_g, v_g, k_val):
+    
+    """
+    Appropriately rotates geostrophic velocity vector and restricts to k- and time-slices.
+    """
+    
+    u_g.data, v_g.data = u_g.values, v_g.values
+    u_g_copy, v_g_copy = u_g.copy(), v_g.copy()
+    u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
+    v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
+    u_g, v_g = u_g.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
 
+    return u_g, v_g
+    
 def mask_delta_u(mask_threshold, u_complex):
     
     u, v = np.real(u_complex), np.imag(u_complex)
