@@ -172,7 +172,7 @@ for k in range(kmin, kmax + 1):
     #Plot annual average W
     ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
+    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
     
 ##############################
 
@@ -203,45 +203,11 @@ for k in range(kmin, kmax + 1):
     dens_mean = comp_temp_mean(densities)
     
     #Compute annual average geostrophic velocity components
-    
     u_g_mean, v_g_mean = comp_geos_vel(ds_grid, press_mean, dens_mean)
     u_g_mean, v_g_mean = rotate_u_g(ds_grid, u_g_mean, v_g_mean, k)
-    print(u_g_mean, v_g_mean)
+    
     #Compute and plot annual average vorticity from geostrophic data
     
     zeta_mean = comp_vorticity(xgcm_grid, u_g_mean, v_g_mean, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
-    print(zeta_mean)
-    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean, latmin, latmax, lonmin, lonmax, resolution)
-    print(zeta_field)
-    ArcCir_pcolormesh(ds_grid, k, [zeta_field], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
-
-"""
-    #Compute average strains
-    normal_strain = comp_normal_strain(xgcm_grid, ds_vels_mean['u_g'], ds_vels_mean['v_g'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
-    shear_strain = comp_shear_strain(xgcm_grid, ds_vels_mean['u_g'], ds_vels_mean['v_g'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
-    
-    #xgcm_grid.interp(normal_strain, axis=["X", "Y"])
-    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    
-    #Compute annual average W from geostrophic data
-    W = comp_OkuboWeiss(ds_grid, zeta_mean, normal_strain, shear_strain, latmin, latmax, lonmin, lonmax, resolution)
-    """
-"""
-    #Compute annual average W
-    W = comp_OkuboWeiss(xgcm_grid, ds_grid, ds_vels_mean['UVEL'], ds_vels_mean['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.dxG, ds_grid.dyG, ds_grid.rA, ds_grid.rAz, k, latmin, latmax, lonmin, lonmax, resolution)
-    
-    W[np.isnan(W)] = 0
-    W = W * 1e12 #Useful for computing standard deviation
-    W[W > 0] = 1.0
-    W[W < 0] = -1.0
-    W[W == 0] = np.nan
-    
-    #Set Okubo-Weiss threshold
-    sigma_W = 0.2 * np.std(W) #Not used at the moment
-    
-    #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
-    
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
-"""
+    #lon_centers, lat_centers, lon_edges, lat_edges, field = ecco_resample(ds_grid, press.isel(k=k).squeeze(), latmin, latmax, lonmin, lonmax, resolution)
+    #ArcCir_pcolormesh(ds_grid, k, [zeta_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])

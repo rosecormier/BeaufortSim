@@ -168,7 +168,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     return scalar_mean
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, datestr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=None, outfile="", \
+                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=None, outfile="", \
                            lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=4):
     

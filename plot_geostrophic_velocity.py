@@ -160,11 +160,12 @@ for k in range(kmin, kmax + 1):
                                                                       yearstr)))
 
     #Compute Delta-u metric
-    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean)
+    Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean)
     
     #Plot Delta-u
     
     ds_grid_copy = ds_grid.copy()
+    print(ds_grid_copy, Delta_u)
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
