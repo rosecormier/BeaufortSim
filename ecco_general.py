@@ -216,6 +216,6 @@ def ecco_resample(ds_grid, field, latmin, latmax, lonmin, lonmax, resolution):
     Resamples field to lat-lon grid.
     """
     
-    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
+    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     return lon_centers, lat_centers, lon_edges, lat_edges, zeta_field

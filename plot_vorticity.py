@@ -210,15 +210,15 @@ for k in range(kmin, kmax + 1):
     
     #Save to velocity dataset
     ds_vel = ds_vel.squeeze()
-    ds_vel = ds_vel.transpose(..., 'k')
-    print(ds_vel.UVEL)
+    ds_vel = ds_vel.transpose(..., 'k') #Reshape
     (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = u_g_mean.values, v_g_mean.values
     
-    u_g_E, v_g_N = rotate_vector(ds_grid, ds_vel, 'UVEL', 'VVEL')
-    u_g_E, v_g_N = (u_g_E.isel(k=k)).squeeze(), (v_g_N.isel(k=k)).squeeze()
+    u_g_E, u_g_N = rotate_vector(ds_grid, ds_vel, 'UVEL', 'VVEL')
+    u_g_E, u_g_N = (u_g_E.isel(k=k)).squeeze(), (u_g_N.isel(k=k)).squeeze()
     
     #Compute and plot annual average vorticity from geostrophic data
     
-    #zeta_mean = comp_vorticity(xgcm_grid, u_g_mean, v_g_mean, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
-    #lon_centers, lat_centers, lon_edges, lat_edges, field = ecco_resample(ds_grid, press.isel(k=k).squeeze(), latmin, latmax, lonmin, lonmax, resolution)
+    zeta_mean = comp_vorticity(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+    #zeta_mean = comp_vorticity(xgcm_grid, u_g_E, u_g_N, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
     #ArcCir_pcolormesh(ds_grid, k, [zeta_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
