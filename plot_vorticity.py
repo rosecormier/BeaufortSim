@@ -153,12 +153,11 @@ for k in range(kmin, kmax + 1):
     
     #Slice strain components in k- and time-dimensions
     normal_strain, shear_strain = normal_strain.isel(k=k).squeeze(), shear_strain.isel(k=k).squeeze()
-    
-    #Slice mean vorticity in k- and time-dimensions
-    #zeta_mean = zeta_mean.isel(k=k).squeeze()
 
+    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    
     #Compute annual average W
-    print(zeta_mean, ds_grid, normal_strain)
     W = comp_OkuboWeiss(ds_grid, zeta_mean, normal_strain, shear_strain, latmin, latmax, lonmin, lonmax, resolution)
     
     W[np.isnan(W)] = 0
@@ -182,7 +181,8 @@ for k in range(kmin, kmax + 1):
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
-    u_g_list, v_g_list, zetas = [], [], []
+    u_g_list, zetas = [], []
+    densities, pressures = [], []
 
     for m in range(mos):
         
@@ -194,35 +194,40 @@ for k in range(kmin, kmax + 1):
         ds_denspress_mo = load_dataset(curr_denspress_file) 
         
         dens, press = get_density_and_pressure(ds_denspress_mo)
+        densities.append(dens.isel(k=k).squeeze())
+        pressures.append(press.isel(k=k).squeeze())
         
-        u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
-        u_g, v_g = rotate_u_g(ds_grid, u_g, v_g, k)
-        
-        u_g_list.append(u_g)
-        v_g_list.append(v_g)
-        
-        xgcm_grid = ecco.get_llc_grid(ds_grid)
-        
-        #Compute vorticity and resample to lat-lon grid
-        
-        zeta = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
-        lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
-
-        zetas.append(zeta_field)
-        
+    #Compute average pressure and density fields
+    
+    press_mean = comp_temp_mean(pressures)
+    dens_mean = comp_temp_mean(densities)
+    
+    #Compute annual average geostrophic velocity components
+    
+    u_g_mean, v_g_mean = comp_geos_vel(ds_grid, press_mean, dens_mean)
+    u_g_mean, v_g_mean = rotate_u_g(ds_grid, u_g_mean, v_g_mean, k)
+    print(u_g_mean, v_g_mean)
     #Compute and plot annual average vorticity from geostrophic data
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    #Compute residuals of monthly averages
-    zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
+    zeta_mean = comp_vorticity(xgcm_grid, u_g_mean, v_g_mean, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+    print(zeta_mean)
+    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean, latmin, latmax, lonmin, lonmax, resolution)
+    print(zeta_field)
+    ArcCir_pcolormesh(ds_grid, k, [zeta_field], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+
+"""
+    #Compute average strains
+    normal_strain = comp_normal_strain(xgcm_grid, ds_vels_mean['u_g'], ds_vels_mean['v_g'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
+    shear_strain = comp_shear_strain(xgcm_grid, ds_vels_mean['u_g'], ds_vels_mean['v_g'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
     
-    #Average geostrophic velocities
-    u_g_mean, v_g_mean = comp_temp_mean(u_g_list), comp_temp_mean(v_g_list)
-    """
+    #xgcm_grid.interp(normal_strain, axis=["X", "Y"])
+    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    
     #Compute annual average W from geostrophic data
-    W = comp_OkuboWeiss(xgcm_grid, ds_grid, u_g_mean, v_g_mean, ds_grid.dxC, ds_grid.dyC, ds_grid.dxG, ds_grid.dyG, ds_grid.rA, ds_grid.rAz, k, latmin, latmax, lonmin, lonmax, resolution)
+    W = comp_OkuboWeiss(ds_grid, zeta_mean, normal_strain, shear_strain, latmin, latmax, lonmin, lonmax, resolution)
     """
-    """
+"""
     #Compute annual average W
     W = comp_OkuboWeiss(xgcm_grid, ds_grid, ds_vels_mean['UVEL'], ds_vels_mean['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.dxG, ds_grid.dyG, ds_grid.rA, ds_grid.rAz, k, latmin, latmax, lonmin, lonmax, resolution)
     
@@ -239,4 +244,4 @@ for k in range(kmin, kmax + 1):
     ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_attr='W', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
-    """
+"""

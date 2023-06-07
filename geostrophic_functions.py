@@ -41,7 +41,7 @@ def get_density_and_pressure(ds_denspress, rho_ref=1029.0):
 def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     """
-    Computes derivatives of pressure.
+    Computes derivatives of pressure and returns u_g, v_g.
     
     ecco_ds_grid = grid dataset
     pressure = pressure data to differentiate
