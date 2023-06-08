@@ -42,7 +42,7 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[12, 13])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
@@ -167,12 +167,12 @@ for k in range(kmin, kmax + 1):
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Repeat with small velocities masked
-    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
+    Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
     
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))

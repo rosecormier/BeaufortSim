@@ -22,7 +22,7 @@ def cbar_label(scalar_attr):
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
-                      'Delta_u': r'$|\Delta u|_n$', \
+                      'Delta_u': r'$|\Delta \vec{u}|_n$', \
                       'zeta': 'Vorticity (1/s)', \
                       'W': r'W $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
@@ -79,7 +79,7 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
         depth = - ds_grid.Z[k_plot].values
         depthstr = str(depth) + ' m depth'
         
-    variable_dict = {'Delta_u': r'$|\Delta u|_n$', \
+    variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
                     'zeta': 'Vorticity', \
                     'W': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
@@ -140,7 +140,7 @@ def plot_geography(ax):
     
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
     scalar_mean = comp_temp_mean(scalars)
     scalar = scalar_mean
@@ -161,7 +161,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     ax = plot_geography(ax)
     ax.set_title(pcolormesh_title(ecco_ds_grid, k_plot, scalar_attr, datestr))
     
-    cbar = fig.colorbar((color), label=cbar_label(scalar_attr), extend='both', location='bottom')
+    cbar = fig.colorbar((color), label=cbar_label(scalar_attr), extend=extend, location='bottom')
     
     plt.savefig(outfile)
     plt.close()
