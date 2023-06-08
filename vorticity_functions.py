@@ -4,12 +4,6 @@ Rosalie Cormier, 2023
 Vorticity-related functions
 """
 
-import numpy as np
-import dask.array as daskarray
-import xgcm
-import xarray as xr
-import ecco_v4_py as ecco
-
 from ecco_general import ecco_resample
 
 def comp_vorticity(grid_llc, u_mean, v_mean, dx, dy, cell_area):
