@@ -38,6 +38,8 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
+parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
+                    default=[-1, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
                     default=1.0)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", \
@@ -54,6 +56,7 @@ latmin, latmax = config['lats'][0], config['lats'][1]
 lonmin, lonmax = config['lons'][0], config['lons'][1]
 startmo, startyr, mos = config['month'], config['start'], config['months']
 kmin, kmax = config['kvals'][0], config['kvals'][1]
+scalar_bounds = config['vminmax']
 resolution = config['res']
 
 user_home_dir = expanduser('~')
@@ -142,14 +145,14 @@ for k in range(kmin, kmax + 1):
         vecNs.append(vecN)
         
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=[90, 97], outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
 
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[90, 97], \
+                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=scalar_bounds, \
                                 outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)))
@@ -159,7 +162,7 @@ for k in range(kmin, kmax + 1):
                                                               resolution, vir_nanmasked, \
                                                               yearstrs[0]+" average", \
                                                               lon_centers, lat_centers, \
-                                                            scalar_bounds=[90, 97], outfile=join(outdir, \
+                                                            scalar_bounds=scalar_bounds, outfile=join(outdir, \
                                                                    '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
                                                                                              yearstr)))
