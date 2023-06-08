@@ -16,10 +16,10 @@ import xarray as xr
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, get_vector_in_xy, rotate_vector, ds_to_field, comp_temp_mean, comp_residuals, ecco_resample
+from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, rotate_vector, comp_temp_mean, comp_residuals, ecco_resample
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver
-from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g
+from geostrophic_functions import get_density_and_pressure, comp_geos_vel
 from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain, comp_total_strain, comp_OkuboWeiss
 
 seis_nanmasked = plt.get_cmap("seismic").copy()
