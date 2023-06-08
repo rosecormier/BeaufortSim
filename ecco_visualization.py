@@ -1,14 +1,12 @@
+"""
+Rosalie Cormier, 2023
+"""
+
 import numpy as np
-import xarray as xr
 import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import ecco_v4_py as ecco
-
-from matplotlib.gridspec import GridSpec
-from matplotlib.colors import ListedColormap
-from xgcm import Grid
 
 from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample
 
