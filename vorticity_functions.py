@@ -28,13 +28,6 @@ def comp_total_strain(ds_grid, normal_strain, shear_strain, latmin, latmax, lonm
     
     return normal_strain_field + shear_strain_field
 
-def comp_OkuboWeiss(ds_grid, omega, normal_strain, shear_strain, latmin, latmax, lonmin, lonmax, resolution):
+def comp_OkuboWeiss(omega, normal_strain, shear_strain):
 
-    omega_field = omega
-    
-    normal_strain_field = normal_strain#ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    shear_strain_field = shear_strain#ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    
-    W = normal_strain_field**2 + shear_strain_field**2 - omega_field**2
-    
-    return W
+    return normal_strain**2 + shear_strain**2 - omega**2

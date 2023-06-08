@@ -28,7 +28,8 @@ def cbar_label(scalar_attr):
                       'zeta': 'Vorticity (1/s)', \
                       'W': r'W $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
-                      'zeta_geos': 'Vorticity (1/s)'}
+                      'zeta_geos': 'Vorticity (1/s)',
+                      'W_geos': r'W $(1/s^2)$'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -52,8 +53,9 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
         depth = - ds_grid.Z[k_plot].values
         depthstr = str(depth) + ' m depth'
         
-    scalar_dict = {'PHIHYDcR': 'Pressure anomaly', 
-                  'W': 'Okubo-Weiss parameter'}
+    scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
+                  'W': 'Okubo-Weiss parameter', \
+                  'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity'}
@@ -83,7 +85,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
                     'zeta': 'Vorticity', \
                     'W': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
-                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$)'}
+                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$)', \
+                    'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)

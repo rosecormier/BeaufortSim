@@ -158,7 +158,7 @@ for k in range(kmin, kmax + 1):
     shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
     
     #Compute annual average W
-    W = comp_OkuboWeiss(ds_grid, zeta_mean, normal_strain, shear_strain, latmin, latmax, lonmin, lonmax, resolution)
+    W = comp_OkuboWeiss(zeta_mean, normal_strain, shear_strain)
     
     W[np.isnan(W)] = 0
     W = W * 1e12 #Useful for computing standard deviation
@@ -221,3 +221,31 @@ for k in range(kmin, kmax + 1):
     zeta_mean = comp_vorticity(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
     lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
     ArcCir_pcolormesh(ds_grid, k, [zeta_field], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    
+    #Compute average strain components
+    
+    normal_strain = comp_normal_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
+    shear_strain = comp_shear_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+    
+    #Slice strain components in k- and time-dimensions
+    normal_strain, shear_strain = normal_strain.isel(k=k).squeeze(), shear_strain.isel(k=k).squeeze()
+
+    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+    
+    #Compute annual average W
+    W = comp_OkuboWeiss(zeta_field, normal_strain, shear_strain)
+    
+    W[np.isnan(W)] = 0
+    W = W * 1e12 #Useful for computing standard deviation
+    W[W > 0] = 1.0
+    W[W < 0] = -1.0
+    W[W == 0] = np.nan
+    
+    #Set Okubo-Weiss threshold
+    sigma_W = 0.2 * np.std(W) #Not used at the moment
+    
+    #Plot annual average W
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    
+    ArcCir_contourf_quiver(ds_grid, k, [W], [u_g_E], [u_g_N], resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W_geos', scalar_bounds=[-1.5, 1.5], outfile=join(outdir, 'W_k{}_geos_avg{}_contour.png'.format(str(k), yearstr)), no_levels=3)
