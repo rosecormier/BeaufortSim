@@ -43,6 +43,8 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
+parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
+                    default=[-1, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
@@ -56,6 +58,7 @@ latmin, latmax = config['lats'][0], config['lats'][1]
 lonmin, lonmax = config['lons'][0], config['lons'][1]
 startmo, startyr, mos = config['month'], config['start'], config['months']
 kmin, kmax = config['kvals'][0], config['kvals'][1]
+scalar_bounds = config['vminmax']
 resolution = config['res']
 
 user_home_dir = expanduser('~')
@@ -155,7 +158,7 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
+    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       yearstr)))
 
