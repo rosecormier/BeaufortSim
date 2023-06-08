@@ -2,7 +2,6 @@
 Rosalie Cormier, 2023, based on code by Andrew Delman
 """
 
-import xarray as xr
 import numpy as np
 import ecco_v4_py as ecco
 import xgcm
