@@ -18,15 +18,17 @@ import ecco_v4_py as ecco
 import numpy as np 
 
 from os.path import expanduser, join
-from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, rotate_vector, comp_temp_mean
+from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
-from geostrophic_functions import comp_geos_vel, comp_delta_u_norm, mask_delta_u
+from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g, comp_delta_u_norm, mask_delta_u
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
 vir_nanmasked.set_bad('black')
+
+red_nanmasked = plt.get_cmap("Reds").copy()
+red_nanmasked.set_bad('grey')
 
 ##############################
 
@@ -59,9 +61,6 @@ resolution = config['res']
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
-
-if not os.path.exists(datdir):
-    os.makedirs(datdir)
     
 outdir = join(".", config['outdir'], 'geostrophic')
 
@@ -78,7 +77,7 @@ rho_ref = 1029.0 #Reference density (kg/m^3)
 
 ##############################
 
-#LOAD GRID AND DOWNLOAD VARIABLE FILES
+#LOAD GRID AND GET LISTS OF MONTHS/YEARS
 
 ds_grid = load_grid(datdir)
 
@@ -91,19 +90,9 @@ i = get_starting_i(startmo)
 while i <= mos:
     
     monthstr, yearstr = get_monthstr(i), str(year)
-    endmonth = get_month_end(monthstr, yearstr)
-    
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
-    
-    StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
-    
-    #Download monthly-averaged velocity file
-    ecco_podaac_download(ShortName=vel_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
-    
-    #Download monthly-averaged density/pressure file
-    ecco_podaac_download(ShortName=denspress_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
-    
+
     if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
@@ -137,35 +126,20 @@ for k in range(kmin, kmax + 1):
         #Interpolate velocities to centres of grid cells
         
         (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-        velocity_interp = get_vector_in_xy(ds_grid, k, ds_vel_mo, 'UVEL', 'VVEL') 
+        velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
 
         #Load monthly density-/pressure-anomaly file into workspace
         ds_denspress_mo = load_dataset(curr_denspress_file) 
         
-        densanom = ds_denspress_mo.RHOAnoma #Get density data
-        dens = densanom + rho_ref #Compute absolute density
+        dens, press = get_density_and_pressure(ds_denspress_mo)
         
-        #Update density DataArray
-        
-        dens.name = 'RHO'
-        dens.attrs.update({'long_name': 'In-situ seawater density', 'units': 'kg m-3'})
-        
-        pressanom = ds_denspress_mo.PHIHYDcR #Get pressure data
-        press = rho_ref * pressanom #Quantity to differentiate
-        
-        #Compute geostrophic velocity components
-        
-        u_g, v_g = comp_geos_vel(ds_grid, press, dens)
-        u_g.data, v_g.data = u_g.values, v_g.values
-        u_g_copy, v_g_copy = u_g, v_g#.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
-        u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
-        v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
-        u_g, v_g = u_g.isel(k=k).squeeze(), v_g.isel(k=k).squeeze()
+        u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
+        u_g, v_g = rotate_u_g(ds_grid, u_g, v_g, k)
         
         #Convert pressure-anomaly DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', k, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, pressure = ds_to_field(ds_grid, ds_denspress_mo.isel(k=k), 'PHIHYDcR', latmin, latmax, lonmin, lonmax, resolution)
         
         #Compute ageostrophic velocity 
         u_a, v_a = u - u_g, v - v_g
@@ -181,33 +155,25 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, [93, 97], yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
+    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       yearstr)))
 
     #Compute Delta-u metric
-    Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean)
+    Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean)
     
     #Plot Delta-u
     
     ds_grid_copy = ds_grid.copy()
-    lon_centers, lat_centers, lon_edges, lat_edges, \
-    Delta_u_plot = ecco.resample_to_latlon(ds_grid_copy.XC, ds_grid_copy.YC, Delta_u, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    print(ds_grid_copy, Delta_u)
+    lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', [0, 2], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="u_g", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Repeat with small velocities masked
     Delta_u = comp_delta_u_norm(ds_grid, k, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
     
-    red_nanmasked = plt.get_cmap("Reds").copy()
-    red_nanmasked.set_bad('grey')
-    
     ds_grid_copy = ds_grid.copy()
-    lon_centers, lat_centers, lon_edges, lat_edges, \
-    Delta_u_plot = ecco.resample_to_latlon(ds_grid_copy.XC, ds_grid_copy.YC, Delta_u, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, [0, 2], lon_centers, lat_centers, lon_edges, lat_edges, yearstr, scalar_attr="u_g", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))

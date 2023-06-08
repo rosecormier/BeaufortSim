@@ -31,6 +31,13 @@ def load_grid(datdir):
     
     return ds_grid
 
+def get_vector_partner(x_comp):
+    
+    y_comps = {'UVEL': 'VVEL'}
+    y_comp = y_comps[x_comp]
+    
+    return y_comp
+
 def get_starting_i(startmo):
 
     """
@@ -98,7 +105,7 @@ def load_dataset(curr_file):
     
     return dataset
 
-def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
+def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
     
     """
     Loads scalar field in xy-grid.
@@ -115,7 +122,7 @@ def get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr):
     
     return ds_grid
     
-def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): #rm k?
+def get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr): 
     
     """
     Loads vector field in xy-grid.
@@ -137,30 +144,29 @@ def get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr):
 
     return velc
 
-def rotate_vector(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr): #rm k?
+def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Gets eastward and northward components of xy-vector.
     
     ecco_ds_grid = grid DataSet
-    k_val = depth value of index
     ecco_ds_vector = DataSet containing vector
     x/yvec_attr = attributes corresponding to vector components
     """
     
-    velc = get_vector_in_xy(ecco_ds_grid, k_val, ecco_ds_vector, xvec_attr, yvec_attr)
+    velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr)
     velE = velc['X'] * ecco_ds_grid['CS'] - velc['Y'] * ecco_ds_grid['SN']
     velN = velc['X'] * ecco_ds_grid['SN'] + velc['Y'] * ecco_ds_grid['CS']
     
     return velE, velN
 
-def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, k_val, latmin, latmax, lonmin, lonmax, resolution):
+def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, latmin, latmax, lonmin, lonmax, resolution):
     
     """
     Resamples scalar DataSet attribute to lat-lon grid
     """
     
-    ds_grid = get_scalar_in_xy(ecco_ds_grid, k_val, ecco_ds_scalar, scalar_attr)
+    ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr)
     curr_field = (ds_grid[scalar_attr]).squeeze()
     
     ds_grid = ecco_ds_grid.copy()
@@ -178,10 +184,11 @@ def comp_temp_mean(timeseries):
     Computes temporal mean of a field.
     """ 
     
-    mean = (timeseries[0]).copy()
+    mean = (timeseries[0]).copy() / len(timeseries)
     
-    for i in range(len(timeseries)):
-        mean = mean + (timeseries[i]).copy() / len(timeseries)
+    if len(timeseries) > 1:
+        for i in range(1, len(timeseries)):
+            mean = mean + (timeseries[i]).copy() / len(timeseries)
         
     return mean
 
@@ -202,3 +209,13 @@ def comp_residuals(fields, mean):
         residual_list.append(residual)
         
     return residual_list
+
+def ecco_resample(ds_grid, field, latmin, latmax, lonmin, lonmax, resolution):
+    
+    """
+    Resamples field to lat-lon grid.
+    """
+    
+    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
+    
+    return lon_centers, lat_centers, lon_edges, lat_edges, zeta_field

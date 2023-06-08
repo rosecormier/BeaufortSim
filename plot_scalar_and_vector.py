@@ -13,11 +13,11 @@ import ecco_v4_py as ecco
 import glob
 import xarray as xr
 import matplotlib.pyplot as plt
+import numpy as np
 
 from os.path import expanduser, join
-from ecco_download import ecco_podaac_download
 
-from ecco_general import load_grid, get_monthstr, get_month_end, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, get_starting_i, rotate_vector
 from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 
@@ -37,7 +37,7 @@ parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
 parser.add_argument("--months", type=int, help="Total number of months", default=12)
-parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
+parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
                     default=1.0)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", \
@@ -58,12 +58,8 @@ resolution = config['res']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
-
-if not os.path.exists(datdir):
-    os.makedirs(datdir)
-    
+  
 outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
@@ -82,7 +78,7 @@ variables_str = vector_variable + '_' + scalar_variable
     
 ##############################
 
-#LOAD GRID AND DOWNLOAD VARIABLE FILES
+#LOAD GRID AND GET LISTS OF MONTHS/YEARS
 
 ds_grid = load_grid(datdir)
 
@@ -95,25 +91,9 @@ i = get_starting_i(startmo)
 while i < get_starting_i(startmo) + mos:
 
     monthstr, yearstr = get_monthstr(i), str(year)
-    endmonth = get_month_end(monthstr, yearstr)
-    
     monthstrs.append(monthstr)
     yearstrs.append(yearstr)
-    
-    StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
-    
-    #Download the monthly-averaged vector file
-    ecco_podaac_download(ShortName=vector_monthly_shortname, \
-                         StartDate=StartDate, EndDate=EndDate, \
-                         download_root_dir=datdir, n_workers=6, 
-                         force_redownload=False)
-     
-    #Download the monthly-averaged scalar file
-    ecco_podaac_download(ShortName=scalar_monthly_shortname, \
-                         StartDate=StartDate, EndDate=EndDate, \
-                         download_root_dir=datdir, n_workers=6, 
-                         force_redownload=False)
-    
+
     if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
@@ -149,49 +129,54 @@ for k in range(kmin, kmax + 1):
         #Interpolate vectors to centres of grid cells
         (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = \
             (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
-        vecE, vecN = rotate_vector(ds_grid, k, ds_vector_mo, xvec_attr, yvec_attr)
+        vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
         vecE, vecN = (vecE.isel(k=k)).squeeze(), (vecN.isel(k=k)).squeeze()
         
         ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
         
         #Convert scalar DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, k, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
         
         scalars.append(scalar)
         vecEs.append(vecE) 
         vecNs.append(vecN)
         
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, [93, 97], yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
 
     #Plot all months
-    ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs,
-                                [93, 97], resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, \
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
+                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], \
                                 outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)))
 
     #Plot annual averages
     scalar_mean, vecE_mean, vecN_mean = ArcCir_contourf_quiver(ds_grid, k, scalars, vecEs, vecNs, \
-                                                      resolution, vir_nanmasked, [93, 97], \
-                                                      yearstrs[0]+" average", \
-                                                      lon_centers, lat_centers, lon_edges, lat_edges, outfile=join(outdir, \
+                                                              resolution, vir_nanmasked, \
+                                                              yearstrs[0]+" average", \
+                                                              lon_centers, lat_centers, lon_edges, lat_edges, 
+                                                            scalar_bounds=[90, 97], outfile=join(outdir, \
                                                                    '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
                                                                                              yearstr)))
-
+    
+    #Compute annual average magnitudes of scalar and vector fields
+    
+    print("Scalar maximum magnitude =", np.nanmax(scalar_mean), "; scalar minimum magnitude =", np.nanmin(scalar_mean))
+    magnitude_mean = np.sqrt(vecE_mean**2 + vecN_mean**2)
+    print("Vector maximum magnitude =", np.nanmax(magnitude_mean), "; vector minimum magnitude =", np.nanmin(magnitude_mean))
+    
     #Compute residuals of monthly averages
     scalar_residuals = comp_residuals(scalars, scalar_mean)
     vecE_residuals, vecN_residuals = comp_residuals(vecEs, vecE_mean), comp_residuals(vecNs, vecN_mean)
-
+    print(scalar_residuals)
     #Plot residuals for all months
-    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals,
-                                [-2, 2], resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, \
-                                outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
+                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[-0.5, 0.5], \
+                                outfile=join(outdir, '{}_k{}_resids_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)), resid=True)
