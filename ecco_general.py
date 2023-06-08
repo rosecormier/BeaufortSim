@@ -163,7 +163,7 @@ def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
 def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, latmin, latmax, lonmin, lonmax, resolution):
     
     """
-    Resamples scalar DataSet attribute to lat-lon grid
+    Resamples scalar DataSet attribute to lat-lon grid.
     """
     
     ds_grid = get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr)
