@@ -142,14 +142,14 @@ for k in range(kmin, kmax + 1):
         vecNs.append(vecN)
         
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=[90, 97], outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
 
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[90, 97], \
+                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[90, 97], \
                                 outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)))
@@ -158,7 +158,7 @@ for k in range(kmin, kmax + 1):
     scalar_mean, vecE_mean, vecN_mean = ArcCir_contourf_quiver(ds_grid, k, scalars, vecEs, vecNs, \
                                                               resolution, vir_nanmasked, \
                                                               yearstrs[0]+" average", \
-                                                              lon_centers, lat_centers, lon_edges, lat_edges, 
+                                                              lon_centers, lat_centers, \
                                                             scalar_bounds=[90, 97], outfile=join(outdir, \
                                                                    '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
@@ -176,7 +176,7 @@ for k in range(kmin, kmax + 1):
 
     #Plot residuals for all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, lon_edges, lat_edges, scalar_bounds=[-0.5, 0.5], \
+                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[-0.5, 0.5], \
                                 outfile=join(outdir, '{}_k{}_resids_all{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                yearstr)), resid=True)
