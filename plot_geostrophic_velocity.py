@@ -115,6 +115,7 @@ denspress_dir = join(datdir, denspress_monthly_shortname)
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
     
+    pressures = []
     u_list, u_g_list, u_a_list = [], [], []
     
     for m in range(mos):
@@ -132,10 +133,10 @@ for k in range(kmin, kmax + 1):
         velocity_interp = get_vector_in_xy(ds_grid, ds_vel_mo, 'UVEL', 'VVEL') 
         u, v = velocity_interp['X'], velocity_interp['Y']
         u, v = (u.isel(k=k)).squeeze(), (v.isel(k=k)).squeeze()
-
+        
         #Load monthly density-/pressure-anomaly file into workspace
         ds_denspress_mo = load_dataset(curr_denspress_file) 
-        
+
         dens, press = get_density_and_pressure(ds_denspress_mo)
         
         u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
@@ -147,6 +148,7 @@ for k in range(kmin, kmax + 1):
         #Compute ageostrophic velocity 
         u_a, v_a = u - u_g, v - v_g
 
+        pressures.append(pressure)
         u_list.append(u + 1j * v)
         u_g_list.append(u_g + 1j * v_g)
         u_a_list.append(u_a + 1j * v_a)
@@ -158,7 +160,7 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, [pressure], [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
+    ArcCir_contourf_quiver(ds_grid, k, pressures, [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       yearstr)))
 

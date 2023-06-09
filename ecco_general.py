@@ -210,12 +210,12 @@ def comp_residuals(fields, mean):
         
     return residual_list
 
-def ecco_resample(ds_grid, field, latmin, latmax, lonmin, lonmax, resolution):
+def ecco_resample(ds_grid, curr_field, latmin, latmax, lonmin, lonmax, resolution):
     
     """
     Resamples field to lat-lon grid.
     """
     
-    lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
+    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    return lon_centers, lat_centers, lon_edges, lat_edges, zeta_field
+    return lon_centers, lat_centers, lon_edges, lat_edges, field

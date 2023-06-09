@@ -32,7 +32,7 @@ def get_density_and_pressure(ds_denspress, rho_ref=1029.0):
     dens.name = 'RHO'
     dens.attrs.update({'long_name': 'In-situ seawater density', 'units': 'kg m-3'})
     
-    pressanom = ds_denspress.PHIHYDcR #Get pressure data
+    pressanom = ds_denspress.PHIHYDcR.copy() #Get pressure data
     press = rho_ref * pressanom #Quantity to differentiate
     
     return dens, press
