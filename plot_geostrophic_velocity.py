@@ -136,7 +136,7 @@ for k in range(kmin, kmax + 1):
         
         #Load monthly density-/pressure-anomaly file into workspace
         ds_denspress_mo = load_dataset(curr_denspress_file) 
-
+        
         dens, press = get_density_and_pressure(ds_denspress_mo)
         
         u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components

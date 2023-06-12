@@ -2,6 +2,7 @@
 Rosalie Cormier, 2023
 """
 
+import os
 import numpy as np
 import xarray as xr
 import ecco_v4_py as ecco
@@ -19,8 +20,12 @@ def load_grid(datdir):
     
     grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
 
-    #Download ECCO grid parameters (date is arbitrary)
-    ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
+    if not os.path.exists(datdir + grid_params_shortname): #Important to keep this conditional
+        
+        os.makedirs(datdir + grid_params_shortname)
+    
+        #Download ECCO grid parameters (date is arbitrary)
+        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
                      EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
                      force_redownload=False)
 
