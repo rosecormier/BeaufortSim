@@ -83,17 +83,20 @@ outdir = join(".", config['outdir'])
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-vector_monthly_shortname, vector_monthly_nc_str, vector_variable = \
-    get_vector_field_vars(xvec_attr, yvec_attr)
-scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = \
-    get_scalar_field_vars(scalar_attr)
+vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
+scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
 variables_str = vector_variable + '_' + scalar_variable
+
+#Get file lists
+
+vector_dir = join(datdir, vector_monthly_shortname)
+scalar_dir = join(datdir, scalar_monthly_shortname)
+    
+ds_grid = load_grid(datdir) #Load grid    
     
 ##############################
 
-#LOAD GRID AND GET LISTS OF MONTHS/YEARS
-
-ds_grid = load_grid(datdir)
+#GET LISTS OF MONTHS/YEARS
 
 year = startyr
 monthstrs, yearstrs = [], []
@@ -111,13 +114,6 @@ while i < get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
-
-##############################
-
-#GET FILE LISTS
-
-vector_dir = join(datdir, vector_monthly_shortname)
-scalar_dir = join(datdir, scalar_monthly_shortname)
 
 ##############################
 
