@@ -4,9 +4,12 @@ Rosalie Cormier, 2023
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import ecco_v4_py as ecco
+
+from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 
 from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample
 
@@ -128,7 +131,7 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
     
     return quiv
 
-def plot_geography(ax):
+def plot_geography(ax, labels=True):
     
     """
     Adds land, coastlines, and grid to an ax.
@@ -136,8 +139,24 @@ def plot_geography(ax):
     
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
-    ax.gridlines()
+    lines = ax.gridlines(draw_labels=labels)
     
+    if labels:
+        
+        lines.xlocator = mticker.FixedLocator(np.arange(-180,-90,10))
+        lines.xformatter = LONGITUDE_FORMATTER
+        lines.xpadding = 10
+        lines.xlabel_style = {'size': 12, 'color': 'grey', 'rotation': 0}
+        lines.ylocator = mticker.FixedLocator(np.arange(70,86,2))
+        lines.yformatter = LATITUDE_FORMATTER
+        lines.ylabel_style = {'size': 12, 'color': 'grey', 'rotation': 0}
+        lines.x_inline = False
+        lines.y_inline = False
+        lines.xlabels_top = False
+        lines.ylabels_right = False
+        
+        plt.draw()
+        
     return ax
 
 def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
@@ -171,7 +190,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                            scalar_bounds=None, outfile="", \
-                           lats_lons=[70.0, 85.0, -180.0, -90.0], no_levels=30, scale_factor=1, \
+                           lats_lons=[70.0, 85.0, -175.5, -90.5], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=2):
     
     """
@@ -209,7 +228,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     
     quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
     
-    plot_geography(ax)
+    ax = plot_geography(ax)
     ax.set_title(contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
         
     cbar = fig.colorbar(filled_contours, label=cbar_label(scalar_attr), location='bottom')
@@ -274,7 +293,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
 
         quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
     
-        plot_geography(ax)
+        plot_geography(ax, labels=False)
         ax.set_title('\n {} {}'.format(get_month_name(monthstr), yearstr))
         
     mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
