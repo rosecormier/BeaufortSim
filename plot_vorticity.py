@@ -175,7 +175,7 @@ for k in range(kmin, kmax + 1):
     #W[W < 0] = -1.0 #Maps all negative W to single value
     
     sigma_W = 0.01 * np.std(W) #Set Okubo-Weiss threshold
-    W[abs(W) < sigma_W] = 0
+    W[abs(W) < sigma_W] = 0 #Mask small W
 
     W[W == 0] = np.nan
     
@@ -251,7 +251,7 @@ for k in range(kmin, kmax + 1):
     #W[W < 0] = -1.0 #Maps all negative W to single value
     
     sigma_W = 0.01 * np.std(W) #Set Okubo-Weiss threshold
-    W[abs(W) < sigma_W] = 0
+    W[abs(W) < sigma_W] = 0 #Mask small W
     
     W[W == 0] = np.nan
     
