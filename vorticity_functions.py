@@ -5,6 +5,7 @@ Vorticity-related functions
 """
 
 from ecco_general import ecco_resample
+from geostrophic_functions import comp_f
 
 def comp_vorticity(grid_llc, u_mean, v_mean, dx, dy, cell_area):
     return (-grid_llc.diff(u_mean * dx, 'Y') + grid_llc.diff(v_mean * dy, 'X')).squeeze() / cell_area
@@ -24,3 +25,9 @@ def comp_total_strain(ds_grid, normal_strain, shear_strain, latmin, latmax, lonm
 
 def comp_OkuboWeiss(omega, normal_strain, shear_strain):
     return normal_strain**2 + shear_strain**2 - omega**2
+
+def comp_local_Ro(omega, y):
+    
+    f = comp_f(y)
+    
+    return omega / f

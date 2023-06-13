@@ -20,7 +20,7 @@ from ecco_general import load_grid, get_starting_i, get_monthstr, load_dataset, 
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver
 from geostrophic_functions import get_density_and_pressure, comp_geos_vel
-from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain, comp_total_strain, comp_OkuboWeiss
+from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain, comp_total_strain, comp_OkuboWeiss, comp_local_Ro
 
 seis_nanmasked = plt.get_cmap("seismic").copy()
 seis_nanmasked.set_bad('grey')
@@ -67,6 +67,9 @@ vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars(
 
 #Get variables associated with density/pressure
 denspress_monthly_shortname, denspress_monthly_nc_str, denspress_variable = get_scalar_field_vars('PHIHYDcR')
+
+#Set "typical" Coriolis parameter
+f_mean = 1e-4 #1/s
     
 ##############################
 
@@ -132,13 +135,23 @@ for k in range(kmin, kmax + 1):
         zeta = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
         lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
 
-        zetas.append(zeta_field)
+        zetas.append(zeta_field/f_mean) #Normalize by f and save
     
-    #Compute and plot annual average vorticity
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    #Compute and plot annual average vorticity, normalized by f
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
+    
+    ###
+    
+    #Recover actual vorticity
+    zeta_mean *= f_mean
+    #Compute local Rossby number
+    Ro_l = comp_local_Ro(zeta_mean, lat_centers)
+    print(Ro_l)
+    
+    ###
     
     #Concatenate and average velocities
     
@@ -180,8 +193,7 @@ for k in range(kmin, kmax + 1):
 
 #Iterate over all specified depths
 for k in range(kmin, kmax + 1):
-    
-    u_g_list, zetas = [], []
+
     densities, pressures = [], []
 
     for m in range(mos):
@@ -216,11 +228,11 @@ for k in range(kmin, kmax + 1):
     u_g_E, u_g_N = rotate_vector(ds_grid, ds_vel, 'UVEL', 'VVEL')
     u_g_E, u_g_N = (u_g_E.isel(k=k)).squeeze(), (u_g_N.isel(k=k)).squeeze()
     
-    #Compute and plot annual average vorticity from geostrophic data
+    #Compute and plot annual average vorticity from geostrophic data, normalized by f
     
     zeta_mean = comp_vorticity(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
     lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [zeta_field], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-7, 1e-7], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [zeta_field/f_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute average strain components
     

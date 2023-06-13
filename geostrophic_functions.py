@@ -16,6 +16,16 @@ def to_radians(angle):
     
     return angle * np.pi / 180
 
+def comp_f(y):
+    
+    """
+    Computes local Coriolis parameter.
+    """
+    
+    lat = to_radians(y)
+    
+    return 2 * Omega * np.sin(lat)
+
 def get_density_and_pressure(ds_denspress, rho_ref=1029.0):
     
     """
@@ -73,9 +83,7 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     GB_RHS_1, GB_RHS_2 = GB_RHS_1.where(ecco_ds_grid.maskC), GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
     
     #Compute Coriolis param. from latitudes of grid cell centres
-    
-    lat = to_radians(ecco_ds_grid.YC)
-    f = 2 * Omega * np.sin(lat)
+    f = comp_f(ecco_ds_grid.YC)
     
     u_g, v_g = GB_RHS_2 / f, GB_RHS_1 / f #Compute geostrophic velocity components
     
