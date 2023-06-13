@@ -48,6 +48,8 @@ parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
+parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
+                    default=False)
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -167,19 +169,18 @@ for k in range(kmin, kmax + 1):
     #Compute Delta-u metric
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean)
     
+    ds_grid_copy = ds_grid.copy()
+    
     #Plot Delta-u
     
-    ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Repeat with small velocities masked
+    
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
-    
-    ds_grid_copy = ds_grid.copy()
+
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Compute new geostrophy metric

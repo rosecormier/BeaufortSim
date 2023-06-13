@@ -41,6 +41,8 @@ parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, defa
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
+parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
+                    default=False)
 
 parser.add_argument("start", type=int, help="Start year")
 

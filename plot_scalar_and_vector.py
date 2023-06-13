@@ -46,6 +46,8 @@ parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to stor
                     default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
                     default="visualization")
+parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
+                    default=False)
 
 parser.add_argument("start", type=int, help="Start year")
 
