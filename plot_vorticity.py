@@ -169,14 +169,15 @@ for k in range(kmin, kmax + 1):
     #Compute annual average W
     W = comp_OkuboWeiss(zeta_mean, normal_strain, shear_strain)
     
-    #W[np.isnan(W)] = 0
-    #W = W * 1e12 #Useful for computing standard deviation
+    W[np.isnan(W)] = 0
+
     #W[W > 0] = 1.0 #Maps all positive W to single value
     #W[W < 0] = -1.0 #Maps all negative W to single value
-    #W[W == 0] = np.nan
     
-    #Set Okubo-Weiss threshold
-    sigma_W = 0.2 * np.std(W) #Not used at the moment
+    sigma_W = 0.01 * np.std(W) #Set Okubo-Weiss threshold
+    W[abs(W) < sigma_W] = 0
+
+    W[W == 0] = np.nan
     
     #Plot annual average W
     ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
@@ -244,14 +245,15 @@ for k in range(kmin, kmax + 1):
     #Compute annual average W
     W = comp_OkuboWeiss(zeta_field, normal_strain, shear_strain)
     
-    #W[np.isnan(W)] = 0
-    #W = W * 1e12 #Useful for computing standard deviation
+    W[np.isnan(W)] = 0
+
     #W[W > 0] = 1.0 #Maps all positive W to single value
     #W[W < 0] = -1.0 #Maps all negative W to single value
-    #W[W == 0] = np.nan
     
-    #Set Okubo-Weiss threshold
-    sigma_W = 0.2 * np.std(W) #Not used at the moment
+    sigma_W = 0.01 * np.std(W) #Set Okubo-Weiss threshold
+    W[abs(W) < sigma_W] = 0
+    
+    W[W == 0] = np.nan
     
     #Plot annual average W
     ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
