@@ -21,7 +21,7 @@ from os.path import expanduser, join
 
 from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
 from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
-from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g, comp_delta_u_norm, mask_delta_u
+from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g, comp_delta_u_norm, mask_delta_u, comp_geos_metric
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
@@ -181,3 +181,13 @@ for k in range(kmin, kmax + 1):
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
     
     ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    
+    #Compute new geostrophy metric
+    geos_metric = comp_geos_metric(ds_grid, u_mean, u_g_mean)
+    
+    #Plot the result
+    
+    ds_grid_copy = ds_grid.copy()
+    lon_centers, lat_centers, lon_edges, lat_edges, geos_metric_plot = ecco_resample(ds_grid_copy, geos_metric, latmin, latmax, lonmin, lonmax, resolution)
+    
+    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'new_Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
