@@ -26,10 +26,10 @@ def cbar_label(scalar_attr):
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                      'zeta': 'Vorticity (1/s)', \
+                      'zeta': r'Vorticity per $f_{mean}$', \
                       'W': r'W $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
-                      'zeta_geos': 'Vorticity (1/s)', \
+                      'zeta_geos': r'Vorticity per $f_{mean}$', \
                       'W_geos': r'W $(1/s^2)$', \
                       'Ro_l': r'$Ro_{\ell}$'}
     label = cbar_label_dict[scalar_attr]
@@ -84,10 +84,10 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
         depthstr = str(depth) + ' m depth'
         
     variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                    'zeta': 'Vorticity', \
+                    'zeta': r'Vorticity, normalized by $f_{mean}$', \
                     'W': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
-                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$)', \
+                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
                     'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number'}
     variable_name = variable_dict[variable]
