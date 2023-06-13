@@ -191,4 +191,4 @@ for k in range(kmin, kmax + 1):
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, geos_metric_plot = ecco_resample(ds_grid_copy, geos_metric, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'new_Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="geos_metric", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'new_metric_k{}_all{}.pdf'.format(str(k), yearstr)))

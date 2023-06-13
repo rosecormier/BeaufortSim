@@ -31,7 +31,8 @@ def cbar_label(scalar_attr):
                       's': r'Strain $(1/s^2)$', \
                       'zeta_geos': r'Vorticity per $f_{mean}$', \
                       'W_geos': r'W $(1/s^2)$', \
-                      'Ro_l': r'$Ro_{\ell}$'}
+                      'Ro_l': r'$Ro_{\ell}$', \
+                      'geos_metric': 'Velocity ratio'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -89,7 +90,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
                     's': 'Strain', \
                     'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
                     'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
-                    'Ro_l': 'Local Rossby number'}
+                    'Ro_l': 'Local Rossby number', \
+                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
