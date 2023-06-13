@@ -68,8 +68,7 @@ vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars(
 #Get variables associated with density/pressure
 denspress_monthly_shortname, denspress_monthly_nc_str, denspress_variable = get_scalar_field_vars('PHIHYDcR')
 
-#Set "typical" Coriolis parameter
-f_mean = 1e-4 #1/s
+f_mean = 1e-4 #Set "typical" Coriolis parameter (1/s)
     
 ##############################
 
@@ -145,8 +144,10 @@ for k in range(kmin, kmax + 1):
     
     zeta_mean *= f_mean #Recover actual vorticity
     
-    #Compute local Rossby number
+    #Compute and plot local Rossby number
+    
     Ro_l = comp_local_Ro(zeta_mean, lat_centers)
+    ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'seismic', lon_centers, lat_centers, yearstr, scalar_attr='Ro_l', scalar_bounds=[-3e-3, 3e-3], outfile=join(outdir, 'localRo_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Concatenate and average velocities
     
