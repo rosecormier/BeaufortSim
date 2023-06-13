@@ -143,15 +143,10 @@ for k in range(kmin, kmax + 1):
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
     
-    ###
+    zeta_mean *= f_mean #Recover actual vorticity
     
-    #Recover actual vorticity
-    zeta_mean *= f_mean
     #Compute local Rossby number
     Ro_l = comp_local_Ro(zeta_mean, lat_centers)
-    print(Ro_l)
-    
-    ###
     
     #Concatenate and average velocities
     
