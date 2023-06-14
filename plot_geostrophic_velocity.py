@@ -41,7 +41,7 @@ parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
-parser.add_argument("--months", type=int, help="Total number of months", default=12)
+parser.add_argument("--iters", type=int, help="Total number of months/seasons to iterate over", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 4])
 parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
                     default=[-1, 1])
@@ -50,6 +50,7 @@ parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to stor
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
                     default=False)
+parser.add_argument("--season", type=str, help="Months marking start and end of 'season'", default=["01", "01"])
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -58,10 +59,21 @@ config = vars(args)
 
 latmin, latmax = config['lats'][0], config['lats'][1]
 lonmin, lonmax = config['lons'][0], config['lons'][1]
-startmo, startyr, mos = config['month'], config['start'], config['months']
-kmin, kmax = config['kvals'][0], config['kvals'][1]
-scalar_bounds = config['vminmax']
 resolution = config['res']
+
+kmin, kmax = config['kvals'][0], config['kvals'][1]
+
+scalar_bounds = config['vminmax']
+
+startmo, startyr = config['month'], config['start']
+seasonal = config['seasonal']
+
+if not seasonal:
+    mos = config['iters']
+
+elif seasonal:
+    seasons = config['iters']
+    season_start, season_end = config['season'][0], config['season'][1]
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -107,6 +119,8 @@ while i <= mos:
         
     i += 1 #Go to next month
         
+datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]        
+
 ##############################
 
 #GET FILE LISTS
@@ -166,7 +180,7 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, pressures, [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'yearly', '{}_k{}_all{}.pdf'.format(variables_str, str(k), yearstr)))
+    ArcCir_contourf_quiver(ds_grid, k, pressures, [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'yearly', '{}_k{}_all{}-{}.pdf'.format(variables_str, str(k), datestr_start, datestr_end)))
 
     #Compute Delta-u metric
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean)
@@ -176,14 +190,14 @@ for k in range(kmin, kmax + 1):
     #Plot Delta-u
     
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_k{}_all{}-{}.pdf'.format(str(k), datestr_start, datestr_end)))
     
     #Repeat with small velocities masked
     
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
 
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_mask_k{}_all{}-{}.pdf'.format(str(k), datestr_start, datestr_end)))
     
     #Compute new geostrophy metric
     geos_metric = comp_geos_metric(ds_grid, u_mean, u_g_mean)
@@ -193,4 +207,4 @@ for k in range(kmin, kmax + 1):
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, geos_metric_plot = ecco_resample(ds_grid_copy, geos_metric, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="geos_metric", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'new_metric_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="geos_metric", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'new_metric_k{}_all{}-{}.pdf'.format(str(k), datestr_start, datestr_end)))

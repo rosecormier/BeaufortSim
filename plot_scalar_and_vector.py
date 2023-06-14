@@ -36,7 +36,7 @@ parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
-parser.add_argument("--months", type=int, help="Total number of months", default=12)
+parser.add_argument("--iters", type=int, help="Total number of months/seasons to iterate over", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="PHIHYDcR")
 parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", default="UVEL")
@@ -68,10 +68,14 @@ xvec_attr = config['xvec']
 yvec_attr = get_vector_partner(xvec_attr)
 scalar_bounds = config['vminmax']
 
-startmo, startyr, mos = config['month'], config['start'], config['months']
+startmo, startyr = config['month'], config['start']
 seasonal = config['seasonal']
 
-if seasonal:
+if not seasonal:
+    mos = config['iters']
+
+elif seasonal:
+    seasons = config['iters']
     season_start, season_end = config['season'][0], config['season'][1]
 
 user_home_dir = expanduser('~')
@@ -118,6 +122,8 @@ while i < get_starting_i(startmo) + mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
+    
+datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]
 
 ##############################
 
@@ -159,8 +165,6 @@ for k in range(kmin, kmax + 1):
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
-        
-    datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]
 
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \

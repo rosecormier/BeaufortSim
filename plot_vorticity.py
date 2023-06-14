@@ -36,13 +36,14 @@ parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
-parser.add_argument("--months", type=int, help="Total number of months", default=12)
+parser.add_argument("--iters", type=int, help="Total number of months/seasons to iterate over", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
                     default=False)
+parser.add_argument("--season", type=str, help="Months marking start and end of 'season'", default=["01", "01"])
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -51,9 +52,19 @@ config = vars(args)
 
 latmin, latmax = config['lats'][0], config['lats'][1]
 lonmin, lonmax = config['lons'][0], config['lons'][1]
-startmo, startyr, mos = config['month'], config['start'], config['months']
-kmin, kmax = config['kvals'][0], config['kvals'][1]
 resolution = config['res']
+
+kmin, kmax = config['kvals'][0], config['kvals'][1]
+
+startmo, startyr = config['month'], config['start']
+seasonal = config['seasonal']
+
+if not seasonal:
+    mos = config['iters']
+
+elif seasonal:
+    seasons = config['iters']
+    season_start, season_end = config['season'][0], config['season'][1]
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -98,6 +109,8 @@ while i <= mos:
         year += 1 #Go to next year
         
     i += 1 #Go to next month
+    
+datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]
 
 ##############################
 
@@ -141,9 +154,9 @@ for k in range(kmin, kmax + 1):
         lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
 
         zetas.append(zeta_field/f_mean) #Normalize by f and save
-    
+
     #Compute and plot annual average vorticity, normalized by f
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_avg{}-{}.png'.format(str(k), datestr_start, datestr_end)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
@@ -186,9 +199,9 @@ for k in range(kmin, kmax + 1):
     W[W == 0] = np.nan
     
     #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}-{}.png'.format(str(k), datestr_start, datestr_end)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
+    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}-{}_contour.png'.format(str(k), datestr_start, datestr_end)), no_levels=10)
     
 ##############################
 
@@ -235,7 +248,7 @@ for k in range(kmin, kmax + 1):
     
     zeta_mean = comp_vorticity(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
     lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [zeta_field/f_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [zeta_field/f_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_geos_avg{}-{}.png'.format(str(k), datestr_start, datestr_end)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute average strain components
     
@@ -262,6 +275,6 @@ for k in range(kmin, kmax + 1):
     W[W == 0] = np.nan
     
     #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}-{}.png'.format(str(k), datestr_start, datestr_end)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], [u_g_E], [u_g_N], resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
+    ArcCir_contourf_quiver(ds_grid, k, [W], [u_g_E], [u_g_N], resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}-{}_contour.png'.format(str(k), datestr_start, datestr_end)), no_levels=10)
