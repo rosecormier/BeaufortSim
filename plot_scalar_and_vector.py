@@ -165,7 +165,7 @@ for k in range(kmin, kmax + 1):
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
                                 monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=scalar_bounds, \
-                                outfile=join(outdir, '{}_k{}_all{}-{}.png'.format(variables_str, \
+                                outfile=join(outdir, 'yearly', '{}_k{}_all{}-{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                datestr_start, \
                                                                                datestr_end)))
@@ -176,7 +176,7 @@ for k in range(kmin, kmax + 1):
                                                               yearstrs[0]+" average", \
                                                               lon_centers, lat_centers, \
                                                             scalar_bounds=scalar_bounds, outfile=join(outdir, \
-                                                                   '{}_k{}_avg{}-{}.pdf'.format(variables_str, \
+                                                            'yearly', '{}_k{}_avg{}-{}.pdf'.format(variables_str, \
                                                                                              str(k), \
                                                                                              datestr_start, \
                                                                                              datestr_end)))
@@ -194,7 +194,7 @@ for k in range(kmin, kmax + 1):
     #Plot residuals for all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
                                 monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[-0.5, 0.5], \
-                                outfile=join(outdir, '{}_k{}_resids_all{}-{}.png'.format(variables_str, \
+                                outfile=join(outdir, 'yearly', '{}_k{}_resids_all{}-{}.png'.format(variables_str, \
                                                                                str(k), \
                                                                                datestr_start, \
                                                                                datestr_end)), resid=True)
