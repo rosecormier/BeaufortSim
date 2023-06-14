@@ -82,6 +82,10 @@ outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
+    
+for subfolder in ["monthly", "yearly", "seasonal"]:
+    if not os.path.exists(join(outdir, subfolder)):
+        os.makedirs(join(outdir, subfolder))
 
 vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
 scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
@@ -151,17 +155,20 @@ for k in range(kmin, kmax + 1):
         vecNs.append(vecN)
         
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_{}-{}.pdf'.format(variables_str, \
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'monthly', '{}_k{}_{}-{}.pdf'.format(variables_str, \
                                                                       str(k), \
                                                                       monthstr, \
                                                                       yearstr)))
+        
+    datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]
 
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
                                 monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=scalar_bounds, \
-                                outfile=join(outdir, '{}_k{}_all{}.png'.format(variables_str, \
+                                outfile=join(outdir, '{}_k{}_all{}-{}.png'.format(variables_str, \
                                                                                str(k), \
-                                                                               yearstr)))
+                                                                               datestr_start, \
+                                                                               datestr_end)))
 
     #Plot annual averages
     scalar_mean, vecE_mean, vecN_mean = ArcCir_contourf_quiver(ds_grid, k, scalars, vecEs, vecNs, \
@@ -169,9 +176,10 @@ for k in range(kmin, kmax + 1):
                                                               yearstrs[0]+" average", \
                                                               lon_centers, lat_centers, \
                                                             scalar_bounds=scalar_bounds, outfile=join(outdir, \
-                                                                   '{}_k{}_avg{}.pdf'.format(variables_str, \
+                                                                   '{}_k{}_avg{}-{}.pdf'.format(variables_str, \
                                                                                              str(k), \
-                                                                                             yearstr)))
+                                                                                             datestr_start, \
+                                                                                             datestr_end)))
     
     #Compute annual average magnitudes of scalar and vector fields
     
@@ -186,6 +194,7 @@ for k in range(kmin, kmax + 1):
     #Plot residuals for all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
                                 monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[-0.5, 0.5], \
-                                outfile=join(outdir, '{}_k{}_resids_all{}.png'.format(variables_str, \
+                                outfile=join(outdir, '{}_k{}_resids_all{}-{}.png'.format(variables_str, \
                                                                                str(k), \
-                                                                               yearstr)), resid=True)
+                                                                               datestr_start, \
+                                                                               datestr_end)), resid=True)
