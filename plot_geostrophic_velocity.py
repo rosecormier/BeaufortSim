@@ -72,6 +72,10 @@ outdir = join(".", config['outdir'], 'geostrophic')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
     
+for subfolder in ["yearly"]:
+    if not os.path.exists(join(outdir, subfolder)):
+        os.makedirs(join(outdir, subfolder))
+    
 #Get variables associated with velocity and density/pressure
 
 vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL', geostrophic=True)
@@ -162,9 +166,7 @@ for k in range(kmin, kmax + 1):
     u_mean = comp_temp_mean(u_list)
     
     #Plot geostrophic velocity with pressure
-    ArcCir_contourf_quiver(ds_grid, k, pressures, [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_all{}.pdf'.format(variables_str, \
-                                                                      str(k), \
-                                                                      yearstr)))
+    ArcCir_contourf_quiver(ds_grid, k, pressures, [np.real(u_g_mean)], [np.imag(u_g_mean)], resolution, vir_nanmasked, yearstrs[0]+" average (geostrophic velocity)", lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'yearly', '{}_k{}_all{}.pdf'.format(variables_str, str(k), yearstr)))
 
     #Compute Delta-u metric
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean)
@@ -174,14 +176,14 @@ for k in range(kmin, kmax + 1):
     #Plot Delta-u
     
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Repeat with small velocities masked
     
     Delta_u = comp_delta_u_norm(ds_grid, u_mean, u_g_mean, mask=mask_delta_u(0.005, u_mean))
 
     lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid_copy, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, red_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr="Delta_u", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'Delta_u_mask_k{}_all{}.pdf'.format(str(k), yearstr)))
     
     #Compute new geostrophy metric
     geos_metric = comp_geos_metric(ds_grid, u_mean, u_g_mean)
@@ -191,4 +193,4 @@ for k in range(kmin, kmax + 1):
     ds_grid_copy = ds_grid.copy()
     lon_centers, lat_centers, lon_edges, lat_edges, geos_metric_plot = ecco_resample(ds_grid_copy, geos_metric, latmin, latmax, lonmin, lonmax, resolution)
     
-    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="geos_metric", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'new_metric_k{}_all{}.pdf'.format(str(k), yearstr)))
+    ArcCir_pcolormesh(ds_grid, k, [geos_metric_plot], resolution, 'Reds', lon_centers, lat_centers, yearstr, scalar_attr="geos_metric", scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'new_metric_k{}_all{}.pdf'.format(str(k), yearstr)))

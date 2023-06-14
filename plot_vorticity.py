@@ -64,6 +64,10 @@ outdir = join(".", config['outdir'], 'vorticity')
 if not os.path.exists(outdir):
     os.makedirs(outdir)
     
+for subfolder in ["yearly"]:
+    if not os.path.exists(join(outdir, subfolder)):
+        os.makedirs(join(outdir, subfolder))
+    
 #Get variables associated with velocity
 vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL')
 
@@ -139,7 +143,7 @@ for k in range(kmin, kmax + 1):
         zetas.append(zeta_field/f_mean) #Normalize by f and save
     
     #Compute and plot annual average vorticity, normalized by f
-    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    zeta_mean = ArcCir_pcolormesh(ds_grid, k, zetas, resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute residuals of monthly averages
     zeta_residuals = comp_residuals(zetas, zeta_mean) #Plot this?
@@ -149,7 +153,7 @@ for k in range(kmin, kmax + 1):
     #Compute and plot local Rossby number
     
     Ro_l = comp_local_Ro(zeta_mean, lat_centers)
-    ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'seismic', lon_centers, lat_centers, yearstr, scalar_attr='Ro_l', scalar_bounds=[-3e-3, 3e-3], outfile=join(outdir, 'localRo_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'seismic', lon_centers, lat_centers, yearstr, scalar_attr='Ro_l', scalar_bounds=[-3e-3, 3e-3], outfile=join(outdir, 'yearly', 'localRo_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Concatenate and average velocities
     
@@ -182,9 +186,9 @@ for k in range(kmin, kmax + 1):
     W[W == 0] = np.nan
     
     #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
+    ArcCir_contourf_quiver(ds_grid, k, [W], velEs, velNs, resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
     
 ##############################
 
@@ -231,7 +235,7 @@ for k in range(kmin, kmax + 1):
     
     zeta_mean = comp_vorticity(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
     lon_centers, lat_centers, lon_edges, lat_edges, zeta_field = ecco_resample(ds_grid, zeta_mean.isel(k=k), latmin, latmax, lonmin, lonmax, resolution)
-    ArcCir_pcolormesh(ds_grid, k, [zeta_field/f_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [zeta_field/f_mean], resolution, 'PuOr', lon_centers, lat_centers, yearstr, scalar_attr='zeta_geos', scalar_bounds=[-1e-3, 1e-3], outfile=join(outdir, 'yearly', 'zeta_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
     #Compute average strain components
     
@@ -258,6 +262,6 @@ for k in range(kmin, kmax + 1):
     W[W == 0] = np.nan
     
     #Plot annual average W
-    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
+    ArcCir_pcolormesh(ds_grid, k, [W], resolution, seis_nanmasked, lon_centers, lat_centers, yearstr, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}.png'.format(str(k), yearstr)), lats_lons=[70.0, 85.0, -180.0, -90.0])
     
-    ArcCir_contourf_quiver(ds_grid, k, [W], [u_g_E], [u_g_N], resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'W_k{}_geos_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
+    ArcCir_contourf_quiver(ds_grid, k, [W], [u_g_E], [u_g_N], resolution, seis_nanmasked, yearstr, lon_centers, lat_centers, scalar_attr='W_geos', scalar_bounds=[-1.5e-14, 1.5e-14], outfile=join(outdir, 'yearly', 'W_k{}_geos_avg{}_contour.png'.format(str(k), yearstr)), no_levels=10)
