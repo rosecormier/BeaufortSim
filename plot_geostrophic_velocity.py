@@ -48,9 +48,6 @@ parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values
 parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
-parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
-                    default=False)
-parser.add_argument("--season", type=str, help="Months marking start and end of 'season'", default=["01", "01"])
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -66,14 +63,7 @@ kmin, kmax = config['kvals'][0], config['kvals'][1]
 scalar_bounds = config['vminmax']
 
 startmo, startyr = config['month'], config['start']
-seasonal = config['seasonal']
-
-if not seasonal:
-    mos = config['iters']
-
-elif seasonal:
-    seasons = config['iters']
-    season_start, season_end = config['season'][0], config['season'][1]
+mos = config['iters']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -83,11 +73,7 @@ outdir = join(".", config['outdir'], 'geostrophic')
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
-    
-for subfolder in ["yearly"]:
-    if not os.path.exists(join(outdir, subfolder)):
-        os.makedirs(join(outdir, subfolder))
-    
+
 #Get variables associated with velocity and density/pressure
 
 vel_monthly_shortname, vel_monthly_nc_str, vel_variable = get_vector_field_vars('UVEL', 'VVEL', geostrophic=True)

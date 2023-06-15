@@ -36,7 +36,7 @@ parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
 parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                     default=[-180.0, -90.0])
 parser.add_argument("--month", type=str, help="Start month", default="01")
-parser.add_argument("--iters", type=int, help="Total number of months/seasons to iterate over", default=12)
+parser.add_argument("--mos", type=int, help="Total number of months to iterate over", default=12)
 parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="PHIHYDcR")
 parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", default="UVEL")
@@ -48,9 +48,6 @@ parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to stor
                     default="Downloads")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
                     default="visualization")
-parser.add_argument("--seasonal", type=bool, help="Whether to take seasonal averages rather than continuous averages", \
-                    default=False)
-parser.add_argument("--season", type=str, help="Months marking start and end of 'season'", default=["01", "01"])
 
 parser.add_argument("start", type=int, help="Start year")
 
@@ -69,14 +66,7 @@ yvec_attr = get_vector_partner(xvec_attr)
 scalar_bounds = config['vminmax']
 
 startmo, startyr = config['month'], config['start']
-seasonal = config['seasonal']
-
-if not seasonal:
-    mos = config['iters']
-
-elif seasonal:
-    seasons = config['iters']
-    season_start, season_end = config['season'][0], config['season'][1]
+mos = config['mos']
 
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
@@ -86,10 +76,6 @@ outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
     os.makedirs(outdir)
-    
-for subfolder in ["monthly", "yearly", "seasonal"]:
-    if not os.path.exists(join(outdir, subfolder)):
-        os.makedirs(join(outdir, subfolder))
 
 vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
 scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
@@ -109,9 +95,10 @@ ds_grid = load_grid(datdir) #Load grid
 year = startyr
 monthstrs, yearstrs = [], []
     
+#Iterate over all specified months
+
 i = get_starting_i(startmo)
     
-#Iterate over all specified months
 while i < get_starting_i(startmo) + mos:
 
     monthstr, yearstr = get_monthstr(i), str(year)
@@ -120,10 +107,10 @@ while i < get_starting_i(startmo) + mos:
 
     if (i + 1) % 12 == 0 and (i + 1) != get_starting_i(startmo) + mos:
         year += 1 #Go to next year
-        
+
     i += 1 #Go to next month
-    
-datestr_start, datestr_end = monthstrs[0] + yearstrs[0], monthstrs[-1] + yearstrs[-1]
+
+datestr = monthstrs[0] + yearstrs[0] + "-" + monthstrs[-1] + yearstrs[-1]
 
 ##############################
 
@@ -159,46 +146,42 @@ for k in range(kmin, kmax + 1):
         scalars.append(scalar)
         vecEs.append(vecE) 
         vecNs.append(vecN)
-        
+            
+        m_datestr = yearstr + "_" + monthstr
+            
         #Plot scalar with vector
-        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'monthly', '{}_k{}_{}-{}.pdf'.format(variables_str, \
-                                                                      str(k), \
-                                                                      monthstr, \
-                                                                      yearstr)))
+        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, '{}_k{}_{}.pdf'.format(variables_str, str(k), m_datestr)))
 
     #Plot all months
     ArcCir_contourf_quiver_grid(ds_grid, k, scalars, vecEs, vecNs, resolution, vir_nanmasked,  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=scalar_bounds, \
-                                outfile=join(outdir, 'yearly', '{}_k{}_all{}-{}.png'.format(variables_str, \
-                                                                               str(k), \
-                                                                               datestr_start, \
-                                                                               datestr_end)))
+                                    monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=scalar_bounds, \
+                                    outfile=join(outdir, 'yearly', '{}_k{}_all{}.png'.format(variables_str, \
+                                                                                   str(k), \
+                                                                                   datestr)))
 
-    #Plot annual averages
+    #Plot annual/interannual average
     scalar_mean, vecE_mean, vecN_mean = ArcCir_contourf_quiver(ds_grid, k, scalars, vecEs, vecNs, \
                                                               resolution, vir_nanmasked, \
                                                               yearstrs[0]+" average", \
                                                               lon_centers, lat_centers, \
                                                             scalar_bounds=scalar_bounds, outfile=join(outdir, \
-                                                            'yearly', '{}_k{}_avg{}-{}.pdf'.format(variables_str, \
+                                                            'yearly', '{}_k{}_avg{}.pdf'.format(variables_str, \
                                                                                              str(k), \
-                                                                                             datestr_start, \
-                                                                                             datestr_end)))
+                                                                                             datestr)))
     
-    #Compute annual average magnitudes of scalar and vector fields
+    #Compute annual/interannual average magnitudes of scalar and vector fields
     
     print("Scalar maximum magnitude =", np.nanmax(scalar_mean), "; scalar minimum magnitude =", np.nanmin(scalar_mean))
     magnitude_mean = np.sqrt(vecE_mean**2 + vecN_mean**2)
     print("Vector maximum magnitude =", np.nanmax(magnitude_mean), "; vector minimum magnitude =", np.nanmin(magnitude_mean))
     
-    #Compute residuals of monthly averages
+    #Compute residuals of monthly/seasonal averages
     scalar_residuals = comp_residuals(scalars, scalar_mean)
     vecE_residuals, vecN_residuals = comp_residuals(vecEs, vecE_mean), comp_residuals(vecNs, vecN_mean)
-
+    
     #Plot residuals for all months
-    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution,'seismic',  \
-                                monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[-0.5, 0.5], \
-                                outfile=join(outdir, 'yearly', '{}_k{}_resids_all{}-{}.png'.format(variables_str, \
-                                                                               str(k), \
-                                                                               datestr_start, \
-                                                                               datestr_end)), resid=True)
+    ArcCir_contourf_quiver_grid(ds_grid, k, scalar_residuals, vecE_residuals, vecN_residuals, resolution, 'seismic',  \
+                                    monthstrs, yearstrs, lon_centers, lat_centers, scalar_bounds=[-0.5, 0.5], \
+                                    outfile=join(outdir, 'yearly', '{}_k{}_resids_all{}.png'.format(variables_str, \
+                                                                                   str(k), \
+                                                                                   datestr)), resid=True)
