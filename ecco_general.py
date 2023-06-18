@@ -109,6 +109,7 @@ def load_dataset(curr_file):
     """
     
     dataset = xr.open_mfdataset(curr_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    dataset.load()
     
     return dataset
 
