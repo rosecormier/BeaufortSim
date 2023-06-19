@@ -19,8 +19,9 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, get_starting_i, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
-from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, get_vector_in_xy, comp_temp_mean, ecco_resample
+#from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
+from ecco_field_variables_new import get_field_vars, get_variable_str
 from geostrophic_functions import get_density_and_pressure, comp_geos_vel, rotate_u_g, comp_delta_u_norm, mask_delta_u, comp_geos_metric
 from ecco_visualization import ArcCir_contourf_quiver, ArcCir_pcolormesh
 
