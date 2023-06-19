@@ -243,11 +243,9 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     return scalar_mean, vecE_mean, vecN_mean
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                                resolution, cmap, monthstrs, \
-                                yearstrs, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
+                                resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                                 scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
-                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=10, \
-                                nrows=3, ncols=4, resid=False):
+                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=10, resid=False):
     
     """
     Creates array of contourf plots of scalar variable in a subdomain of the Arctic,
@@ -260,7 +258,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     scalar_bounds = bounds on scalar attribute
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
-    month/yearstrs = strings of months/years to plot
+    yearstr = string of year to plot
     outfile = output file name
     resid = whether this is a residual plot
     """
@@ -269,10 +267,15 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     
     mainfig = plt.figure(figsize=(48, 40))
     
+    months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+    
+    nrows, ncols = 3, 4
     nplots = nrows * ncols   
     row, col = -1, 0
         
     for i in range(nplots):
+        
+        monthstr = months[i]
         
         if i % ncols == 0:
             row += 1
@@ -281,7 +284,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
             col += 1
             
         scalar, vecE, vecN = scalars[i], vecEs[i], vecNs[i]
-        monthstr, yearstr = monthstrs[i], yearstrs[i]
         
         latmin, latmax, lonmin, lonmax = lats_lons
 
@@ -300,8 +302,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
         plot_geography(ax, labels=False)
         ax.set_title('\n {} {}'.format(get_month_name(monthstr), yearstr))
         
-    mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
-                     size=80)
+    mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstr, scalar_attr, xvec_attr, resid=resid), size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(filled_contours, ax=mainfig.get_axes(), aspect=40, pad=0.05, \
                             label=cbar_label(scalar_attr), location='bottom')
