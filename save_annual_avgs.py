@@ -72,5 +72,5 @@ for field in ECCO_fields: #Iterate over fields
             monthly_fields.append(ds_month[field])
             
         yearly_avg_field = comp_temp_mean(monthly_fields)
-        yearly_avg_field.to_netcdf(path=join(outdir, "avg_" + field + str(year) + ".nc"), engine="scipy")
+        yearly_avg_field.to_netcdf(path=join(outdir, "avg_"+field+"_"+str(year)+".nc"), engine="scipy")
         yearly_avg_field.close()
