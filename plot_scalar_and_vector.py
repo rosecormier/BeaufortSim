@@ -19,9 +19,8 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner#, get_starting_i
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner
 from ecco_visualization import cbar_label, contourf_quiver_title, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
-#from ecco_field_variables import get_scalar_field_vars, get_vector_field_vars
 from ecco_field_variables_new import get_field_vars, get_variable_str
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
@@ -48,8 +47,6 @@ parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", n
                     default=1.0)
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", \
                     default="Downloads")
-#parser.add_argument("--yeardatdir", type=str, help="Directory (rel. to here) with yearly averaged ECCO data", \
-#                    default="yearly_averages")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
                     default="visualization")
 
@@ -75,7 +72,6 @@ years = config['years']
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
-#yeardatdir = join(user_home_dir, config['yeardatdir'])
   
 outdir = join(".", config['outdir'])
 
@@ -85,11 +81,7 @@ if not os.path.exists(outdir):
 for subdir in ["monthly", "yearly"]:
     if not os.path.exists(join(outdir, subdir)):
         os.makedirs(join(outdir, subdir))
-"""
-vector_monthly_shortname, vector_monthly_nc_str, vector_variable = get_vector_field_vars(xvec_attr, yvec_attr)
-scalar_monthly_shortname, scalar_monthly_nc_str, scalar_variable = get_scalar_field_vars(scalar_attr)
-variables_str = vector_variable + '_' + scalar_variable
-"""
+
 vector_monthly_shortname, vector_monthly_nc_str = get_field_vars(xvec_attr+yvec_attr)
 scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar_attr)
 
@@ -101,36 +93,12 @@ vector_dir = join(datdir, vector_monthly_shortname)
 scalar_dir = join(datdir, scalar_monthly_shortname)
     
 ds_grid = load_grid(datdir) #Load grid    
-    
-##############################
 
-#GET LISTS OF MONTHS/YEARS
-"""
-year = startyr
-monthstrs = []#, yearstrs = [], []
-"""    
-#Iterate over all specified months
-"""
-i = 0# get_starting_i(startmo)
-    
-while i < 12 * years: #get_starting_i(startmo) + mos:
-    
-    #monthstr, yearstr = get_monthstr(i), str(year)
-    monthstr = get_monthstr(i)
-    monthstrs.append(monthstr)
-    #yearstrs.append(yearstr)
-
-    if (i + 1) % 12 == 0 and (i + 1) != 12 * years: #get_starting_i(startmo) + mos:
-        year += 1 #Go to next year
-
-    i += 1 #Go to next month
-"""
 ##############################
 
 #CREATE MONTHLY PLOTS OF VELOCITY AND PRESSURE ANOMALY
 
-#Iterate over all specified depths
-for k in range(kmin, kmax + 1):
+for k in range(kmin, kmax + 1): #Iterate over all specified depths
 
     scalars, vecEs, vecNs = [], [], []
 
@@ -139,9 +107,8 @@ for k in range(kmin, kmax + 1):
         year = startyr + i
         yearstr = str(year)
     
-        for m in range(12):# * years): #(mos):
+        for m in range(12):
 
-            #monthstr, yearstr = monthstrs[m], yearstrs[m]
             monthstr = get_monthstr(m)
 
             curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+ \
@@ -165,8 +132,6 @@ for k in range(kmin, kmax + 1):
             scalars.append(scalar)
             vecEs.append(vecE) 
             vecNs.append(vecN)
-
-            #m_datestr = yearstr + "_" + monthstr
 
             #Plot scalar with vector
             ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, vir_nanmasked, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_bounds=scalar_bounds, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)))

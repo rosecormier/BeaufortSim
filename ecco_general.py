@@ -43,23 +43,6 @@ def get_vector_partner(x_comp):
     
     return y_comp
 
-def get_starting_i(startmo):
-
-    """
-    Get index representing start month.
-    
-    startmo = starting month
-    """
-    
-    month_dict = {0: "01", 1: "02", 2: "03", 3: "04", 4: "05", 5: "06",
-              6: "07", 7: "08", 8: "09", 9: "10", 10: "11", 11: "12"}
-    month_key_list, month_val_list = list(month_dict.keys()), list(month_dict.values())
-    
-    month_index = month_val_list.index(startmo)
-    i = month_key_list[month_index]
-    
-    return i
-
 def get_monthstr(i):
     
     """
