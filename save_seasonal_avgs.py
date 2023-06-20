@@ -102,7 +102,7 @@ for field in ECCO_fields: #Iterate over fields
             
             ds_month = load_dataset(curr_file) #Load monthly file into workspace
             
-            monthly_fields.append(ds_month[field])
+            monthly_fields.append(ds_month.squeeze())
         
         seasonal_avg_field = comp_temp_mean(monthly_fields)
         seasonal_avg_field.to_netcdf(path=join(outdir, "avg_"+field+"_"+start_month+str(year_start)+"-"+end_month+year+".nc"), engine="scipy")

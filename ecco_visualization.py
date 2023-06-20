@@ -91,7 +91,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
                     'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
                     'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number', \
-                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$'}
+                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
+                    'PHIHYDcR': 'Hydrostatic pressure anomaly'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
