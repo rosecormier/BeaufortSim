@@ -18,7 +18,7 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables_new import get_field_vars, get_variable_str
 
@@ -204,6 +204,8 @@ if not include_vector_field:
                 
         elif seasonal: #Case where we plot one season per year
             
+            season_months, season_years = get_season_months_and_years(season_start, season_end)
+            
             for i in range(years): #Iterate over specified years
                 
                 year = startyr + i
@@ -219,4 +221,4 @@ if not include_vector_field:
                 lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                 
                 #Plot seasonal average
-                ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, 'viridis', lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) #Rose - fix colormap, extend, title
+                ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, 'viridis', lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}-{}_{}-{}.pdf'.format(variables_str, str(k), season_months[0], season_months[-1], yearstr, str(year+season_years[-1]))), lats_lons=lats_lons) #Rose - fix colormap, extend, title

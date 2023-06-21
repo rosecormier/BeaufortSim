@@ -14,7 +14,7 @@ import argparse
 
 from os.path import expanduser, join
 
-from ecco_general import load_dataset, comp_temp_mean
+from ecco_general import load_dataset, comp_temp_mean, get_season_months_and_years
 from ecco_field_variables_new import get_field_vars
 
 ##############################
@@ -41,8 +41,6 @@ ECCO_fields = config['ECCOfields']
 years = config['years']
 start_month, end_month = config['months']
 
-months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-
 user_home_dir = expanduser('~')
 sys.path.append(join(user_home_dir, 'ECCOv4-py'))
 datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
@@ -52,33 +50,6 @@ outdir = join(".", config['outdir'])
 if not os.path.exists(outdir):
     os.makedirs(outdir)
 
-##############################
-
-season_start_i, season_end_i = months.index(start_month), months.index(end_month)
-
-if season_end_i >= season_start_i:
-    
-    season_months = months[season_start_i:season_end_i+1]
-    season_years = []
-    
-    for month in season_months:
-        season_years.append(0)
-    
-elif season_end_i < season_start_i:
-    
-    season_1 = months[season_start_i:]
-    season_2 = months[0:season_end_i+1]
-    
-    season_years = []
-    
-    for month in season_1:
-        season_years.append(0)
-        
-    for month in season_2:
-        season_years.append(1)
-        
-    season_months = season_1 + season_2
-    
 ##############################
 
 for field in ECCO_fields: #Iterate over fields
