@@ -53,7 +53,7 @@ parser.add_argument("--seasonmonths", type=str, help="Start and end months of se
 
 #Attributes
 
-parser.add_argument("--scalar", type=str, help="Name of scalar attribute", nargs=1, default="PHIHYDcR")
+parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="PHIHYDcR")
 parser.add_argument("--scalarECCO", type=bool, help="Whether scalar field comes from ECCO files", \
                     default=True)
 parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
@@ -72,6 +72,9 @@ parser.add_argument("--yearlydatdir", type=str, help="Directory (rel. to here) w
                     default="yearly_averages")
 parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
                     default="visualization")
+
+#Visualization
+parser.add_argument("--cmap", type=str, help="MPL colormap", default="viridis")
 
 args = parser.parse_args()
 config = vars(args)
@@ -96,7 +99,7 @@ if seasonal:
 
 #Attributes
 
-scalar_attr = config['scalar'][0]
+scalar_attr = config['scalar']
 vmin, vmax = config['vminmax'][0], config['vminmax'][1]
 
 include_vector_field = False
@@ -141,6 +144,8 @@ elif not seasonal:
 for subdir in subdirs:
     if not os.path.exists(join(outdir, subdir)):
         os.makedirs(join(outdir, subdir))
+        
+cmap = config['cmap']
         
 ##############################
 
@@ -188,8 +193,8 @@ if not include_vector_field:
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
                     #Plot monthly scalar data
-                    ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, 'viridis', lon_centers, lat_centers, monthstr+"-"+yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons) #Rose - fix colormap, extend
-                
+                    ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons) 
+                    
                 #Get annually-averaged data
                 
                 scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
@@ -200,7 +205,7 @@ if not include_vector_field:
                 lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
 
                 #Plot annual average
-                ArcCir_pcolormesh(ds_grid, k, [scalar_year], resolution, 'viridis', lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) #Rose - fix colormap, extend
+                ArcCir_pcolormesh(ds_grid, k, [scalar_year], resolution, cmap, lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
                 
         elif seasonal: #Case where we plot one season per year
             
@@ -226,14 +231,14 @@ if not include_vector_field:
                 seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                 
                 #Plot seasonal average
-                ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, 'viridis', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) #Rose - fix colormap, extend
+                ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, cmap, lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                 
                 data_seasons.append(scalar_seas)
                 
             seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
             
             #Plot average over all seasons
-            ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, 'viridis', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) #Rose - fix colormap, extend
+            ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, cmap, lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
             
 ##############################
 
