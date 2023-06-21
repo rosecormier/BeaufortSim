@@ -53,12 +53,12 @@ parser.add_argument("--seasonmonths", type=str, help="Start and end months of se
 
 #Attributes
 
-parser.add_argument("--scalar", type=str, help="Name of scalar attribute", nargs="+", default="PHIHYDcR")
+parser.add_argument("--scalar", type=str, help="Name of scalar attribute", nargs=1, default="PHIHYDcR")
 parser.add_argument("--scalarECCO", type=bool, help="Whether scalar field comes from ECCO files", \
                     default=True)
 parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
                     default=[-1, 1])
-parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", default=None)
+parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", nargs=1, default=None)
 parser.add_argument("--vectorECCO", type=bool, help="Whether vector field comes from ECCO files", \
                     default=True)
 
@@ -96,7 +96,7 @@ if seasonal:
 
 #Attributes
 
-scalar_attr = config['scalar']
+scalar_attr = config['scalar'][0]
 vmin, vmax = config['vminmax'][0], config['vminmax'][1]
 
 include_vector_field = False
@@ -206,6 +206,8 @@ if not include_vector_field:
             
             season_months, season_years = get_season_months_and_years(season_start, season_end)
             
+            data_seasons = []
+            
             for i in range(years): #Iterate over specified years
                 
                 year = startyr + i
@@ -222,3 +224,8 @@ if not include_vector_field:
                 
                 #Plot seasonal average
                 ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, 'viridis', lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}-{}_{}-{}.pdf'.format(variables_str, str(k), season_months[0], season_months[-1], yearstr, str(year+season_years[-1]))), lats_lons=lats_lons) #Rose - fix colormap, extend, title
+                
+                data_seasons.append(scalar_seas)
+                
+            #Plot average over all seasons
+            ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, 'viridis', lon_centers, lat_centers, yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}-{}_{}-{}.pdf'.format(variables_str, str(k), season_months[0], season_months[-1], str(startyr), str(startyr+(years-1)+season_years[-1]))), lats_lons=lats_lons) #Rose - fix colormap, extend, title

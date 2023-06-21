@@ -61,6 +61,7 @@ for field in ECCO_fields: #Iterate over fields
     for i in range(len(years)): #Iterate over seasons
         
         year_start = years[i]
+        season_months, season_years = get_season_months_and_years(start_month, end_month)
         
         monthly_fields = []
 
