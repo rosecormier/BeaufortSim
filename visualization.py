@@ -66,6 +66,8 @@ parser.add_argument("--vectorECCO", type=bool, help="Whether vector field comes 
 
 parser.add_argument("--datdir", type=str, help="Directory (rel. to home) with raw ECCO data", \
                     default="Downloads")
+parser.add_argument("--compdatdir", type=str, help="Directory (rel. to here) with computed monthly data", \
+                    default="computed_monthly")
 parser.add_argument("--seasonaldatdir", type=str, help="Directory (rel. to here) with seasonal avgs", \
                     default="seasonal_averages")
 parser.add_argument("--yearlydatdir", type=str, help="Directory (rel. to here) with annual avgs", \
@@ -120,10 +122,14 @@ scalarECCO, vectorECCO = config['scalarECCO'], config['vectorECCO']
     
 #Directories
 
-user_home_dir = expanduser('~')
-sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
+if scalarECCO or vectorECCO: #If using any ECCO data directly
+    
+    user_home_dir = expanduser('~')
+    sys.path.append(join(user_home_dir, 'ECCOv4-py'))
+    datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
   
+compdatdir = join(".", config['compdatdir'])
+
 outdir = join(".", config['outdir'])
 
 if not os.path.exists(outdir):
@@ -151,17 +157,23 @@ cmap = config['cmap']
 
 #GET FILE NAMES
 
+scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar_attr)
+
 if scalarECCO:
-    
-    scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar_attr)
     scalar_dir = join(datdir, scalar_monthly_shortname)
+    
+elif not scalarECCO:
+    scalar_dir = join(compdatdir, scalar_monthly_shortname)
     
 if include_vector_field:
     
-    if vectorECCO:
+    vector_monthly_shortname, vector_monthly_nc_str = get_field_vars(xvec_attr+yvec_attr)
     
-        vector_monthly_shortname, vector_monthly_nc_str = get_field_vars(xvec_attr+yvec_attr)
+    if vectorECCO:
         vector_dir = join(datdir, vector_monthly_shortname)
+        
+    elif not vectorECCO:
+        vector_dir = join(compdatdir, vector_monthly_shortname)
 
 ds_grid = load_grid(datdir) #Load grid  
 
@@ -184,7 +196,11 @@ if not include_vector_field:
                     
                     monthstr = get_monthstr(m)
                     
-                    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+                    if scalarECCO:
+                        curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+                    
+                    elif not scalarECCO:
+                        curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
                     
                     #Load monthly scalar file into workspace
                     ds_scalar_mo = load_dataset(curr_scalar_file)
@@ -243,3 +259,18 @@ if not include_vector_field:
 ##############################
 
 #CASE WHERE VECTOR AND SCALAR ARE PROVIDED
+
+if include_vector_field:
+    
+    for k in range(kmin, kmax + 1): #Iterate over specified depths
+        
+        if not seasonal: #Case where we plot every month
+            
+            for i in range(years): #Iterate over specified years
+                
+                year = startyr + i
+                yearstr = str(year)
+                
+                for m in range(12): #Iterate over months
+                    
+                    monthstr = get_monthstr(m)
