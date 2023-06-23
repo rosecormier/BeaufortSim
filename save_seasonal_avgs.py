@@ -15,7 +15,7 @@ import argparse
 from os.path import expanduser, join
 
 from ecco_general import load_dataset, comp_temp_mean, get_season_months_and_years
-from ecco_field_variables_new import get_field_vars
+from ecco_field_variables import get_field_vars
 
 ##############################
 

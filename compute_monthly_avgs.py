@@ -16,7 +16,7 @@ import ecco_v4_py as ecco
 from os.path import expanduser, join
 
 from ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
-from ecco_field_variables_new import get_field_vars, get_variable_str #
+from ecco_field_variables import get_field_vars, get_variable_str 
 from geostrophic_functions import get_density_and_pressure, comp_geos_vel
 from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain
 

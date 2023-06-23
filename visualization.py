@@ -20,7 +20,7 @@ from os.path import expanduser, join
 
 from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
-from ecco_field_variables_new import get_field_vars, get_variable_str
+from ecco_field_variables import get_field_vars, get_variable_str
 
 vir_nanmasked = plt.get_cmap('viridis_r').copy()
 vir_nanmasked.set_bad('black')
