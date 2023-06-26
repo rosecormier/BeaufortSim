@@ -209,7 +209,7 @@ def main():
                     yearstr = str(year)
 
                     for m in range(12): #Iterate over months
-                        print(m)
+                        
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
@@ -217,7 +217,6 @@ def main():
                             curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
                             if os.path.exists(curr_scalar_file): #Look for the file
-
                                 ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
 
                             else: #If it doesn't yet exist, download the file
