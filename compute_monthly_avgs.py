@@ -86,7 +86,6 @@ denspress_monthly_shortname, denspress_monthly_nc_str = get_field_vars('PHIHYDcR
 vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
 
 rho_ref = 1029.0 #Reference density (kg/m^3)
-f_mean = 1e-4 #"Typical" Coriolis parameter (1/s)
 
 ##############################
 
@@ -140,9 +139,10 @@ for i in range(years):
         
         xgcm_grid = ecco.get_llc_grid(ds_grid)
         
-        zeta = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+        ZETA = comp_vorticity(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
         
-        zeta.to_netcdf(path=join(outdir, zeta_monthly_shortname, zeta_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+        ZETA.name = 'ZETA'
+        ZETA.to_netcdf(path=join(outdir, zeta_monthly_shortname, zeta_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
         
         ##############################
         

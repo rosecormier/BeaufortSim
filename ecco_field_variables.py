@@ -25,7 +25,8 @@ def get_field_vars(attribute):
 def get_variable_str(attribute, geostrophic=False):
     
     variables = {'PHIHYDcR': 'p_anom', \
-                'UVELVVEL': 'u'}
+                'UVELVVEL': 'u', \
+                'ZETA': 'zeta'}
 
     variable_string = variables[attribute]
     

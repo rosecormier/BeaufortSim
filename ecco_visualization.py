@@ -26,7 +26,8 @@ def cbar_label(scalar_attr):
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                      'zeta': r'Vorticity per $f_{mean}$', \
+                      'ZETA': 'Vorticity (1/s)', \
+                      'zetanorm': r'Vorticity per $f_{mean}$', \
                       'W': r'W $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
                       'zeta_geos': r'Vorticity per $f_{mean}$', \
@@ -85,7 +86,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
         depthstr = str(depth) + ' m depth'
         
     variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                    'zeta': r'Vorticity, normalized by $f_{mean}$', \
+                    'ZETA': 'Vorticity', \
+                    'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
                     'W': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
                     'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
@@ -164,7 +166,7 @@ def plot_geography(ax, labels=True):
         
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
     scalar_mean = comp_temp_mean(scalars)
     scalar = scalar_mean
@@ -175,7 +177,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    if scalar_bounds is None:
+    if scalar_bounds[0] == scalar_bounds[1]:
         vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
     else:
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]

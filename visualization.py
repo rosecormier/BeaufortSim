@@ -2,6 +2,9 @@
 Master script for Beaufort Sim visualization.
 
 Rosalie Cormier, 2023
+
+Note -- if vector = u_g, need to also plot our metric
+    -- if scalar = vorticity, need to also plot W
 """
 
 ##############################
@@ -18,7 +21,7 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years
+from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_field_vars, get_variable_str
 
@@ -46,21 +49,21 @@ parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, defa
 
 parser.add_argument("start", type=int, help="Start year") #This argument is required
 parser.add_argument("--years", type=int, help="Total number of years to plot", default=1)
-parser.add_argument("--seasonal", type=bool, help="Whether to plot specific seasons", \
-                    default=False)
+parser.add_argument("--seasonal", dest='seasonal', help="Whether to plot specific seasons", \
+                    default=False, action='store_true')
 parser.add_argument("--seasonmonths", type=str, help="Start and end months of season", nargs=2, \
                     default=["01", "01"])
 
 #Attributes
 
-parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="PHIHYDcR")
-parser.add_argument("--scalarECCO", type=bool, help="Whether scalar field comes from ECCO files", \
-                    default=True)
+parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="ZETA")
+parser.add_argument("--scalarECCO", dest='scalarECCO', help="Whether scalar field comes from ECCO files", \
+                    default=False, action='store_true')
 parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
-                    default=[-1, 1])
+                    default=[1, 1])
 parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", nargs=1, default=None)
-parser.add_argument("--vectorECCO", type=bool, help="Whether vector field comes from ECCO files", \
-                    default=True)
+parser.add_argument("--vectorECCO", dest='vectorECCO', help="Whether vector field comes from ECCO files", \
+                    default=False, action='store_true')
 
 #Directories
 
@@ -119,14 +122,12 @@ elif xvec_attr is None:
     variables_str = get_variable_str(scalar_attr)
     
 scalarECCO, vectorECCO = config['scalarECCO'], config['vectorECCO']
-    
+
 #Directories
 
-if scalarECCO or vectorECCO: #If using any ECCO data directly
-    
-    user_home_dir = expanduser('~')
-    sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-    datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
+user_home_dir = expanduser('~')
+sys.path.append(join(user_home_dir, 'ECCOv4-py'))
+datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
   
 compdatdir = join(".", config['compdatdir'])
 
@@ -152,6 +153,8 @@ for subdir in subdirs:
         os.makedirs(join(outdir, subdir))
         
 cmap = config['cmap']
+
+f_mean = 1e-4 #"Typical" Coriolis parameter (1/s)
         
 ##############################
 
@@ -195,21 +198,35 @@ if not include_vector_field:
                 for m in range(12): #Iterate over months
                     
                     monthstr = get_monthstr(m)
-                    
+
                     if scalarECCO:
+                        
                         curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+                        
+                        #Load monthly scalar file into workspace
+                        ds_scalar_mo = load_dataset(curr_scalar_file)
                     
                     elif not scalarECCO:
+                        
                         curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
-                    
-                    #Load monthly scalar file into workspace
-                    ds_scalar_mo = load_dataset(curr_scalar_file)
+                        
+                        #Load monthly scalar file into workspace
+                        ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy")
+                        
+                        ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr)
 
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
                     #Plot monthly scalar data
                     ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons) 
+                    
+                    if scalar_attr == 'ZETA': #If vorticity, also normalize, and compute and plot Ro_l, W
+                        
+                        scalar *= 1 / f_mean #Normalize vorticity by typical f
+                        
+                        #Plot normalized vorticity
+                        ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, 'zetanorm', scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                     
                 #Get annually-averaged data
                 
