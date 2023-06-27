@@ -12,6 +12,7 @@ import os
 import sys
 import argparse
 import ecco_v4_py as ecco
+import xarray as xr
 
 from os.path import expanduser, join
 
@@ -79,8 +80,8 @@ def main(**kwargs):
     sys.path.append(join(user_home_dir, 'ECCOv4-py'))
     datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
 
-    ug_monthly_shortname, ug_monthly_nc_str = get_field_vars('UG')
-    vg_monthly_shortname, vg_monthly_nc_str = get_field_vars('VG')
+    ug_monthly_shortname, ug_monthly_nc_str = get_field_vars('UGVG')
+    #vg_monthly_shortname, vg_monthly_nc_str = get_field_vars('VG')
     zeta_monthly_shortname, zeta_monthly_nc_str = get_field_vars('ZETA')
     normal_monthly_shortname, normal_monthly_nc_str = get_field_vars('NORMAL')
     shear_monthly_shortname, shear_monthly_nc_str = get_field_vars('SHEAR')
@@ -137,11 +138,15 @@ def main(**kwargs):
             dens, press = get_density_and_pressure(ds_denspress_mo)
 
             u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
-
+            u_g.name = 'u_g'
+            v_g.name = 'v_g'
+            
             #Save geostrophic velocity components
 
-            u_g.to_netcdf(path=join(outdir, ug_monthly_shortname, ug_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
-            v_g.to_netcdf(path=join(outdir, vg_monthly_shortname, vg_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            #vel_g_ds = xr.Dataset(data_vars=(u_g, v_g))
+            vel_g_ds = xr.merge([u_g, v_g])
+            vel_g_ds.to_netcdf(path=join(outdir, ug_monthly_shortname, ug_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            #v_g.to_netcdf(path=join(outdir, vg_monthly_shortname, vg_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
 
             ##############################
 

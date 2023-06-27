@@ -375,8 +375,20 @@ def main():
                                 
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
                                 ds_vector_mo = load_dataset(curr_vector_file)
-                                
-                            ds_grid = get_vector_in_xy(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+
+                            #Get and rotate vector
+                            vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                            
+                        #Plot monthly data
+                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr+yvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        """
+                        if scalar_attr == 'ZETA': #If vorticity, also normalize, and compute and plot Ro_l, W
+
+                            scalar *= 1 / f_mean #Normalize vorticity by typical f
+
+                            #Plot normalized vorticity
+                            ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, 'zetanorm', scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        """
                             
 ##############################
 
