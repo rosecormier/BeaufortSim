@@ -30,7 +30,6 @@ def main(**kwargs):
 
         parser.add_argument("start", type=int, help="Start year")
     
-        parser = get_parser()
         args = parser.parse_args()
         config = vars(args)
 
@@ -84,13 +83,15 @@ def main(**kwargs):
                 #Download monthly-averaged file
                 ecco_podaac_download(ShortName=vec_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
 
-        #Iterate over scalar variables
-        for scalar in scalars:
+        if scalars is not None:
+                
+            #Iterate over scalar variables
+            for scalar in scalars:
 
-            scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar)
+                scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar)
 
-            #Download monthly-averaged file
-            ecco_podaac_download(ShortName=scalar_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
+                #Download monthly-averaged file
+                ecco_podaac_download(ShortName=scalar_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
 
         if (i + 1) % 12 == 0 and (i + 1) != start_i + mos:
             year += 1 #Go to next year

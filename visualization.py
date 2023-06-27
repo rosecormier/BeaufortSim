@@ -27,6 +27,7 @@ from ecco_field_variables import get_field_vars, get_variable_str
 
 #The following are scripts that are imported as modules but may be run within this script
 
+import compute_monthly_avgs
 import download_new_data
 import save_annual_avgs
 import save_seasonal_avgs
@@ -131,7 +132,6 @@ def main():
         variables_str = get_variable_str(xvec_attr+yvec_attr) + "_" + get_variable_str(scalar_attr)
 
     elif xvec_attr is None:
-
         variables_str = get_variable_str(scalar_attr)
 
     scalarECCO, vectorECCO = config['scalarECCO'], config['vectorECCO']
@@ -216,21 +216,25 @@ def main():
 
                             curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
-                            if os.path.exists(curr_scalar_file): #Look for the file
-                                ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
-
-                            else: #If it doesn't yet exist, download the file
+                            if not os.path.exists(curr_scalar_file):
                                 
+                                #If the file doesn't exist, download it
                                 download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=config['datdir'])
-                                ds_scalar_mo = load_dataset(curr_scalar_file)
+                            
+                            ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
 
                         elif not scalarECCO:
 
                             curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
 
-                            #Load monthly scalar file into workspace
-                            ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy")
+                            if os.path.exists(curr_scalar_file): #Look for the file
+                                ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
 
+                            else: #If it doesn't exist, compute it
+                                
+                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
+                                ds_scalar_mo = load_dataset(curr_scalar_file)
+                                
                             ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr)
 
                         #Convert scalar DataSet to useful field

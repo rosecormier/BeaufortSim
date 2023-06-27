@@ -20,43 +20,54 @@ from ecco_field_variables import get_field_vars
 
 ##############################
 
-def main():
+def main(**kwargs):
+    
+    if not kwargs:
 
-    #PARSE COMMAND-LINE INPUT AND SET GLOBAL VARIABLES
+        parser = argparse.ArgumentParser(description="Average field over a year", \
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser = argparse.ArgumentParser(description="Average field over a year", \
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("--field", type=str, help="Name of field to average", default="PHIHYDcR")
+        parser.add_argument("--datdir", type=str, help="Directory (rel. to home or here) with monthly data", \
+                            default="Downloads")
+        parser.add_argument("--usecompdata", dest='usecompdata', help="Whether to use computed monthly data", \
+                            default=False, action='store_true')
+        parser.add_argument("--outdir", type=str, help="Directory (rel. to here) to save output", \
+                            default="yearly_averages")
 
-    parser.add_argument("--field", type=str, help="Name of field to average", default="PHIHYDcR")
-    parser.add_argument("--datdir", type=str, help="Directory (rel. to home or here) with monthly data", \
-                        default="Downloads")
-    parser.add_argument("--usecompdata", dest='usecompdata', help="Whether to use computed monthly data", \
-                        default=False, action='store_true')
-    parser.add_argument("--outdir", type=str, help="Directory (rel. to here) to save output", \
-                        default="yearly_averages")
+        parser.add_argument("years", type=int, help="Years to average over (separately)", nargs="+")
 
-    parser.add_argument("years", type=int, help="Years to average over (separately)", nargs="+")
-
-    args = parser.parse_args()
-    config = vars(args)
-
-    field = config['field']
-    years = config['years']
+        args = parser.parse_args()
+        config = vars(args)
+        
+        field = config['field']
+        years = config['years']
+        
+        usecompdata = config['usecompdata']
+        
+        datdirshort = config['datdir']
+        outdir = config['outdir']
+        
+    elif kwargs:
+        
+        years = kwargs.get('years')
+        field = kwargs.get('field')
+        datdirshort = kwargs.get('datdir')
+        usecompdata = kwargs.get('usecompdata')
+        outdir = kwargs.get('outdir')
 
     months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-
-    usecompdata = config['usecompdata']
 
     if not usecompdata:
 
         user_home_dir = expanduser('~')
         sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-        datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
+        datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     elif usecompdata:
-        datdir = join(".", config['datdir'])
+        datdir = join(".", datdirshort)
 
-    outdir = join(".", config['outdir'])
+    outdir = join(".", outdir)
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
