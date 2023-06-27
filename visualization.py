@@ -290,10 +290,11 @@ def main():
 
                     year = startyr + i
                     yearstr = str(year)
+                    endyearstr = str(year + season_years[-1])
 
                     #Get seasonally-averaged data
 
-                    scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+"*")
+                    scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
                     
                     if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
                         
@@ -436,6 +437,37 @@ def main():
                     #Plot annual average
                     ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
                     
+            elif seasonal: #Case where we plot one season per year
+                    
+                season_months, season_years = get_season_months_and_years(season_start, season_end)
+                seas_monthstr = season_months[0] + "-" + season_months[-1] #For titles
+
+                data_seasons = []
+
+                for i in range(years): #Iterate over specified years
+
+                    year = startyr + i
+                    yearstr = str(year)
+                    endyearstr = str(year + season_years[-1])
+
+                    #Get seasonally-averaged data
+
+                    scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+                    vector_seas_file = join(seasonaldatdir, "avg_"+xvec_attr+yvec_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+                        
+                    if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
+
+                        if scalarECCO:
+                            datdirshort, usecompdata = 'Downloads', False
+
+                        elif not scalarECCO:
+                            datdirshort, usecompdata = 'computed_monthly', True
+
+                        save_seasonal_avgs.main(field=scalar_attr, years=[year], start_month=season_start, end_month=season_end, usecompdata=usecompdata, datdir=datdirshort, outdir=seasonaldatdir)
+
+                    ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
+                    ds_scalar_seas.load()
+
 ##############################
 
 if __name__ == "__main__":

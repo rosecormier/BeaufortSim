@@ -19,6 +19,7 @@ from ecco_general import load_dataset, comp_temp_mean, get_season_months_and_yea
 from ecco_field_variables import get_field_vars
 
 #To be called from this script
+import compute_monthly_avgs
 import download_new_data
 
 ##############################
@@ -107,6 +108,10 @@ def main(**kwargs):
             elif usecompdata:
 
                 curr_file = join(download_dir, monthly_nc_str+year+"-"+month+".nc")
+                
+                if not os.path.exists(curr_file): #Compute if it doesn't exist
+                    compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year_start, years=2, datdir='Downloads', outdir='computed_monthly')
+                
                 ds_month = xr.open_mfdataset(curr_file, engine="scipy")
 
             monthly_fields.append(ds_month.squeeze())
