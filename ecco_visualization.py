@@ -59,7 +59,8 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
         
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
                   'W': 'Okubo-Weiss parameter', \
-                  'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)'}
+                  'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                  'ZETA': 'Vorticity'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity', \
