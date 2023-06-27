@@ -62,7 +62,8 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
                   'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)'}
     scalar_str = scalar_dict[scalar_attr]
     
-    vector_dict = {'UVEL': 'water velocity'}
+    vector_dict = {'UVEL': 'water velocity', \
+                  'UG': 'geostrophic water velocity'}
     vector_str = vector_dict[xvec_attr]
     
     if resid:
@@ -195,7 +196,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     return scalar_mean
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', vec_attr='UVEL', \
+                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                            scalar_bounds=[1, 1], outfile="", \
                            lats_lons=[70.0, 85.0, -175.5, -90.5], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=2):
@@ -236,7 +237,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
     
     ax = plot_geography(ax)
-    ax.set_title(contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, vec_attr))
+    ax.set_title(contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
         
     cbar = fig.colorbar(filled_contours, label=cbar_label(scalar_attr), location='bottom')
     

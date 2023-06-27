@@ -24,6 +24,7 @@ from os.path import expanduser, join
 from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_field_vars, get_variable_str
+from geostrophic_functions import rotate_u_g
 
 #The following are scripts that are imported as modules but may be run within this script
 
@@ -83,7 +84,7 @@ def get_parser():
                         default="visualization")
 
     #Visualization
-    parser.add_argument("--cmap", type=str, help="MPL colormap", default="viridis")
+    parser.add_argument("--cmap", type=str, help="MPL colormap", default="viridis_r")
     
     return parser
 
@@ -362,7 +363,11 @@ def main():
                         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                         
                         if vectorECCO:
+                            
                             ds_vector_mo = scalarECCO_load_dataset(vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, datdir=config['datdir'])
+                            
+                            #Get and rotate vector
+                            vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
                             
                         elif not vectorECCO:
                             
@@ -376,20 +381,61 @@ def main():
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
                                 ds_vector_mo = load_dataset(curr_vector_file)
 
-                            #Get and rotate vector
-                            vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                            vecE, vecN = rotate_u_g(ds_grid, ds_vector_mo[xvec_attr], ds_vector_mo[yvec_attr], k)
                             
                         #Plot monthly data
-                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr+yvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
-                        """
+                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        
                         if scalar_attr == 'ZETA': #If vorticity, also normalize, and compute and plot Ro_l, W
 
                             scalar *= 1 / f_mean #Normalize vorticity by typical f
 
-                            #Plot normalized vorticity
-                            ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, 'zetanorm', scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
-                        """
+                            #Plot with normalized vorticity
+                            ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
+                    #Get annually-averaged data
+
+                    scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
+                    vector_annual_file = join(yearlydatdir, "avg_"+xvec_attr+yvec_attr+"_"+yearstr+".nc")
+                    
+                    if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
+                        
+                        if scalarECCO:
+                            datdirshort, usecompdata = 'Downloads', False
+                            
+                        elif not scalarECCO:
+                            datdirshort, usecompdata = 'computed_monthly', True
+                            
+                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=config['datdir'], usecompdata=usecompdata, outdir=yearlydatdir)
+                    
+                    ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
+                    ds_scalar_year.load()
+
+                    #Convert scalar DataSet to useful field
+                    lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+                    
+                    if not os.path.exists(vector_annual_file): #If they don't exist, compute them
+                        
+                        if vectorECCO:
+                            datdirshort, usecompdata = 'Downloads', False
+                        
+                        elif not vectorECCO:
+                            datdirshort, usecompdata = 'computed_monthly', True
+                        
+                        save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
+                        
+                    ds_vector_year = xr.open_mfdataset(vector_annual_file, engine="scipy")
+                    ds_vector_year.load()
+                    
+                    if vectorECCO:
+                        vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                        
+                    elif not vectorECCO:
+                        vecE, vecN = rotate_u_g(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
+                    
+                    #Plot annual average
+                    ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
+                    
 ##############################
 
 if __name__ == "__main__":

@@ -137,8 +137,8 @@ def main(**kwargs):
             dens, press = get_density_and_pressure(ds_denspress_mo)
 
             u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
-            u_g.name = 'u_g'
-            v_g.name = 'v_g'
+            u_g.name = 'UG'
+            v_g.name = 'VG'
             
             #Save geostrophic velocity components
 
