@@ -64,7 +64,7 @@ def main(**kwargs):
     i = start_i
     
     #Iterate over all specified months
-    while i <= mos:
+    while i <= start_i + mos:
 
         monthstr, yearstr = get_monthstr(i), str(year)
         endmonth = get_month_end(monthstr, yearstr)

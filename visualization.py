@@ -65,7 +65,7 @@ def get_parser():
                             default=False, action='store_true')
     parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
                             default=[1, 1])
-    parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", nargs=1, default=None)
+    parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", default=None)
     parser.add_argument("--vectorECCO", dest='vectorECCO', help="Whether vector field comes from ECCO files", \
                             default=False, action='store_true')
 
@@ -86,6 +86,19 @@ def get_parser():
     parser.add_argument("--cmap", type=str, help="MPL colormap", default="viridis")
     
     return parser
+
+def scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir):
+    
+    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+
+    if not os.path.exists(curr_scalar_file):
+                                
+        #If the file doesn't exist, download it
+        download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=datdir)
+                            
+    ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
+    
+    return ds_scalar_mo
 
 def main():
 
@@ -213,15 +226,7 @@ def main():
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
-
-                            curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
-
-                            if not os.path.exists(curr_scalar_file):
-                                
-                                #If the file doesn't exist, download it
-                                download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=config['datdir'])
-                            
-                            ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
+                            ds_scalar_mo = scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir=config['datdir'])
 
                         elif not scalarECCO:
 
@@ -262,7 +267,7 @@ def main():
                         elif not scalarECCO:
                             datdirshort, usecompdata = 'computed_monthly', True
                             
-                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
+                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=config['datdir'], usecompdata=usecompdata, outdir=yearlydatdir)
                     
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
@@ -288,6 +293,17 @@ def main():
                     #Get seasonally-averaged data
 
                     scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+"*")
+                    
+                    if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
+                        
+                        if scalarECCO:
+                            datdirshort, usecompdata = 'Downloads', False
+                            
+                        elif not scalarECCO:
+                            datdirshort, usecompdata = 'computed_monthly', True
+                        
+                        save_seasonal_avgs.main(field=scalar_attr, years=[year], start_month=season_start, end_month=season_end, usecompdata=usecompdata, datdir=datdirshort, outdir=seasonaldatdir)
+                    
                     ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
                     ds_scalar_seas.load()
 
@@ -310,7 +326,7 @@ def main():
 
     #CASE WHERE VECTOR AND SCALAR ARE PROVIDED
 
-    if include_vector_field:
+    elif include_vector_field:
 
         for k in range(kmin, kmax + 1): #Iterate over specified depths
 
@@ -324,7 +340,44 @@ def main():
                     for m in range(12): #Iterate over months
 
                         monthstr = get_monthstr(m)
+
+                        if scalarECCO:
+                            ds_scalar_mo = scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir=config['datdir'])
+
+                        elif not scalarECCO:
+
+                            curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+
+                            if os.path.exists(curr_scalar_file): #Look for the file
+                                ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
+
+                            else: #If it doesn't exist, compute it
+                                
+                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
+                                ds_scalar_mo = load_dataset(curr_scalar_file)
+                                
+                            ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr)
+
+                        #Convert scalar DataSet to useful field
+                        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                         
+                        if vectorECCO:
+                            ds_vector_mo = scalarECCO_load_dataset(vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, datdir=config['datdir'])
+                            
+                        elif not vectorECCO:
+                            
+                            curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+
+                            if os.path.exists(curr_vector_file): #Look for the file
+                                ds_vector_mo = xr.open_mfdataset(curr_vector_file, engine="scipy") #Load monthly vector file into workspace
+
+                            else: #If it doesn't exist, compute it
+                                
+                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
+                                ds_vector_mo = load_dataset(curr_vector_file)
+                                
+                            ds_grid = get_vector_in_xy(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                            
 ##############################
 
 if __name__ == "__main__":

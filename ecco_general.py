@@ -38,7 +38,8 @@ def load_grid(datdir):
 
 def get_vector_partner(x_comp):
     
-    y_comps = {'UVEL': 'VVEL'}
+    y_comps = {'UVEL': 'VVEL', \
+              'UG': 'VG'}
     y_comp = y_comps[x_comp]
     
     return y_comp

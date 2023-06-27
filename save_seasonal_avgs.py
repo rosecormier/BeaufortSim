@@ -18,46 +18,61 @@ from os.path import expanduser, join
 from ecco_general import load_dataset, comp_temp_mean, get_season_months_and_years
 from ecco_field_variables import get_field_vars
 
+#To be called from this script
+import download_new_data
+
 ##############################
 
-def main():
+def main(**kwargs):
+    
+    if not kwargs:
 
-    #PARSE COMMAND-LINE INPUT AND SET GLOBAL VARIABLES
+        parser = argparse.ArgumentParser(description="Average ECCO fields over a season", \
+                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser = argparse.ArgumentParser(description="Average ECCO fields over a season", \
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+        parser.add_argument("--field", type=str, help="Name of field to average", default="PHIHYDcR")
+        parser.add_argument("--months", type=str, help="Months marking start/end of season", nargs=2, \
+                            default=["01", "01"])
+        parser.add_argument("--datdir", type=str, help="Directory (rel. to home or here) with monthly data", \
+                            default="Downloads")
+        parser.add_argument("--usecompdata", dest='usecompdata', help="Whether to use computed monthly data", \
+                            default=False, action='store_true')
+        parser.add_argument("--outdir", type=str, help="Directory (rel. to here) to save output", \
+                            default="seasonal_averages")
 
-    parser.add_argument("--field", type=str, help="Name of field to average", default="PHIHYDcR")
-    parser.add_argument("--months", type=str, help="Months marking start/end of season", nargs=2, \
-                        default=["01", "01"])
-    parser.add_argument("--datdir", type=str, help="Directory (rel. to home or here) with monthly data", \
-                        default="Downloads")
-    parser.add_argument("--usecompdata", dest='usecompdata', help="Whether to use computed monthly data", \
-                        default=False, action='store_true')
-    parser.add_argument("--outdir", type=str, help="Directory (rel. to here) to save output", \
-                        default="seasonal_averages")
+        parser.add_argument("years", type=int, help="Years to average over (separately)", nargs="+")
 
-    parser.add_argument("years", type=int, help="Years to average over (separately)", nargs="+")
+        args = parser.parse_args()
+        config = vars(args)
 
-    args = parser.parse_args()
-    config = vars(args)
+        field = config['field']
+        years = config['years']
+        start_month, end_month = config['months']
 
-    field = config['field']
-    years = config['years']
-    start_month, end_month = config['months']
-
-    usecompdata = config['usecompdata']
+        usecompdata = config['usecompdata']
+        
+        datdirshort = config['datdir']
+        outdir = config['outdir']
+        
+    elif kwargs:
+        
+        field = kwargs.get('field')
+        years = kwargs.get('years')
+        start_month, end_month = kwargs.get('start_month'), kwargs.get('end_month')
+        usecompdata = kwargs.get('usecompdata')
+        datdirshort = kwargs.get('datdir')
+        outdir = kwargs.get('outdir')
 
     if not usecompdata:
 
         user_home_dir = expanduser('~')
         sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-        datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
+        datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     elif usecompdata:
-        datdir = join(".", config['datdir'])
+        datdir = join(".", datdirshort)
 
-    outdir = join(".", config['outdir'])
+    outdir = join(".", outdir)
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -83,6 +98,10 @@ def main():
             if not usecompdata:
 
                 curr_file = join(download_dir, monthly_nc_str+year+"-"+month+"_ECCO_V4r4_native_llc0090.nc")
+                
+                if not os.path.exists(curr_file): #Download if it doesn't exist
+                    download_new_data.main(startmo=start_month, startyr=year_start, months=len(season_months), scalars=[field], xvectors=None, datdir=datdirshort)
+                
                 ds_month = load_dataset(curr_file) #Load monthly file into workspace
 
             elif usecompdata:

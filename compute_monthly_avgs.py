@@ -129,7 +129,7 @@ def main(**kwargs):
             curr_denspress_file = join(denspress_dir, denspress_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
             
             if not os.path.exists(curr_denspress_file): #If the file doesn't exist, download it
-                download_new_data.main(startmo="01", startyr=year, months=12, scalars=["PHIHYDcR"], xvectors=None, datdirshort="Downloads")
+                download_new_data.main(startmo="01", startyr=year, months=12, scalars=["PHIHYDcR"], xvectors=None, datdir="Downloads")
 
             #Load monthly density-/pressure-anomaly file into workspace
             ds_denspress_mo = load_dataset(curr_denspress_file) 
