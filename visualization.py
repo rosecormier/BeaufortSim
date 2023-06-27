@@ -253,6 +253,17 @@ def main():
                     #Get annually-averaged data
 
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
+                    
+                    if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
+                        
+                        if scalarECCO:
+                            datdirshort, usecompdata = 'Downloads', False
+                            
+                        elif not scalarECCO:
+                            datdirshort, usecompdata = 'computed_monthly', True
+                            
+                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
+                    
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
 
