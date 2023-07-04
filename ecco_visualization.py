@@ -26,11 +26,12 @@ def cbar_label(scalar_attr):
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                      'zeta': r'Vorticity per $f_{mean}$', \
-                      'W': r'W $(1/s^2)$', \
+                      'ZETA': 'Vorticity (1/s)', \
+                      'zetanorm': r'Vorticity per $f_{mean}$', \
+                      'OW': r'OW $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
                       'zeta_geos': r'Vorticity per $f_{mean}$', \
-                      'W_geos': r'W $(1/s^2)$', \
+                      'OW_geos': r'OW $(1/s^2)$', \
                       'Ro_l': r'$Ro_{\ell}$', \
                       'geos_metric': 'Velocity ratio'}
     label = cbar_label_dict[scalar_attr]
@@ -57,11 +58,13 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
         depthstr = str(depth) + ' m depth'
         
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
-                  'W': 'Okubo-Weiss parameter', \
-                  'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)'}
+                  'OW': 'Okubo-Weiss parameter', \
+                  'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                  'ZETA': 'Vorticity'}
     scalar_str = scalar_dict[scalar_attr]
     
-    vector_dict = {'UVEL': 'water velocity'}
+    vector_dict = {'UVEL': 'water velocity', \
+                  'UG': 'geostrophic water velocity'}
     vector_str = vector_dict[xvec_attr]
     
     if resid:
@@ -85,13 +88,15 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
         depthstr = str(depth) + ' m depth'
         
     variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                    'zeta': r'Vorticity, normalized by $f_{mean}$', \
-                    'W': 'Okubo-Weiss parameter', \
+                    'ZETA': 'Vorticity', \
+                    'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
+                    'OW': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
                     'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
-                    'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                    'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number', \
-                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$'}
+                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
+                    'PHIHYDcR': 'Hydrostatic pressure anomaly'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
@@ -163,7 +168,7 @@ def plot_geography(ax, labels=True):
         
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=None, extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], extend='both', outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
     scalar_mean = comp_temp_mean(scalars)
     scalar = scalar_mean
@@ -174,7 +179,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    if scalar_bounds is None:
+    if scalar_bounds[0] == scalar_bounds[1]:
         vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
     else:
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
@@ -193,7 +198,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
-                           scalar_bounds=None, outfile="", \
+                           scalar_bounds=[1, 1], outfile="", \
                            lats_lons=[70.0, 85.0, -175.5, -90.5], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=2):
     
@@ -223,7 +228,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    if scalar_bounds is None:
+    if scalar_bounds[0] == scalar_bounds[1]:
         vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
     else:
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
@@ -243,11 +248,9 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     return scalar_mean, vecE_mean, vecN_mean
 
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                                resolution, cmap, monthstrs, \
-                                yearstrs, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
+                                resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                                 scalar_bounds=None, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0], \
-                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=10, \
-                                nrows=3, ncols=4, resid=False):
+                                no_levels=15, scale_factor=1, arrow_spacing=10, quiv_scale=10, resid=False):
     
     """
     Creates array of contourf plots of scalar variable in a subdomain of the Arctic,
@@ -260,7 +263,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     scalar_bounds = bounds on scalar attribute
     resolution = resolution (both lat and lon) in degrees
     cmap = colormap name
-    month/yearstrs = strings of months/years to plot
+    yearstr = string of year to plot
     outfile = output file name
     resid = whether this is a residual plot
     """
@@ -269,10 +272,15 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     
     mainfig = plt.figure(figsize=(48, 40))
     
+    months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+    
+    nrows, ncols = 3, 4
     nplots = nrows * ncols   
     row, col = -1, 0
         
     for i in range(nplots):
+        
+        monthstr = months[i]
         
         if i % ncols == 0:
             row += 1
@@ -281,7 +289,6 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
             col += 1
             
         scalar, vecE, vecN = scalars[i], vecEs[i], vecNs[i]
-        monthstr, yearstr = monthstrs[i], yearstrs[i]
         
         latmin, latmax, lonmin, lonmax = lats_lons
 
@@ -300,8 +307,7 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
         plot_geography(ax, labels=False)
         ax.set_title('\n {} {}'.format(get_month_name(monthstr), yearstr))
         
-    mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstrs[0], scalar_attr, xvec_attr, resid=resid), \
-                     size=80)
+    mainfig.suptitle(contourf_quiver_title(ecco_ds_grid, k_plot, yearstr, scalar_attr, xvec_attr, resid=resid), size=80)
     mainfig.tight_layout()
     cbar = mainfig.colorbar(filled_contours, ax=mainfig.get_axes(), aspect=40, pad=0.05, \
                             label=cbar_label(scalar_attr), location='bottom')

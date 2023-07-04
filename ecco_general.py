@@ -38,27 +38,11 @@ def load_grid(datdir):
 
 def get_vector_partner(x_comp):
     
-    y_comps = {'UVEL': 'VVEL'}
+    y_comps = {'UVEL': 'VVEL', \
+              'UG': 'VG'}
     y_comp = y_comps[x_comp]
     
     return y_comp
-
-def get_starting_i(startmo):
-
-    """
-    Get index representing start month.
-    
-    startmo = starting month
-    """
-    
-    month_dict = {0: "01", 1: "02", 2: "03", 3: "04", 4: "05", 5: "06",
-              6: "07", 7: "08", 8: "09", 9: "10", 10: "11", 11: "12"}
-    month_key_list, month_val_list = list(month_dict.keys()), list(month_dict.values())
-    
-    month_index = month_val_list.index(startmo)
-    i = month_key_list[month_index]
-    
-    return i
 
 def get_monthstr(i):
     
@@ -73,13 +57,13 @@ def get_monthstr(i):
 
 def get_month_name(monthstr):
     
-    monthnames = {"01": "January", "02": "February", "03": "March", "04": "April", "05": "May", \
-                  "06": "June", "07": "July", "08": "August", "09": "September", "10": "October", \
-                  "11": "November", "12": "December"}
+    monthnames = {"01": [0, "January"], "02": [1, "February"], "03": [2, "March"], "04": [3, "April"], "05": [4, "May"], \
+                  "06": [5, "June"], "07": [6, "July"], "08": [7, "August"], "09": [8, "September"], "10": [9, "October"], \
+                  "11": [10, "November"], "12": [11, "December"]}
 
-    monthname = monthnames[monthstr]
+    month_i, monthname = monthnames[monthstr]
     
-    return monthname
+    return month_i, monthname
 
 def get_month_end(monthstr, yearstr):
     
@@ -109,6 +93,7 @@ def load_dataset(curr_file):
     """
     
     dataset = xr.open_mfdataset(curr_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    dataset.load()
     
     return dataset
 
@@ -226,3 +211,34 @@ def ecco_resample(ds_grid, curr_field, latmin, latmax, lonmin, lonmax, resolutio
     lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field
+
+def get_season_months_and_years(start_month, end_month):
+    
+    months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
+
+    season_start_i, season_end_i = months.index(start_month), months.index(end_month)
+    
+    if season_end_i >= season_start_i:
+    
+        season_months = months[season_start_i:season_end_i+1]
+        season_years = []
+
+        for month in season_months:
+            season_years.append(0)
+
+    elif season_end_i < season_start_i:
+
+        season_1 = months[season_start_i:]
+        season_2 = months[0:season_end_i+1]
+
+        season_years = []
+
+        for month in season_1:
+            season_years.append(0)
+
+        for month in season_2:
+            season_years.append(1)
+
+        season_months = season_1 + season_2
+        
+    return season_months, season_years

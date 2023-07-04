@@ -2,35 +2,31 @@
 Rosalie Cormier, 2023
 """
 
-def get_scalar_field_vars(scalar_attr):
+def get_field_vars(attribute):
     
-    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4'}
-    monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_'}
-    variables = {'PHIHYDcR': 'p_anom'}
+    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
+                         'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
+                         'UGVG': 'GEOS_VEL_MONTHLY', \
+                         'ZETA': 'VORTICITY_MONTHLY', \
+                         'NORMAL': 'STRAIN_MONTHLY', \
+                         'SHEAR': 'STRAIN_MONTHLY'}
     
-    scalar_monthly_shortname = monthly_shortnames[scalar_attr]
-    scalar_monthly_nc_string = monthly_nc_strings[scalar_attr]
-    scalar_variable = variables[scalar_attr]
+    monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
+                         'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
+                         'UGVG': 'OCEAN_GEOS_UVEL_mon_mean_', \
+                         'ZETA': 'OCEAN_VORTICITY_mon_mean', \
+                         'NORMAL': 'OCEAN_NORMAL_STRAIN_mon_mean', \
+                         'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean'}
     
-    return scalar_monthly_shortname, scalar_monthly_nc_string, scalar_variable
+    return monthly_shortnames[attribute], monthly_nc_strings[attribute]
+
+def get_variable_str(attribute, geostrophic=False):
     
-def get_vector_field_vars(xvec_attr, yvec_attr, geostrophic=False):
-    
-    if xvec_attr == 'UVEL' and yvec_attr == 'VVEL':
-        vec_field_name = 'velocity'
+    variables = {'PHIHYDcR': 'p_anom', \
+                'UVELVVEL': 'u', \
+                'ZETA': 'zeta', \
+                'UGVG': 'u_g'}
+
+    variable_string = variables[attribute]
         
-    else:
-        print('Invalid vector component combination.')
-    
-    monthly_shortnames = {'velocity': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4'}
-    monthly_nc_strings = {'velocity': 'OCEAN_VELOCITY_mon_mean_'}
-    variables = {'velocity': 'u'}
-    
-    vector_monthly_shortname = monthly_shortnames[vec_field_name]
-    vector_monthly_nc_string = monthly_nc_strings[vec_field_name]
-    vector_variable = variables[vec_field_name]
-    
-    if geostrophic:
-        vector_variable = vector_variable + "_g"
-    
-    return vector_monthly_shortname, vector_monthly_nc_string, vector_variable
+    return variable_string
