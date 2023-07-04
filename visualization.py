@@ -256,14 +256,7 @@ def main():
                             
                             #Plot Ro_l
                             ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
-                            """
-                            scalar *= 1 / f_mean #Normalize vorticity by typical f
-
-                            #Plot normalized vorticity
-                            ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, 'zetanorm', scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
-                            
-                            scalar *= f_mean #Return to original vorticity value
-                            """
+       
                     #Get annually-averaged data
 
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
@@ -413,12 +406,13 @@ def main():
                         #Plot monthly data
                         ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                         
-                        if scalar_attr == 'ZETA': #If vorticity, also normalize, and compute and plot Ro_l, W
-
-                            scalar *= 1 / f_mean #Normalize vorticity by typical f
-
-                            #Plot with normalized vorticity
-                            ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, W
+                            
+                            #Compute Ro_l
+                            Ro_l = comp_local_Ro(scalar, lat_centers)
+                            
+                            #Plot Ro_l
+                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                     #Get annually-averaged data
 
