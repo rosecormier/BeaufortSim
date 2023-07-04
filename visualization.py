@@ -3,8 +3,7 @@ Master script for Beaufort Sim visualization.
 
 Rosalie Cormier, 2023
 
-Note -- if vector = u_g, need to also plot our metric
-    -- if scalar = vorticity, need to also plot W
+Note -- if scalar = vorticity, need to also plot W
 """
 
 ##############################
