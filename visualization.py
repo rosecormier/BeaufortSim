@@ -24,7 +24,7 @@ from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, com
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_field_vars, get_variable_str
 from geostrophic_functions import rotate_u_g, comp_geos_metric
-from vorticity_functions import comp_local_Ro
+from vorticity_functions import comp_local_Ro, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss
 
 #The following are scripts that are imported as modules but may be run within this script
 
@@ -249,13 +249,35 @@ def main():
                         #Plot monthly scalar data
                         ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons) 
 
-                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, W
+                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
                             
                             #Compute Ro_l
                             Ro_l = comp_local_Ro(scalar, lat_centers)
                             
                             #Plot Ro_l
                             ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            
+                            #Get monthly velocity data
+                            
+                            vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+                                
+                            ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
+
+                            (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
+                            
+                            #Compute strain terms
+                            
+                            xgcm_grid = ecco.get_llc_grid(ds_grid)
+                            normal_strain = comp_normal_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+                            shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+                            normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                            shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                            
+                            #Compute OW
+                            OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain)
+                            
+                            #Plot OW
+                            ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
        
                     #Get annually-averaged data
 
@@ -406,13 +428,35 @@ def main():
                         #Plot monthly data
                         ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                         
-                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, W
+                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
                             
                             #Compute Ro_l
                             Ro_l = comp_local_Ro(scalar, lat_centers)
                             
                             #Plot Ro_l
                             ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            
+                            #Get monthly velocity data
+                            
+                            vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+                                
+                            ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
+
+                            (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
+                            
+                            #Compute strain terms
+                            
+                            xgcm_grid = ecco.get_llc_grid(ds_grid)
+                            normal_strain = comp_normal_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+                            shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+                            normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                            shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                            
+                            #Compute OW
+                            OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain)
+                            
+                            #Plot OW
+                            ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                     #Get annually-averaged data
 
