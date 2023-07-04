@@ -140,12 +140,12 @@ def comp_delta_u_norm(ecco_ds_grid, u_complex, u_g_complex, mask=None):
         vel_diff_norm = np.where(mask, np.nan, vel_diff_norm)
     
     return vel_diff_norm
-
+"""
 def comp_geos_metric(ecco_ds_grid, u_complex, u_g_complex):
     
-    """
-    Computes new diagnostic for geostrophic balance.
-    """
+"""
+    #Computes new diagnostic for geostrophic balance.
+"""
     
     u, v = np.real(u_complex), np.imag(u_complex)
     u_g, v_g = np.real(u_g_complex), np.imag(u_g_complex)
@@ -154,6 +154,26 @@ def comp_geos_metric(ecco_ds_grid, u_complex, u_g_complex):
     v_diff = v - v_g
     vel_diff_complex = u_diff + (1j * v_diff)
     vel_diff_abs = np.abs(vel_diff_complex)
+    
+    vel_abs_sum = np.abs(u_complex) + np.abs(u_g_complex)
+    
+    return vel_diff_abs / vel_abs_sum
+"""
+
+def comp_geos_metric(u, v, u_g, v_g):
+    
+    """
+    Computes new diagnostic for geostrophic balance.
+    """
+    
+    u_diff = u - u_g
+    v_diff = v - v_g
+    
+    vel_diff_complex =  u_diff + (1j * v_diff)
+    vel_diff_abs = np.abs(vel_diff_complex)
+    
+    u_complex = u + (1j * v)
+    u_g_complex = u_g + (1j * v_g)
     
     vel_abs_sum = np.abs(u_complex) + np.abs(u_g_complex)
     
