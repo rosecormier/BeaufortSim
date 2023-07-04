@@ -24,6 +24,7 @@ from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, com
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_field_vars, get_variable_str
 from geostrophic_functions import rotate_u_g, comp_geos_metric
+from vorticity_functions import comp_local_Ro
 
 #The following are scripts that are imported as modules but may be run within this script
 
@@ -180,7 +181,7 @@ def main():
 
     cmap = config['cmap']
 
-    f_mean = 1e-4 #"Typical" Coriolis parameter (1/s)
+    #f_mean = 1e-4 #"Typical" Coriolis parameter (1/s)
 
     ##############################
 
@@ -248,13 +249,21 @@ def main():
                         #Plot monthly scalar data
                         ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, scalar_attr, scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons) 
 
-                        if scalar_attr == 'ZETA': #If vorticity, also normalize, and compute and plot Ro_l, W
-
+                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, W
+                            
+                            #Compute Ro_l
+                            Ro_l = comp_local_Ro(scalar, lat_centers)
+                            
+                            #Plot Ro_l
+                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            """
                             scalar *= 1 / f_mean #Normalize vorticity by typical f
 
                             #Plot normalized vorticity
                             ArcCir_pcolormesh(ds_grid, k, [scalar], resolution, cmap, lon_centers, lat_centers, monthstr+"-"+yearstr, 'zetanorm', scalar_bounds=[vmin, vmax], extend='both', outfile=join(outdir, 'monthly', 'norm_{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
-
+                            
+                            scalar *= f_mean #Return to original vorticity value
+                            """
                     #Get annually-averaged data
 
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
