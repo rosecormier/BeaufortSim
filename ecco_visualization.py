@@ -28,10 +28,10 @@ def cbar_label(scalar_attr):
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
                       'ZETA': 'Vorticity (1/s)', \
                       'zetanorm': r'Vorticity per $f_{mean}$', \
-                      'W': r'W $(1/s^2)$', \
+                      'OW': r'OW $(1/s^2)$', \
                       's': r'Strain $(1/s^2)$', \
                       'zeta_geos': r'Vorticity per $f_{mean}$', \
-                      'W_geos': r'W $(1/s^2)$', \
+                      'OW_geos': r'OW $(1/s^2)$', \
                       'Ro_l': r'$Ro_{\ell}$', \
                       'geos_metric': 'Velocity ratio'}
     label = cbar_label_dict[scalar_attr]
@@ -58,8 +58,8 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
         depthstr = str(depth) + ' m depth'
         
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
-                  'W': 'Okubo-Weiss parameter', \
-                  'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                  'OW': 'Okubo-Weiss parameter', \
+                  'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                   'ZETA': 'Vorticity'}
     scalar_str = scalar_dict[scalar_attr]
     
@@ -90,10 +90,10 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
     variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
                     'ZETA': 'Vorticity', \
                     'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
-                    'W': 'Okubo-Weiss parameter', \
+                    'OW': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
                     'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
-                    'W_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                    'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number', \
                     'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
                     'PHIHYDcR': 'Hydrostatic pressure anomaly'}
