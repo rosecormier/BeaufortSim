@@ -2,8 +2,6 @@
 Master script for Beaufort Sim visualization.
 
 Rosalie Cormier, 2023
-
-Note -- if scalar = vorticity, need to also plot W
 """
 
 ##############################
@@ -180,8 +178,6 @@ def main():
             os.makedirs(join(outdir, subdir))
 
     cmap = config['cmap']
-
-    #f_mean = 1e-4 #"Typical" Coriolis parameter (1/s)
 
     ##############################
 
