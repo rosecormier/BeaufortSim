@@ -76,9 +76,9 @@ def main(**kwargs):
         datdirshort = kwargs.get('datdir')
         outdir = kwargs.get('outdir')
         
-    user_home_dir = expanduser('~')
-    sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-    datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
+    homedir = expanduser('~')
+    sys.path.append(join(homedir, 'ECCOv4-py'))
+    datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     ug_monthly_shortname, ug_monthly_nc_str = get_field_vars('UGVG')
     zeta_monthly_shortname, zeta_monthly_nc_str = get_field_vars('ZETA')

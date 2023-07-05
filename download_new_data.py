@@ -47,9 +47,9 @@ def main(**kwargs):
         xvectors = kwargs.get('xvectors')
         datdirshort = kwargs.get('datdir')
 
-    user_home_dir = expanduser('~')
-    sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-    datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
+    homedir = expanduser('~')
+    sys.path.append(join(homedir, 'ECCOv4-py'))
+    datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     if not os.path.exists(datdir):
         os.makedirs(datdir)

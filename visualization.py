@@ -150,9 +150,9 @@ def main():
 
     #Directories
 
-    user_home_dir = expanduser('~')
-    sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-    datdir = join(user_home_dir, config['datdir'], 'ECCO_V4r4_PODAAC')
+    homedir = expanduser('~')
+    sys.path.append(join(homedir, 'ECCOv4-py'))
+    datdir = join(homedir, config['datdir'], 'ECCO_V4r4_PODAAC')
 
     compdatdir = join(".", config['compdatdir'])
 

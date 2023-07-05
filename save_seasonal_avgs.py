@@ -66,9 +66,9 @@ def main(**kwargs):
 
     if not usecompdata:
 
-        user_home_dir = expanduser('~')
-        sys.path.append(join(user_home_dir, 'ECCOv4-py'))
-        datdir = join(user_home_dir, datdirshort, 'ECCO_V4r4_PODAAC')
+        homedir = expanduser('~')
+        sys.path.append(join(homedir, 'ECCOv4-py'))
+        datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     elif usecompdata:
         datdir = join(".", datdirshort)
