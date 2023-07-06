@@ -386,8 +386,11 @@ def main():
                             
                             ds_vector_mo = scalarECCO_load_dataset(vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, datdir=config['datdir'])
                             
-                            #Get and rotate vector
+                            #Interpolate and rotate vector
+                            
+                            (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
                             vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                            vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                             
                         elif not vectorECCO:
                             
@@ -467,13 +470,13 @@ def main():
                         elif not scalarECCO:
                             datdirshort, usecompdata = 'computed_monthly', True
                             
-                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=config['datdir'], usecompdata=usecompdata, outdir=yearlydatdir)
+                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
                     
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
 
                     #Convert scalar DataSet to useful field
-                    lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+                    lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k).squeeze(), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
                     if not os.path.exists(vector_annual_file): #If they don't exist, compute them
                         
@@ -490,6 +493,7 @@ def main():
                     
                     if vectorECCO:
                         vecE, vecN = rotate_vector(ds_grid, ds_vector_year, xvec_attr, yvec_attr)
+                        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                         
                     elif not vectorECCO:
                         vecE, vecN = rotate_u_g(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
