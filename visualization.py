@@ -556,6 +556,12 @@ def main():
                     #Plot annual average
                     ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
                     
+                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
+                        
+                        ArcCir_contourf_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                        
+                        ArcCir_contourf_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                    
             elif seasonal: #Case where we plot one season per year
                     
                 season_months, season_years = get_season_months_and_years(season_start, season_end)
