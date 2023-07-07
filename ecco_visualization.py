@@ -60,6 +60,7 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
                   'OW': 'Okubo-Weiss parameter', \
                   'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                  'Ro_l': 'Local Rossby number', \
                   'ZETA': 'Vorticity'}
     scalar_str = scalar_dict[scalar_attr]
     
@@ -198,7 +199,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
     
 def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
-                           scalar_bounds=[1, 1], outfile="", \
+                           scalar_bounds=[1, 1], extend='both', outfile="", \
                            lats_lons=[70.0, 85.0, -175.5, -90.5], no_levels=30, scale_factor=1, \
                            arrow_spacing=10, quiv_scale=2):
     

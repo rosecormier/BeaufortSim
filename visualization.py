@@ -315,7 +315,7 @@ def main():
                 data_seasons = []
                 
                 if scalar_attr == 'ZETA':
-                        Ro_l_list, OW_list = [], []
+                    Ro_l_list, OW_list = [], []
 
                 for i in range(years): #Iterate over specified years
 
@@ -404,6 +404,9 @@ def main():
         for k in range(kmin, kmax + 1): #Iterate over specified depths
 
             if not seasonal: #Case where we plot every month
+                
+                if scalar_attr == 'ZETA':
+                    Ro_l_list, OW_list = [], []
 
                 for i in range(years): #Iterate over specified years
 
@@ -411,7 +414,7 @@ def main():
                     yearstr = str(year)
 
                     for m in range(12): #Iterate over months
-
+                        
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
@@ -479,20 +482,19 @@ def main():
                         #Plot monthly data
                         ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                         
-                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
+                        if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with vector quiver
                             
-                            #Compute Ro_l
-                            Ro_l = comp_local_Ro(scalar, lat_centers)
+                            Ro_l = comp_local_Ro(scalar, lat_centers) #Compute Ro_l
                             
-                            #Plot Ro_l
-                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            #Plot Ro_l and quiver
+                            ArcCir_contourf_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', yearstr+"-"+monthstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', '{}_localRo_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
+                            Ro_l_list.append(Ro_l)
+                                                   
                             #Get monthly velocity data
                             
-                            vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
-                                
+                            vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')  
                             ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
-
                             (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
                             
                             #Compute strain terms
@@ -503,11 +505,12 @@ def main():
                             normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                             shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                             
-                            #Compute OW
-                            OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain)
+                            OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
                             
-                            #Plot OW
-                            ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            #Plot OW and quiver
+                            ArcCir_contourf_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', yearstr+"-"+monthstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', '{}_OW_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            
+                            OW_list.append(OW)
                             
                     #Get annually-averaged data
 
