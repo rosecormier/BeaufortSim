@@ -251,7 +251,7 @@ def main():
                             Ro_l = comp_local_Ro(scalar, lat_centers)
                             
                             #Plot Ro_l
-                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             #Get monthly velocity data
                             
@@ -422,10 +422,10 @@ def main():
                                 
                                 lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
                                 
-                                ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Delta_u', extend='max', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)), lats_lons=lats_lons) 
+                                ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)), lats_lons=lats_lons) 
                             
                         #Plot monthly data
-                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                         
                         if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
                             
@@ -433,7 +433,7 @@ def main():
                             Ro_l = comp_local_Ro(scalar, lat_centers)
                             
                             #Plot Ro_l
-                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             #Get monthly velocity data
                             
@@ -499,17 +499,18 @@ def main():
                         vecE, vecN = rotate_u_g(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
                     
                     #Plot annual average
-                    ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
+                    ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
                     
             elif seasonal: #Case where we plot one season per year
                     
                 season_months, season_years = get_season_months_and_years(season_start, season_end)
                 seas_monthstr = season_months[0] + "-" + season_months[-1] #For titles
 
-                data_seasons = []
-
+                scalar_data_seasons = []
+                vecE_data_seasons, vecN_data_seasons = [], []
+                
                 for i in range(years): #Iterate over specified years
-
+                
                     year = startyr + i
                     yearstr = str(year)
                     endyearstr = str(year + season_years[-1])
@@ -535,6 +536,9 @@ def main():
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
+                    #Save seasonal scalar data
+                    scalar_data_seasons.append(scalar_seas)
+                    
                     if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
 
                         if vectorECCO:
@@ -550,14 +554,23 @@ def main():
                     
                     if vectorECCO:
                         vecE, vecN = rotate_vector(ds_grid, ds_vector_seas, xvec_attr, yvec_attr)
+                        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                         
                     elif not vectorECCO:
                         vecE, vecN = rotate_u_g(ds_grid, ds_vector_seas[xvec_attr], ds_vector_seas[yvec_attr], k)
+                        
+                    #Save seasonal vector data
+                    
+                    vecE_data_seasons.append(vecE)
+                    vecN_data_seasons.append(vecN)
                     
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
                     #Plot seasonal average
-                    ArcCir_contourf_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
+                    ArcCir_contourf_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
+                    
+                #Average over all the seasons and plot
+                ArcCir_contourf_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}-{}'.format(seas_monthstr, str(startyr), endyearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}-{}.pdf'.format(variables_str, str(k), seas_monthstr, str(startyr), endyearstr)), lats_lons=lats_lons) 
             
 ##############################
 
