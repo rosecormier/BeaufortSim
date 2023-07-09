@@ -570,6 +570,9 @@ def main():
                 scalar_data_seasons = []
                 vecE_data_seasons, vecN_data_seasons = [], []
                 
+                if scalar_attr == 'ZETA':
+                    Ro_l_list, OW_list = [], []
+                
                 for i in range(years): #Iterate over specified years
                 
                     year = startyr + i
@@ -630,8 +633,50 @@ def main():
                     #Plot seasonal average
                     ArcCir_contourf_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
                     
-                #Average over all the seasons and plot
-                ArcCir_contourf_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}-{}'.format(seas_monthstr, str(startyr), endyearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}-{}.pdf'.format(variables_str, str(k), seas_monthstr, str(startyr), endyearstr)), lats_lons=lats_lons) 
+                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with vector quiver
+                            
+                        Ro_l = comp_local_Ro(scalar_seas, lat_centers) #Compute Ro_l
+                            
+                        #Plot Ro_l with quiver
+                        ArcCir_contourf_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'seasonal', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                            
+                        Ro_l_list.append(Ro_l)
+                            
+                        vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+                            
+                        if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
+                            save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir='Downloads', outdir=seasonaldatdir)
+                                
+                        ds_vel_seas = xr.open_mfdataset(vel_seas_file, engine="scipy")
+                        ds_vel_seas.load()
+
+                        #Compute strain terms
+                            
+                        xgcm_grid = ecco.get_llc_grid(ds_grid)
+                        normal_strain = comp_normal_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+                        shear_strain = comp_shear_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+                        normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                        shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
+                            
+                        OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
+                            
+                        #Plot OW
+                        ArcCir_contourf_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                            
+                        OW_list.append(OW)
+                        
+                if years != 1: #If there is more than one season to average over     
+                    
+                    seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
+                    
+                    #Average over all the seasons and plot
+                    ArcCir_contourf_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
+            
+                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW overlaid with vector quiver
+
+                        ArcCir_contourf_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+
+                        ArcCir_contourf_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
             
 ##############################
 

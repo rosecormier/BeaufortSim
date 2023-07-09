@@ -49,13 +49,9 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     """
     
     ds_grid = ecco_ds_grid.copy()
-    
-    if k_plot == 0:
-        depthstr = 'ocean surface'
-    
-    elif k_plot != 0:
-        depth = - ds_grid.Z[k_plot].values
-        depthstr = str(depth) + ' m depth'
+   
+    depth = - ds_grid.Z[k_plot].values
+    depthstr = str(depth) + ' m depth'
         
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
                   'OW': 'Okubo-Weiss parameter', \
@@ -80,13 +76,9 @@ def contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr,
     return title
 
 def pcolormesh_title(ds_grid, k_plot, variable, datestr):
-    
-    if k_plot == 0:
-        depthstr = 'ocean surface'
-    
-    elif k_plot != 0:
-        depth = - ds_grid.Z[k_plot].values
-        depthstr = str(depth) + ' m depth'
+ 
+    depth = - ds_grid.Z[k_plot].values
+    depthstr = str(depth) + ' m depth'
         
     variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
                     'ZETA': 'Vorticity', \
