@@ -233,7 +233,7 @@ def ArcCir_contourf_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     ax = plot_geography(ax)
     ax.set_title(contourf_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
         
-    cbar = fig.colorbar(filled_contours, label=cbar_label(scalar_attr), location='bottom')
+    cbar = fig.colorbar(filled_contours, label=cbar_label(scalar_attr), extend=extend, location='bottom')
     
     plt.savefig(outfile)
     plt.close()
