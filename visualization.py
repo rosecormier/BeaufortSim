@@ -19,7 +19,7 @@ import numpy as np
 from os.path import expanduser, join
 
 from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
-from ecco_visualization import ArcCir_pcolormesh, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
+from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver#, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
 from ecco_field_variables import get_field_vars, get_variable_str
 from geostrophic_functions import rotate_u_g, comp_geos_metric
 from vorticity_functions import comp_local_Ro, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss
@@ -253,7 +253,7 @@ def main():
                             Ro_l = comp_local_Ro(scalar, lat_centers) #Compute Ro_l
                             
                             #Plot Ro_l
-                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             Ro_l_list.append(Ro_l)
                             
@@ -303,7 +303,7 @@ def main():
                     
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW
                         
-                        ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, yearstr, 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', 'localRo_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, yearstr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', 'localRo_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
                         
                         ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', 'OW_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
 
@@ -355,7 +355,7 @@ def main():
                         Ro_l = comp_local_Ro(scalar_seas, lat_centers) #Compute Ro_l
                             
                         #Plot Ro_l
-                        ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                             
                         Ro_l_list.append(Ro_l)
                             
@@ -391,7 +391,7 @@ def main():
 
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW
 
-                        ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
                         ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
@@ -480,14 +480,14 @@ def main():
                                 ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)), lats_lons=lats_lons) 
                             
                         #Plot monthly data
-                        ArcCir_contourf_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, yearstr+"-"+monthstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr)), lats_lons=lats_lons)
                         
                         if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with vector quiver
                             
                             Ro_l = comp_local_Ro(scalar, lat_centers) #Compute Ro_l
                             
                             #Plot Ro_l and quiver
-                            ArcCir_contourf_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', yearstr+"-"+monthstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'monthly', '{}_localRo_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', yearstr+"-"+monthstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'monthly', '{}_localRo_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             Ro_l_list.append(Ro_l)
                                                    
@@ -508,7 +508,7 @@ def main():
                             OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
                             
                             #Plot OW and quiver
-                            ArcCir_contourf_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', yearstr+"-"+monthstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', '{}_OW_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', yearstr+"-"+monthstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', '{}_OW_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             OW_list.append(OW)
                             
@@ -554,13 +554,13 @@ def main():
                         vecE, vecN = rotate_u_g(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
                     
                     #Plot annual average
-                    ArcCir_contourf_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
+                    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
                     
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
                         
-                        ArcCir_contourf_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
                         
-                        ArcCir_contourf_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
                     
             elif seasonal: #Case where we plot one season per year
                     
@@ -631,14 +631,14 @@ def main():
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
                     #Plot seasonal average
-                    ArcCir_contourf_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
+                    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
                     
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with vector quiver
                             
                         Ro_l = comp_local_Ro(scalar_seas, lat_centers) #Compute Ro_l
                             
                         #Plot Ro_l with quiver
-                        ArcCir_contourf_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'seasonal', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'seasonal', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                             
                         Ro_l_list.append(Ro_l)
                             
@@ -661,7 +661,7 @@ def main():
                         OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
                             
                         #Plot OW
-                        ArcCir_contourf_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                             
                         OW_list.append(OW)
                         
@@ -670,13 +670,13 @@ def main():
                     seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
                     
                     #Average over all the seasons and plot
-                    ArcCir_contourf_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
+                    ArcCir_pcolormesh_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
             
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW overlaid with vector quiver
 
-                        ArcCir_contourf_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[0, 1], extend='max', outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-                        ArcCir_contourf_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
             
 ##############################
 

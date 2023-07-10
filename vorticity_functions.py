@@ -30,4 +30,4 @@ def comp_local_Ro(omega, y):
     
     f = comp_f(y)
     
-    return omega / f
+    return abs(omega) / f
