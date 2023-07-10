@@ -20,9 +20,9 @@ def load_grid(datdir):
     
     grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
 
-    if not os.path.exists(datdir + grid_params_shortname): #Important to keep this conditional
+    if not os.path.exists(join(datdir, grid_params_shortname)): 
         
-        os.makedirs(datdir + grid_params_shortname)
+        os.makedirs(join(datdir, grid_params_shortname))
     
         #Download ECCO grid parameters (date is arbitrary)
         ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \

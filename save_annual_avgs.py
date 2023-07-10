@@ -76,7 +76,7 @@ def main(**kwargs):
 
     monthly_shortname, monthly_nc_str = get_field_vars(field)
 
-    download_dir = join(datdir, monthly_shortname) #Get file list
+    download_dir = join(datdir, monthly_shortname)
 
     for year in years: #Iterate over years
 
@@ -95,7 +95,7 @@ def main(**kwargs):
 
                 curr_file = join(download_dir, monthly_nc_str+year+"-"+month+".nc")
                 ds_month = xr.open_mfdataset(curr_file, engine="scipy")
-
+                
             monthly_fields.append(ds_month.squeeze())
 
         yearly_avg_field = comp_temp_mean(monthly_fields)
