@@ -45,7 +45,7 @@ def get_parser():
     parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
                             default=[-180.0, -90.0])
     parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
-                            default=1.0)
+                            default=0.25)
     parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 
     #Temporal bounds
