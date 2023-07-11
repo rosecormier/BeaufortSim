@@ -26,6 +26,7 @@ def cbar_label(scalar_attr):
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
+                      'WVEL': 'Velocity (m/s)', \
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
                       'ZETA': 'Vorticity (1/s)', \
                       'zetanorm': r'Vorticity per $f_{mean}$', \
@@ -81,7 +82,8 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
     depth = - ds_grid.Z[k_plot].values
     depthstr = str(depth) + ' m depth'
         
-    variable_dict = {'Delta_u': r'$|\Delta \vec{u}|_n$', \
+    variable_dict = {'WVEL': 'Vertical velocity', \
+                    'Delta_u': r'$|\Delta \vec{u}|_n$', \
                     'ZETA': 'Vorticity', \
                     'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
                     'OW': 'Okubo-Weiss parameter', \

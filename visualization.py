@@ -302,9 +302,11 @@ def main():
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
                     
-                    #if scalarECCO:
-                    #    ds_scalar_year
-
+                    if scalar_attr == "WVEL": #If w, interpolate vertically
+                                
+                        XGCM_grid = ecco.get_llc_grid(ds_grid)
+                        ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
+                    
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
 
@@ -350,8 +352,10 @@ def main():
                     ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
                     ds_scalar_seas.load()
                     
-                    #if scalarECCO:
-                    #    ds_scalar_seas
+                    if scalar_attr == "WVEL": #If w, interpolate vertically
+                                
+                        XGCM_grid = ecco.get_llc_grid(ds_grid)
+                        ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
 
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
@@ -432,6 +436,11 @@ def main():
 
                         if scalarECCO:
                             ds_scalar_mo = scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir=config['datdir'])
+                            
+                            if scalar_attr == "WVEL": #If w, interpolate vertically
+                                
+                                XGCM_grid = ecco.get_llc_grid(ds_grid)
+                                ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
 
                         elif not scalarECCO:
 
@@ -542,6 +551,11 @@ def main():
                     
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
+                    
+                    if scalar_attr == "WVEL": #If w, interpolate vertically
+                                
+                        XGCM_grid = ecco.get_llc_grid(ds_grid)
+                        ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
 
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k).squeeze(), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
@@ -609,6 +623,11 @@ def main():
 
                     ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
                     ds_scalar_seas.load()
+                    
+                    if scalar_attr == "WVEL": #If w, interpolate vertically
+                                
+                        XGCM_grid = ecco.get_llc_grid(ds_grid)
+                        ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
                     
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
