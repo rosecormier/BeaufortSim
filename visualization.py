@@ -86,18 +86,20 @@ def get_parser():
     
     return parser
 
-def scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir):
+def load_ECCO_dataset(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, datdir, scalar_attr=None, xvec_attr=None):
     
-    curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+    curr_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
-    if not os.path.exists(curr_scalar_file):
+    if not os.path.exists(curr_file): #If the file doesn't exist, download it
                                 
-        #If the file doesn't exist, download it
-        download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=datdir)
-                            
-    ds_scalar_mo = load_dataset(curr_scalar_file) #Load monthly scalar file into workspace
-    
-    return ds_scalar_mo
+        if scalar_attr is not None:
+            download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=datdir)
+
+        elif xvec_attr is not None:
+            download_new_data.main(startmo="01", startyr=year, months=12, scalars=None, xvectors=[xvec_attr], datdir=datdir)
+        
+        ds_month = load_dataset(curr_file)
+        return ds_month
 
 def main():
 
@@ -227,7 +229,7 @@ def main():
 
                         if scalarECCO:
                             
-                            ds_scalar_mo = scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir=config['datdir'])
+                            ds_scalar_mo = load_ECCO_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr=scalar_attr, datdir=config['datdir'])
                             ds_scalar_mo[scalar_attr].data = ds_scalar_mo[scalar_attr].values
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
@@ -267,7 +269,7 @@ def main():
                             #Get monthly velocity data
                             vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
                                 
-                            ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
+                            ds_vel_mo = load_ECCO_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, scalar_attr='UVEL', datdir=config['datdir'])
                             (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
                             
                             #Compute strain terms
@@ -435,7 +437,7 @@ def main():
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
-                            ds_scalar_mo = scalarECCO_load_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr, datdir=config['datdir'])
+                            ds_scalar_mo = load_ECCO_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr=scalar_attr, datdir=config['datdir'])
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
                                 
@@ -461,7 +463,7 @@ def main():
                         
                         if vectorECCO:
                             
-                            ds_vector_mo = scalarECCO_load_dataset(vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, datdir=config['datdir'])
+                            ds_vector_mo = load_ECCO_dataset(vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr=xvec_attr, datdir=config['datdir'])
                             
                             #Interpolate and rotate vector
                             
@@ -487,7 +489,7 @@ def main():
                                 
                                 vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
                                 
-                                ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
+                                ds_vel_mo = load_ECCO_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, scalar_attr='UVEL', datdir=config['datdir'])
                                 
                                 #Interpolate velocities to centres
                                 (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
@@ -516,7 +518,7 @@ def main():
                             #Get monthly velocity data
                             
                             vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')  
-                            ds_vel_mo = scalarECCO_load_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, 'UVEL', datdir=config['datdir'])
+                            ds_vel_mo = load_ECCO_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, scalar_attr='UVEL', datdir=config['datdir'])
                             (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
                             
                             #Compute strain terms
