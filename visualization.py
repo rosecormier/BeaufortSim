@@ -91,15 +91,15 @@ def load_ECCO_dataset(variable_dir, variable_monthly_nc_str, yearstr, monthstr, 
     curr_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
     if not os.path.exists(curr_file): #If the file doesn't exist, download it
-                                
+                
         if scalar_attr is not None:
             download_new_data.main(startmo="01", startyr=year, months=12, scalars=[scalar_attr], xvectors=None, datdir=datdir)
 
         elif xvec_attr is not None:
             download_new_data.main(startmo="01", startyr=year, months=12, scalars=None, xvectors=[xvec_attr], datdir=datdir)
         
-        ds_month = load_dataset(curr_file)
-        return ds_month
+    ds_month = load_dataset(curr_file)
+    return ds_month
 
 def main():
 
@@ -437,6 +437,7 @@ def main():
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
+                            
                             ds_scalar_mo = load_ECCO_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr=scalar_attr, datdir=config['datdir'])
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
@@ -467,7 +468,7 @@ def main():
                             
                             #Interpolate and rotate vector
                             
-                            (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values
+                            (ds_vector_mo[xvec_attr]).data, (ds_vector_mo[yvec_attr]).data = (ds_vector_mo[xvec_attr]).values, (ds_vector_mo[yvec_attr]).values  
                             vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
                             vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                             

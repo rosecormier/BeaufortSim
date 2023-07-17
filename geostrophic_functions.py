@@ -92,7 +92,7 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
-def rotate_u_g(ds_grid, u_g, v_g, k_val):
+def rotate_u_g(ds_grid, u_g, v_g, k_val, surface=False):
     
     """
     Appropriately rotates geostrophic velocity vector and restricts to k- and time-slices.
@@ -102,7 +102,12 @@ def rotate_u_g(ds_grid, u_g, v_g, k_val):
     u_g_copy, v_g_copy = u_g.copy(), v_g.copy()
     u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
     v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
-    u_g, v_g = u_g.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
+    
+    if not surface:
+        u_g, v_g = u_g.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
+        
+    elif surface:
+        u_g, v_g = u_g.squeeze(), v_g.squeeze()
 
     return u_g, v_g
     
@@ -140,25 +145,6 @@ def comp_delta_u_norm(ecco_ds_grid, u_complex, u_g_complex, mask=None):
         vel_diff_norm = np.where(mask, np.nan, vel_diff_norm)
     
     return vel_diff_norm
-"""
-def comp_geos_metric(ecco_ds_grid, u_complex, u_g_complex):
-    
-"""
-    #Computes new diagnostic for geostrophic balance.
-"""
-    
-    u, v = np.real(u_complex), np.imag(u_complex)
-    u_g, v_g = np.real(u_g_complex), np.imag(u_g_complex)
-    
-    u_diff = u - u_g
-    v_diff = v - v_g
-    vel_diff_complex = u_diff + (1j * v_diff)
-    vel_diff_abs = np.abs(vel_diff_complex)
-    
-    vel_abs_sum = np.abs(u_complex) + np.abs(u_g_complex)
-    
-    return vel_diff_abs / vel_abs_sum
-"""
 
 def comp_geos_metric(u, v, u_g, v_g):
     
