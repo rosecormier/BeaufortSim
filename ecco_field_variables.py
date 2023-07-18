@@ -11,7 +11,8 @@ def get_field_vars(attribute):
                          'ZETA': 'VORTICITY_MONTHLY', \
                          'NORMAL': 'STRAIN_MONTHLY', \
                          'SHEAR': 'STRAIN_MONTHLY', \
-                         'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4'}
+                         'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
+                         'UEkVEk': 'EK_VEL_MONTHLY'}
     
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
@@ -20,7 +21,8 @@ def get_field_vars(attribute):
                          'ZETA': 'OCEAN_VORTICITY_mon_mean', \
                          'NORMAL': 'OCEAN_NORMAL_STRAIN_mon_mean', \
                          'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean', \
-                         'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_'}
+                         'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
+                         'UEkVEk': 'OCEAN_EK_VEL_mon_mean'}
     
     return monthly_shortnames[attribute], monthly_nc_strings[attribute]
 

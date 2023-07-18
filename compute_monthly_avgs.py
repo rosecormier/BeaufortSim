@@ -18,7 +18,7 @@ from os.path import expanduser, join
 
 from ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
 from ecco_field_variables import get_field_vars, get_variable_str 
-from geostrophic_functions import get_density_and_pressure, comp_geos_vel
+from geostrophic_functions import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
 from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain
 
 #To be called within this script
@@ -84,6 +84,7 @@ def main(**kwargs):
     zeta_monthly_shortname, zeta_monthly_nc_str = get_field_vars('ZETA')
     normal_monthly_shortname, normal_monthly_nc_str = get_field_vars('NORMAL')
     shear_monthly_shortname, shear_monthly_nc_str = get_field_vars('SHEAR')
+    Ek_monthly_shortname, Ek_monthly_nc_str = get_field_vars('UEkVEk')
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
@@ -97,8 +98,10 @@ def main(**kwargs):
 
     denspress_monthly_shortname, denspress_monthly_nc_str = get_field_vars('PHIHYDcR')
     vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+    stress_monthly_shortname, stress_monthly_nc_str = get_field_vars('EXFtauxEXFtauy')
 
     rho_ref = 1029.0 #Reference density (kg/m^3)
+    nu_E = 1e-2 #Eddy viscosity (m^2/s)
 
     ##############################
 
@@ -106,6 +109,7 @@ def main(**kwargs):
 
     denspress_dir = join(datdir, denspress_monthly_shortname)
     vel_dir = join(datdir, vel_monthly_shortname)
+    stress_dir = join(datdir, stress_monthly_shortname)
 
     ##############################
 
@@ -134,7 +138,7 @@ def main(**kwargs):
             #Load monthly density-/pressure-anomaly file into workspace
             ds_denspress_mo = load_dataset(curr_denspress_file) 
 
-            dens, press = get_density_and_pressure(ds_denspress_mo)
+            dens, press = get_density_and_pressure(ds_denspress_mo, rho_ref)
 
             u_g, v_g = comp_geos_vel(ds_grid, press, dens) #Compute geostrophic velocity components
             u_g.name = 'UG'
@@ -180,6 +184,28 @@ def main(**kwargs):
             shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
 
             shear_strain.to_netcdf(path=join(outdir, shear_monthly_shortname, shear_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            
+            ##############################
+            
+            #OCEAN SURFACE STRESSES
+            
+            curr_stress_file = join(stress_dir, stress_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+            
+            if not os.path.exists(curr_stress_file): #If the file doesn't exist, download it
+                download_new_data.main(startmo="01", startyr=year, months=12, scalars=None, xvectors=["EXFtaux"], datdir="Downloads")
+                
+            ds_stress_mo = load_dataset(curr_stress_file) #Load monthly surface-stress file into workspace
+            
+            (ds_stress_mo['EXFtaux']).data, (ds_stress_mo['EXFtauy']).data = (ds_stress_mo['EXFtaux']).values, (ds_stress_mo['EXFtauy']).values
+            
+            u_Ek, v_Ek = comp_Ekman_vel(ds_grid, ds_denspress_mo, ds_stress_mo, nu_E, rho_ref) #Compute Ekman velocity components
+            u_Ek.name = 'UEk'
+            v_Ek.name = 'VEk'
+            
+            #Save Ekman velocity components
+
+            vel_Ek_ds = xr.merge([u_Ek, v_Ek])
+            vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
 ##############################
 
