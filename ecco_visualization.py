@@ -63,7 +63,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity', \
-                  'UG': 'geostrophic water velocity'}
+                  'UG': 'geostrophic water velocity', \
+                  'UEk': 'Ekman current'}
     vector_str = vector_dict[xvec_attr]
     
     if resid:
