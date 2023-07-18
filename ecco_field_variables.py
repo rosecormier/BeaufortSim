@@ -33,7 +33,8 @@ def get_variable_str(attribute, geostrophic=False):
                 'WVEL': 'w', \
                 'ZETA': 'zeta', \
                 'UGVG': 'u_g', \
-                'EXFtauxEXFtauy': 'tau'}
+                'EXFtauxEXFtauy': 'tau', \
+                'UEkVEk': 'u_Ek'}
 
     variable_string = variables[attribute]
         
