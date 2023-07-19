@@ -19,7 +19,7 @@ import numpy as np
 from os.path import expanduser, join
 
 from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
-from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver#, ArcCir_contourf_quiver, ArcCir_contourf_quiver_grid
+from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver
 from ecco_field_variables import get_field_vars, get_variable_str
 from geostrophic_functions import rotate_u_g, comp_geos_metric
 from vorticity_functions import comp_local_Ro, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss

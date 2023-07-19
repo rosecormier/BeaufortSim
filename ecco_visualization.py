@@ -111,8 +111,10 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = ecco_resample(ds_grid, u_plot, latmin, latmax, lonmin, lonmax, resolution)
     v_nearest = ecco_resample(ds_grid, v_plot, latmin, latmax, lonmin, lonmax, resolution)[4]
             
-    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
-                     transform=ccrs.PlateCarree(), scale=quiv_scale, regrid_shape=60, zorder=150)
+    skip = (slice(0, -1, 1), slice(0, -1, 1))
+        
+    quiv = ax.quiver(new_grid_lon_centers[skip], new_grid_lat_centers[skip], u_nearest[skip], v_nearest[skip], color='k', \
+                     transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
     
     return quiv
 
@@ -179,8 +181,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
 def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                            scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", \
-                           lats_lons=[70.0, 85.0, -175.5, -90.5], scale_factor=1, \
-                           arrow_spacing=10, quiv_scale=2):
+                           lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3):
     
     """
     Creates pcolormesh plot of scalar variable in a subdomain of the Arctic,
