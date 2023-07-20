@@ -73,7 +73,7 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                                                                                            datestr)
 
     else:
-        title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, \
+        title = scalar_str + ' and ' + vector_str + ' in BGR \n at {}, {} \n'.format(depthstr, \
                                                                                                datestr)
     
     return title
@@ -96,7 +96,7 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
                     'PHIHYDcR': 'Hydrostatic pressure anomaly'}
     variable_name = variable_dict[variable]
     
-    title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
+    title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
@@ -153,7 +153,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_cente
         
     latmin, latmax, lonmin, lonmax = lats_lons
 
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(10, 8))#(12, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
@@ -196,7 +196,7 @@ def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
 
     latmin, latmax, lonmin, lonmax = lats_lons
 
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(10, 8))#(12, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     

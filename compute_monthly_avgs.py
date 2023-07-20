@@ -35,9 +35,9 @@ def main(**kwargs):
         #Spatial bounds
 
         parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
-                            default=[70.0, 85.0])
+                            default=[70.5, 80.0])
         parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
-                            default=[-180.0, -90.0])
+                            default=[-155.0, -120.0])
 
         #Temporal bounds
 

@@ -41,9 +41,9 @@ def get_parser():
     #Spatial bounds
 
     parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
-                            default=[70.0, 85.0])
+                            default=[70.5, 80.0])
     parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
-                            default=[-180.0, -90.0])
+                            default=[-155.0, -120.0])
     parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
                             default=0.25)
     parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
@@ -283,7 +283,7 @@ def main():
                             OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
                             
                             #Plot OW
-                            ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             OW_list.append(OW)
        
@@ -319,7 +319,7 @@ def main():
                         
                         ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, yearstr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', 'localRo_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
                         
-                        ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, yearstr, 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', 'OW_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, yearstr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'yearly', 'OW_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
 
             elif seasonal: #Case where we plot one season per year
 
@@ -397,7 +397,7 @@ def main():
                         OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
                             
                         #Plot OW
-                        ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                             
                         OW_list.append(OW)
                 
@@ -412,7 +412,7 @@ def main():
 
                         ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-                        ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
     ##############################
 
@@ -533,7 +533,7 @@ def main():
                             OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
                             
                             #Plot OW and quiver
-                            ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', yearstr+"-"+monthstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'monthly', '{}_OW_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
+                            ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', yearstr+"-"+monthstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'monthly', '{}_OW_k{}_{}{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), monthstr, yearstr)), lats_lons=lats_lons)
                             
                             OW_list.append(OW)
                             
@@ -590,7 +590,7 @@ def main():
                         
                         ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
                         
-                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
                     
             elif seasonal: #Case where we plot one season per year
                     
@@ -696,7 +696,7 @@ def main():
                         OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
                             
                         #Plot OW
-                        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
                             
                         OW_list.append(OW)
                         
@@ -711,7 +711,7 @@ def main():
 
                         ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-1e-13, 1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
             
 ##############################
 
