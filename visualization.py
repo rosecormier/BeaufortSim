@@ -223,9 +223,6 @@ def main():
 
     scalar_attr = config['scalar']
     vmin, vmax = config['vminmax'][0], config['vminmax'][1]
-    
-    if scalar_attr == 'ZETA' or scalar_attr == 'WVEL':
-        XGCM_grid = ecco.get_llc_grid(ds_grid)
 
     include_vector_field = False
     xvec_attr = config['xvec']
@@ -304,6 +301,9 @@ def main():
             vector_dir = join(compdatdir, vector_monthly_shortname)
 
     ds_grid = load_grid(datdir) #Load grid  
+    
+    if scalar_attr == 'ZETA' or scalar_attr == 'WVEL':
+        XGCM_grid = ecco.get_llc_grid(ds_grid)
 
     ##############################
 
@@ -416,7 +416,7 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
