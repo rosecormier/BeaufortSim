@@ -107,47 +107,79 @@ def load_ECCO_dataset(variable_dir, variable_monthly_nc_str, yearstr, monthstr, 
 
 ##############################
 
-def plot_pcolormesh_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=None, logscale=True, annual=False, datdirname=None):
+def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=None, seas_monthstr=None, logscale=True, annual=False, seasonal=False, season_start=None, season_end=None, endyearstr=None, datdirname=None, seasonaldatdir=None, data_seasons=None):
     
     #Convert scalar DataSet to useful field
-    lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mo.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+    lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+    
+    if seasonal:
+        seas_yearstr = yearstr
+        datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
     
     #Plot scalar data
-    ArcCir_pcolormesh(ds_grid, [scalar], resolution, cmap, lon_centers, lat_centers, None, datestr, scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=outfile, lats_lons=lats_lons)
+    ArcCir_pcolormesh(ds_grid, [scalar], resolution, cmap, lon_centers, lat_centers, None, datestr, scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=outfile, lats_lons=lats_lons)    
   
     if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
         
         if not annual: #If plotting just one month
                             
             Ro_l = comp_local_Ro(scalar, lat_centers) #Compute Ro_l
+            
+            if not seasonal:
+                Ro_l_outfile = join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+            elif seasonal:
+                Ro_l_outfile = join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
 
             #Plot Ro_l
-            ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=logscale, outfile=join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+            ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, datestr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=logscale, outfile=Ro_l_outfile, lats_lons=lats_lons)
 
             Ro_l_list.append(Ro_l)
 
-            #Get monthly velocity data
-            vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+            if not seasonal:
+                
+                #Get monthly velocity data
+                
+                vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+                ds_vel = load_ECCO_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, scalar_attr='UVEL', datdir=datdirname)
+                (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
+                
+            elif seasonal: 
+                
+                #seasonaldatdir = datdir
+                vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+                
+                if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
+                    save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
 
-            ds_vel_mo = load_ECCO_dataset(join(datdir, vel_monthly_shortname), vel_monthly_nc_str, yearstr, monthstr, year, scalar_attr='UVEL', datdir=datdirname)
-            (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
-
+                ds_vel = xr.open_mfdataset(vel_seas_file, engine="scipy")
+                ds_vel.load()
+                
             #Compute strain terms
 
             xgcm_grid = ecco.get_llc_grid(ds_grid)
-            normal_strain = comp_normal_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-            shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+            normal_strain = comp_normal_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+            shear_strain = comp_shear_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
             normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
             shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
 
             OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
 
+            if not seasonal:
+                OW_outfile = join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+            elif seasonal:
+                OW_outfile = join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+            
             #Plot OW
-            ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr)), lats_lons=lats_lons)
+            ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
 
             OW_list.append(OW)
             
-            return Ro_l_list, OW_list
+            if not seasonal:
+                return Ro_l_list, OW_list
+            
+            elif seasonal:    
+                data_seasons.append(scalar)
+                return Ro_l_list, OW_list, data_seasons
             
         elif annual: #If plotting a year
             
@@ -191,6 +223,9 @@ def main():
 
     scalar_attr = config['scalar']
     vmin, vmax = config['vminmax'][0], config['vminmax'][1]
+    
+    if scalar_attr == 'ZETA' or scalar_attr == 'WVEL':
+        XGCM_grid = ecco.get_llc_grid(ds_grid)
 
     include_vector_field = False
     xvec_attr = config['xvec']
@@ -221,15 +256,11 @@ def main():
         os.makedirs(outdir)
 
     if seasonal:
-
         subdirs = ["seasonal", "interannual"]
-
         seasonaldatdir = join(".", config['seasonaldatdir'])
 
     elif not seasonal:
-
         subdirs = ["monthly", "yearly"]
-
         yearlydatdir = join(".", config['yearlydatdir'])
 
     for subdir in subdirs:
@@ -296,13 +327,11 @@ def main():
                         monthstr = get_monthstr(m)
 
                         if scalarECCO:
-                            
+                        
                             ds_scalar_mo = load_ECCO_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr=scalar_attr, datdir=config['datdir'])
                             ds_scalar_mo[scalar_attr].data = ds_scalar_mo[scalar_attr].values
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                                XGCM_grid = ecco.get_llc_grid(ds_grid)
                                 ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
 
                         elif not scalarECCO:
@@ -313,7 +342,6 @@ def main():
                                 ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
 
                             else: #If it doesn't exist, compute it
-                                
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
                                 ds_scalar_mo = load_dataset(curr_scalar_file)
                                 
@@ -326,7 +354,6 @@ def main():
                         Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'])
        
                     #Get annually-averaged data
-
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
                     
                     if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
@@ -342,9 +369,7 @@ def main():
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
                     
-                    if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                        XGCM_grid = ecco.get_llc_grid(ds_grid)
+                    if scalar_attr == "WVEL": #If w, interpolate vertically    
                         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
                         
                     #File to save annual plot to
@@ -360,8 +385,7 @@ def main():
 
                 data_seasons = []
                 
-                if scalar_attr == 'ZETA':
-                    Ro_l_list, OW_list = [], []
+                Ro_l_list, OW_list = [], []
 
                 for i in range(years): #Iterate over specified years
 
@@ -370,7 +394,6 @@ def main():
                     endyearstr = str(year + season_years[-1])
 
                     #Get seasonally-averaged data
-
                     scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
                     
                     if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
@@ -387,51 +410,13 @@ def main():
                     ds_scalar_seas.load()
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                        XGCM_grid = ecco.get_llc_grid(ds_grid)
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
 
-                    #Convert scalar DataSet to useful field
-                    lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
-
-                    #Plot seasonal average
-                    ArcCir_pcolormesh(ds_grid, k, [scalar_seas], resolution, cmap, lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-
-                    data_seasons.append(scalar_seas)
                     
-                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
-                            
-                        Ro_l = comp_local_Ro(scalar_seas, lat_centers) #Compute Ro_l
-                            
-                        #Plot Ro_l
-                        ArcCir_pcolormesh(ds_grid, k, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-                            
-                        Ro_l_list.append(Ro_l)
-                            
-                        vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                            
-                        if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
-                            save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir='Downloads', outdir=seasonaldatdir)
-                                
-                        ds_vel_seas = xr.open_mfdataset(vel_seas_file, engine="scipy")
-                        ds_vel_seas.load()
-
-                        #Compute strain terms
-                            
-                        xgcm_grid = ecco.get_llc_grid(ds_grid)
-                        normal_strain = comp_normal_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-                        shear_strain = comp_shear_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
-                        normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-                        shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-                            
-                        OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
-                            
-                        #Plot OW
-                        ArcCir_pcolormesh(ds_grid, k, [OW], resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-                            
-                        OW_list.append(OW)
+                    outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
+                    
+                    plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
@@ -473,8 +458,6 @@ def main():
                             ds_scalar_mo = load_ECCO_dataset(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, scalar_attr=scalar_attr, datdir=config['datdir'])
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                                XGCM_grid = ecco.get_llc_grid(ds_grid)
                                 ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
 
                         elif not scalarECCO:
@@ -485,7 +468,6 @@ def main():
                                 ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
 
                             else: #If it doesn't exist, compute it
-                                
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
                                 ds_scalar_mo = load_dataset(curr_scalar_file)
                                 
@@ -512,7 +494,6 @@ def main():
                                 ds_vector_mo = xr.open_mfdataset(curr_vector_file, engine="scipy") #Load monthly vector file into workspace
 
                             else: #If it doesn't exist, compute it
-                                
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
                                 ds_vector_mo = load_dataset(curr_vector_file)
 
@@ -555,10 +536,9 @@ def main():
                             (ds_vel_mo['UVEL']).data, (ds_vel_mo['VVEL']).data = (ds_vel_mo['UVEL']).values, (ds_vel_mo['VVEL']).values
                             
                             #Compute strain terms
-                            
-                            xgcm_grid = ecco.get_llc_grid(ds_grid)
-                            normal_strain = comp_normal_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-                            shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+
+                            normal_strain = comp_normal_strain(XGCM_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+                            shear_strain = comp_shear_strain(XGCM_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
                             normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                             shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                             
@@ -588,8 +568,6 @@ def main():
                     ds_scalar_year.load()
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                        XGCM_grid = ecco.get_llc_grid(ds_grid)
                         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
 
                     #Convert scalar DataSet to useful field
@@ -660,8 +638,6 @@ def main():
                     ds_scalar_seas.load()
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
-                                
-                        XGCM_grid = ecco.get_llc_grid(ds_grid)
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
                     
                     #Convert scalar DataSet to useful field
@@ -718,10 +694,9 @@ def main():
                         ds_vel_seas.load()
 
                         #Compute strain terms
-                            
-                        xgcm_grid = ecco.get_llc_grid(ds_grid)
-                        normal_strain = comp_normal_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-                        shear_strain = comp_shear_strain(xgcm_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
+
+                        normal_strain = comp_normal_strain(XGCM_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
+                        shear_strain = comp_shear_strain(XGCM_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
                         normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                         shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
                             
