@@ -18,7 +18,7 @@ def load_grid(datdir):
     
     grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
     grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-    grid_params_directory = join(datdir, grid_params_shortname)#, grid_params_file)
+    grid_params_directory = join(datdir, grid_params_shortname)
 
     if not os.path.exists(grid_params_directory): 
         
