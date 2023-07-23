@@ -10,7 +10,9 @@ def get_field_vars(attribute):
                          'UGVG': 'GEOS_VEL_MONTHLY', \
                          'ZETA': 'VORTICITY_MONTHLY', \
                          'NORMAL': 'STRAIN_MONTHLY', \
-                         'SHEAR': 'STRAIN_MONTHLY'}
+                         'SHEAR': 'STRAIN_MONTHLY', \
+                         'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
+                         'UEkVEk': 'EK_VEL_MONTHLY'}
     
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
@@ -18,7 +20,9 @@ def get_field_vars(attribute):
                          'UGVG': 'OCEAN_GEOS_UVEL_mon_mean_', \
                          'ZETA': 'OCEAN_VORTICITY_mon_mean', \
                          'NORMAL': 'OCEAN_NORMAL_STRAIN_mon_mean', \
-                         'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean'}
+                         'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean', \
+                         'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
+                         'UEkVEk': 'OCEAN_EK_VEL_mon_mean'}
     
     return monthly_shortnames[attribute], monthly_nc_strings[attribute]
 
@@ -28,7 +32,9 @@ def get_variable_str(attribute, geostrophic=False):
                 'UVELVVEL': 'u', \
                 'WVEL': 'w', \
                 'ZETA': 'zeta', \
-                'UGVG': 'u_g'}
+                'UGVG': 'u_g', \
+                'EXFtauxEXFtauy': 'tau', \
+                'UEkVEk': 'u_Ek'}
 
     variable_string = variables[attribute]
         

@@ -5,6 +5,7 @@ Rosalie Cormier, 2023, based on code by Andrew Delman
 import numpy as np
 import ecco_v4_py as ecco
 import xgcm
+from math import e, pi
 
 Omega = (2 * np.pi) / 86164 #Earth angular velocity
 
@@ -26,7 +27,7 @@ def comp_f(y):
     
     return 2 * Omega * np.sin(lat)
 
-def get_density_and_pressure(ds_denspress, rho_ref=1029.0):
+def get_density_and_pressure(ds_denspress, rho_ref):
     
     """
     Gets density and pressure attributes from DataSet.
@@ -92,7 +93,7 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
-def rotate_u_g(ds_grid, u_g, v_g, k_val):
+def rotate_u_g(ds_grid, u_g, v_g, k_val, surface=False):
     
     """
     Appropriately rotates geostrophic velocity vector and restricts to k- and time-slices.
@@ -102,7 +103,12 @@ def rotate_u_g(ds_grid, u_g, v_g, k_val):
     u_g_copy, v_g_copy = u_g.copy(), v_g.copy()
     u_g = u_g_copy * ds_grid['CS'] - v_g_copy * ds_grid['SN']
     v_g = u_g_copy * ds_grid['SN'] + v_g_copy * ds_grid['CS']
-    u_g, v_g = u_g.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
+    
+    if not surface:
+        u_g, v_g = u_g.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
+        
+    elif surface:
+        u_g, v_g = u_g.squeeze(), v_g.squeeze()
 
     return u_g, v_g
     
@@ -140,25 +146,6 @@ def comp_delta_u_norm(ecco_ds_grid, u_complex, u_g_complex, mask=None):
         vel_diff_norm = np.where(mask, np.nan, vel_diff_norm)
     
     return vel_diff_norm
-"""
-def comp_geos_metric(ecco_ds_grid, u_complex, u_g_complex):
-    
-"""
-    #Computes new diagnostic for geostrophic balance.
-"""
-    
-    u, v = np.real(u_complex), np.imag(u_complex)
-    u_g, v_g = np.real(u_g_complex), np.imag(u_g_complex)
-    
-    u_diff = u - u_g
-    v_diff = v - v_g
-    vel_diff_complex = u_diff + (1j * v_diff)
-    vel_diff_abs = np.abs(vel_diff_complex)
-    
-    vel_abs_sum = np.abs(u_complex) + np.abs(u_g_complex)
-    
-    return vel_diff_abs / vel_abs_sum
-"""
 
 def comp_geos_metric(u, v, u_g, v_g):
     
@@ -178,3 +165,40 @@ def comp_geos_metric(u, v, u_g, v_g):
     vel_abs_sum = np.abs(u_complex) + np.abs(u_g_complex)
     
     return vel_diff_abs / vel_abs_sum
+
+def comp_Ekman_vel(ecco_ds_grid, ds_denspress, ds_stress, nu_E, rho_ref):
+    
+    """
+    Computes Ekman velocity components.
+    
+    nu_E = eddy viscosity (m^2/s)
+    rho_ref = reference density (kg/m^3)
+    """
+    
+    #Get z-coordinate
+    z = ecco_ds_grid.Z
+    
+    #Get density and pressure fields
+    density, pressure = get_density_and_pressure(ds_denspress, rho_ref=rho_ref)
+    
+    #Compute surface density field
+    dens_surface = density.isel(k=0)
+    
+    #Compute Coriolis param. from latitudes of grid cell centres
+    f = comp_f(ecco_ds_grid.YC)
+    
+    #Compute Ekman-layer depth
+    Ek_depth = (2 * nu_E / f)**0.5
+    
+    #Get wind stress components
+    tau_x, tau_y = ds_stress.EXFtaux, ds_stress.EXFtauy #Ask about the directions - need to rotate?
+    
+    #Compute coefficient that multiplies Ekman velocity
+    Ek_coeff = (np.sqrt(2) / (dens_surface * f * Ek_depth))
+    
+    #Compute Ekman velocity components
+    
+    u_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_x * np.cos((z/Ek_depth) - (pi/4)) - tau_y * np.sin((z/Ek_depth) - (pi/4)))
+    v_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_x * np.sin((z/Ek_depth) - (pi/4)) + tau_y * np.cos((z/Ek_depth) - (pi/4)))
+    
+    return u_Ek, v_Ek

@@ -63,7 +63,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity', \
-                  'UG': 'geostrophic water velocity'}
+                  'UG': 'geostrophic water velocity', \
+                  'UEk': 'Ekman current'}
     vector_str = vector_dict[xvec_attr]
     
     if resid:
@@ -72,12 +73,12 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                                                                                            datestr)
 
     else:
-        title = scalar_str + ' and ' + vector_str + ' in Arctic Circle \n at {}, {} \n'.format(depthstr, \
+        title = scalar_str + ' and ' + vector_str + ' in BGR \n at {}, {} \n'.format(depthstr, \
                                                                                                datestr)
     
     return title
 
-def pcolormesh_title(ds_grid, k_plot, variable, datestr):
+def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
  
     depth = - ds_grid.Z[k_plot].values
     depthstr = str(depth) + ' m depth'
@@ -95,7 +96,7 @@ def pcolormesh_title(ds_grid, k_plot, variable, datestr):
                     'PHIHYDcR': 'Hydrostatic pressure anomaly'}
     variable_name = variable_dict[variable]
     
-    title = variable_name + ' in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
+    title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
@@ -110,8 +111,10 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = ecco_resample(ds_grid, u_plot, latmin, latmax, lonmin, lonmax, resolution)
     v_nearest = ecco_resample(ds_grid, v_plot, latmin, latmax, lonmin, lonmax, resolution)[4]
             
-    quiv = ax.quiver(new_grid_lon_centers, new_grid_lat_centers, u_nearest, v_nearest, color='k', \
-                     transform=ccrs.PlateCarree(), scale=quiv_scale, regrid_shape=60, zorder=150)
+    skip = (slice(0, -1, 1), slice(0, -1, 1))
+        
+    quiv = ax.quiver(new_grid_lon_centers[skip], new_grid_lat_centers[skip], u_nearest[skip], v_nearest[skip], color='k', \
+                     transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
     
     return quiv
 
@@ -143,43 +146,52 @@ def plot_geography(ax, labels=True):
         
     return ax
 
-def ArcCir_pcolormesh(ecco_ds_grid, k_plot, scalars, resolution, cmap, lon_centers, lat_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_centers, k_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], k_plot=None, extend='both', logscale=False, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
-    scalar_mean = comp_temp_mean(scalars)
-    scalar = scalar_mean
-        
-    latmin, latmax, lonmin, lonmax = lats_lons
+    scalar = comp_temp_mean(scalars)
+    
+    #Set bounds on data
 
-    fig = plt.figure(figsize=(12, 8))
-    ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
-    ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
-    
     if scalar_bounds[0] == scalar_bounds[1]:
         vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
     else:
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
         
-    if logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
-        
-    elif not logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
+    latmin, latmax, lonmin, lonmax = lats_lons #Spatial bounds
     
-    ax = plot_geography(ax)
-    ax.set_title(pcolormesh_title(ecco_ds_grid, k_plot, scalar_attr, datestr))
+    if latmin != latmax and lonmin != lonmax: #If plotting a horizontal plane
+
+        fig = plt.figure(figsize=(10, 8))
+        ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
+        ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
+        
+        if logscale:
+            color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
+        
+        elif not logscale:
+            color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
+    
+        ax = plot_geography(ax)
+        ax.set_title(pcolormesh_k_title(ecco_ds_grid, k_plot, scalar_attr, datestr))
+        
+    elif latmin != latmax and lonmin == lonmax: #If plotting along a line of constant longitude
+        
+        fig = plt.figure(figsize=(10, 8))
+        ax = plt.axes()
+        
+        color = ax.pcolormesh(lat_centers, k_centers, scalar, cmap=cmap)
     
     fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='bottom')
     
     plt.savefig(outfile)
     plt.close()
     
-    return scalar_mean
+    return scalar
     
 def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                            resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
                            scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", \
-                           lats_lons=[70.0, 85.0, -175.5, -90.5], scale_factor=1, \
-                           arrow_spacing=10, quiv_scale=2):
+                           lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3):
     
     """
     Creates pcolormesh plot of scalar variable in a subdomain of the Arctic,
@@ -194,7 +206,7 @@ def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
 
     latmin, latmax, lonmin, lonmax = lats_lons
 
-    fig = plt.figure(figsize=(12, 8))
+    fig = plt.figure(figsize=(10, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
