@@ -48,7 +48,6 @@ def main(**kwargs):
         datdirshort = kwargs.get('datdir')
 
     homedir = expanduser('~')
-    #sys.path.append(join(homedir, 'ECCOv4-py'))
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     if not os.path.exists(datdir):
