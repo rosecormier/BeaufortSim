@@ -249,7 +249,7 @@ def main():
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
                         #Plot monthly data    
-                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'])
+                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
@@ -274,7 +274,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual data
-                    plot_pcolormesh_k_plane(ds_grid, ds_scalar_year, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, yearstr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, annual=True)
+                    plot_pcolormesh_k_plane(ds_grid, ds_scalar_year, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
 
             elif seasonal: #Case where we plot one season per year
 
@@ -314,7 +314,7 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 

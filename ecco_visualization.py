@@ -332,7 +332,7 @@ def plot_OW(OW_list, zeta_field, seasonal, yearstr, year, outdir, k, datdirname,
 
 ##############################
 
-def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=None, seas_monthstr=None, logscale=True, annual=False, seasonal=False, season_start=None, season_end=None, endyearstr=None, datdirname=None, seasonaldatdir=None, data_seasons=None):
+def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, logscale=True, seasonal=False, annual=False, season_start=None, season_end=None, endyearstr=None, datdirname=None, seasonaldatdir=None, data_seasons=None):
     
     """
     Creates pcolormesh plot on plane of constant k.
@@ -349,41 +349,39 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, 
     ArcCir_pcolormesh(ds_grid, [scalar], resolution, cmap, lon_centers, lat_centers, None, datestr, scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=outfile, lats_lons=lats_lons)    
   
     if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
-        
-        if not annual: #If not plotting annual average
-            
-            #Compute and plot local Rossby number for the month or season
-            Ro_l_list = plot_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons)
-            
-            if not seasonal:
-                
-                #Compute and plot OW for the month
-                OW_list = plot_OW(OW_list, scalar, False, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
-          
-                return Ro_l_list, OW_list
-            
-            elif seasonal:    
-                
-                #Make sure the seasonal velocity file exists already
-                
-                vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc") #Define filename
-                
-                if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
-                    save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
-                
-                #Compute and plot OW for the season
-                OW_list = plot_OW(OW_list, scalar, True, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
-                
-                data_seasons.append(scalar)
-                return Ro_l_list, OW_list, data_seasons
-            
-        elif annual: #If plotting a year
-            
+
+        if annual: #If plotting an annual average
+
             #Plot Ro_l
             ArcCir_pcolormesh(ds_grid, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, yearstr, 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'yearly', 'localRo_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
-                      
+
             #Plot OW
             ArcCir_pcolormesh(ds_grid, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, yearstr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'yearly', 'OW_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
+        
+        elif not seasonal:
+                
+            #Compute and plot local Rossby number for the month
+            Ro_l_list = plot_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons)
+                
+            #Compute and plot OW for the month
+            OW_list = plot_OW(OW_list, scalar, False, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
+          
+            return Ro_l_list, OW_list
+            
+        elif seasonal:    
+                
+            #Make sure the seasonal velocity file exists already
+                
+            vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc") #Define filename
+                
+            if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
+                save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
+                
+            #Compute and plot OW for the season
+            OW_list = plot_OW(OW_list, scalar, True, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
+                
+            data_seasons.append(scalar)
+            return Ro_l_list, OW_list, data_seasons
             
 ##############################
 
