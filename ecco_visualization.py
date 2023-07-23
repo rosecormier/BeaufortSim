@@ -285,7 +285,7 @@ def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir,
     
 ##############################
 
-def plot_OW(OW_list, zeta_field, seasonal, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1e-14, 1e-14]):
+def plot_OW(OW_list, zeta_field, seasonal, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1e-14, 1e-14]):
     
     """
     Computes and plots Okubo-Weiss parameter corresponding to monthly velocity and vorticity profiles.
@@ -358,7 +358,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, 
             if not seasonal:
                 
                 #Compute and plot OW for the month
-                OW_list = plot_OW(OW_list, scalar, False, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
+                OW_list = plot_OW(OW_list, scalar, False, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
           
                 return Ro_l_list, OW_list
             
@@ -372,7 +372,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, 
                     save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
                 
                 #Compute and plot OW for the season
-                OW_list = plot_OW(OW_list, scalar, True, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
+                OW_list = plot_OW(OW_list, scalar, True, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
                 
                 data_seasons.append(scalar)
                 return Ro_l_list, OW_list, data_seasons
