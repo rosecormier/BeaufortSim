@@ -1,5 +1,5 @@
 """
-ECCO download routine
+ECCO download routine.
 
 Rosalie Cormier, 2023
 """
