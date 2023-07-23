@@ -22,7 +22,7 @@ from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, com
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver
 from ecco_field_variables import get_field_vars, get_variable_str
 from geostrophic_functions import rotate_u_g, comp_geos_metric
-from vorticity_functions import comp_local_Ro, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss
+from vorticity_functions import plot_monthly_Ro_l, plot_monthly_OW#comp_local_Ro, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss
 
 #The following are scripts that are imported as modules but may be run within this script
 
@@ -90,81 +90,6 @@ def get_parser():
 
 ##############################
 
-def plot_monthly_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons, scalar_bounds=[1e-4, 1e-2]):
-
-    """
-    Computes and plots local Rossby number corresponding to vorticity field.
-    """
-    
-    Ro_l = comp_local_Ro(zeta_field, lat_centers) #Compute Ro_l
-            
-    #Define output file name
-        
-    if not seasonal:
-        Ro_l_outfile = join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
-    elif seasonal:
-        Ro_l_outfile = join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
-
-    #Plot Ro_l
-    ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, datestr, 'Ro_l', scalar_bounds=scalar_bounds, k_plot=k, extend='both', logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
-
-    #Save Ro_l data and return it
-    
-    Ro_l_list.append(Ro_l)
-    return Ro_l_list
-    
-##############################
-
-def plot_monthly_OW(OW_list, zeta_field, seasonal, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1e-14, 1e-14]):
-    
-    """
-    Computes and plots Okubo-Weiss parameter corresponding to velocity and vorticity profiles.
-    """
-    
-    if not seasonal:
-        
-        #Get monthly velocity data
-        
-        vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
-        ds_vel = load_ECCO_dataset.main(variable_dir=join(datdir, vel_monthly_shortname), variable_monthly_nc_str=vel_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr='UVEL', xvec_attr=None, datdir=datdirname)
-        (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
-        
-        #Define output file name
-        OW_outfile = join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
-        
-    elif seasonal:
-        
-        #Get seasonal velocity data
-        
-        vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                
-        if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
-            save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
-
-        ds_vel = xr.open_mfdataset(vel_seas_file, engine="scipy")
-        ds_vel.load()
-        
-        #Define output file name
-        OW_outfile = join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
-        
-    #Compute strain terms
-    
-    xgcm_grid = ecco.get_llc_grid(ds_grid)
-    normal_strain = comp_normal_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-    shear_strain = comp_shear_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
-    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    
-    OW = comp_OkuboWeiss(zeta_field, normal_strain, shear_strain) #Compute OW 
-    
-    #Plot OW
-    ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
-
-    OW_list.append(OW)
-    return OW_list
-    
-##############################
-
 def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outdir, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=None, seas_monthstr=None, logscale=True, annual=False, seasonal=False, season_start=None, season_end=None, endyearstr=None, datdirname=None, seasonaldatdir=None, data_seasons=None):
     
     #Convert scalar DataSet to useful field
@@ -183,56 +108,25 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar, k, scalar_attr, latmin, latmax, 
             
             #Compute and plot local Rossby number for the month or season
             Ro_l_list = plot_monthly_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons)
-            """ 
-            if not seasonal:
-                
-                #Get monthly velocity data
- 
-                vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
-                ds_vel = load_ECCO_dataset.main(variable_dir=join(datdir, vel_monthly_shortname), variable_monthly_nc_str=vel_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr='UVEL', xvec_attr=None, datdir=datdirname)
-                (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
-                
-            elif seasonal: 
-                
-                vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                
-                if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
-                    save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
-
-                ds_vel = xr.open_mfdataset(vel_seas_file, engine="scipy")
-                ds_vel.load()
-                
-            #Compute strain terms
-
-            xgcm_grid = ecco.get_llc_grid(ds_grid)
-            normal_strain = comp_normal_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-            shear_strain = comp_shear_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
-            normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-            shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-
-            OW = comp_OkuboWeiss(scalar, normal_strain, shear_strain) #Compute OW
-
-            if not seasonal:
-                OW_outfile = join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
-            elif seasonal:
-                OW_outfile = join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
             
-            #Plot OW
-            ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
-
-            OW_list.append(OW)
-            """
             if not seasonal:
                 
                 #Compute and plot OW for the month
-                OW_list = plot_monthly_OW(OW_list, scalar, seasonal, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
+                OW_list = plot_monthly_OW(OW_list, scalar, False, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
           
                 return Ro_l_list, OW_list
             
             elif seasonal:    
                 
+                #Make sure the seasonal velocity file exists already
+                
+                vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc") #Define filename
+                
+                if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
+                    save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir=datdirname, outdir=seasonaldatdir)
+                
                 #Compute and plot OW for the season
-                OW_list = plot_monthly_OW(OW_list, zeta_field, seasonal, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
+                OW_list = plot_monthly_OW(OW_list, scalar, True, yearstr, year, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
                 
                 data_seasons.append(scalar)
                 return Ro_l_list, OW_list, data_seasons
@@ -404,7 +298,7 @@ def main():
 
         elif not vectorECCO:
             vector_dir = join(compdatdir, vector_monthly_shortname)
-
+ 
     ds_grid = load_grid(datdir) #Load grid  
     
     if scalar_attr == 'ZETA' or scalar_attr == 'WVEL':

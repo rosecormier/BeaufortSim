@@ -48,7 +48,7 @@ def main(**kwargs):
         datdirshort = kwargs.get('datdir')
 
     homedir = expanduser('~')
-    sys.path.append(join(homedir, 'ECCOv4-py'))
+    #sys.path.append(join(homedir, 'ECCOv4-py'))
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
 
     if not os.path.exists(datdir):
@@ -63,8 +63,7 @@ def main(**kwargs):
     start_i, monthname = get_month_name(startmo)
     i = start_i
     
-    #Iterate over all specified months
-    while i <= start_i + mos:
+    while i <= start_i + mos: #Iterate over all specified months
 
         monthstr, yearstr = get_monthstr(i), str(year)
         endmonth = get_month_end(monthstr, yearstr)
@@ -73,8 +72,7 @@ def main(**kwargs):
 
         if xvectors is not None:
         
-            #Iterate over vector variables
-            for xvector in xvectors:
+            for xvector in xvectors: #Iterate over vector variables
 
                 yvector = get_vector_partner(xvector)
 
@@ -85,8 +83,7 @@ def main(**kwargs):
 
         if scalars is not None:
                 
-            #Iterate over scalar variables
-            for scalar in scalars:
+            for scalar in scalars: #Iterate over scalar variables
 
                 scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar)
 

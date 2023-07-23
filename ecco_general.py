@@ -14,25 +14,22 @@ def load_grid(datdir):
     
     """
     Loads ECCO grid.
-    
-    datdir = directory where data is stored
     """
     
     grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
+    grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
+    grid_params_directory = join(datdir, grid_params_shortname)#, grid_params_file)
 
-    if not os.path.exists(join(datdir, grid_params_shortname)): 
+    if not os.path.exists(grid_params_directory): 
         
-        os.makedirs(join(datdir, grid_params_shortname))
+        os.makedirs(grid_params_directory)
     
         #Download ECCO grid parameters (date is arbitrary)
         ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
                      EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
                      force_redownload=False)
 
-    grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-    grid_params_file_path = join(datdir, grid_params_shortname, grid_params_file)
-
-    ds_grid = xr.open_dataset(grid_params_file_path) #Load grid parameters
+    ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
     
     return ds_grid
 
