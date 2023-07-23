@@ -26,7 +26,6 @@ def load_ECCO_dataset(variable_dir, variable_monthly_nc_str, yearstr, monthstr, 
             download_new_data.main(startmo="01", startyr=year, months=12, scalars=None, xvectors=[xvec_attr], datdir=datdir)
         
     ds_month = load_dataset(curr_file)
-    
     return ds_month
 
 ##############################
