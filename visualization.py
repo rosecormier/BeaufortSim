@@ -219,7 +219,7 @@ def main():
                         
                         monthstr = get_monthstr(m)
 
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
  
                             ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr=scalar_attr, xvec_attr=None, datdir=config['datdir'])
                             ds_scalar_mo[scalar_attr].data = ds_scalar_mo[scalar_attr].values
@@ -244,14 +244,14 @@ def main():
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
                         #Plot monthly data    
-                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
+                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
                     
                     if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
                         
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
                             datdirshort, usecompdata = 'Downloads', False
                             
                         elif not scalarECCO:
@@ -269,7 +269,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual data
-                    plot_pcolormesh_k_plane(ds_grid, ds_scalar_year, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
+                    plot_pcolormesh_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
 
             elif seasonal: #Case where we plot one season per year
 
@@ -291,7 +291,7 @@ def main():
                     
                     if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
                         
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
                             datdirshort, usecompdata = 'Downloads', False
                             
                         elif not scalarECCO:
@@ -309,20 +309,23 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, ds_scalar_seas, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
-                    seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
-
+                    #seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
+                    datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
+                    outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
+                    
                     #Plot average over all seasons
-                    ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, cmap, lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, multiple_seas=True) #, outdir=None, monthstr=None, seas_monthstr=None, logscale=True, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None)
+                    #ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, cmap, lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW
+                    #if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW
 
-                        ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                    #    ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-                        ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                    #    ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
     ##############################
 
@@ -346,7 +349,7 @@ def main():
                         
                         monthstr = get_monthstr(m)
 
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
                            
                             ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr=scalar_attr, xvec_attr=None, datdir=config['datdir'])
                             
@@ -376,7 +379,7 @@ def main():
                     
                     if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
                         
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
                             datdirshort, usecompdata = 'Downloads', False
                             
                         elif not scalarECCO:
@@ -406,7 +409,7 @@ def main():
                     ds_vector_year = xr.open_mfdataset(vector_annual_file, engine="scipy")
                     ds_vector_year.load()
                     
-                    if vectorECCO:
+                    if vectorECCO: #If variable comes from ECCO directly
                         vecE, vecN = rotate_vector(ds_grid, ds_vector_year, xvec_attr, yvec_attr)
                         vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                         
@@ -446,7 +449,7 @@ def main():
                         
                     if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
 
-                        if scalarECCO:
+                        if scalarECCO: #If variable comes from ECCO directly
                             datdirshort, usecompdata = 'Downloads', False
 
                         elif not scalarECCO:
@@ -468,7 +471,7 @@ def main():
                     
                     if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
 
-                        if vectorECCO:
+                        if vectorECCO: #If variable comes from ECCO directly
                             datdirshort, usecompdata = 'Downloads', False
 
                         elif not vectorECCO:
@@ -479,7 +482,7 @@ def main():
                     ds_vector_seas = xr.open_mfdataset(vector_seas_file, engine="scipy")
                     ds_vector_seas.load()
                     
-                    if vectorECCO:
+                    if vectorECCO: #If variable comes from ECCO directly
                         vecE, vecN = rotate_vector(ds_grid, ds_vector_seas, xvec_attr, yvec_attr)
                         vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
                         
