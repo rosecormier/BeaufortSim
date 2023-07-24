@@ -261,12 +261,12 @@ def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
 
 ##############################
 
-def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons, scalar_bounds=[1e-4, 1e-2]):
+def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, scalar_bounds=[1e-4, 1e-2], monthstr=None, seas_monthstr=None, seas_yearstr=None):
 
     """
     Computes and plots local Rossby number corresponding to monthly vorticity field.
     """
-    
+
     Ro_l = comp_local_Ro(zeta_field, lat_centers) #Compute Ro_l
             
     #Define output file name
@@ -280,7 +280,7 @@ def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir,
     ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, datestr, 'Ro_l', scalar_bounds=scalar_bounds, k_plot=k, extend='both', logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
 
     #Save Ro_l data and return it
-    
+
     Ro_l_list.append(Ro_l)
     return Ro_l_list
     
@@ -333,17 +333,25 @@ def plot_OW(OW_list, zeta_field, seasonal, yearstr, year, outdir, k, datdirname,
 
 ##############################
 
-def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, logscale=True, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None):
+def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, logscale=True, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None, lon_centers=None, lat_centers=None):
     
     """
     Creates pcolormesh plot on plane of constant k.
     """
     
     #Take temporal average, if needed
+ 
     ds_scalar_mean = comp_temp_mean(ds_scalar_list)
     
-    #Convert scalar DataSet to useful field
-    lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+    if type(ds_scalar_list[0]) == xr.Dataset: 
+        
+        ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
+    
+        #Convert scalar DataSet to useful field
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+        
+    else: 
+        scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
     if seasonal:
         seas_yearstr = yearstr
@@ -365,15 +373,15 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
         elif multiple_seas: #If plotting interannual seasonal average
             
             seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
-            
-            ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+     
+            ArcCir_pcolormesh(ds_grid, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
-            ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+            ArcCir_pcolormesh(ds_grid, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
         
         elif not seasonal:
                 
             #Compute and plot local Rossby number for the month
-            Ro_l_list = plot_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, seasonal, outdir, k, monthstr, yearstr, ds_grid, resolution, datestr, lats_lons)
+            Ro_l_list = plot_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, False, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=monthstr)
                 
             #Compute and plot OW for the month
             OW_list = plot_OW(OW_list, scalar, False, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
@@ -381,6 +389,9 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
             return Ro_l_list, OW_list
             
         elif seasonal:    
+            
+            #Compute and plot local Rossby number for the season
+            Ro_l_list = plot_Ro_l(Ro_l_list, scalar, lon_centers, lat_centers, True, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr)
                 
             #Make sure the seasonal velocity file exists already
                 
@@ -395,7 +406,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
             data_seasons.append(scalar)
     
     if seasonal:
-        return Ro_l_list, OW_list, data_seasons
+        return Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers
             
 ##############################
 

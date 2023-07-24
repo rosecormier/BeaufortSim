@@ -309,24 +309,16 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    Ro_l_list, OW_list, data_seasons = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
-                    #seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
                     datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
                     outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
-                    
+          
                     #Plot average over all seasons
-                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, multiple_seas=True) #, outdir=None, monthstr=None, seas_monthstr=None, logscale=True, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None)
-                    #ArcCir_pcolormesh(ds_grid, k, data_seasons, resolution, cmap, lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-
-                    #if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW
-
-                    #    ArcCir_pcolormesh(ds_grid, k, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'Ro_l', scalar_bounds=[1e-4, 1e-2], k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'interannual', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-
-                    #    ArcCir_pcolormesh(ds_grid, k, OW_list, resolution, 'seismic', lon_centers, lat_centers, None, '{}, {}'.format(seas_monthstr, seas_yearstr), 'OW', scalar_bounds=[-0.1e-13, 0.1e-13], k_plot=k, extend='both', outfile=join(outdir, 'interannual', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-
+                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
+                
     ##############################
 
     #CASE WHERE VECTOR AND SCALAR ARE PROVIDED
