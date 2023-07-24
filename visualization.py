@@ -90,11 +90,6 @@ def get_parser():
 ##############################
             
 def main():
-
-    #vir_nanmasked = plt.get_cmap('viridis_r').copy()
-    #vir_nanmasked.set_bad('black')
-
-    ##############################
     
     parser = get_parser()
     args = parser.parse_args()
