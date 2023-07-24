@@ -35,8 +35,6 @@ def cbar_label(scalar_attr):
     
     """
     Returns label for plot colorbar.
-    
-    scalar_attr = variable that the colorbar corresponds to
     """
     
     cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
@@ -60,10 +58,6 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
     
     """
     Returns title for contourf-quiver plot.
-    
-    ecco_ds_grid = ECCO grid
-    k_plot = k-value to plot at
-    datestr = string containing date
     """
     
     ds_grid = ecco_ds_grid.copy()
