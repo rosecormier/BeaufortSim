@@ -22,6 +22,8 @@ def check_for_ecco_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr
      
     if not os.path.exists(monthly_file): #If the file doesn't exist, download data for that year
         download_new_data.main(startmo="01", startyr=year, months=12, variable_strs=[variable_str], datdir=datdir)
+        
+    return monthly_file
 
 def load_grid(datdir):
     
