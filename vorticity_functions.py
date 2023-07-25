@@ -4,16 +4,10 @@ Vorticity-related functions.
 Rosalie Cormier, 2023
 """
 
-import xarray as xr
-import ecco_v4_py as ecco
-
 from os.path import join
 
-from ecco_field_variables import get_field_vars
 from ecco_general import ecco_resample, load_dataset
 from geostrophic_functions import comp_f
-
-import load_ECCO_dataset
 
 ##############################
 
