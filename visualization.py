@@ -18,15 +18,15 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
+from ecco_general import check_for_ecco_file, load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from ecco_field_variables import get_field_vars, get_variable_str
+from ecco_load_comp_data import load_comp_file
 from geostrophic_functions import rotate_u_g, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
 
 import compute_monthly_avgs
-import load_ECCO_dataset
 import save_annual_avgs
 import save_seasonal_avgs
 
@@ -220,31 +220,27 @@ def main():
                         monthstr = get_monthstr(m)
 
                         if scalarECCO: #If variable comes from ECCO directly
- 
-                            ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr=scalar_attr, xvec_attr=None, datdir=config['datdir'])
-                            ds_scalar_mo[scalar_attr].data = ds_scalar_mo[scalar_attr].values
+                            
+                            #Ensure file is downloaded
+                            scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, variable_str, config['datdir'])
+                            ds_scalar_mo = load_dataset(scalar_file) #Load data
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
                                 ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
 
                         elif not scalarECCO:
 
-                            curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
-
-                            if os.path.exists(curr_scalar_file): #Look for the file
-                                ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
-
-                            else: #If it doesn't exist, compute it
-                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
-                                ds_scalar_mo = load_dataset(curr_scalar_file)
-                                
+                            scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+                            
+                            #Ensure file exists and load data
+                            ds_scalar_mo = load_comp_file(scalar_file, latmin, latmax, lonmin, lonmax, year, config['datdir'], compdatdir)
                             ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr) 
                     
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
                         #Plot monthly data    
-                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
+                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
@@ -269,7 +265,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual data
-                    plot_pcolormesh_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
+                    plot_pcolormesh_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
 
             elif seasonal: #Case where we plot one season per year
 
@@ -277,7 +273,6 @@ def main():
                 seas_monthstr = season_months[0] + "-" + season_months[-1] #For titles
 
                 data_seasons = []
-                
                 Ro_l_list, OW_list = [], []
 
                 for i in range(years): #Iterate over specified years
@@ -309,15 +304,15 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
                     datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
                     outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
           
-                    #Plot average over all seasons
-                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
+                    #Plot average over all seasons, reusing seasonal lat/lon_centers
+                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
                 
     ##############################
 
@@ -328,14 +323,13 @@ def main():
         for k in range(kmin, kmax + 1): #Iterate over specified depths
 
             if not seasonal: #Case where we plot every month
-                
-                if scalar_attr == 'ZETA':
-                    Ro_l_list, OW_list = [], []
 
                 for i in range(years): #Iterate over specified years
 
                     year = startyr + i
                     yearstr = str(year)
+                    
+                    Ro_l_list, OW_list = [], [] #Only used if scalar attribute is ZETA
 
                     for m in range(12): #Iterate over months
                         
@@ -343,7 +337,7 @@ def main():
 
                         if scalarECCO: #If variable comes from ECCO directly
                            
-                            ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr=scalar_attr, xvec_attr=None, datdir=config['datdir'])
+                            ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, variable_str=scalar_attr, datdir=config['datdir'])
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
                                 ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
@@ -352,17 +346,35 @@ def main():
 
                             curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
 
-                            if os.path.exists(curr_scalar_file): #Look for the file
-                                ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
-
-                            else: #If it doesn't exist, compute it
+                            if not os.path.exists(curr_scalar_file): #If it doesn't exist, compute it
                                 compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
-                                ds_scalar_mo = load_dataset(curr_scalar_file)
-                                
+                              
+                            ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
                             ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr)
 
+                        if vectorECCO: #If variable comes from ECCO directly
+
+                            curr_vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+                            ds_vector_mo = load_dataset(curr_vector_file)
+                            vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr)
+                            vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
+
+                        elif not vectorECCO:
+
+                            curr_vector_file = join(vector_dir, vector+monthly_nc_str+yearstr+"-"+monthstr+".nc")
+                            
+                            if not os.path.exists(curr_vector_file): #If it doesn't exist, compute it
+                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
+                                
+                            ds_vector_mo = xr.open_mfdataset(curr_vector_file, engine="scipy") #Load monthly vector file
+                            
+                            vecE, vecN = rotate_u_g(ds_grid, ds_vector_mo[xvec_attr], ds_vector_mo[yvec_attr], k)
+                    
+                        #File to save monthly plot to
+                        outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
+                        
                         #Plot monthly data
-                        plot_pcm_quiver_k_plane(ds_grid, ds_scalar_mo, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
+                        plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, outfile=outfile, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
                             
                     #Get annually-averaged data
 
