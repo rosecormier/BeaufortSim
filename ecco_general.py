@@ -15,7 +15,7 @@ from ecco_download import ecco_podaac_download
 def check_for_ecco_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, variable_str, datdir):
     
     """
-    Checks that a file exists, and downloads it if it doesn't.
+    Checks that an ECCO file exists, and downloads it if it doesn't.
     """
     
     monthly_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
