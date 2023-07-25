@@ -12,7 +12,7 @@ import ecco_v4_py as ecco
 from os.path import join
 from ecco_download import ecco_podaac_download
 
-def check_for_ECCO_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, variable_str, datdir):
+def check_for_ecco_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, variable_str, datdir):
     
     """
     Checks that a file exists, and downloads it if it doesn't.
