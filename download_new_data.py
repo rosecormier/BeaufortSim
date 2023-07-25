@@ -24,8 +24,7 @@ def main(**kwargs):
 
         parser.add_argument("--month", type=str, help="Start month", default="01")
         parser.add_argument("--months", type=int, help="Total number of months", default=12)
-        parser.add_argument("--scalars", type=str, help="Scalar variables", default=['PHIHYDcR'])
-        parser.add_argument("--xvectors", type=str, help="Vector variables (x-comp.)", default=['UVEL']) 
+        parser.add_argument("--variable_strs", type=str, help="Variables to download", default=[])
         parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 
         parser.add_argument("start", type=int, help="Start year")
@@ -43,9 +42,8 @@ def main(**kwargs):
         startmo = kwargs.get('startmo')
         startyr = kwargs.get('startyr')
         mos = kwargs.get('months')
-        scalars = kwargs.get('scalars')
-        xvectors = kwargs.get('xvectors')
         datdirshort = kwargs.get('datdir')
+        variable_strs = kwargs.get('variable_strs')
 
     homedir = expanduser('~')
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
@@ -69,25 +67,10 @@ def main(**kwargs):
 
         StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
 
-        if xvectors is not None:
-        
-            for xvector in xvectors: #Iterate over vector variables
-
-                yvector = get_vector_partner(xvector)
-
-                vec_monthly_shortname, vec_monthly_nc_str = get_field_vars(xvector+yvector)
-
-                #Download monthly-averaged file
-                ecco_podaac_download(ShortName=vec_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
-
-        if scalars is not None:
-                
-            for scalar in scalars: #Iterate over scalar variables
-
-                scalar_monthly_shortname, scalar_monthly_nc_str = get_field_vars(scalar)
-
-                #Download monthly-averaged file
-                ecco_podaac_download(ShortName=scalar_monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
+        for variable_str in variable_strs:
+            
+            monthly_shortname, monthly_nc_str = get_field_vars(variable_str)
+            ecco_podaac_download(ShortName=monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
 
         if (i + 1) % 12 == 0 and (i + 1) != start_i + mos:
             year += 1 #Go to next year
