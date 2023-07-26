@@ -21,7 +21,7 @@ from os.path import expanduser, join
 from ecco_general import check_for_ecco_file, load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from ecco_field_variables import get_field_vars, get_variable_str
-from ecco_load_comp_data import load_comp_file, load_annual_scalar_ds
+from ecco_load_comp_data import load_comp_file, load_annual_scalar_ds, load_seasonal_scalar_ds
 from geostrophic_functions import rotate_u_g, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
@@ -243,7 +243,7 @@ def main():
                         Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data
-                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'])
+                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically    
                         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
@@ -267,22 +267,9 @@ def main():
                     year = startyr + i
                     yearstr = str(year)
                     endyearstr = str(year + season_years[-1])
-
+                    
                     #Get seasonally-averaged data
-                    scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                    
-                    if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
-                        
-                        if scalarECCO: #If variable comes from ECCO directly
-                            datdirshort, usecompdata = 'Downloads', False
-                            
-                        elif not scalarECCO:
-                            datdirshort, usecompdata = 'computed_monthly', True
-                        
-                        save_seasonal_avgs.main(field=scalar_attr, years=[year], start_month=season_start, end_month=season_end, usecompdata=usecompdata, datdir=datdirshort, outdir=seasonaldatdir)
-                    
-                    ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
-                    ds_scalar_seas.load()
+                    ds_scalar_seas = load_seasonal_scalar_ds(seasonaldatdir, scalar_attr, season_start, year, season_end, endyearstr, scalarECCO)
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
