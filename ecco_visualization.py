@@ -20,7 +20,7 @@ from os.path import join
 from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset
 from ecco_field_variables import get_field_vars
 
-from vorticity_functions import comp_local_Ro, comp_vorticity, comp_normal_strain, comp_shear_strain, comp_OkuboWeiss
+from vorticity_functions import get_OW_field, comp_local_Ro
 
 import save_seasonal_avgs
 
@@ -330,16 +330,8 @@ def plot_OW(OW_list, zeta_field, seasonal, yearstr, year, outdir, k, datdirname,
         
         #Define output file name
         OW_outfile = join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
-        
-    #Compute strain terms
-    
-    xgcm_grid = ecco.get_llc_grid(ds_grid)
-    normal_strain = comp_normal_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-    shear_strain = comp_shear_strain(xgcm_grid, ds_vel['UVEL'], ds_vel['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
-    normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-    
-    OW = comp_OkuboWeiss(zeta_field, normal_strain, shear_strain) #Compute OW 
+ 
+    OW = get_OW_field(ds_grid, ds_vel, k, lats_lons, resolution, zeta_field) #Compute OW field
     
     #Plot OW
     ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
@@ -355,7 +347,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     Creates pcolormesh plot on plane of constant k.
     """
     
-    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds #[0], lats_lons[1], lats_lons[2], lats_lons[3]
+    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds
     
     ds_scalar_mean = comp_temp_mean(ds_scalar_list) #Take temporal average, if needed
     
@@ -432,7 +424,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
     Creates pcolormesh + quiver plot on plane of constant k.
     """
     
-    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds #[0], lats_lons[1], lats_lons[2], lats_lons[3]
+    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds 
     
     ds_scalar_mean = comp_temp_mean(ds_scalar_list) #Take temporal average, if needed
     
@@ -494,7 +486,6 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
     
     #Create main plot
     ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=[1, 1], extend='both', logscale=False, outfile=outfile, lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3)
-    
     
 """
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
