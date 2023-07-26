@@ -244,22 +244,7 @@ def main():
        
                     #Get annually-averaged data
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'])
-                    """
-                    scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
                     
-                    if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
-                        
-                        if scalarECCO: #If variable comes from ECCO directly
-                            datdirshort, usecompdata = 'Downloads', False
-                            
-                        elif not scalarECCO:
-                            datdirshort, usecompdata = 'computed_monthly', True
-                            
-                        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=config['datdir'], usecompdata=usecompdata, outdir=yearlydatdir)
-                    
-                    ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
-                    ds_scalar_year.load()
-                    """
                     if scalar_attr == "WVEL": #If w, interpolate vertically    
                         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
                         
