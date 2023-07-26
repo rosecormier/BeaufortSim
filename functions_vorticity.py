@@ -8,8 +8,8 @@ from os.path import join
 
 import ecco_v4_py as ecco
 
-from ecco_general import ecco_resample, load_dataset
-from geostrophic_functions import comp_f
+from functions_ecco_general import ecco_resample, load_dataset
+from functions_geostrophy import comp_f
 
 ##############################
 

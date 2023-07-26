@@ -9,7 +9,7 @@ import xarray as xr
 
 from os.path import join
 
-from ecco_general import load_dataset
+from functions_ecco_general import load_dataset
 
 import compute_monthly_avgs
 import save_annual_avgs

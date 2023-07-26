@@ -10,7 +10,8 @@ import xarray as xr
 import ecco_v4_py as ecco
 
 from os.path import join
-from ecco_download import ecco_podaac_download
+
+from functions_ecco_download import ecco_podaac_download
 
 def check_for_ecco_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, variable_str, datdir):
     

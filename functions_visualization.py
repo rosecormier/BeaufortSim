@@ -17,10 +17,9 @@ import ecco_v4_py as ecco
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
-from ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset
-from ecco_field_variables import get_field_vars
-
-from vorticity_functions import get_OW_field, comp_local_Ro
+from functions_ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset
+from functions_field_variables import get_field_vars
+from functions_vorticity import get_OW_field, comp_local_Ro
 
 import save_seasonal_avgs
 

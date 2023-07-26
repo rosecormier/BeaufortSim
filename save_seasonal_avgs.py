@@ -15,10 +15,11 @@ import xarray as xr
 
 from os.path import expanduser, join
 
-from ecco_general import load_dataset, comp_temp_mean, get_season_months_and_years
-from ecco_field_variables import get_field_vars
+from functions_ecco_general import load_dataset, comp_temp_mean, get_season_months_and_years
+from functions_field_variables import get_field_vars
 
 #To be called from this script
+
 import compute_monthly_avgs
 import download_new_data
 

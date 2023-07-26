@@ -15,8 +15,8 @@ import xarray as xr
 
 from os.path import expanduser, join
 
-from ecco_general import load_dataset, comp_temp_mean
-from ecco_field_variables import get_field_vars
+from functions_ecco_general import load_dataset, comp_temp_mean
+from functions_field_variables import get_field_vars
 
 ##############################
 

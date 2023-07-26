@@ -16,10 +16,10 @@ import xarray as xr
 
 from os.path import expanduser, join
 
-from ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
-from ecco_field_variables import get_field_vars, get_variable_str 
-from geostrophic_functions import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
-from vorticity_functions import comp_vorticity, comp_normal_strain, comp_shear_strain
+from functions_ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
+from functions_field_variables import get_field_vars, get_variable_str 
+from functions_geostrophy import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
+from functions_vorticity import comp_vorticity, comp_normal_strain, comp_shear_strain
 
 #To be called within this script
 import download_new_data
