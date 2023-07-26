@@ -198,16 +198,14 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
 
 def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_centers, k_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], k_plot=None, extend='both', logscale=False, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
     
+    """
+    Creates pcolormesh plot of a scalar variable in a subdomain of the Arctic.
+    """
+    
     scalar = comp_temp_mean(scalars)
     
     vmin, vmax = get_scalar_bounds(scalar_bounds, scalar) #Set scalar bounds
 
-    """
-    if scalar_bounds[0] == scalar_bounds[1]:
-        vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
-    else:
-        vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    """ 
     latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds
     
     if latmin != latmax and lonmin != lonmax: #If plotting a horizontal plane
@@ -261,21 +259,10 @@ def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
     vmin, vmax = get_scalar_bounds(scalar_bounds, scalar) #Set scalar bounds
-    """
-    if scalar_bounds[0] == scalar_bounds[1]:
-        vmin, vmax = np.nanmin(scalar), np.nanmax(scalar)
-    else:
-        vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    """
+
     #Create pcolormesh object
     ax, color = get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=logscale) 
-    """
-    if logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
-        
-    elif not logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
-    """
+   
     quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
     
     ax = plot_geography(ax)
