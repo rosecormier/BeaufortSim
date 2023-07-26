@@ -21,7 +21,7 @@ from os.path import expanduser, join
 from ecco_general import check_for_ecco_file, load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
 from ecco_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from ecco_field_variables import get_field_vars, get_variable_str
-from ecco_load_comp_data import load_comp_file
+from ecco_load_comp_data import load_comp_file, load_annual_scalar_ds
 from geostrophic_functions import rotate_u_g, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
@@ -243,6 +243,8 @@ def main():
                         Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data
+                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'])
+                    """
                     scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
                     
                     if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
@@ -257,7 +259,7 @@ def main():
                     
                     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
                     ds_scalar_year.load()
-                    
+                    """
                     if scalar_attr == "WVEL": #If w, interpolate vertically    
                         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
                         
