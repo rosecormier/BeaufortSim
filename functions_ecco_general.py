@@ -13,11 +13,13 @@ from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
 
-def check_for_ecco_file(variable_dir, variable_monthly_nc_str, yearstr, monthstr, year, variable_str, datdir):
+def check_for_ecco_file(variable_dir, variable_monthly_nc_str, monthstr, year, variable_str, datdir):
     
     """
     Checks that an ECCO file exists, and downloads it if it doesn't.
     """
+    
+    yearstr = str(year)
     
     monthly_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
      
@@ -116,11 +118,6 @@ def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
     
     """
     Loads scalar field in xy-grid.
-    
-    ecco_ds_grid = ECCO grid
-    k_val = depth index of interest
-    ecco_ds_scalar = DataSet containing field
-    scalar_attr = name of field
     """
     
     ds_grid = ecco_ds_grid.copy()
@@ -133,12 +130,6 @@ def get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Loads vector field in xy-grid.
-    
-    ecco_ds_grid = ECCO grid
-    k_val = depth index of interest
-    ecco_ds_vector = DataSet containing vector field
-    xvec_attr = name of x-comp of vector field
-    yvec_attr = name of y-comp of vector field
     """
 
     ds_grid = ecco_ds_grid.copy()
@@ -155,10 +146,6 @@ def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
     
     """
     Gets eastward and northward components of xy-vector.
-    
-    ecco_ds_grid = grid DataSet
-    ecco_ds_vector = DataSet containing vector
-    x/yvec_attr = attributes corresponding to vector components
     """
     
     velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr)
@@ -203,9 +190,6 @@ def comp_residuals(fields, mean):
     
     """
     Computes residuals relative to a mean.
-    
-    fields = data to compute residuals for
-    mean = mean of all in fields
     """
         
     residual_list = []

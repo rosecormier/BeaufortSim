@@ -209,7 +209,7 @@ def main():
                         if scalarECCO: #If variable comes from ECCO directly
                             
                             #Ensure file is downloaded
-                            scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, yearstr, monthstr, year, variable_str, config['datdir'])
+                            scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, config['datdir'])
                             ds_scalar_mo = load_dataset(scalar_file) #Load data
                             
                             if scalar_attr == "WVEL": #If w, interpolate vertically
