@@ -34,8 +34,7 @@ import save_seasonal_avgs
 
 def get_parser():
 
-    parser = argparse.ArgumentParser(description="Plot various attributes in Beaufort Gyre",
-                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(description="Plot various attributes in Beaufort Gyre", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     #Spatial bounds
 
@@ -73,6 +72,45 @@ def get_parser():
     parser.add_argument("--plane", type=str, help="Plane on which to plot (k/lon/lat)", default="k")
     
     return parser
+
+##############################
+
+def load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, datdir, scalar_attr):
+
+    """
+    Used in this file to load a monthly scalar ECCO DataSet.
+    If scalar is w, interpolates vertical velocity component along z-axis.
+    """
+                            
+    #Ensure file is downloaded
+    scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, datdir)
+    ds_scalar_mo = load_dataset(scalar_file) #Load data
+                            
+    if scalar_attr == "WVEL": #If w, interpolate vertically
+        XGCM_grid = ecco.get_llc_grid(ds_grid)
+        ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
+        
+    return ds_scalar_mo
+
+##############################
+
+def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, scalar_attr):
+    
+    """
+    Used in this file to load a monthly scalar computed DataSet and return it alongside grid DataSet.
+    """
+    
+    yearstr = str(year)
+    
+    latmin, latmax, lonmin, lonmax = lats_lons
+    
+    scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+                            
+    #Ensure file exists and load data
+    ds_scalar_mo = load_comp_file(scalar_file, latmin, latmax, lonmin, lonmax, year, datdir, compdatdir)
+    ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr) 
+        
+    return ds_scalar_mo, ds_grid
 
 ##############################
             
@@ -182,9 +220,6 @@ def main():
  
     ds_grid = load_grid(datdir) #Load grid  
     
-    if scalar_attr == 'ZETA' or scalar_attr == 'WVEL':
-        XGCM_grid = ecco.get_llc_grid(ds_grid)
-
     ##############################
 
     #CASE WHERE ONLY A SCALAR IS PROVIDED
@@ -205,24 +240,15 @@ def main():
                     for m in range(12): #Iterate over months
                         
                         monthstr = get_monthstr(m)
-
+                        
+                        #Load monthly DataSet
+                        
                         if scalarECCO: #If variable comes from ECCO directly
-                            
-                            #Ensure file is downloaded
-                            scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, config['datdir'])
-                            ds_scalar_mo = load_dataset(scalar_file) #Load data
-                            
-                            if scalar_attr == "WVEL": #If w, interpolate vertically
-                                ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
+                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, config['datdir'], scalar_attr)
 
                         elif not scalarECCO:
-
-                            scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
                             
-                            #Ensure file exists and load data
-                            ds_scalar_mo = load_comp_file(scalar_file, latmin, latmax, lonmin, lonmax, year, config['datdir'], compdatdir)
-                            ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr) 
-                    
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
@@ -296,22 +322,13 @@ def main():
                         
                         monthstr = get_monthstr(m)
 
+                        #Load monthly DataSet
+                        
                         if scalarECCO: #If variable comes from ECCO directly
-                           
-                            ds_scalar_mo = load_ECCO_dataset.main(variable_dir=scalar_dir, variable_monthly_nc_str=scalar_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, variable_str=scalar_attr, datdir=config['datdir'])
-                            
-                            if scalar_attr == "WVEL": #If w, interpolate vertically
-                                ds_scalar_mo[scalar_attr] = XGCM_grid.interp(ds_scalar_mo.WVEL, axis="Z")
+                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, config['datdir'], scalar_attr)
 
                         elif not scalarECCO:
-
-                            curr_scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
-
-                            if not os.path.exists(curr_scalar_file): #If it doesn't exist, compute it
-                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
-                              
-                            ds_scalar_mo = xr.open_mfdataset(curr_scalar_file, engine="scipy") #Load monthly scalar file into workspace
-                            ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr)
+                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
 
                         if vectorECCO: #If variable comes from ECCO directly
 
