@@ -18,7 +18,7 @@ import numpy as np
 
 from os.path import expanduser, join
 
-from functions_ecco_general import check_for_ecco_file, load_grid, get_monthstr, load_dataset, ds_to_field, comp_residuals, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy, get_vector_in_xy
+from functions_ecco_general import check_for_ecco_file, load_grid, get_monthstr, load_dataset, ds_to_field, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
 from functions_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from functions_field_variables import get_field_vars, get_variable_str
 from functions_load_comp_data import load_comp_file, load_annual_scalar_ds, load_seasonal_scalar_ds
