@@ -232,7 +232,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_
     plt.savefig(outfile)
     plt.close()
     
-    return ax #scalar
+    return ax
     
 ##############################
     
