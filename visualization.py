@@ -39,46 +39,33 @@ def get_parser():
 
     #Spatial bounds
 
-    parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
-                            default=[70.5, 80.0])
-    parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
-                            default=[-155.0, -120.0])
-    parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, \
-                            default=0.25)
+    parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.5, 80.0])
+    parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-155.0, -120.0])
+    parser.add_argument("--res", type=float, help="Lat/lon resolution in degrees", nargs=1, default=0.25)
     parser.add_argument("--kvals", type=int, help="Bounding k-values", nargs=2, default=[0, 1])
 
     #Temporal bounds
 
     parser.add_argument("start", type=int, help="Start year") #This argument is required
     parser.add_argument("--years", type=int, help="Total number of years to plot", default=1)
-    parser.add_argument("--seasonal", dest='seasonal', help="Whether to plot specific seasons", \
-                            default=False, action='store_true')
-    parser.add_argument("--seasonmonths", type=str, help="Start and end months of season", nargs=2, \
-                            default=["01", "01"])
+    parser.add_argument("--seasonal", dest='seasonal', help="Whether to plot specific seasons", default=False, action='store_true')
+    parser.add_argument("--seasonmonths", type=str, help="Start and end months of season", nargs=2, default=["01", "01"])
 
     #Attributes
 
     parser.add_argument("--scalar", type=str, help="Name of scalar attribute", default="ZETA")
-    parser.add_argument("--scalarECCO", dest='scalarECCO', help="Whether scalar field comes from ECCO files", \
-                            default=False, action='store_true')
-    parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, \
-                            default=[1, 1])
+    parser.add_argument("--scalarECCO", dest='scalarECCO', help="Whether scalar field comes from ECCO files", default=False, action='store_true')
+    parser.add_argument("--vminmax", type=float, help="Minimum/maximum scalar values", nargs=2, default=[1, 1])
     parser.add_argument("--xvec", type=str, help="Name of vector attribute (x-comp)", default=None)
-    parser.add_argument("--vectorECCO", dest='vectorECCO', help="Whether vector field comes from ECCO files", \
-                            default=False, action='store_true')
+    parser.add_argument("--vectorECCO", dest='vectorECCO', help="Whether vector field comes from ECCO files", default=False, action='store_true')
 
     #Directories
 
-    parser.add_argument("--datdir", type=str, help="Directory (rel. to home) with raw ECCO data", \
-                        default="Downloads")
-    parser.add_argument("--compdatdir", type=str, help="Directory (rel. to here) with computed monthly data", \
-                        default="computed_monthly")
-    parser.add_argument("--seasonaldatdir", type=str, help="Directory (rel. to here) with seasonal avgs", \
-                        default="seasonal_averages")
-    parser.add_argument("--yearlydatdir", type=str, help="Directory (rel. to here) with annual avgs", \
-                        default="yearly_averages")
-    parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", \
-                        default="visualization")
+    parser.add_argument("--datdir", type=str, help="Directory (rel. to home) with raw ECCO data", default="Downloads")
+    parser.add_argument("--compdatdir", type=str, help="Directory (rel. to here) with computed monthly data", default="computed_monthly")
+    parser.add_argument("--seasonaldatdir", type=str, help="Directory (rel. to here) with seasonal avgs", default="seasonal_averages")
+    parser.add_argument("--yearlydatdir", type=str, help="Directory (rel. to here) with annual avgs", default="yearly_averages")
+    parser.add_argument("--outdir", type=str, help="Output directory (rel. to here)", default="visualization")
 
     #Visualization
     
