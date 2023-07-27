@@ -68,7 +68,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                   'OW': 'Okubo-Weiss parameter', \
                   'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                   'Ro_l': 'Local Rossby number', \
-                  'ZETA': 'Vorticity'}
+                  'ZETA': 'Vorticity', \
+                  'WVEL': 'Vertical component of water velocity'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'water velocity', \
@@ -397,7 +398,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
             #Compute and plot OW for the month
             OW_list = plot_OW(OW_list, scalar, lon_centers, lat_centers, False, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
             
-            return Ro_l_list, OW_list
+            #return Ro_l_list, OW_list
           
         elif seasonal:    
             
@@ -418,6 +419,8 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     
     if seasonal:
         return Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers
+    elif not seasonal and not annual and not multiple_seas:
+        return Ro_l_list, OW_list
             
 ##############################
 
@@ -447,7 +450,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
 
     #Create main plot
     ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr=scalar_attr, xvec_attr=xvec_attr, scalar_bounds=[1, 1], extend='both', logscale=False, outfile=outfile, lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3)
-
+    """
     if xvec_attr == 'UG': #If u_g, also plot geostrophy metric
                                 
         vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
@@ -468,7 +471,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         
         #Plot Delta-u
         ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], k_plot=k, extend='max', outfile=Delta_u_outfile, lats_lons=lats_lons)
-        
+    """
     if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with quiver
         
         yvec_attr = get_vector_partner(xvec_attr)
@@ -503,7 +506,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
             #Compute and plot OW for the month
             OW_list = plot_OW(OW_list, scalar, lon_centers, lat_centers, False, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=monthstr, datdir=datdir)
             
-            return Ro_l_list, OW_list
+            #return Ro_l_list, OW_list
     """
         elif seasonal:    
             
@@ -521,10 +524,11 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
             OW_list = plot_OW(OW_list, scalar, True, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
                 
             data_seasons.append(scalar)
-    
+    """
     if seasonal:
         return Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers
-    """
+    elif not seasonal and not annual and not multiple_seas:
+        return Ro_l_list, OW_list
 """
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
                                 resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \

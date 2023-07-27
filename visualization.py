@@ -75,7 +75,7 @@ def get_parser():
 
 ##############################
 
-def load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, datdir, scalar_attr):
+def load_ECCO_ds_scalar_mo(scalar_dir, scalar_attr, monthstr, year, datdir, ds_grid):
 
     """
     Used in this file to load a monthly scalar ECCO DataSet.
@@ -83,7 +83,7 @@ def load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, da
     """
                             
     #Ensure file is downloaded
-    scalar_file = check_for_ecco_file(scalar_dir, scalar_monthly_nc_str, monthstr, year, datdir)
+    scalar_file = check_for_ecco_file(scalar_dir, scalar_attr, monthstr, year, datdir)
     ds_scalar_mo = load_dataset(scalar_file) #Load data
                             
     if scalar_attr == "WVEL": #If w, interpolate vertically
@@ -130,7 +130,7 @@ def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, ye
 
 ##############################
 
-def load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, k):
+def load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, k):
     
     """
     Used in this file to load a monthly computed vector DataSet and return east/northward components at depth k.
@@ -139,7 +139,7 @@ def load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, yea
     yearstr = str(year)
     latmin, latmax, lonmin, lonmax = lats_lons
     
-    vector_file = join(vector_dir, vector+monthly_nc_str+yearstr+"-"+monthstr+".nc")
+    vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+"-"+monthstr+".nc")
                             
     if not os.path.exists(vector_file): #If it doesn't exist, compute it
         compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir)
@@ -254,7 +254,6 @@ def main():
             vector_dir = join(compdatdir, vector_monthly_shortname)
  
     ds_grid = load_grid(datdir) #Load grid 
-    #XGCM_grid = ecco.get_llc_grid(ds_grid)
     
     ##############################
 
@@ -280,7 +279,7 @@ def main():
                         #Load monthly DataSet
                         
                         if scalarECCO: #If variable comes from ECCO directly
-                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, variable_str, config['datdir'], scalar_attr)
+                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_attr, monthstr, year, config['datdir'], ds_grid)
 
                         elif not scalarECCO:
                             ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
@@ -358,7 +357,7 @@ def main():
                         #Load monthly scalar DataSet and vector components
                         
                         if scalarECCO: #If variable comes from ECCO directly
-                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, config['datdir'], scalar_attr)
+                            ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_attr, monthstr, year, config['datdir'], ds_grid)
 
                         elif not scalarECCO:
                             ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
@@ -367,7 +366,7 @@ def main():
                             vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid, k)
                             
                         elif not vectorECCO:
-                            vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k)
+                            vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k)
                             
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
@@ -379,7 +378,7 @@ def main():
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], ds_grid, scalarECCO)
                    
                     #Get annually-averaged vector components
-                    vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, config['datdir'], ds_grid, k, vectorECCO)
+                    vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, config['datdir'], ds_grid, k, vectorECCO, compdatdir=compdatdir)
                     
                     #File to save annual plot to
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))

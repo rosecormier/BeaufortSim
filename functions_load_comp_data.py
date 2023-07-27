@@ -7,6 +7,7 @@ Rosalie Cormier, 2023
 
 import os
 import xarray as xr
+import ecco_v4_py as ecco
 
 from os.path import join
 
@@ -90,7 +91,7 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, scal
 
 ##############################
 
-def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_grid, k, vectorECCO):
+def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_grid, k, vectorECCO, compdatdir=None):
     
     """
     Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet and gets vector components.
@@ -100,13 +101,14 @@ def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_g
     yearstr = str(year)
     
     vector_annual_file = join(yearlydatdir, "avg_"+xvec_attr+yvec_attr+"_"+yearstr+".nc")
-    
+
     if not os.path.exists(vector_annual_file): #If it doesn't exist, compute it
                         
         if vectorECCO: #If variable comes from ECCO directly
             usecompdata = False
         elif not vectorECCO:
             usecompdata = True
+            datdir = compdatdir
                                     
         save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
                         
