@@ -373,19 +373,21 @@ def main():
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                         
                         #Plot monthly data
-                        plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, outfile=outfile, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
+                        plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, year, Ro_l_list, OW_list, yearstr)
+                        #plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, outfile=outfile, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
                  
                     #Get annually-averaged scalar data, with interpolation if necessary
-                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
-                    
+                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], ds_grid, scalarECCO)
+                    """
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k).squeeze(), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-                    
+                    """
                     #Get annually-averaged vector components
-                    vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, config['datdir'], ds_grid)
-                    
+                    vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, config['datdir'], ds_grid, k, vectorECCO)
+                    """
                     #Plot annual average
                     ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
+                    """
                     """
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
                         

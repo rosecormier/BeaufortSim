@@ -1,5 +1,6 @@
 """
-Loads a specified NetCDF file containing a DataSet computed from ECCO data.
+Loads a specified NetCDF file containing a DataSet computed from ECCO data
+(or a DataSet containing an ECCO vector).
 
 Rosalie Cormier, 2023
 """
@@ -9,7 +10,7 @@ import xarray as xr
 
 from os.path import join
 
-from functions_ecco_general import load_dataset
+from functions_ecco_general import load_dataset, rotate_vector
 from functions_field_variables import get_field_vars
 from functions_geostrophy import rotate_comp_vector
 
@@ -59,7 +60,7 @@ def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir):
 
 ##############################
 
-def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid):
+def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, scalarECCO):
     
     """
     Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet.
@@ -89,10 +90,11 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid):
 
 ##############################
 
-def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, datdir, ds_grid):
+def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_grid, k, vectorECCO):
     
     """
     Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet and gets vector components.
+    Can be used for ECCO or computed data.
     """
     
     yearstr = str(year)

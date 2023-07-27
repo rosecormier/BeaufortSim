@@ -417,7 +417,9 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
             
 ##############################
 
-def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, datdirname, compdatdir, lats_lons, vectorECCO, outfile, Delta_u_outfile=None, seas_monthstr=None, seas_yearstr=None, seasonal=False):
+#def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, logscale=True, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None, lon_centers=None, lat_centers=None):
+
+def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, year, Ro_l_list, OW_list, yearstr, Delta_u_outfile=None, seas_monthstr=None, seas_yearstr=None, seasonal=False):
     
     """
     Creates pcolormesh + quiver plot on plane of constant k.
@@ -440,9 +442,9 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
     if seasonal:
         seas_yearstr = yearstr
         datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
-
+    """
     if vectorECCO:
-                            
+        
         ds_vector = load_ECCO_dataset.main(variable_dir=vector_dir, variable_monthly_nc_str=vector_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr=None, xvec_attr=xvec_attr, datdir=datdirname)#config['datdir'])
                             
         #Interpolate and rotate vector
@@ -463,28 +465,31 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, latmin, lat
             compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdirname, outdir=compdatdir)#config['datdir'], outdir=compdatdir)
             ds_vector = load_dataset(curr_vector_file)
             vecE, vecN = rotate_u_g(ds_grid, ds_vector[xvec_attr], ds_vector[yvec_attr], k)
-                            
-            if xvec_attr == 'UG': #If u_g, also plot geostrophy metric
-                                
-                vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
- 
-                ds_vel = load_ECCO_dataset.main(variable_dir=join(datdir, vel_monthly_shortname), variable_monthly_nc_str=vel_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr='UVEL', xvec_attr=None, datdir=datdirname)#config['datdir'])
-                                
-                #Interpolate velocities to centres
-                (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
-                velocity_interp = get_vector_in_xy(ds_grid, ds_vel, 'UVEL', 'VVEL') 
-                u, v = velocity_interp['X'].isel(k=k), velocity_interp['Y'].isel(k=k)
+    """             
 
-                #Compute our geostrophy metric
-                Delta_u = comp_geos_metric(u.squeeze(), v.squeeze(), vecE, vecN)
+    #Create main plot
+    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr=scalar_attr, xvec_attr=xvec_attr, scalar_bounds=[1, 1], extend='both', logscale=False, outfile=outfile, lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3)
+
+    if xvec_attr == 'UG': #If u_g, also plot geostrophy metric
                                 
-                lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
+        vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
+ 
+        ds_vel = load_ECCO_dataset.main(variable_dir=join(datdir, vel_monthly_shortname), variable_monthly_nc_str=vel_monthly_nc_str, yearstr=yearstr, monthstr=monthstr, year=year, scalar_attr='UVEL', xvec_attr=None, datdir=datdirname)#config['datdir'])
+                                
+        #Interpolate velocities to centres
+        (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
+        velocity_interp = get_vector_in_xy(ds_grid, ds_vel, 'UVEL', 'VVEL') 
+        u, v = velocity_interp['X'].isel(k=k), velocity_interp['Y'].isel(k=k)
+            
+        #Compute our geostrophy metric
+        Delta_u = comp_geos_metric(u.squeeze(), v.squeeze(), vecE, vecN)
+                                
+        lon_centers, lat_centers, lon_edges, lat_edges, Delta_u_plot = ecco_resample(ds_grid, Delta_u, latmin, latmax, lonmin, lonmax, resolution)
                                 
                 #ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], k_plot=k, extend='max', outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)), lats_lons=lats_lons) 
-                ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], k_plot=k, extend='max', outfile=Delta_u_outfile, lats_lons=lats_lons)
-    
-    #Create main plot
-    ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', scalar_bounds=[1, 1], extend='both', logscale=False, outfile=outfile, lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3)
+        
+        #Plot Delta-u
+        ArcCir_pcolormesh(ds_grid, k, [Delta_u_plot], resolution, 'Reds', lon_centers, lat_centers, None, monthstr+"-"+yearstr, 'Delta_u', scalar_bounds=[0, 1], k_plot=k, extend='max', outfile=Delta_u_outfile, lats_lons=lats_lons)
     
 """
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
