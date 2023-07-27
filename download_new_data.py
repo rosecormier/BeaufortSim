@@ -24,7 +24,7 @@ def main(**kwargs):
 
         parser.add_argument("--month", type=str, help="Start month", default="01")
         parser.add_argument("--months", type=int, help="Total number of months", default=12)
-        parser.add_argument("--variable_strs", type=str, help="Variables to download", default=[])
+        parser.add_argument("--variables", type=str, help="Variables to download", default=[])
         parser.add_argument("--datdir", type=str, help="Directory (rel. to home) to store ECCO data", default="Downloads")
 
         parser.add_argument("start", type=int, help="Start year")
@@ -33,7 +33,7 @@ def main(**kwargs):
         config = vars(args)
 
         startmo, startyr, mos = config['month'], config['start'], config['months']
-        scalars, xvectors = config['scalars'], config['xvectors']
+        variables = config['variables']
         
         datdirshort = config['datdir']
         
@@ -43,7 +43,7 @@ def main(**kwargs):
         startyr = kwargs.get('startyr')
         mos = kwargs.get('months')
         datdirshort = kwargs.get('datdir')
-        variable_strs = kwargs.get('variable_strs')
+        variables = kwargs.get('variables')
 
     homedir = expanduser('~')
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
@@ -67,9 +67,9 @@ def main(**kwargs):
 
         StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
 
-        for variable_str in variable_strs:
+        for variable in variables:
             
-            monthly_shortname, monthly_nc_str = get_field_vars(variable_str)
+            monthly_shortname, monthly_nc_str = get_field_vars(variable)
             ecco_podaac_download(ShortName=monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)
 
         if (i + 1) % 12 == 0 and (i + 1) != start_i + mos:

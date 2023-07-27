@@ -10,10 +10,30 @@ import xarray as xr
 from os.path import join
 
 from functions_ecco_general import load_dataset
+from functions_field_variables import get_field_vars
 
 import compute_monthly_avgs
+import download_new_data
 import save_annual_avgs
 import save_seasonal_avgs
+
+##############################
+
+def check_for_ecco_file(variable_dir, variable, monthstr, year, datdir):
+    
+    """
+    Checks that an ECCO file exists, and downloads it if it doesn't.
+    """
+    
+    yearstr = str(year)
+    
+    variable_monthly_nc_str = get_field_vars(variable)[1]
+    monthly_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+     
+    if not os.path.exists(monthly_file): #If the file doesn't exist, download data for that year
+        download_new_data.main(startmo="01", startyr=year, months=12, variables=[variable], datdir=datdir)
+        
+    return monthly_file
 
 ##############################
 
@@ -36,7 +56,7 @@ def load_comp_file(monthly_file, latmin, latmax, lonmin, lonmax, year, datdir, c
 
 ##############################
 
-def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, scalarECCO, usecompdata=True):
+def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, usecompdata=True):
     
     """
     Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet.
@@ -55,6 +75,10 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, scalarECCO, u
                     
     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
     ds_scalar_year.load() #Load DataSet
+    
+    if scalar_attr == "WVEL": #If w, interpolate vertically  
+        XGCM_grid = ecco.get_llc_grid(ds_grid)
+        ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
     
     return ds_scalar_year
 

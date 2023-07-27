@@ -13,21 +13,6 @@ from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
 
-def check_for_ecco_file(variable_dir, variable_monthly_nc_str, monthstr, year, variable_str, datdir):
-    
-    """
-    Checks that an ECCO file exists, and downloads it if it doesn't.
-    """
-    
-    yearstr = str(year)
-    
-    monthly_file = join(variable_dir, variable_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
-     
-    if not os.path.exists(monthly_file): #If the file doesn't exist, download data for that year
-        download_new_data.main(startmo="01", startyr=year, months=12, variable_strs=[variable_str], datdir=datdir)
-        
-    return monthly_file
-
 def load_grid(datdir):
     
     """
