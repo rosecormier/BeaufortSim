@@ -373,11 +373,11 @@ def main():
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                         
                         #Plot monthly data
-                        plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, year, Ro_l_list, OW_list, yearstr)
+                        Ro_l_list, OW_list = plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, monthstr=monthstr, datdirname=config['datdir'])
                        
                     #Get annually-averaged scalar data, with interpolation if necessary
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], ds_grid, scalarECCO)
-                  
+                   
                     #Get annually-averaged vector components
                     vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, config['datdir'], ds_grid, k, vectorECCO)
                     
@@ -385,7 +385,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual average
-                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
+                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
 
                     """
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
