@@ -93,10 +93,10 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
-def rotate_u_g(ds_grid, u_g, v_g, k_val, surface=False):
+def rotate_comp_vector(ds_grid, u_g, v_g, k_val, surface=False):
     
     """
-    Appropriately rotates geostrophic velocity vector and restricts to k- and time-slices.
+    Appropriately rotates computed geostrophic velocity vector and restricts to k- and time-slices.
     """
     
     u_g.data, v_g.data = u_g.values, v_g.values

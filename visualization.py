@@ -22,7 +22,7 @@ from functions_ecco_general import load_grid, get_monthstr, load_dataset, ds_to_
 from functions_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from functions_field_variables import get_field_vars, get_variable_str
 from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_seasonal_scalar_ds
-from functions_geostrophy import rotate_u_g, comp_geos_metric
+from functions_geostrophy import rotate_comp_vector, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
 
@@ -94,20 +94,19 @@ def load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, da
 
 ##############################
 
-def load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, datdir, ds_grid):
+def load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, datdir, ds_grid, k):
     
     """
-    Used in this file to load a monthly vector ECCO DataSet and return east/northward components.
+    Used in this file to load a monthly vector ECCO DataSet and return east/northward components at depth k.
     """
     
     variable = xvec_attr + yvec_attr
+    
     vector_file = check_for_ecco_file(vector_dir, variable, monthstr, year, datdir)
-    print(vector_file)
-    #vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
     ds_vector_mo = load_dataset(vector_file) #Load data
     
     vecE, vecN = rotate_vector(ds_grid, ds_vector_mo, xvec_attr, yvec_attr) #Rotate vector
-    vecE, vecN = vecE.squeeze(), vecN.squeeze() #Squeeze along time axis
+    vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze() #Squeeze along time axis
 
     return vecE, vecN
     
@@ -116,20 +115,40 @@ def load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_a
 def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, scalar_attr):
     
     """
-    Used in this file to load a monthly scalar computed DataSet and return it alongside grid DataSet.
+    Used in this file to load a monthly computed scalar DataSet and return it alongside grid DataSet.
     """
     
     yearstr = str(year)
     
-    latmin, latmax, lonmin, lonmax = lats_lons
-    
     scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
                             
     #Ensure file exists and load data
-    ds_scalar_mo = load_comp_file(scalar_file, latmin, latmax, lonmin, lonmax, year, datdir, compdatdir)
+    ds_scalar_mo = load_comp_file(scalar_file, lats_lons, year, datdir, compdatdir)
     ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr) 
         
     return ds_scalar_mo, ds_grid
+
+##############################
+
+def load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, k):
+    
+    """
+    Used in this file to load a monthly computed vector DataSet and return east/northward components at depth k.
+    """
+    
+    yearstr = str(year)
+    latmin, latmax, lonmin, lonmax = lats_lons
+    
+    vector_file = join(vector_dir, vector+monthly_nc_str+yearstr+"-"+monthstr+".nc")
+                            
+    if not os.path.exists(vector_file): #If it doesn't exist, compute it
+        compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir)
+                                
+    ds_vector_mo = xr.open_mfdataset(vector_file, engine="scipy") #Load monthly vector file
+                            
+    vecE, vecN = rotate_comp_vector(ds_grid, ds_vector_mo[xvec_attr], ds_vector_mo[yvec_attr], k)
+    
+    return vecE, vecN
 
 ##############################
             
@@ -350,32 +369,22 @@ def main():
                         if vectorECCO: #If variable comes from ECCO directly
                             
                             #Get vector components
-                            vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid)
-                            vecE, vecN = vecE.isel(k=k), vecN.isel(k=k) #Select data at depth index k
+                            vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid, k)
                             
                         elif not vectorECCO:
-
-                            curr_vector_file = join(vector_dir, vector+monthly_nc_str+yearstr+"-"+monthstr+".nc")
                             
-                            if not os.path.exists(curr_vector_file): #If it doesn't exist, compute it
-                                compute_monthly_avgs.main(latmin=70.0, latmax=85.0, lonmin=-180.0, lonmax=-90.0, startyr=year, years=1, datdir=config['datdir'], outdir=compdatdir)
-                                
-                            ds_vector_mo = xr.open_mfdataset(curr_vector_file, engine="scipy") #Load monthly vector file
+                            vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k)
                             
-                            vecE, vecN = rotate_u_g(ds_grid, ds_vector_mo[xvec_attr], ds_vector_mo[yvec_attr], k)
-                    
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                         
                         #Plot monthly data
                         plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, outfile=outfile, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
                             
-                    #Get annually-averaged data
-
-                    #scalar_annual_file = join(yearlydatdir, "avg_"+scalar_attr+"_"+yearstr+".nc")
+                    #Get annually-averaged vector data
                     vector_annual_file = join(yearlydatdir, "avg_"+xvec_attr+yvec_attr+"_"+yearstr+".nc")
                     
-                    #Get annually-averaged data, with interpolation if necessary
+                    #Get annually-averaged scalar data, with interpolation if necessary
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
                     
                     #Convert scalar DataSet to useful field
@@ -418,8 +427,8 @@ def main():
                 scalar_data_seasons = []
                 vecE_data_seasons, vecN_data_seasons = [], []
                 
-                if scalar_attr == 'ZETA':
-                    Ro_l_list, OW_list = [], []
+                #if scalar_attr == 'ZETA':
+                Ro_l_list, OW_list = [], []
                 
                 for i in range(years): #Iterate over specified years
                 
@@ -427,23 +436,11 @@ def main():
                     yearstr = str(year)
                     endyearstr = str(year + season_years[-1])
 
-                    #Get seasonally-averaged data
-
-                    scalar_seas_file = join(seasonaldatdir, "avg_"+scalar_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+                    #Get seasonally-averaged vector data
                     vector_seas_file = join(seasonaldatdir, "avg_"+xvec_attr+yvec_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                        
-                    if not os.path.exists(scalar_seas_file): #If it doesn't exist, compute it
-
-                        if scalarECCO: #If variable comes from ECCO directly
-                            datdirshort, usecompdata = 'Downloads', False
-
-                        elif not scalarECCO:
-                            datdirshort, usecompdata = 'computed_monthly', True
-
-                        save_seasonal_avgs.main(field=scalar_attr, years=[year], start_month=season_start, end_month=season_end, usecompdata=usecompdata, datdir=datdirshort, outdir=seasonaldatdir)
-
-                    ds_scalar_seas = xr.open_mfdataset(scalar_seas_file, engine="scipy")
-                    ds_scalar_seas.load()
+                    
+                    #Get seasonally-averaged scalar data
+                    ds_scalar_seas = load_seasonal_scalar_ds(seasonaldatdir, scalar_attr, season_start, year, season_end, endyearstr, scalarECCO)
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
