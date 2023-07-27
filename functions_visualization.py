@@ -421,8 +421,6 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
             
 ##############################
 
-#def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None, lon_centers=None, lat_centers=None):
-
 def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None, lon_centers=None, lat_centers=None):
     
     """
@@ -477,12 +475,6 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         vec = xvec_attr + yvec_attr
 
         if annual: #If plotting an annual average
-            """
-            def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
-                           scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", \
-                           lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3):
-            """
 
             #Plot Ro_l
             ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, scalar_attr='Ro_l', xvec_attr=xvec_attr, logscale=True, outfile=join(outdir, 'yearly', 'localRo_{}_k{}_{}.pdf'.format(get_variable_str(vec), str(k), yearstr)), lats_lons=lats_lons)

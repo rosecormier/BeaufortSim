@@ -386,14 +386,6 @@ def main():
                     
                     #Plot annual average
                     plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
-
-                    """
-                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
-                        
-                        ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
-                        
-                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
-                    """
                     
             elif seasonal: #Case where we plot one season per year
                     
