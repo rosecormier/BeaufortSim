@@ -11,6 +11,7 @@ from os.path import join
 
 from functions_ecco_general import load_dataset
 from functions_field_variables import get_field_vars
+from functions_geostrophy import rotate_comp_vector
 
 import compute_monthly_avgs
 import download_new_data
@@ -58,7 +59,7 @@ def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir):
 
 ##############################
 
-def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, usecompdata=True):
+def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid):
     
     """
     Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet.
@@ -72,6 +73,8 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, usec
                         
         if scalarECCO: #If variable comes from ECCO directly
             usecompdata = False
+        elif not scalarECCO:
+            usecompdata = True
                             
         save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
                     
@@ -83,6 +86,39 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, usec
         ds_scalar_year[scalar_attr] = XGCM_grid.interp(ds_scalar_year.WVEL, axis="Z")
     
     return ds_scalar_year
+
+##############################
+
+def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, datdir, ds_grid):
+    
+    """
+    Checks that an annual datafile exists, and creates it if it doesn't, then loads DataSet and gets vector components.
+    """
+    
+    yearstr = str(year)
+    
+    vector_annual_file = join(yearlydatdir, "avg_"+xvec_attr+yvec_attr+"_"+yearstr+".nc")
+    
+    if not os.path.exists(vector_annual_file): #If it doesn't exist, compute it
+                        
+        if vectorECCO: #If variable comes from ECCO directly
+            usecompdata = False
+        elif not vectorECCO:
+            usecompdata = True
+                                    
+        save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
+                        
+    ds_vector_year = xr.open_mfdataset(vector_annual_file, engine="scipy")
+    ds_vector_year.load()
+                    
+    if vectorECCO: 
+        vecE, vecN = rotate_vector(ds_grid, ds_vector_year, xvec_attr, yvec_attr)
+        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
+                        
+    elif not vectorECCO:
+        vecE, vecN = rotate_comp_vector(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
+        
+    return vecE, vecN
 
 ##############################
 

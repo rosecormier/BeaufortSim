@@ -21,7 +21,7 @@ from os.path import expanduser, join
 from functions_ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
 from functions_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from functions_field_variables import get_field_vars, get_variable_str
-from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_seasonal_scalar_ds
+from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_annual_vector_ds, load_seasonal_scalar_ds
 from functions_geostrophy import rotate_comp_vector, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
@@ -160,17 +160,14 @@ def main():
 
     #Spatial bounds
 
-    latmin, latmax = config['lats'][0], config['lats'][1]
-    lonmin, lonmax = config['lons'][0], config['lons'][1]
+    latmin, latmax, lonmin, lonmax = config['lats'][0], config['lats'][1], config['lons'][0], config['lons'][1]
     kmin, kmax = config['kvals'][0], config['kvals'][1]
     
     resolution = config['res']
 
     #Temporal bounds
 
-    startyr = config['start']
-    years = config['years']
-    seasonal = config['seasonal']
+    startyr, years, seasonal = config['start'], config['years'], config['seasonal']
 
     if seasonal:
         season_start, season_end = config['seasonmonths']
@@ -358,7 +355,7 @@ def main():
                         
                         monthstr = get_monthstr(m)
 
-                        #Load monthly DataSet
+                        #Load monthly scalar DataSet and vector components
                         
                         if scalarECCO: #If variable comes from ECCO directly
                             ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_monthly_nc_str, monthstr, year, config['datdir'], scalar_attr)
@@ -367,12 +364,9 @@ def main():
                             ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
 
                         if vectorECCO: #If variable comes from ECCO directly
-                            
-                            #Get vector components
                             vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid, k)
                             
                         elif not vectorECCO:
-                            
                             vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k)
                             
                         #File to save monthly plot to
@@ -380,44 +374,25 @@ def main():
                         
                         #Plot monthly data
                         plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, latmin, latmax, lonmin, lonmax, resolution, vector_dir, vector_monthly_nc_str, yearstr, monthstr, year, xvec_attr, yvec_attr, config['datdir'], compdatdir, lats_lons, vectorECCO, outfile=outfile, Delta_u_outfile=join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format('Delta_u', str(k), monthstr, yearstr)))
-                            
-                    #Get annually-averaged vector data
-                    vector_annual_file = join(yearlydatdir, "avg_"+xvec_attr+yvec_attr+"_"+yearstr+".nc")
-                    
+                 
                     #Get annually-averaged scalar data, with interpolation if necessary
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
                     
                     #Convert scalar DataSet to useful field
                     lon_centers, lat_centers, lon_edges, lat_edges, scalar_year = ds_to_field(ds_grid, ds_scalar_year.isel(k=k).squeeze(), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
-                    if not os.path.exists(vector_annual_file): #If they don't exist, compute them
-                        
-                        if vectorECCO:
-                            datdirshort, usecompdata = 'Downloads', False
-                        
-                        elif not vectorECCO:
-                            datdirshort, usecompdata = 'computed_monthly', True
-                        
-                        save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
-                        
-                    ds_vector_year = xr.open_mfdataset(vector_annual_file, engine="scipy")
-                    ds_vector_year.load()
-                    
-                    if vectorECCO: #If variable comes from ECCO directly
-                        vecE, vecN = rotate_vector(ds_grid, ds_vector_year, xvec_attr, yvec_attr)
-                        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
-                        
-                    elif not vectorECCO:
-                        vecE, vecN = rotate_u_g(ds_grid, ds_vector_year[xvec_attr], ds_vector_year[yvec_attr], k)
+                    #Get annually-averaged vector components
+                    vecE, vecN = load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, config['datdir'], ds_grid)
                     
                     #Plot annual average
                     ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_year], [vecE], [vecN], resolution, cmap, yearstr, lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr)), lats_lons=lats_lons) 
-                    
+                    """
                     if scalar_attr == 'ZETA': #If vorticity, also compute and plot annual Ro_l, OW, overlaid with vector quiver
                         
                         ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, [vecE], [vecN], resolution, 'Reds', yearstr, lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'yearly', '{}_localRo_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
                         
                         ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, [vecE], [vecN], resolution, 'seismic', yearstr, lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'yearly', '{}_OW_k{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), yearstr)), lats_lons=lats_lons)
+                    """
                     
             elif seasonal: #Case where we plot one season per year
                     
