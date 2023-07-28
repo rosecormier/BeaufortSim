@@ -19,7 +19,7 @@ import numpy as np
 from os.path import expanduser, join
 
 from functions_ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
-from functions_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
+from functions_visualization import plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from functions_field_variables import get_field_vars, get_variable_str
 from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_annual_vector_ds, load_seasonal_scalar_ds, load_seasonal_vector_ds
 from functions_geostrophy import rotate_comp_vector, comp_geos_metric
@@ -288,7 +288,7 @@ def main():
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
                         #Plot monthly data    
-                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
+                        Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data, with interpolation if necessary
                     ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
@@ -297,7 +297,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual data
-                    plot_pcolormesh_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
+                    plot_pcolormesh_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
 
             elif seasonal: #Case where we plot one season per year
 
@@ -323,7 +323,7 @@ def main():
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
+                    Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, year=year, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
                 
@@ -331,7 +331,7 @@ def main():
                     outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
           
                     #Plot average over all seasons, reusing seasonal lat/lon_centers
-                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
+                    plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
                 
     ##############################
 
@@ -384,7 +384,7 @@ def main():
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
                     
                     #Plot annual average
-                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
+                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_year], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, yearstr, vmin, vmax, outfile, lats_lons, datdir, year, Ro_l_list, OW_list, yearstr, outdir=outdir, annual=True)
                     
             elif seasonal: #Case where we plot one season per year
                     
@@ -415,21 +415,15 @@ def main():
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
                     #Plot seasonal average
-                    Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers = plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seasonal=True, seasonaldatdir=seasonaldatdir, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons)
-                    """ 
+                    Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers = plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seasonal=True, seasonaldatdir=seasonaldatdir, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons, datdirname=config['datdir'])
+                    
                 if years != 1: #If there is more than one season to average over     
                     
                     seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
+                    outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
-                    #Average over all the seasons and plot
-                    ArcCir_pcolormesh_quiver(ds_grid, k, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
-            
-                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot interannual Ro_l, OW overlaid with vector quiver
-
-                        ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-
-                        ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-                    """
+                    #Plot interannual average, reusing seasonal lat/lon_centers
+                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=None, seas_yearstr=None, multiple_seas=True, years=years, startyr=startyr, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons, lon_centers=lon_centers, lat_centers=lat_centers)
             
 ##############################
 
