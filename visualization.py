@@ -130,7 +130,7 @@ def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, ye
 
 ##############################
 
-def load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, k):
+def load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, k, years):
     
     """
     Used in this file to load a monthly computed vector DataSet and return east/northward components at depth k.
@@ -142,7 +142,7 @@ def load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, y
     vector_file = join(vector_dir, vector_monthly_nc_str+yearstr+"-"+monthstr+".nc")
                             
     if not os.path.exists(vector_file): #If it doesn't exist, compute it
-        compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir)
+        compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=years, datdir=datdir, outdir=compdatdir)
                                 
     ds_vector_mo = xr.open_mfdataset(vector_file, engine="scipy") #Load monthly vector file
                             
@@ -366,7 +366,7 @@ def main():
                             vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid, k)
                             
                         elif not vectorECCO:
-                            vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k)
+                            vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k, years)
                             
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))

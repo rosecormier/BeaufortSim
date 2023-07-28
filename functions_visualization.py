@@ -72,7 +72,7 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                   'WVEL': 'Vertical component of water velocity'}
     scalar_str = scalar_dict[scalar_attr]
     
-    vector_dict = {'UVEL': 'water velocity', \
+    vector_dict = {'UVEL': 'horizontal water velocity', \
                   'UG': 'geostrophic water velocity', \
                   'UEk': 'Ekman current'}
     vector_str = vector_dict[xvec_attr]
@@ -449,7 +449,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
 
     #Create main plot
-    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr=scalar_attr, xvec_attr=xvec_attr, scalar_bounds=[1, 1], extend='both', logscale=False, outfile=outfile, lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3)
+    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr=scalar_attr, xvec_attr=xvec_attr, scalar_bounds=[vmin, vmax], extend='both', logscale=False, outfile=outfile, lats_lons=lats_lons, quiv_scale=0.3)
     """
     if xvec_attr == 'UG': #If u_g, also plot geostrophy metric
                                 
