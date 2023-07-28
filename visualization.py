@@ -394,96 +394,29 @@ def main():
                 scalar_data_seasons = []
                 vecE_data_seasons, vecN_data_seasons = [], []
                 
-                Ro_l_list, OW_list = [], []
+                Ro_l_list, OW_list = [], [] #Only used if scalar is ZETA
                 
                 for i in range(years): #Iterate over specified years
                 
                     year = startyr + i
                     yearstr, endyearstr = str(year), str(year + season_years[-1])
 
-                    #Get seasonally-averaged vector data
-                    vector_seas_file = join(seasonaldatdir, "avg_"+xvec_attr+yvec_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                    
                     #Get seasonally-averaged scalar data
                     ds_scalar_seas = load_seasonal_scalar_ds(seasonaldatdir, scalar_attr, season_start, year, season_end, endyearstr, scalarECCO)
                     
                     if scalar_attr == "WVEL": #If w, interpolate vertically
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
                     
-                    #Convert scalar DataSet to useful field
-                    #lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-                    
-                    #Save seasonal scalar data
-                    #scalar_data_seasons.append(scalar_seas)
-                    
+                    #Get seasonally-averaged vector data
                     vecE, vecN = load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, vectorECCO, ds_grid, k, compdatdir=compdatdir)
-                    """
-                    if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
-
-                        if vectorECCO: #If variable comes from ECCO directly
-                            datdirshort, usecompdata = 'Downloads', False
-
-                        elif not vectorECCO:
-                            datdirshort, usecompdata = 'computed_monthly', True
-
-                        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, usecompdata=usecompdata, datdir=datdirshort, outdir=seasonaldatdir)
-                            
-                    ds_vector_seas = xr.open_mfdataset(vector_seas_file, engine="scipy")
-                    ds_vector_seas.load()
-                    
-                    if vectorECCO: #If variable comes from ECCO directly
-                        vecE, vecN = rotate_vector(ds_grid, ds_vector_seas, xvec_attr, yvec_attr)
-                        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
-                        
-                    elif not vectorECCO:
-                        vecE, vecN = rotate_u_g(ds_grid, ds_vector_seas[xvec_attr], ds_vector_seas[yvec_attr], k)
-                        
-                    #Save seasonal vector data
-                    
-                    vecE_data_seasons.append(vecE)
-                    vecN_data_seasons.append(vecN)
-                    """
+                  
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
                     #Plot seasonal average
                     Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers = plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seasonal=True, seasonaldatdir=seasonaldatdir, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons)
-                    """
-                    #Plot seasonal average
-                    ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
-                    
-                    if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW overlaid with vector quiver
-                            
-                        Ro_l = comp_local_Ro(scalar_seas, lat_centers) #Compute Ro_l
-                            
-                        #Plot Ro_l with quiver
-                        ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'seasonal', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-                            
-                        Ro_l_list.append(Ro_l)
-                            
-                        vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-                            
-                        if not os.path.exists(vel_seas_file): #If it doesn't exist, compute it
-                            save_seasonal_avgs.main(field='UVELVVEL', years=[year], start_month=season_start, end_month=season_end, usecompdata=False, datdir='Downloads', outdir=seasonaldatdir)
-                                
-                        ds_vel_seas = xr.open_mfdataset(vel_seas_file, engine="scipy")
-                        ds_vel_seas.load()
-
-                        #Compute strain terms
-
-                        normal_strain = comp_normal_strain(XGCM_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA).isel(k=k).squeeze()
-                        shear_strain = comp_shear_strain(XGCM_grid, ds_vel_seas['UVEL'], ds_vel_seas['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz).isel(k=k).squeeze()
-                        normal_strain= ecco_resample(ds_grid, normal_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-                        shear_strain = ecco_resample(ds_grid, shear_strain, latmin, latmax, lonmin, lonmax, resolution)[4]
-                            
-                        OW = comp_OkuboWeiss(scalar_seas, normal_strain, shear_strain) #Compute OW
-                            
-                        #Plot OW
-                        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'seasonal', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
-                            
-                        OW_list.append(OW)
-                        
+                    """ 
                 if years != 1: #If there is more than one season to average over     
                     
                     seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
