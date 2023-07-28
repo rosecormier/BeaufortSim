@@ -81,7 +81,7 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     GB_RHS_1, GB_RHS_2 = dp_dx / dens, - dp_dy / dens #Compute RHS of geostrophic-balance equations
 
     #Mask land areas
-    GB_RHS_1, GB_RHS_2 = GB_RHS_1.where(ecco_ds_grid.maskC), GB_RHS_2.where(ecco_ds_grid.maskC) #Mask land areas
+    GB_RHS_1, GB_RHS_2 = GB_RHS_1.where(ecco_ds_grid.maskC), GB_RHS_2.where(ecco_ds_grid.maskC)
     
     #Compute Coriolis param. from latitudes of grid cell centres
     f = comp_f(ecco_ds_grid.YC)
