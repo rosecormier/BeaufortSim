@@ -150,3 +150,35 @@ def load_seasonal_scalar_ds(seasonaldatdir, scalar_attr, season_start, year, sea
     ds_scalar_seas.load() #Load DataSet
     
     return ds_scalar_seas
+
+def load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, vectorECCO, ds_grid, k, compdatdir=None):
+    
+    """
+    Checks that a seasonal vector datafile exists, and creates it if it doesn't, then loads DataSet and gets vector components.
+    """
+    
+    yearstr = str(year)
+    
+    vector_seas_file = join(seasonaldatdir, "avg_"+xvec_attr+yvec_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+
+    if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
+                        
+        if vectorECCO: #If variable comes from ECCO directly
+            usecompdata = False
+        elif not vectorECCO:
+            usecompdata = True
+            datdir = compdatdir
+                                    
+        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
+                        
+    ds_vector_seas = xr.open_mfdataset(vector_seas_file, engine="scipy")
+    ds_vector_seas.load()
+                    
+    if vectorECCO: 
+        vecE, vecN = rotate_vector(ds_grid, ds_vector_seas, xvec_attr, yvec_attr)
+        vecE, vecN = vecE.isel(k=k).squeeze(), vecN.isel(k=k).squeeze()
+                        
+    elif not vectorECCO:
+        vecE, vecN = rotate_comp_vector(ds_grid, ds_vector_seas[xvec_attr], ds_vector_seas[yvec_attr], k)
+        
+    return vecE, vecN

@@ -21,7 +21,7 @@ from os.path import expanduser, join
 from functions_ecco_general import load_grid, get_monthstr, load_dataset, ds_to_field, rotate_vector, get_vector_partner, ecco_resample, get_season_months_and_years, get_scalar_in_xy
 from functions_visualization import ArcCir_pcolormesh, ArcCir_pcolormesh_quiver, plot_pcolormesh_k_plane, plot_pcm_quiver_k_plane
 from functions_field_variables import get_field_vars, get_variable_str
-from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_annual_vector_ds, load_seasonal_scalar_ds
+from functions_load_comp_data import check_for_ecco_file, load_comp_file, load_annual_scalar_ds, load_annual_vector_ds, load_seasonal_scalar_ds, load_seasonal_vector_ds
 from functions_geostrophy import rotate_comp_vector, comp_geos_metric
 
 #The following are scripts that are imported as modules but may be run within this script
@@ -394,14 +394,12 @@ def main():
                 scalar_data_seasons = []
                 vecE_data_seasons, vecN_data_seasons = [], []
                 
-                #if scalar_attr == 'ZETA':
                 Ro_l_list, OW_list = [], []
                 
                 for i in range(years): #Iterate over specified years
                 
                     year = startyr + i
-                    yearstr = str(year)
-                    endyearstr = str(year + season_years[-1])
+                    yearstr, endyearstr = str(year), str(year + season_years[-1])
 
                     #Get seasonally-averaged vector data
                     vector_seas_file = join(seasonaldatdir, "avg_"+xvec_attr+yvec_attr+"_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
@@ -413,11 +411,13 @@ def main():
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
                     
                     #Convert scalar DataSet to useful field
-                    lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+                    #lon_centers, lat_centers, lon_edges, lat_edges, scalar_seas = ds_to_field(ds_grid, ds_scalar_seas.isel(k=k), scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
                     
                     #Save seasonal scalar data
-                    scalar_data_seasons.append(scalar_seas)
+                    #scalar_data_seasons.append(scalar_seas)
                     
+                    vecE, vecN = load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, vectorECCO, ds_grid, k, compdatdir=compdatdir)
+                    """
                     if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
 
                         if vectorECCO: #If variable comes from ECCO directly
@@ -442,9 +442,14 @@ def main():
                     
                     vecE_data_seasons.append(vecE)
                     vecN_data_seasons.append(vecN)
-                    
+                    """
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
+                    outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
+                    
+                    #Plot seasonal average
+                    Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers = plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, year, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seasonal=True, seasonaldatdir=seasonaldatdir, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons)
+                    """
                     #Plot seasonal average
                     ArcCir_pcolormesh_quiver(ds_grid, k, [scalar_seas], [vecE], [vecN], resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr, xvec_attr, scalar_bounds=[vmin, vmax], outfile=join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons) 
                     
@@ -491,6 +496,7 @@ def main():
                         ArcCir_pcolormesh_quiver(ds_grid, k, Ro_l_list, vecE_data_seasons, vecN_data_seasons, resolution, 'Reds', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'Ro_l', xvec_attr, scalar_bounds=[1e-4, 1e-2], extend='both', logscale=True, outfile=join(outdir, 'interannual', '{}_localRo_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
 
                         ArcCir_pcolormesh_quiver(ds_grid, k, OW_list, vecE_data_seasons, vecN_data_seasons, resolution, 'seismic', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, 'OW', xvec_attr, scalar_bounds=[-0.1e-13, 0.1e-13], extend='both', outfile=join(outdir, 'interannual', '{}_OW_k{}_{}_{}.pdf'.format(get_variable_str(xvec_attr+yvec_attr), str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+                    """
             
 ##############################
 
