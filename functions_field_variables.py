@@ -8,11 +8,11 @@ def get_field_vars(attribute):
                          'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'WVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'UGVG': 'GEOS_VEL_MONTHLY', \
-                         'ZETA': 'VORTICITY_MONTHLY', \ 
+                         'ZETA': 'VORTICITY_MONTHLY', \
                          'NORMAL': 'STRAIN_MONTHLY', \
                          'SHEAR': 'STRAIN_MONTHLY', \
                          'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
-                         'UEkVEk': 'EK_VEL_MONTHLY'} 
+                         'UEkVEk': 'EK_VEL_MONTHLY'}
     
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
