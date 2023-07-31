@@ -4,15 +4,15 @@ Rosalie Cormier, 2023
 
 def get_field_vars(attribute):
     
-    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
-                         'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
-                         'WVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
-                         'UGVG': 'GEOS_VEL_MONTHLY', \
-                         'ZETA': 'VORTICITY_MONTHLY', \
-                         'NORMAL': 'STRAIN_MONTHLY', \
-                         'SHEAR': 'STRAIN_MONTHLY', \
-                         'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
-                         'UEkVEk': 'EK_VEL_MONTHLY'}
+    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \ #Density, strat, pressure
+                         'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \ #u, v
+                         'WVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \ #w
+                         'UGVG': 'GEOS_VEL_MONTHLY', \ #Geostrophic velocity (doesn't come from ECCO)
+                         'ZETA': 'VORTICITY_MONTHLY', \ #Vorticity (doesn't come from ECCO)
+                         'NORMAL': 'STRAIN_MONTHLY', \ #Normal strain (doesn't come from ECCO)
+                         'SHEAR': 'STRAIN_MONTHLY', \ #Shear strain (doesn't come from ECCO)
+                         'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \ #Tau_x and Tau_y
+                         'UEkVEk': 'EK_VEL_MONTHLY'} #Ekman velocity (doesn't come from ECCO)
     
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
