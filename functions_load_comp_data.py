@@ -74,11 +74,12 @@ def load_annual_scalar_ds(yearlydatdir, scalar_attr, year, datdir, ds_grid, scal
     if not os.path.exists(scalar_annual_file): #If it doesn't exist, compute it
                         
         if scalarECCO: #If variable comes from ECCO directly
-            usecompdata = False
-        elif not scalarECCO:
-            usecompdata = True
+            datdirshort, usecompdata = 'Downloads', False
                             
-        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
+        elif not scalarECCO:
+            datdirshort, usecompdata = 'computed_monthly', True
+                            
+        save_annual_avgs.main(years=[year], field=scalar_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
                     
     ds_scalar_year = xr.open_mfdataset(scalar_annual_file, engine="scipy")
     ds_scalar_year.load() #Load DataSet
@@ -104,13 +105,13 @@ def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_g
 
     if not os.path.exists(vector_annual_file): #If it doesn't exist, compute it
                         
-        if vectorECCO: #If variable comes from ECCO directly
-            usecompdata = False
-        elif not vectorECCO:
-            usecompdata = True
-            datdir = compdatdir
+        if scalarECCO: #If variable comes from ECCO directly
+            datdirshort, usecompdata = 'Downloads', False
+                            
+        elif not scalarECCO:
+            datdirshort, usecompdata = 'computed_monthly', True
                                     
-        save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
+        save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
                         
     ds_vector_year = xr.open_mfdataset(vector_annual_file, engine="scipy")
     ds_vector_year.load()
@@ -163,13 +164,13 @@ def load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, 
 
     if not os.path.exists(vector_seas_file): #If it doesn't exist, compute it
                         
-        if vectorECCO: #If variable comes from ECCO directly
-            usecompdata = False
-        elif not vectorECCO:
-            usecompdata = True
-            datdir = compdatdir
-                                    
-        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, datdir=datdir, usecompdata=usecompdata, outdir=yearlydatdir)
+        if scalarECCO: #If variable comes from ECCO directly
+            datdirshort, usecompdata = 'Downloads', False
+                            
+        elif not scalarECCO:
+            datdirshort, usecompdata = 'computed_monthly', True
+            
+        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
                         
     ds_vector_seas = xr.open_mfdataset(vector_seas_file, engine="scipy")
     ds_vector_seas.load()
