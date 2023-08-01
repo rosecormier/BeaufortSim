@@ -373,8 +373,11 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
         scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
     if seasonal:
+        
         seas_yearstr = yearstr
         datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
+        
+        data_seasons.append(scalar)
     
     #Plot scalar data
     ArcCir_pcolormesh(ds_grid, [scalar], resolution, cmap, lon_centers, lat_centers, None, datestr, scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=outfile, lats_lons=lats_lons)    
@@ -419,8 +422,6 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
                 
             #Compute and plot OW for the season
             OW_list = plot_OW(OW_list, scalar, True, yearstr, year, outdir, k, datdirname, ds_grid, lon_centers, lat_centers, latmin, latmax, lonmin, lonmax, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
-                
-            data_seasons.append(scalar)
     
     if seasonal:
         return Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers
@@ -450,8 +451,13 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
     if seasonal:
+        
         seas_yearstr = yearstr
         datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
+        
+        scalar_data_seasons.append(scalar)
+        vecE_data_seasons.append(vecE)
+        vecN_data_seasons.append(vecN)
 
     #Create main plot
     ArcCir_pcolormesh_quiver(ds_grid, k, [scalar], [vecE], [vecN], resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr=scalar_attr, xvec_attr=xvec_attr, scalar_bounds=[vmin, vmax], extend='both', logscale=False, outfile=outfile, lats_lons=lats_lons, quiv_scale=0.3)
@@ -501,10 +507,6 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
                 
             #Compute and plot OW for the season
             OW_list = plot_OW(OW_list, scalar, lon_centers, lat_centers, True, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
-                
-            scalar_data_seasons.append(scalar)
-            vecE_data_seasons.append(vecE)
-            vecN_data_seasons.append(vecN)
     
     if seasonal:
         return Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers

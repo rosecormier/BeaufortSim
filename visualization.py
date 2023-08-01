@@ -328,8 +328,8 @@ def main():
                 if years != 1: #If there is more than one season to average over
                 
                     datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
-                    outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
-          
+                    outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, str(startyr)+"-"+endyearstr))
+
                     #Plot average over all seasons, reusing seasonal lat/lon_centers
                     plot_pcolormesh_k_plane(ds_grid, data_seasons, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, season_years=season_years, years=years, startyr=startyr, multiple_seas=True, lon_centers=lon_centers, lat_centers=lat_centers) 
                 
