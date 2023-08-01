@@ -16,6 +16,7 @@ import xarray as xr
 
 from os.path import expanduser, join
 
+from functions_divergence import comp_2d_divergence
 from functions_ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
 from functions_field_variables import get_field_vars, get_variable_str 
 from functions_geostrophy import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
@@ -34,10 +35,8 @@ def main(**kwargs):
 
         #Spatial bounds
 
-        parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, \
-                            default=[70.5, 80.0])
-        parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, \
-                            default=[-155.0, -120.0])
+        parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.5, 80.0])
+        parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-155.0, -120.0])
 
         #Temporal bounds
 
@@ -79,18 +78,18 @@ def main(**kwargs):
     homedir = expanduser('~')
     sys.path.append(join(homedir, 'ECCOv4-py'))
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
-
+ 
     ug_monthly_shortname, ug_monthly_nc_str = get_field_vars('UGVG')
     zeta_monthly_shortname, zeta_monthly_nc_str = get_field_vars('ZETA')
     normal_monthly_shortname, normal_monthly_nc_str = get_field_vars('NORMAL')
     shear_monthly_shortname, shear_monthly_nc_str = get_field_vars('SHEAR')
     Ek_monthly_shortname, Ek_monthly_nc_str = get_field_vars('UEkVEk')
+    divu_monthly_shortname, divu_monthly_nc_str = get_field_vars('DIVU')
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, \
-                  normal_monthly_shortname]:
+    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, normal_monthly_shortname, divu_monthly_shortname]:
         if not os.path.exists(join(outdir, subdir)):
             os.makedirs(join(outdir, subdir))
 
@@ -184,6 +183,15 @@ def main(**kwargs):
             shear_strain = comp_shear_strain(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
 
             shear_strain.to_netcdf(path=join(outdir, shear_monthly_shortname, shear_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            
+            ##############################
+            
+            #Divergence of [horizontal] velocity
+            
+            div_u = comp_2d_divergence(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
+            
+            div_u.name = 'DIVU'
+            div_u.to_netcdf(path=join(outdir, divu_monthly_shortname, divu_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
             ##############################
             
