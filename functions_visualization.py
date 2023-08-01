@@ -46,7 +46,8 @@ def cbar_label(scalar_attr):
                       'zeta_geos': r'Vorticity per $f_{mean}$', \
                       'OW_geos': r'OW $(1/s^2)$', \
                       'Ro_l': r'$Ro_{\ell}$', \
-                      'geos_metric': 'Velocity ratio'}
+                      'geos_metric': 'Velocity ratio', \
+                      'DIVU': 'Horizontal velocity divergence (1/s)'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -69,7 +70,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                   'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                   'Ro_l': 'Local Rossby number', \
                   'ZETA': 'Vorticity', \
-                  'WVEL': 'Vertical component of water velocity'}
+                  'WVEL': 'Vertical component of water velocity', \
+                  'DIVU': 'Divergence of horizontal water velocity'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'horizontal water velocity', \
@@ -105,7 +107,8 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
                     'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number', \
                     'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
-                    'PHIHYDcR': 'Hydrostatic pressure anomaly'}
+                    'PHIHYDcR': 'Hydrostatic pressure anomaly', \
+                    'DIVU': 'Divergence of horizontal water velocity'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)

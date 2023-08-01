@@ -291,7 +291,7 @@ def main():
                         Ro_l_list, OW_list = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_mo], k, scalar_attr, resolution, cmap, monthstr+"-"+yearstr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, monthstr=monthstr, datdirname=config['datdir'], outdir=outdir)
        
                     #Get annually-averaged data, with interpolation if necessary
-                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], scalarECCO)
+                    ds_scalar_year = load_annual_scalar_ds(yearlydatdir, scalar_attr, year, config['datdir'], ds_grid, scalarECCO)
                     
                     #File to save annual plot to
                     outfile = join(outdir, 'yearly', '{}_k{}_{}.pdf'.format(variables_str, str(k), yearstr))
