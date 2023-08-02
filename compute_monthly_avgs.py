@@ -102,6 +102,8 @@ def main(**kwargs):
 
     rho_ref = 1029.0 #Reference density (kg/m^3)
     nu_E = 1e-2 #Eddy viscosity (m^2/s)
+    
+    k=3
 
     ##############################
 
@@ -213,24 +215,16 @@ def main(**kwargs):
             
             #Save Ekman velocity components
 
-            #vel_Ek_ds = xr.merge([u_Ek, v_Ek])
-            #vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            vel_Ek_ds = xr.merge([u_Ek, v_Ek])
+            vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
             #Divergence of Ekman velocity
-            ###
-            #XGCM_grid = ecco.get_llc_grid(ds_grid)
-            #velc = XGCM_grid.interp_2d_vector({'X': u_Ek, \
-            #                               'Y': v_Ek}, \
-            #                               boundary='fill')
-            ###
-            #div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
             
-            #ds_vel_mo = ds_vel_mo.squeeze()
-            #ds_vel_mo = ds_vel_mo.transpose(..., 'k') #Reshape
-            #(ds_vel_mo['UVEL']).data = div_u_Ek.values
+            u_Ek, v_Ek = u_Ek.isel(k=k).squeeze(), v_Ek.isel(k=k).squeeze()
+            div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
             
-            #ds_vel_mo.name = 'DIVUEk'
-            #ds_vel_mo.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+            div_u_Ek.name = 'DIVUEk'
+            div_u_Ek.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
 ##############################
 

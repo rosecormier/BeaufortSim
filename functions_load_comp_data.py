@@ -55,7 +55,7 @@ def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir):
                                 
         compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir)
         
-        ds_month = load_dataset(monthly_file) #Load DataSet
+        ds_month = xr.open_mfdataset(monthly_file, engine="scipy") #load_dataset(monthly_file) #Load DataSet
         
     return ds_month
 
