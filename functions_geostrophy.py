@@ -7,6 +7,8 @@ import ecco_v4_py as ecco
 import xgcm
 from math import e, pi
 
+from functions_ecco_general import rotate_vector
+
 Omega = (2 * np.pi) / 86164 #Earth angular velocity
 
 def to_radians(angle):
@@ -192,13 +194,19 @@ def comp_Ekman_vel(ecco_ds_grid, ds_denspress, ds_stress, nu_E, rho_ref):
     
     #Get wind stress components
     tau_x, tau_y = ds_stress.EXFtaux, ds_stress.EXFtauy #Ask about the directions - need to rotate?
+                                #Try rotation + interpolation
+    
+    #tau_E, tau_N = rotate_vector(ecco_ds_grid, ds_stress, 'EXFtaux', 'EXFtauy')
+    #tau_E.data, tau_N.data = tau_E.values, tau_N.values
+    tau_E = tau_x * ecco_ds_grid['CS'] - tau_y * ecco_ds_grid['SN']
+    tau_N = tau_x * ecco_ds_grid['SN'] + tau_y * ecco_ds_grid['CS']
     
     #Compute coefficient that multiplies Ekman velocity
     Ek_coeff = (np.sqrt(2) / (dens_surface * f * Ek_depth))
     
     #Compute Ekman velocity components
     
-    u_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_x * np.cos((z/Ek_depth) - (pi/4)) - tau_y * np.sin((z/Ek_depth) - (pi/4)))
-    v_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_x * np.sin((z/Ek_depth) - (pi/4)) + tau_y * np.cos((z/Ek_depth) - (pi/4)))
+    u_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_E * np.cos((z/Ek_depth) - (pi/4)) - tau_N * np.sin((z/Ek_depth) - (pi/4)))
+    v_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_E * np.sin((z/Ek_depth) - (pi/4)) + tau_N * np.cos((z/Ek_depth) - (pi/4)))
     
     return u_Ek, v_Ek

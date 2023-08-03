@@ -17,7 +17,7 @@ import xarray as xr
 from os.path import expanduser, join
 
 from functions_divergence import comp_2d_divergence
-from functions_ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy
+from functions_ecco_general import get_monthstr, load_dataset, load_grid, get_vector_in_xy, rotate_vector
 from functions_field_variables import get_field_vars, get_variable_str 
 from functions_geostrophy import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
 from functions_vorticity import comp_vorticity, comp_normal_strain, comp_shear_strain
@@ -75,6 +75,8 @@ def main(**kwargs):
         datdirshort = kwargs.get('datdir')
         outdir = kwargs.get('outdir')
         
+    lats_lons = [latmin, latmax, lonmin, lonmax] #
+        
     homedir = expanduser('~')
     sys.path.append(join(homedir, 'ECCOv4-py'))
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
@@ -90,7 +92,7 @@ def main(**kwargs):
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, normal_monthly_shortname, divu_monthly_shortname]:
+    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, normal_monthly_shortname, Ek_monthly_shortname, divu_monthly_shortname, divu_Ek_monthly_shortname]:
         if not os.path.exists(join(outdir, subdir)):
             os.makedirs(join(outdir, subdir))
 
@@ -103,7 +105,7 @@ def main(**kwargs):
     rho_ref = 1029.0 #Reference density (kg/m^3)
     nu_E = 1e-2 #Eddy viscosity (m^2/s)
     
-    k=3
+    k=0
 
     ##############################
 
@@ -190,12 +192,12 @@ def main(**kwargs):
             ##############################
             
             #Divergence of [horizontal] velocity
-            
+            """
             div_u = comp_2d_divergence(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
             
             div_u.name = 'DIVU'
             div_u.to_netcdf(path=join(outdir, divu_monthly_shortname, divu_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
-            
+            """
             ##############################
             
             #OCEAN SURFACE STRESSES
@@ -207,7 +209,7 @@ def main(**kwargs):
                 
             ds_stress_mo = load_dataset(curr_stress_file) #Load monthly surface-stress file into workspace
             
-            (ds_stress_mo['EXFtaux']).data, (ds_stress_mo['EXFtauy']).data = (ds_stress_mo['EXFtaux']).values, (ds_stress_mo['EXFtauy']).values
+            #(ds_stress_mo['EXFtaux']).data, (ds_stress_mo['EXFtauy']).data = (ds_stress_mo['EXFtaux']).values, (ds_stress_mo['EXFtauy']).values
             
             u_Ek, v_Ek = comp_Ekman_vel(ds_grid, ds_denspress_mo, ds_stress_mo, nu_E, rho_ref) #Compute Ekman velocity components
             u_Ek.name = 'UEk'
@@ -218,10 +220,13 @@ def main(**kwargs):
             vel_Ek_ds = xr.merge([u_Ek, v_Ek])
             vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
-            #Divergence of Ekman velocity
+            #Compute divergence of Ekman velocity
+
+            u_Ek, v_Ek = vel_Ek_ds['UEk'].isel(k=k).squeeze(), vel_Ek_ds['VEk'].isel(k=k).squeeze()
+            #print(u_Ek)
             
-            u_Ek, v_Ek = u_Ek.isel(k=k).squeeze(), v_Ek.isel(k=k).squeeze()
-            div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rAz)
+            div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA, ds_grid, lats_lons, 0.25)
+            #print(div_u_Ek)
             
             div_u_Ek.name = 'DIVUEk'
             div_u_Ek.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")

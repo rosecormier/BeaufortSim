@@ -152,7 +152,7 @@ def load_seasonal_scalar_ds(seasonaldatdir, scalar_attr, season_start, year, sea
     
     return ds_scalar_seas
 
-def load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, vectorECCO, ds_grid, k, compdatdir=None):
+def load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, scalarECCO, vectorECCO, ds_grid, k, compdatdir=None):
     
     """
     Checks that a seasonal vector datafile exists, and creates it if it doesn't, then loads DataSet and gets vector components.
@@ -170,7 +170,7 @@ def load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, 
         elif not scalarECCO:
             datdirshort, usecompdata = 'computed_monthly', True
             
-        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
+        save_seasonal_avgs.main(field=xvec_attr+yvec_attr, years=[year], start_month=season_start, end_month=season_end, datdir=datdirshort, usecompdata=usecompdata, outdir=seasonaldatdir)
                         
     ds_vector_seas = xr.open_mfdataset(vector_seas_file, engine="scipy")
     ds_vector_seas.load()

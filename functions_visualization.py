@@ -47,7 +47,8 @@ def cbar_label(scalar_attr):
                       'OW_geos': r'OW $(1/s^2)$', \
                       'Ro_l': r'$Ro_{\ell}$', \
                       'geos_metric': 'Velocity ratio', \
-                      'DIVU': 'Horizontal velocity divergence (1/s)'}
+                      'DIVU': 'Horizontal velocity divergence (1/s)', \
+                      'DIVUEk': 'Divergence of Ekman current (1/s)'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -71,7 +72,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
                   'Ro_l': 'Local Rossby number', \
                   'ZETA': 'Vorticity', \
                   'WVEL': 'Vertical component of water velocity', \
-                  'DIVU': 'Divergence of horizontal water velocity'}
+                  'DIVU': 'Divergence of horizontal water velocity', \
+                  'DIVUEk': 'Divergence of Ekman current'}
     scalar_str = scalar_dict[scalar_attr]
     
     vector_dict = {'UVEL': 'horizontal water velocity', \
@@ -108,7 +110,8 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
                     'Ro_l': 'Local Rossby number', \
                     'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
                     'PHIHYDcR': 'Hydrostatic pressure anomaly', \
-                    'DIVU': 'Divergence of horizontal water velocity'}
+                    'DIVU': 'Divergence of horizontal water velocity', \
+                    'DIVUEk': 'Divergence of Ekman current'}
     variable_name = variable_dict[variable]
     
     title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)
@@ -364,13 +367,25 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
-        ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
-    
+        if scalar_attr != 'DIVUEk':
+            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
+        #else:
+        #    ds_scalar_mean = ds_scalar_mean.interp()
+        #print(ds_grid, ds_scalar_mean)
         #Convert scalar DataSet to useful field
+        
+        ###
+        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
+        #print(ds_grid)
+        
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
         
-    else: #Typically data are numpy arrays in this case
-        scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
+    else:
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_grid.XC, ds_grid.YC, ds_grid.XG, ds_grid.YG, ds_scalar_mean[scalar_attr]
+        #    print(lon_centers, lat_centers, lon_edges, lat_edges, scalar)
+        
+    #else: #Typically data are numpy arrays in this case
+    #    scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
     if seasonal:
         
@@ -442,7 +457,8 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
-        ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
+        if scalar_attr != 'DIVUEk':
+            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
     
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)

@@ -283,7 +283,7 @@ def main():
 
                         elif not scalarECCO:
                             ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
-                            
+                        
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                             
@@ -322,7 +322,7 @@ def main():
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
-                    
+                    print(ds_scalar_seas)
                     Ro_l_list, OW_list, data_seasons, lon_centers, lat_centers = plot_pcolormesh_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, year=year, outdir=outdir, season_start=season_start, season_end=season_end, endyearstr=endyearstr, datdirname=config['datdir'], seasonal=True, seasonaldatdir=seasonaldatdir, data_seasons=data_seasons)
                 
                 if years != 1: #If there is more than one season to average over
@@ -367,7 +367,7 @@ def main():
                             
                         elif not vectorECCO:
                             vecE, vecN = load_comp_vector_ds_and_grid(vector_dir, vector_monthly_nc_str, xvec_attr, yvec_attr, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, k, years)
-                            
+                        
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
                         
@@ -408,8 +408,8 @@ def main():
                         ds_scalar_seas[scalar_attr] = XGCM_grid.interp(ds_scalar_seas.WVEL, axis="Z")
                     
                     #Get seasonally-averaged vector data
-                    vecE, vecN = load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, vectorECCO, ds_grid, k, compdatdir=compdatdir)
-                  
+                    vecE, vecN = load_seasonal_vector_ds(seasonaldatdir, xvec_attr, yvec_attr, season_start, year, season_end, endyearstr, scalarECCO, vectorECCO, ds_grid, k, compdatdir=compdatdir)
+                    
                     seas_yearstr = yearstr + "-" + str(year + season_years[-1]) #For titles
                     
                     outfile = join(outdir, 'seasonal', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
@@ -423,7 +423,7 @@ def main():
                     outfile = join(outdir, 'interannual', '{}_k{}_{}_{}.pdf'.format(variables_str, str(k), seas_monthstr, seas_yearstr))
                     
                     #Plot interannual average, reusing seasonal lat/lon_centers
-                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=None, seas_yearstr=None, multiple_seas=True, years=years, startyr=startyr, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons, lon_centers=lon_centers, lat_centers=lat_centers)
+                    plot_pcm_quiver_k_plane(ds_grid, [ds_scalar_seas], k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, '{}, {}'.format(seas_monthstr, seas_yearstr), vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=outdir, seas_monthstr=None, seas_yearstr=None, multiple_seas=True, years=years, startyr=startyr, season_years=season_years, scalar_data_seasons=scalar_data_seasons, vecE_data_seasons=vecE_data_seasons, vecN_data_seasons=vecN_data_seasons, lon_centers=lon_centers, lat_centers=lat_centers)
             
 ##############################
 

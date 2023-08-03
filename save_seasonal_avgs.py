@@ -115,7 +115,7 @@ def main(**kwargs):
                 
                 ds_month = xr.open_mfdataset(curr_file, engine="scipy")
 
-            monthly_fields.append(ds_month.squeeze())
+            monthly_fields.append(ds_month)#.squeeze())
 
         seasonal_avg_field = comp_temp_mean(monthly_fields)
         seasonal_avg_field.to_netcdf(path=join(outdir, "avg_"+field+"_"+start_month+str(year_start)+"-"+end_month+year+".nc"), engine="scipy")
