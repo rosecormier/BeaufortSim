@@ -356,12 +356,12 @@ def plot_OW(OW_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, 
 
 ##############################
 
-def plot_Ek_vel_divergence(div_u_Ek_list, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1, 1], quiver=False, vecE=None, vecN=None, xvec_attr=None):
+def plot_Ek_vel_divergence(div_u_Ek_list, vecEs, vecNs, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1, 1], quiver=False, vecE=None, vecN=None, xvec_attr=None):
     
     """
     Computes and plots divergence of Ekman current.
     """
-    
+    """
     if not seasonal:
         
         #Get monthly Ekman-velocity data
@@ -383,20 +383,26 @@ def plot_Ek_vel_divergence(div_u_Ek_list, lon_centers, lat_centers, seasonal, ou
         
         #Define output file name
         div_u_Ek_outfile = join(outdir, 'seasonal', 'div_u_Ek_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
-
-    u_Ek, v_Ek = (ds_Ek['UEk']).isel(k=k).squeeze().values, (ds_Ek['VEk']).isel(k=k).squeeze().values
-        
+    """
+    #Define output file name
+    if not seasonal:
+        div_u_Ek_outfile = join(outdir, 'monthly', 'divuEk_uEk_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+    elif seasonal:
+        div_u_Ek_outfile = join(outdir, 'seasonal', 'divuEk_uEk_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+    
+    #u_Ek, v_Ek = (ds_Ek['UEk']).isel(k=k).squeeze().values, (ds_Ek['VEk']).isel(k=k).squeeze().values
+    u_Ek, v_Ek = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
     xgcm_grid = ecco.get_llc_grid(ds_grid)
     
     #Compute divergence
-    div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA)
+    lon_centers, lat_centers, lon_edges, lat_edges, div_u_Ek = comp_2d_Ek_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA, ds_grid, lats_lons, resolution)
     
-     #Plot divergence
+    #Plot divergence
     
     if not quiver:
         ArcCir_pcolormesh(ds_grid, [div_u_Ek], resolution, 'PuOr', lon_centers, lat_centers, None, datestr, 'DIVUEk', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=div_u_Ek_outfile, lats_lons=lats_lons)
-    elif quiver: #fix outfile in this case
-        ArcCir_pcolormesh_quiver(ds_grid, k, [div_u_Ek], [vecE], [vecN], resolution, 'PuOr', datestr, lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, outfile=div_u_Ek_outfile, lats_lons=lats_lons)
+    elif quiver: 
+        ArcCir_pcolormesh_quiver(ds_grid, k, [div_u_Ek], [vecE], [vecN], resolution, 'PuOr', datestr, lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr='UEk', scalar_bounds=scalar_bounds, outfile=div_u_Ek_outfile, lats_lons=lats_lons)
 
     div_u_Ek_list.append(div_u_Ek)
     return div_u_Ek_list
@@ -415,17 +421,11 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
-        if scalar_attr != 'DIVUEk':
-            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
-        
         ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
         
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-        
-    #else:
-    #    lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_grid.XC, ds_grid.YC, ds_grid.XG, ds_grid.YG, ds_scalar_mean[scalar_attr]
-        
+    
     else: #Typically data are numpy arrays in this case
         scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
@@ -487,7 +487,7 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
             
 ##############################
 
-def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, scalar_data_seasons=None, vecE_data_seasons=None, vecN_data_seasons=None, lon_centers=None, lat_centers=None):
+def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, vecE, vecN, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, div_u_Ek_list, yearstr, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, scalar_data_seasons=None, vecE_data_seasons=None, vecN_data_seasons=None, lon_centers=None, lat_centers=None):
     
     """
     Creates pcolormesh + quiver plot on plane of constant k.
@@ -506,13 +506,7 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-        """
-        if scalar_attr != 'DIVUEk':
-            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
-    
-        #Convert scalar DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-        """
+   
     else: #Typically data are numpy arrays in this case
         scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
@@ -573,11 +567,35 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
                 
             #Compute and plot OW for the season
             OW_list = plot_OW(OW_list, scalar, lon_centers, lat_centers, True, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, season_start=season_start, season_end=season_end, endyearstr=endyearstr, seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr, seasonaldatdir=seasonaldatdir)
+            
+    elif xvec_attr == 'UEk': #If Ekman current, also compute and plot its divergence
+
+        if annual: #If plotting an annual average
+
+            #Plot div_u_Ek
+            ArcCir_pcolormesh_quiver(ds_grid, k, div_u_Ek_list, [vecE], [vecN], resolution, 'PuOr', yearstr, lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr='UEk', outfile=join(outdir, 'yearly', 'divuEk_uEk_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
+        
+        elif multiple_seas: #If plotting interannual seasonal average
+            
+            seas_yearstr = str(startyr) + "-" + str(startyr + (years-1) + season_years[-1]) #For titles
+            
+            #Plot div_u_Ek
+            ArcCir_pcolormesh_quiver(ds_grid, k, div_u_Ek_list, [vecE], [vecN], resolution, 'PuOr', '{}, {}'.format(seas_monthstr, seas_yearstr), lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr='UEk', outfile=join(outdir, 'interannual', 'divuEk_uEk_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr)), lats_lons=lats_lons)
+          
+        elif not seasonal: #Plot each month
+            
+            #Plot div_u_Ek
+            div_u_Ek_list = plot_Ek_vel_divergence(div_u_Ek_list, [vecE], [vecN], lon_centers, lat_centers, False, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=monthstr, quiver=True, vecE=vecE, vecN=vecN, xvec_attr='UEk')
+           
+        elif seasonal: #Plot each season
+            
+            #Compute and plot div_u_Ek for the season
+            div_u_Ek_list = plot_Ek_vel_divergence(div_u_Ek_list, [vecE], [vecN], lon_centers, lat_centers, True, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, quiver=True, vecE=vecE, vecN=vecN, xvec_attr='UEk', seas_monthstr=seas_monthstr, seas_yearstr=seas_yearstr)
     
     if seasonal:
-        return Ro_l_list, OW_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers
+        return Ro_l_list, OW_list, div_u_Ek_list, scalar_data_seasons, vecE_data_seasons, vecN_data_seasons, lon_centers, lat_centers
     elif not seasonal and not annual and not multiple_seas:
-        return Ro_l_list, OW_list
+        return Ro_l_list, OW_list, div_u_Ek_list
     
 """
 def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
