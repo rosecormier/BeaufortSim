@@ -22,7 +22,6 @@ from functions_field_variables import get_field_vars, get_variable_str
 from functions_geostrophy import get_density_and_pressure, comp_geos_vel, comp_Ekman_vel
 from functions_vorticity import comp_vorticity, comp_normal_strain, comp_shear_strain
 
-#To be called within this script
 import download_new_data
 
 ##############################
@@ -87,12 +86,11 @@ def main(**kwargs):
     shear_monthly_shortname, shear_monthly_nc_str = get_field_vars('SHEAR')
     Ek_monthly_shortname, Ek_monthly_nc_str = get_field_vars('UEkVEk')
     divu_monthly_shortname, divu_monthly_nc_str = get_field_vars('DIVU')
-    divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str = get_field_vars('DIVUEk')
 
     if not os.path.exists(outdir):
         os.makedirs(outdir)
 
-    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, normal_monthly_shortname, Ek_monthly_shortname, divu_monthly_shortname, divu_Ek_monthly_shortname]:
+    for subdir in [ug_monthly_shortname, zeta_monthly_shortname, normal_monthly_shortname, Ek_monthly_shortname, divu_monthly_shortname]:
         if not os.path.exists(join(outdir, subdir)):
             os.makedirs(join(outdir, subdir))
 
