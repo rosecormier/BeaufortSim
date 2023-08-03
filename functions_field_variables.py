@@ -20,13 +20,13 @@ def get_field_vars(attribute):
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'WVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'UGVG': 'OCEAN_GEOS_UVEL_mon_mean_', \
-                         'ZETA': 'OCEAN_VORTICITY_mon_mean', \
-                         'NORMAL': 'OCEAN_NORMAL_STRAIN_mon_mean', \
-                         'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean', \
+                         'ZETA': 'OCEAN_VORTICITY_mon_mean_', \
+                         'NORMAL': 'OCEAN_NORMAL_STRAIN_mon_mean_', \
+                         'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean_', \
                          'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
-                         'UEkVEk': 'OCEAN_EK_VEL_mon_mean', \
-                         'DIVU': 'OCEAN_DIVU_mon_mean', \
-                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean'}
+                         'UEkVEk': 'OCEAN_EK_VEL_mon_mean_', \
+                         'DIVU': 'OCEAN_DIVU_mon_mean_', \
+                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
     
     return monthly_shortnames[attribute], monthly_nc_strings[attribute]
 
