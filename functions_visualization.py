@@ -358,32 +358,6 @@ def plot_OW(OW_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, 
 
 def plot_Ek_vel_divergence(div_u_Ek_list, vecEs, vecNs, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1, 1], quiver=False, vecE=None, vecN=None, xvec_attr=None):
     
-    """
-    Computes and plots divergence of Ekman current.
-    """
-    """
-    if not seasonal:
-        
-        #Get monthly Ekman-velocity data
-        
-        Ek_monthly_shortname, Ek_monthly_nc_str = get_field_vars('UEkVEk')
-        Ek_file = join(datdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc")
-        ds_Ek = load_dataset(Ek_file)
-        
-        #Define output file name
-        div_u_Ek_outfile = join(outdir, 'monthly', 'div_u_Ek_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
-        
-    elif seasonal:
-        
-        #Get seasonal Ekman-velocity data
-        
-        Ek_seas_file = join(seasonaldatdir, "avg_UEk_VEk_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
-        ds_Ek = xr.open_mfdataset(Ek_seas_file, engine="scipy")
-        ds_Ek.load()
-        
-        #Define output file name
-        div_u_Ek_outfile = join(outdir, 'seasonal', 'div_u_Ek_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
-    """
     #Define output file name
     if not seasonal:
         div_u_Ek_outfile = join(outdir, 'monthly', 'divuEk_uEk_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
