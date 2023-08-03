@@ -9,7 +9,11 @@ from math import e, pi
 
 from functions_ecco_general import rotate_vector
 
+##############################
+
 Omega = (2 * np.pi) / 86164 #Earth angular velocity
+
+##############################
 
 def to_radians(angle):
     
@@ -18,6 +22,8 @@ def to_radians(angle):
     """
     
     return angle * np.pi / 180
+
+##############################
 
 def comp_f(y):
     
@@ -28,6 +34,8 @@ def comp_f(y):
     lat = to_radians(y)
     
     return 2 * Omega * np.sin(lat)
+
+##############################
 
 def get_density_and_pressure(ds_denspress, rho_ref):
     
@@ -49,6 +57,8 @@ def get_density_and_pressure(ds_denspress, rho_ref):
     press = rho_ref * pressanom #Quantity to differentiate
     
     return dens, press
+
+##############################
 
 def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
@@ -95,6 +105,8 @@ def comp_geos_vel(ecco_ds_grid, pressure, dens):
     
     return u_g, v_g
 
+##############################
+
 def rotate_comp_vector(ds_grid, u_g, v_g, k_val, surface=False):
     
     """
@@ -113,6 +125,8 @@ def rotate_comp_vector(ds_grid, u_g, v_g, k_val, surface=False):
         u_g, v_g = u_g.squeeze(), v_g.squeeze()
 
     return u_g, v_g
+
+##############################
     
 def mask_delta_u(mask_threshold, u_complex):
     
@@ -122,6 +136,8 @@ def mask_delta_u(mask_threshold, u_complex):
     mask_small_speed = (speed < mask_threshold)
 
     return mask_small_speed
+
+##############################
 
 def comp_delta_u_norm(ecco_ds_grid, u_complex, u_g_complex, mask=None):
     
@@ -149,6 +165,8 @@ def comp_delta_u_norm(ecco_ds_grid, u_complex, u_g_complex, mask=None):
     
     return vel_diff_norm
 
+##############################
+
 def comp_geos_metric(u, v, u_g, v_g):
     
     """
@@ -168,6 +186,8 @@ def comp_geos_metric(u, v, u_g, v_g):
     
     return vel_diff_abs / vel_abs_sum
 
+##############################
+
 def comp_Ekman_vel(ecco_ds_grid, ds_denspress, ds_stress, nu_E, rho_ref):
     
     """
@@ -177,27 +197,23 @@ def comp_Ekman_vel(ecco_ds_grid, ds_denspress, ds_stress, nu_E, rho_ref):
     rho_ref = reference density (kg/m^3)
     """
     
-    #Get z-coordinate
-    z = ecco_ds_grid.Z
+    z = ecco_ds_grid.Z #Get z-coordinate
     
     #Get density and pressure fields
     density, pressure = get_density_and_pressure(ds_denspress, rho_ref=rho_ref)
     
-    #Compute surface density field
-    dens_surface = density.isel(k=0)
+    dens_surface = density.isel(k=0) #Compute surface density field
     
     #Compute Coriolis param. from latitudes of grid cell centres
     f = comp_f(ecco_ds_grid.YC)
     
-    #Compute Ekman-layer depth
-    Ek_depth = (2 * nu_E / f)**0.5
+    Ek_depth = (2 * nu_E / f)**0.5 #Compute Ekman-layer depth
     
     #Get wind stress components
-    tau_x, tau_y = ds_stress.EXFtaux, ds_stress.EXFtauy #Ask about the directions - need to rotate?
-                                #Try rotation + interpolation
+    tau_x, tau_y = ds_stress.EXFtaux, ds_stress.EXFtauy 
     
-    #tau_E, tau_N = rotate_vector(ecco_ds_grid, ds_stress, 'EXFtaux', 'EXFtauy')
-    #tau_E.data, tau_N.data = tau_E.values, tau_N.values
+    #Rotate wind-stress vector
+    
     tau_E = tau_x * ecco_ds_grid['CS'] - tau_y * ecco_ds_grid['SN']
     tau_N = tau_x * ecco_ds_grid['SN'] + tau_y * ecco_ds_grid['CS']
     
