@@ -221,21 +221,6 @@ def main(**kwargs):
             vel_Ek_ds = xr.merge([u_Ek, v_Ek])
             vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
-            k = kmin
-            while k <= kmax:
-            
-                #Compute divergence of Ekman velocity at each depth
-
-                u_Ek, v_Ek = vel_Ek_ds['UEk'].isel(k=k).squeeze(), vel_Ek_ds['VEk'].isel(k=k).squeeze() #Isolate k-plane
-
-                #Compute divergence
-                div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA)#, ds_grid, lats_lons, 0.25)
-
-                div_u_Ek.name = 'DIVUEk'
-                div_u_Ek.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
-
-                k += 1
-            
 ##############################
 
 if __name__ == "__main__":
