@@ -105,10 +105,10 @@ def load_annual_vector_ds(yearlydatdir, xvec_attr, yvec_attr, year, datdir, ds_g
 
     if not os.path.exists(vector_annual_file): #If it doesn't exist, compute it
                         
-        if scalarECCO: #If variable comes from ECCO directly
+        if vectorECCO: #If variable comes from ECCO directly
             datdirshort, usecompdata = 'Downloads', False
                             
-        elif not scalarECCO:
+        elif not vectorECCO:
             datdirshort, usecompdata = 'computed_monthly', True
                                     
         save_annual_avgs.main(years=[year], field=xvec_attr+yvec_attr, datdir=datdirshort, usecompdata=usecompdata, outdir=yearlydatdir)
