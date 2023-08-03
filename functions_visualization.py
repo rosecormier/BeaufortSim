@@ -369,23 +369,19 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
         
         if scalar_attr != 'DIVUEk':
             ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
-        #else:
-        #    ds_scalar_mean = ds_scalar_mean.interp()
-        #print(ds_grid, ds_scalar_mean)
+        
         #Convert scalar DataSet to useful field
         
         ###
         ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
-        #print(ds_grid)
         
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
         
-    else:
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_grid.XC, ds_grid.YC, ds_grid.XG, ds_grid.YG, ds_scalar_mean[scalar_attr]
-        #    print(lon_centers, lat_centers, lon_edges, lat_edges, scalar)
+    #else:
+    #    lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_grid.XC, ds_grid.YC, ds_grid.XG, ds_grid.YG, ds_scalar_mean[scalar_attr]
         
-    #else: #Typically data are numpy arrays in this case
-    #    scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
+    else: #Typically data are numpy arrays in this case
+        scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
     if seasonal:
         
