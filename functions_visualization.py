@@ -395,8 +395,8 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
-        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
-        
+        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr].isel(k=k)
+
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
     
