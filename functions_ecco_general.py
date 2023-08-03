@@ -150,8 +150,6 @@ def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, latmin, latmax, lonmi
     ds_grid = ecco_ds_grid
     curr_field = ds_grid[scalar_attr].squeeze()
     
-    #ds_grid = ecco_ds_grid.copy()
-    
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
     field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, resolution, \
                                             lonmin, lonmax, resolution, fill_value=np.NaN, \
