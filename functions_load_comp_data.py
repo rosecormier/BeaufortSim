@@ -40,7 +40,7 @@ def check_for_ecco_file(variable_dir, variable, monthstr, year, datdir):
 
 ##############################
 
-def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir):
+def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir, kvals):
     
     """
     Checks that a computed (monthly) file exists, and creates it if it doesn't, then loads DataSet.
@@ -53,7 +53,7 @@ def load_comp_file(monthly_file, lats_lons, year, datdir, compdatdir):
 
     else: #If it doesn't exist, compute it (for the year)
                                 
-        compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir)
+        compute_monthly_avgs.main(latmin=latmin, latmax=latmax, lonmin=lonmin, lonmax=lonmax, startyr=year, years=1, datdir=datdir, outdir=compdatdir, kvals=kvals)
         
         ds_month = xr.open_mfdataset(monthly_file, engine="scipy") #load_dataset(monthly_file) #Load DataSet
         

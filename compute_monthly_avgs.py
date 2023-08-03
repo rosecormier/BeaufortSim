@@ -37,6 +37,7 @@ def main(**kwargs):
 
         parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.5, 80.0])
         parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-155.0, -120.0])
+        parser.add_argument("--kvals", type=int, help="Bounding k-indices", nargs=2, default=[0, 1])
 
         #Temporal bounds
 
@@ -70,12 +71,14 @@ def main(**kwargs):
         
         latmin, latmax = kwargs.get('latmin'), kwargs.get('latmax')
         lonmin, lonmax = kwargs.get('lonmin'), kwargs.get('lonmax')
+        kvals = kwargs.get('kvals')
         startyr = kwargs.get('startyr')
         years = kwargs.get('years')
         datdirshort = kwargs.get('datdir')
         outdir = kwargs.get('outdir')
         
-    lats_lons = [latmin, latmax, lonmin, lonmax] #
+    lats_lons = [latmin, latmax, lonmin, lonmax]
+    kmin, kmax = kvals[0], kvals[1]
         
     homedir = expanduser('~')
     sys.path.append(join(homedir, 'ECCOv4-py'))
@@ -104,8 +107,6 @@ def main(**kwargs):
 
     rho_ref = 1029.0 #Reference density (kg/m^3)
     nu_E = 1e-2 #Eddy viscosity (m^2/s)
-    
-    k=0
 
     ##############################
 
@@ -192,12 +193,12 @@ def main(**kwargs):
             ##############################
             
             #Divergence of [horizontal] velocity
-            """
+            
             div_u = comp_2d_divergence(xgcm_grid, ds_vel_mo['UVEL'], ds_vel_mo['VVEL'], ds_grid.dxG, ds_grid.dyG, ds_grid.rA)
             
             div_u.name = 'DIVU'
             div_u.to_netcdf(path=join(outdir, divu_monthly_shortname, divu_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
-            """
+            
             ##############################
             
             #OCEAN SURFACE STRESSES
@@ -220,16 +221,20 @@ def main(**kwargs):
             vel_Ek_ds = xr.merge([u_Ek, v_Ek])
             vel_Ek_ds.to_netcdf(path=join(outdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
             
-            #Compute divergence of Ekman velocity
+            k = kmin
+            while k <= kmax:
+            
+                #Compute divergence of Ekman velocity at each depth
 
-            u_Ek, v_Ek = vel_Ek_ds['UEk'].isel(k=k).squeeze(), vel_Ek_ds['VEk'].isel(k=k).squeeze()
-            #print(u_Ek)
-            
-            div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA, ds_grid, lats_lons, 0.25)
-            #print(div_u_Ek)
-            
-            div_u_Ek.name = 'DIVUEk'
-            div_u_Ek.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+                u_Ek, v_Ek = vel_Ek_ds['UEk'].isel(k=k).squeeze(), vel_Ek_ds['VEk'].isel(k=k).squeeze() #Isolate k-plane
+
+                #Compute divergence
+                div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA)#, ds_grid, lats_lons, 0.25)
+
+                div_u_Ek.name = 'DIVUEk'
+                div_u_Ek.to_netcdf(path=join(outdir, divu_Ek_monthly_shortname, divu_Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc"), engine="scipy")
+
+                k += 1
             
 ##############################
 

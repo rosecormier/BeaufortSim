@@ -112,7 +112,7 @@ def load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_a
     
 ##############################
 
-def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, scalar_attr):
+def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, datdir, compdatdir, ds_grid, scalar_attr, kvals):
     
     """
     Used in this file to load a monthly computed scalar DataSet and return it alongside grid DataSet.
@@ -123,7 +123,7 @@ def load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, ye
     scalar_file = join(scalar_dir, scalar_monthly_nc_str+yearstr+"-"+monthstr+".nc")
                             
     #Ensure file exists and load data
-    ds_scalar_mo = load_comp_file(scalar_file, lats_lons, year, datdir, compdatdir)
+    ds_scalar_mo = load_comp_file(scalar_file, lats_lons, year, datdir, compdatdir, kvals)
     ds_grid = get_scalar_in_xy(ds_grid, ds_scalar_mo, scalar_attr) 
         
     return ds_scalar_mo, ds_grid
@@ -282,7 +282,7 @@ def main():
                             ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_attr, monthstr, year, config['datdir'], ds_grid)
 
                         elif not scalarECCO:
-                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
+                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr, kvals=[kmin, kmax])
                         
                         #File to save monthly plot to
                         outfile = join(outdir, 'monthly', '{}_k{}_{}{}.pdf'.format(variables_str, str(k), monthstr, yearstr))
@@ -360,7 +360,7 @@ def main():
                             ds_scalar_mo = load_ECCO_ds_scalar_mo(scalar_dir, scalar_attr, monthstr, year, config['datdir'], ds_grid)
 
                         elif not scalarECCO:
-                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr)
+                            ds_scalar_mo, ds_grid = load_comp_scalar_ds_and_grid(scalar_dir, scalar_monthly_nc_str, monthstr, year, lats_lons, config['datdir'], compdatdir, ds_grid, scalar_attr, kvals=[kmin, kmax])
 
                         if vectorECCO: #If variable comes from ECCO directly
                             vecE, vecN = load_ECCO_vector_mo_components(vector_dir, monthstr, year, xvec_attr, yvec_attr, config['datdir'], ds_grid, k)

@@ -370,11 +370,9 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
         if scalar_attr != 'DIVUEk':
             ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
         
-        #Convert scalar DataSet to useful field
-        
-        ###
         ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
         
+        #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
         
     #else:
@@ -455,10 +453,18 @@ def plot_pcm_quiver_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, xvec_attr, 
         
         if scalar_attr != 'DIVUEk':
             ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
+        
+        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
+        
+        #Convert scalar DataSet to useful field
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+        """
+        if scalar_attr != 'DIVUEk':
+            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
     
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
-        
+        """
     else: #Typically data are numpy arrays in this case
         scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
     
