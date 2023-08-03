@@ -37,7 +37,6 @@ def main(**kwargs):
 
         parser.add_argument("--lats", type=float, help="Bounding latitudes", nargs=2, default=[70.5, 80.0])
         parser.add_argument("--lons", type=float, help="Bounding longitudes", nargs=2, default=[-155.0, -120.0])
-        parser.add_argument("--kvals", type=int, help="Bounding k-indices", nargs=2, default=[0, 1])
 
         #Temporal bounds
 
@@ -71,15 +70,13 @@ def main(**kwargs):
         
         latmin, latmax = kwargs.get('latmin'), kwargs.get('latmax')
         lonmin, lonmax = kwargs.get('lonmin'), kwargs.get('lonmax')
-        kvals = kwargs.get('kvals')
         startyr = kwargs.get('startyr')
         years = kwargs.get('years')
         datdirshort = kwargs.get('datdir')
         outdir = kwargs.get('outdir')
         
     lats_lons = [latmin, latmax, lonmin, lonmax]
-    kmin, kmax = kvals[0], kvals[1]
-        
+  
     homedir = expanduser('~')
     sys.path.append(join(homedir, 'ECCOv4-py'))
     datdir = join(homedir, datdirshort, 'ECCO_V4r4_PODAAC')
@@ -209,9 +206,7 @@ def main(**kwargs):
                 download_new_data.main(startmo="01", startyr=year, months=12*years, variables=["EXFtauxEXFtauy"], datdir="Downloads")
                 
             ds_stress_mo = load_dataset(curr_stress_file) #Load monthly surface-stress file into workspace
-            
-            #(ds_stress_mo['EXFtaux']).data, (ds_stress_mo['EXFtauy']).data = (ds_stress_mo['EXFtaux']).values, (ds_stress_mo['EXFtauy']).values
-            
+           
             u_Ek, v_Ek = comp_Ekman_vel(ds_grid, ds_denspress_mo, ds_stress_mo, nu_E, rho_ref) #Compute Ekman velocity components
             u_Ek.name = 'UEk'
             v_Ek.name = 'VEk'
