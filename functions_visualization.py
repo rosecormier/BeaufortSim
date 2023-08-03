@@ -17,6 +17,7 @@ import ecco_v4_py as ecco
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
+from functions_divergence import comp_2d_Ek_divergence
 from functions_ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset, get_vector_partner
 from functions_field_variables import get_field_vars, get_variable_str
 from functions_vorticity import get_OW_field, comp_local_Ro
@@ -302,7 +303,7 @@ def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir,
     
     if not quiver:
         ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, datestr, 'Ro_l', scalar_bounds=scalar_bounds, k_plot=k, extend='both', logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
-    elif quiver:
+    elif quiver:  #need to fix outfile for this case
         ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', datestr, lon_centers, lat_centers, scalar_attr='Ro_l', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
 
     #Save Ro_l data and return it
@@ -347,11 +348,58 @@ def plot_OW(OW_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, 
     
     if not quiver:
         ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
-    elif quiver:
+    elif quiver: #need to fix outfile for this case
         ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', datestr, lon_centers, lat_centers, scalar_attr='OW', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, outfile=OW_outfile, lats_lons=lats_lons)
 
     OW_list.append(OW)
     return OW_list
+
+##############################
+
+def plot_Ek_vel_divergence(div_u_Ek_list, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1, 1], quiver=False, vecE=None, vecN=None, xvec_attr=None):
+    
+    """
+    Computes and plots divergence of Ekman current.
+    """
+    
+    if not seasonal:
+        
+        #Get monthly Ekman-velocity data
+        
+        Ek_monthly_shortname, Ek_monthly_nc_str = get_field_vars('UEkVEk')
+        Ek_file = join(datdir, Ek_monthly_shortname, Ek_monthly_nc_str+yearstr+"-"+monthstr+".nc")
+        ds_Ek = load_dataset(Ek_file)
+        
+        #Define output file name
+        div_u_Ek_outfile = join(outdir, 'monthly', 'div_u_Ek_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+        
+    elif seasonal:
+        
+        #Get seasonal Ekman-velocity data
+        
+        Ek_seas_file = join(seasonaldatdir, "avg_UEk_VEk_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+        ds_Ek = xr.open_mfdataset(Ek_seas_file, engine="scipy")
+        ds_Ek.load()
+        
+        #Define output file name
+        div_u_Ek_outfile = join(outdir, 'seasonal', 'div_u_Ek_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+
+    u_Ek, v_Ek = (ds_Ek['UEk']).isel(k=k).squeeze().values, (ds_Ek['VEk']).isel(k=k).squeeze().values
+        
+    xgcm_grid = ecco.get_llc_grid(ds_grid)
+    
+    #Compute divergence
+    div_u_Ek = comp_2d_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA)
+    
+     #Plot divergence
+    
+    if not quiver:
+        ArcCir_pcolormesh(ds_grid, [div_u_Ek], resolution, 'PuOr', lon_centers, lat_centers, None, datestr, 'DIVUEk', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=div_u_Ek_outfile, lats_lons=lats_lons)
+    elif quiver: #fix outfile in this case
+        ArcCir_pcolormesh_quiver(ds_grid, k, [div_u_Ek], [vecE], [vecN], resolution, 'PuOr', datestr, lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, outfile=div_u_Ek_outfile, lats_lons=lats_lons)
+
+    div_u_Ek_list.append(div_u_Ek)
+    return div_u_Ek_list
 
 ##############################
 
