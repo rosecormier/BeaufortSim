@@ -1,6 +1,5 @@
 initial_date = [1992, 1, 1]       # year, month, day
-
-final_date = [1993, 12, 31]       # year, month, day
+final_date   = [1993, 12, 31]       # year, month, day
 
 time_ave_type = monthly           # daily, range
 monthly_range = [1, 2]            # month, month
