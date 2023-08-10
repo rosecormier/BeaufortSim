@@ -1,5 +1,5 @@
 initial_date = [1992, 1, 1]       # year, month, day
-final_date   = [1993, 12, 31]       # year, month, day
+final_date   = [1993, 12, 31]     # year, month, day
 
 time_ave_type = monthly           # daily, range
 monthly_range = [1, 2]            # month, month
@@ -7,9 +7,9 @@ monthly_range = [1, 2]            # month, month
 lat_range     = [70.5, 80.0]      # south, north
 lon_range     = [-155, -120]      # west, east
 depth_range   = [0, 50]           # top, bottom
-latitude_res  = 0.25
-longitude_res = 0.25
-interpolation_type = TBD
+lat_res  = 0.25
+lon_res = 0.25
+interp_type = TBD
 
 plot_plane_type = depth_constant  # latitude_constant, longitude_constant
 k_plot = 0                        # [0,1,2]
