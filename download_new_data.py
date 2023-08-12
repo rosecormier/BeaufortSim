@@ -67,7 +67,7 @@ def main(**kwargs):
 
         StartDate, EndDate = yearstr + "-" + monthstr + "-02", yearstr + "-" + monthstr + "-" + endmonth
 
-        for variable in variables:
+        for variable in [variables]:
             
             monthly_shortname, monthly_nc_str = get_field_vars(variable)
             ecco_podaac_download(ShortName=monthly_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir, n_workers=6, force_redownload=False)

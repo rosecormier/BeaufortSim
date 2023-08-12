@@ -41,7 +41,8 @@ def get_vector_partner(x_comp):
     y_comps = {'UVEL': 'VVEL', \
               'UG': 'VG', \
               'EXFtaux': 'EXFtauy', \
-              'UEk': 'VEk'}
+              'UEk': 'VEk', \
+              'EXFuwind': 'EXFvwind'}
     y_comp = y_comps[x_comp]
     
     return y_comp

@@ -15,6 +15,7 @@ import cartopy.feature as cfeature
 import ecco_v4_py as ecco
 
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
+from matplotlib.lines import Line2D
 from os.path import join
 
 from functions_divergence import comp_2d_Ek_divergence
@@ -49,7 +50,9 @@ def cbar_label(scalar_attr):
                       'Ro_l': r'$Ro_{\ell}$', \
                       'geos_metric': 'Velocity ratio', \
                       'DIVU': 'Horizontal velocity divergence (1/s)', \
-                      'DIVUEk': 'Divergence of Ekman current (1/s)'}
+                      'DIVUEk': 'Divergence of Ekman current (1/s)', \
+                      'SIheff': 'Area-averaged sea ice thickness (m)', \
+                      'SALT': 'Salinity (parts per thousand)'}
     label = cbar_label_dict[scalar_attr]
     
     return label
@@ -112,10 +115,11 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
                     'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
                     'PHIHYDcR': 'Hydrostatic pressure anomaly', \
                     'DIVU': 'Divergence of horizontal water velocity', \
-                    'DIVUEk': 'Divergence of Ekman current'}
+                    'DIVUEk': 'Divergence of Ekman current', \
+                    'SIheff': 'Sea ice thickness'}
     variable_name = variable_dict[variable]
     
-    title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)
+    title = variable_name + ' in Beaufort Gyre region, {} average\n'.format(datestr)# at {}, {} \n'.format(depthstr, datestr)
     
     return title
 
@@ -141,7 +145,7 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
 
 ##############################
 
-def plot_geography(ax, labels=True):
+def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lonmax=-120.0):
     
     """
     Adds land, coastlines, and grid to an ax.
@@ -150,10 +154,11 @@ def plot_geography(ax, labels=True):
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
     lines = ax.gridlines(draw_labels=labels)
+    lines2 = ax.gridlines(draw_labels=False, xlim=(lonmin, lonmax), ylim=(latmin, latmax), color='k')
     
     if labels:
         
-        lines.xlocator = mticker.FixedLocator(np.arange(-180,-90,10))
+        lines.xlocator = mticker.FixedLocator(np.arange(-180,-90,5))
         lines.xformatter = LONGITUDE_FORMATTER
         lines.xpadding = 10
         lines.xlabel_style = {'size': 12, 'color': 'grey', 'rotation': 0}
@@ -162,8 +167,11 @@ def plot_geography(ax, labels=True):
         lines.ylabel_style = {'size': 12, 'color': 'grey', 'rotation': 0}
         lines.x_inline = False
         lines.y_inline = False
-        lines.xlabels_top = False
-        lines.ylabels_right = False
+        lines.xlabels_top = None
+        lines.ylabels_right = None
+        
+        lines2.xlocator = mticker.FixedLocator(np.arange(-155,-119.9,35))
+        lines2.ylocator = mticker.FixedLocator(np.arange(70.5, 80.1, 9.5))
         
         plt.draw()
         
@@ -193,6 +201,9 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
     Create pcolormesh object given an axis.
     """
     
+    cmap = plt.get_cmap(cmap).copy()
+    cmap.set_bad('grey')
+
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
         
@@ -234,7 +245,7 @@ def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_
         
         color = ax.pcolormesh(lat_centers, k_centers, scalar, cmap=cmap)
     
-    fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='bottom')
+    fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='right')#'bottom')
     
     plt.savefig(outfile)
     plt.close()
@@ -395,8 +406,11 @@ def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
-        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr].isel(k=k)
+        if scalar_attr != 'DIVUEk' and scalar_attr != 'SIheff':
+            ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
 
+        ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
+        
         #Convert scalar DataSet to useful field
         lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
     

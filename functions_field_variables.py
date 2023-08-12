@@ -14,7 +14,10 @@ def get_field_vars(attribute):
                          'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UEkVEk': 'EK_VEL_MONTHLY', \
                          'DIVU': 'DIVU_MONTHLY', \
-                         'DIVUEk': 'DIVUEk_MONTHLY'}
+                         'DIVUEk': 'DIVUEk_MONTHLY', \
+                         'SIheff': 'ECCO_L4_SEA_ICE_CONC_THICKNESS_LLC0090GRID_MONTHLY_V4R4', \
+                         'EXFuwindEXFvwind': 'ECCO_L4_ATM_STATE_LLC0090GRID_MONTHLY_V4R4', \
+                         'SALT': 'ECCO_L4_TEMP_SALINITY_LLC0090GRID_MONTHLY_V4R4'}
     
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
@@ -26,7 +29,10 @@ def get_field_vars(attribute):
                          'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
                          'UEkVEk': 'OCEAN_EK_VEL_mon_mean_', \
                          'DIVU': 'OCEAN_DIVU_mon_mean_', \
-                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
+                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean_', \
+                         'SIheff': 'SEA_ICE_CONC_THICKNESS_mon_mean_', \
+                         'EXFuwindEXFvwind': 'ATM_SURFACE_TEMP_HUM_WIND_PRES_mon_mean_', \
+                         'SALT': 'OCEAN_TEMPERATURE_SALINITY_mon_mean_'}
     
     return monthly_shortnames[attribute], monthly_nc_strings[attribute]
 
@@ -40,7 +46,8 @@ def get_variable_str(attribute, geostrophic=False):
                 'EXFtauxEXFtauy': 'tau', \
                 'UEkVEk': 'u_Ek', \
                 'DIVU': 'div_u',
-                'DIVUEk': 'div_u_Ek'}
+                'DIVUEk': 'div_u_Ek', \
+                'SIheff': 'icethickness'}
 
     variable_string = variables[attribute]
         
