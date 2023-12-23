@@ -23,6 +23,20 @@ def get_field_variable(field_name):
 
 ##############################
 
+def field_is_primary(field_name):
+    
+    field_variable = get_field_variable(field_name)
+    
+    primary_variables = ['PHIHYDcR', 'WVEL', 'UVELVVEL', 'EXFtauxEXFtauy']
+    secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'DIVUEk', 'UGVG', 'UEkVEk']
+    
+    if field_variable in primary_variables:
+        return True
+    elif field_variable in secondary_variables:
+        return False
+
+##############################
+
 def get_monthly_shortname(field_variable):
     
     monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
