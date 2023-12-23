@@ -1,5 +1,5 @@
 """
-This script uses the data provided in the input file (input.py) to do all of the following:
+This script uses the data provided in the input file (input.txt) to do all of the following:
     -Download data corresponding to specified fields (skips if done);
     -Computes and saves secondary fields (skips if unnecessary or done);
     -Plots data for all fields specified and saves plots; and
