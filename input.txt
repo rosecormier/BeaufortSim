@@ -4,8 +4,8 @@
 
 time_ave_type   = monthly         # "monthly", "daily", or "season"
 
-initial_month   = [1992, 1]       # Year (integer), month (integer)
-final_month     = [1993, 12]      # Year (integer), month (integer)
+initial_month   = 1992, 1         # Year (integer), month (integer)
+final_month     = 1993, 12        # Year (integer), month (integer)
 
 initial_day     = 1               # Day (integer); only used if "time_ave_type" is "daily"
 final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
@@ -22,9 +22,9 @@ lon_res         = 0.25            # Longitudinal resolution (degrees)
 
 plot_plane_type = depth_const     # "depth_const", "latitude_const", or "longitude_const"; the left endpoint of the corresponding range below will be used as the constant value
 
-depth_range     = [0, 50]         # Top layer (k-value), bottom layer (k-value)
-lat_range       = [70.5, 80.0]    # South bound (degrees-N), north bound (degrees-N)
-lon_range       = [-155, -120]    # West bound (degrees), east bound (degrees)
+depth_range     = 0, 50           # Top layer (k-value), bottom layer (k-value)
+lat_range       = 70.5, 80.0      # South bound (degrees-N), north bound (degrees-N)
+lon_range       = -155, -120      # West bound (degrees), east bound (degrees)
 
 # interp_type   = TBD
 
