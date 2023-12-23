@@ -41,8 +41,6 @@ lon_range       = [-155, -120]    # west bound (degrees), east bound (degrees)
 # scalar: 
 # vector: 
 
-plot_fields = {'w': 'uv_Ek', 'pressure': None}
-
 ####################
 ### Directory information ###
 ####################
