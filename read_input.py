@@ -1,3 +1,10 @@
+"""
+This script reads in the data from input.txt for use by driver.py.
+It saves the input parameters to a log file and prints them to the console.
+
+R. Cormier, F. Poulin, 2023
+"""
+
 f = open('input.txt', 'r')
 
 import numpy as np
@@ -31,7 +38,6 @@ for line in f:
         except:
             val = line[var_len+1:line_len].strip()
 
-
         setattr(param_data, var, val)
 
 f.close
@@ -58,3 +64,5 @@ print(param_data.plot_fields)
 print(param_data.data_folder_primary)
 print(param_data.data_folder_secondary)
 print(param_data.visualization_folder)
+
+# save log file
