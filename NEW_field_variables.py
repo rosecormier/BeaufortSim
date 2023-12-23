@@ -2,7 +2,28 @@
 Rosalie Cormier, 2023
 """
 
-def get_field_vars(attribute):
+##############################
+
+def get_field_variable(field_name):
+    
+    field_variables = {'density': 'PHIHYDcR', \
+                      'pressure': 'PHIHYDcR', \
+                      'vertical_vel': 'WVEL', \
+                      'horizontal_vel': 'UVELVVEL', \
+                      'vorticity': 'ZETA', \
+                      'normal_strain': 'NORMAL', \
+                      'shear_strain': 'SHEAR', \
+                      'div_vel': 'DIVU', \
+                      'div_Ek_vel': 'DIVUEk', \
+                      'geostrophic_vel': 'UGVG', \
+                      'Ek_vel': 'UEkVEk', \
+                      'wind_stress': 'EXFtauxEXFtauy'}
+    
+    return field_variables[field_name]
+
+##############################
+
+def get_monthly_shortname(field_variable):
     
     monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
@@ -16,6 +37,12 @@ def get_field_vars(attribute):
                          'DIVU': 'DIVU_MONTHLY', \
                          'DIVUEk': 'DIVUEk_MONTHLY'}
     
+    return monthly_shortnames[variable]
+
+##############################
+    
+def get_monthly_nc_string(field_variable):
+    
     monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'WVEL': 'OCEAN_VELOCITY_mon_mean_', \
@@ -28,20 +55,26 @@ def get_field_vars(attribute):
                          'DIVU': 'OCEAN_DIVU_mon_mean_', \
                          'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
     
-    return monthly_shortnames[attribute], monthly_nc_strings[attribute]
+    return monthly_nc_strings[variable]
 
-def get_variable_str(attribute, geostrophic=False):
+##############################
+
+def get_field_string(field_variable):
     
-    variables = {'PHIHYDcR': 'p_anom', \
-                'UVELVVEL': 'u', \
-                'WVEL': 'w', \
-                'ZETA': 'zeta', \
-                'UGVG': 'u_g', \
-                'EXFtauxEXFtauy': 'tau', \
-                'UEkVEk': 'u_Ek', \
-                'DIVU': 'div_u',
-                'DIVUEk': 'div_u_Ek'}
+    """
+    Strings to be used in filenames.
+    """
+    
+    field_strings = {'PHIHYDcR': 'p_anom', \
+                    'UVELVVEL': 'u', \
+                    'WVEL': 'w', \
+                    'ZETA': 'zeta', \
+                    'UGVG': 'u_g', \
+                    'EXFtauxEXFtauy': 'tau', \
+                    'UEkVEk': 'u_Ek', \
+                    'DIVU': 'div_u',
+                    'DIVUEk': 'div_u_Ek'}
 
-    variable_string = variables[attribute]
+    field_string = field_strings[field_variable]
         
-    return variable_string
+    return field_string
