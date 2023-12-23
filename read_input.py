@@ -56,47 +56,61 @@ for line in f:
     line_len = len(line)
 
     #Iterate over non-empty, non-commented lines
-    if (line_len > 0) and (line[0] != "#"):
+    if (line_len > 1) and (line[0] != "#"):
 
-        for char in line:
+        for char in line: #Isolate variable name from rest of line
             if char == '=':
                 break
             else:
                 var_len = var_len + 1
 
-        var = line[0:var_len].strip() #Isolate variable name
-
-        try:
-            val = float(line[var_len+1:len_len-1].strip())
-            val = np.array(np.matrix(val)).ravel()
-        except:
-            val = line[var_len+1:line_len].strip()
-
-        setattr(param_data, var, val) #Save input data to variable
+        var = line[0:var_len].strip() #Strip leading/trailing whitespace from variable name
+        line = line[var_len+1:].strip() #Strip leading/trailing whitespace from remainder of line
+        
+        val_len = 0
+        
+        for char in line: #Isolate parameter value from trailing comment, if any
+            if char == '#': 
+                break
+            else:
+                val_len = val_len + 1
+        
+        val = line[0:val_len].strip() #Strip leading/trailing whitespace from parameter value
+        val_list = val.split(", ") #Split into a list of strings
+        
+        if len(val_list) == 1: 
+            setattr(param_data, var, val) #If just one value, save value (as string) to variable
+                
+        elif len(val_list) > 1:
+            setattr(param_data, var, val_list) #If list of values, save list (as strings) to variable)
 
 f.close
 
 #Console output
 
-print("Time-averaging type: ", param_data.time_ave_type)
-print("Initial month: ", param_data.initial_month, "; Final month: ", param_data.final_month)
-print("Initial day: ", param_data.initial_day, "; Final day: ", param_data.final_day)
-print("Season start: ", param_data.season_start, "; Season end: ", param_data.season_end)
+print("Time-averaging type:", param_data.time_ave_type)
+print("Initial month:", param_data.initial_month[1]+",", param_data.initial_month[0])
+print("Final month:", param_data.final_month[1]+",", param_data.final_month[0])
+print("Initial day:", param_data.initial_day)
+print("Final day:", param_data.final_day)
+print("First month of season:", param_data.season_start)
+print("Last month of season:", param_data.season_end)
 
-print("Resolution (latitude): ", param_data.lat_res, "; Resolution (longitude): ", param_data.lon_res)
-print("Plane type: ", param_data.plot_plane_type)
-print("Depth range: ", param_data.depth_range)
-print("Latitude range: ", param_data.lat_range)
-print("Longitude range: ", param_data.lon_range)
-#print("Interpolation type: ", param_data.interp_type)
+print("Resolution (latitude):", param_data.lat_res)
+print("Resolution (longitude):", param_data.lon_res)
+print("Plane type:", param_data.plot_plane_type)
+print("Depth range:", param_data.depth_range[0]+",", param_data.depth_range[1])
+print("Latitude range:", param_data.lat_range[0]+",", param_data.lat_range[1])
+print("Longitude range:", param_data.lon_range[0]+",", param_data.lon_range[1])
+#print("Interpolation type:", param_data.interp_type)
 
 #Field info - TBA
 
-print("Log-file directory: ", param_data.logs_folder)
-print("Primary-datafile directory: ", param_data.data_folder_primary)
-print("Secondary-datafile directory: ", param_data.data_folder_secondary)
-print("Visualization directory: ", param_data.visualization_folder)
+print("Log-file directory:", param_data.logs_folder)
+print("Primary-datafile directory:", param_data.data_folder_primary)
+print("Secondary-datafile directory:", param_data.data_folder_secondary)
+print("Visualization directory:", param_data.visualization_folder)
 
-print("Clear primary datafiles after use: ", param_data.clear_data_files)
+print("Clear primary datafiles after use:", param_data.clear_data_files)
 
 # save log file
