@@ -12,7 +12,7 @@ from os.path import expanduser, join
 
 from functions_ecco_download import ecco_podaac_download
 from functions_ecco_general import get_monthstr, get_month_end, get_month_name, get_vector_partner
-from functions_field_variables import get_field_vars, get_variable_str
+from functions_field_variables import get_monthly_shortname, get_monthly_nc_string, get_field_string
 
 ##############################
 
