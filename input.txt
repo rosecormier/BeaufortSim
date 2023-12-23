@@ -20,7 +20,7 @@ season_end      = 2               # Last month of season (integer); only used if
 lat_res         = 0.25            # Latitudinal resolution (degrees)
 lon_res         = 0.25            # Longitudinal resolution (degrees)
 
-plot_plane_type = depth_constant  # "depth_constant", "latitude_constant", or "longitude_constant"; the left endpoint of the corresponding range below will be used as the constant value
+plot_plane_type = depth_const     # "depth_const", "latitude_const", or "longitude_const"; the left endpoint of the corresponding range below will be used as the constant value
 
 depth_range     = [0, 50]         # Top layer (k-value), bottom layer (k-value)
 lat_range       = [70.5, 80.0]    # South bound (degrees-N), north bound (degrees-N)
