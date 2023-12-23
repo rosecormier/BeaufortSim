@@ -52,8 +52,11 @@ plot_fields = {'w': 'uv_Ek', 'pressure': None}
 ### Directory information ###
 ####################
 
+logs_folder           = .
+
 data_folder_primary   = Downloads
 data_folder_secondary = Downloads
+
 visualization_folder  = Downloads
 
 ####################
