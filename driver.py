@@ -97,7 +97,7 @@ elif plot_plane_type == "longitude_const":
 # scalar: TBA
 # vector: TBA
 
-f.close() #Close log file
+f.close()
     
 clear_data_files = param_data.clear_data_files #Flag to clear primary datafiles after use (no need to log)
 
