@@ -4,32 +4,27 @@
 
 time_ave_type   = monthly         # "monthly", "daily", or "season"
 
-initial_month   = [1992, 1]       # year (integer), month (integer)
-final_month     = [1993, 12]      # year (integer), month (integer)
+initial_month   = [1992, 1]       # Year (integer), month (integer)
+final_month     = [1993, 12]      # Year (integer), month (integer)
 
-initial_day     = 1               # day (integer); only used if "time_ave_type" is "daily"
-final_day       = 28              # day (integer); only used if "time_ave_type" is "daily"
+initial_day     = 1               # Day (integer); only used if "time_ave_type" is "daily"
+final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
 
-season_start    = 1               # first month of season (integer); only used if 
-                                  # "time_ave_type" is "season"
-season_end      = 2               # last month of season (integer); only used if 
-                                  # "time_ave_type" is "season"
+season_start    = 1               # First month of season (integer); only used if "time_ave_type" is "season"
+season_end      = 2               # Last month of season (integer); only used if "time_ave_type" is "season"
 
 ####################
 ### Spatial inputs ###
 ####################
 
-lat_res         = 0.25            # latitudinal resolution (degrees)
-lon_res         = 0.25            # longitudinal resolution (degrees)
+lat_res         = 0.25            # Latitudinal resolution (degrees)
+lon_res         = 0.25            # Longitudinal resolution (degrees)
 
-plot_plane_type = depth_constant  # "depth_constant", "latitude_constant", or 
-                                  # "longitude_constant"; the left endpoint of the 
-                                  # corresponding range below will be used as the constant
-                                  # value
+plot_plane_type = depth_constant  # "depth_constant", "latitude_constant", or "longitude_constant"; the left endpoint of the corresponding range below will be used as the constant value
 
-depth_range     = [0, 50]         # top layer (k-value), bottom layer (k-value)
-lat_range       = [70.5, 80.0]    # south bound (degrees-N), north bound (degrees-N)
-lon_range       = [-155, -120]    # west bound (degrees), east bound (degrees)
+depth_range     = [0, 50]         # Top layer (k-value), bottom layer (k-value)
+lat_range       = [70.5, 80.0]    # South bound (degrees-N), north bound (degrees-N)
+lon_range       = [-155, -120]    # West bound (degrees), east bound (degrees)
 
 # interp_type   = TBD
 
