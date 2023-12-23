@@ -1,20 +1,46 @@
-initial_date = [1992, 1, 1]       # year, month, day
-final_date   = [1993, 12, 31]     # year, month, day
+####################
+### Temporal inputs ###
+####################
 
-time_ave_type = monthly           # daily, range
-monthly_range = [1, 2]            # month, month
+time_ave_type   = monthly         # "monthly", "daily", or "season"
 
-lat_range     = [70.5, 80.0]      # south, north
-lon_range     = [-155, -120]      # west, east
-depth_range   = [0, 50]           # top, bottom
-lat_res  = 0.25
-lon_res = 0.25
-interp_type = TBD
+initial_month   = [1992, 1]       # year (integer), month (integer)
+final_month     = [1993, 12]      # year (integer), month (integer)
+
+initial_day     = 1               # day (integer); only used if "time_ave_type" is "daily"
+final_day       = 28              # day (integer); only used if "time_ave_type" is "daily"
+
+season_start    = 1               # first month of season (integer); only used if 
+                                  # "time_ave_type" is "season"
+season_end      = 2               # last month of season (integer); only used if 
+                                  # "time_ave_type" is "season"
+
+####################
+### Spatial inputs ###
+####################
+
+lat_res         = 0.25            # latitudinal resolution (degrees)
+lon_res         = 0.25            # longitudinal resolution (degrees)
+
+plot_plane_type = depth_constant  # "depth_constant", "latitude_constant", or 
+                                  # "longitude_constant"; the corresponding range 
+                                  # below will be ignored
+
+lat_range       = [70.5, 80.0]    # south bound (degrees-N), north bound (degrees-N)
+lon_range       = [-155, -120]    # west bound (degrees), east bound (degrees)
+
+depth_range     = [0, 50]         # top layer (k-value), bottom layer (k-value)
+
+# interp_type   = TBD
 
 plot_plane_type = depth_constant  # latitude_constant, longitude_constant
 k_plot = 0                        # [0,1,2]
 lat_plot = 60
 lon_plot = -140
+
+####################
+### Field selection ###
+####################
 
 # add list of fields that can be plotted
 # scalar: 
@@ -22,8 +48,16 @@ lon_plot = -140
 
 plot_fields = {'w': 'uv_Ek', 'pressure': None}
 
+####################
+### Directory information ###
+####################
+
 data_folder_primary   = Downloads
 data_folder_secondary = Downloads
 visualization_folder  = Downloads
+
+####################
+### Flag to clear primary datafiles after use ###
+####################
 
 clear_data_files = True
