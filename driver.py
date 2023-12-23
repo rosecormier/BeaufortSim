@@ -72,7 +72,7 @@ if plot_plane_type == "depth_const":
     f.write("depth = " + depth + "\n")
     f.write("lat_res = " + lat_res + "\n" + "lon_res" + lon_res + "\n")
     f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
-    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
+    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax)
 elif plot_plane_type == "latitude_const":
     lat = param_data.lat_range[0]
     lon_res = param_data.lon_res
@@ -81,7 +81,7 @@ elif plot_plane_type == "latitude_const":
     f.write("lat = " + lat + "\n")
     f.write("lon_res = " + lon_res + "\n")
     f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
-    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
+    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax)
 elif plot_plane_type == "longitude_const":
     lon = param_data.lon_range[0]
     lat_res = param_data.lat_res
@@ -90,7 +90,7 @@ elif plot_plane_type == "longitude_const":
     f.write("lon = " + lon + "\n")
     f.write("lat_res = " + lat_res + "\n")
     f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
-    f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
+    f.write("latmin = " + latmin + "\n" + "latmax = " + latmax)
 
 # interp_type = #TBA
 
