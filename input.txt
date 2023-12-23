@@ -23,20 +23,15 @@ lat_res         = 0.25            # latitudinal resolution (degrees)
 lon_res         = 0.25            # longitudinal resolution (degrees)
 
 plot_plane_type = depth_constant  # "depth_constant", "latitude_constant", or 
-                                  # "longitude_constant"; the corresponding range 
-                                  # below will be ignored
+                                  # "longitude_constant"; the left endpoint of the 
+                                  # corresponding range below will be used as the constant
+                                  # value
 
+depth_range     = [0, 50]         # top layer (k-value), bottom layer (k-value)
 lat_range       = [70.5, 80.0]    # south bound (degrees-N), north bound (degrees-N)
 lon_range       = [-155, -120]    # west bound (degrees), east bound (degrees)
 
-depth_range     = [0, 50]         # top layer (k-value), bottom layer (k-value)
-
 # interp_type   = TBD
-
-plot_plane_type = depth_constant  # latitude_constant, longitude_constant
-k_plot = 0                        # [0,1,2]
-lat_plot = 60
-lon_plot = -140
 
 ####################
 ### Field selection ###
