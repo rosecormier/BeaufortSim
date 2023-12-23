@@ -7,6 +7,8 @@ R. Cormier, F. Poulin, 2023
 
 import numpy as np
 
+##############################
+
 class Parameters():
     
     #Temporal parameters
@@ -115,6 +117,8 @@ def main():
     print("Visualization directory:", param_data.visualization_folder)
 
     print("Clear primary datafiles after use:", param_data.clear_data_files)
+    
+    return param_data
     
 ##############################
 
