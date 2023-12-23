@@ -33,8 +33,8 @@ class Parameters():
     
     #Field information
     
-    # scalar: TBA
-    # vector: TBA
+    scalar_fields = None
+    vector_fields = None
 
     #Directory information
     
@@ -83,11 +83,11 @@ def main():
             val = line[0:val_len].strip() #Strip leading/trailing whitespace from parameter value
             val_list = val.split(", ") #Split into a list of strings
 
-            if len(val_list) == 1: 
+            if len(val_list) > 1 or var == "scalar_fields" or var == "vector_fields":
+                setattr(param_data, var, val_list) #If list of values (or in the cases of scalar/vector fields), save list (as strings) to variable
+            
+            elif len(val_list) == 1 and var != "scalar_fields" and var != "vector_fields": 
                 setattr(param_data, var, val) #If just one value, save value (as string) to variable
-
-            elif len(val_list) > 1:
-                setattr(param_data, var, val_list) #If list of values, save list (as strings) to variable)
 
     f.close
 
@@ -109,7 +109,8 @@ def main():
     print("Longitude range:", param_data.lon_range[0]+",", param_data.lon_range[1])
     #print("Interpolation type:", param_data.interp_type)
 
-    #Field info - TBA
+    print("Scalar fields:", param_data.scalar_fields)
+    print("Vector fields:", param_data.vector_fields)
 
     print("Log-file directory:", param_data.logs_folder)
     print("Primary-datafile directory:", param_data.data_folder_primary)
