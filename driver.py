@@ -16,6 +16,8 @@ from os.path import expanduser, join
 
 import read_input
 
+from NEW_field_variables import field_is_primary
+
 ##############################
 
 #READ AND LOG INPUT PARAMETERS
@@ -112,12 +114,30 @@ clear_data_files = param_data.clear_data_files #Flag to clear primary datafiles 
 
 ##############################
 
-### read primary data files to be plotted
+#DISTINGUISH PRIMARY (ECCO) FIELDS FROM SECONDARY (COMPUTED) FIELDS
+
+primary_scalar_fields, secondary_scalar_fields = [], []
+
+for scalar_field_name in scalar_fields:
+    if field_is_primary(scalar_field_name):
+        primary_scalar_fields.append(scalar_field_name)
+    elif not field_is_primary(scalar_field_name):
+        secondary_scalar_fields.append(scalar_field_name)
+        
+primary_vector_fields, secondary_vector_fields = [], []
+
+for vector_field_name in vector_fields:
+    if field_is_primary(vector_field_name):
+        primary_vector_fields.append(vector_field_name)
+    elif not field_is_primary(vector_field_name):
+        secondary_vector_fields.append(vector_field_name)
+
+##############################
 
 #scalar_fields = list(plot_fields.keys())
 #vector_fields = list(plot_fields.values())
 
-# To-do: what if either is empty?
+# To-do: what if either [scalar_fields or vector_fields] is empty?
 
 #for scalar_field in scalar_fields:
     # check if primary vs secondary
