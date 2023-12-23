@@ -1,17 +1,17 @@
 ####################
-### Temporal inputs ###
+### Temporal inputs  - days and months are to be provided as two digits each! ###
 ####################
 
 time_ave_type   = monthly         # "monthly", "daily", or "season"
 
-initial_month   = 1992, 1         # Year (integer), month (integer)
+initial_month   = 1992, 01         # Year (integer), month (integer)
 final_month     = 1993, 12        # Year (integer), month (integer)
 
-initial_day     = 1               # Day (integer); only used if "time_ave_type" is "daily"
+initial_day     = 01               # Day (integer); only used if "time_ave_type" is "daily"
 final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
 
-season_start    = 1               # First month of season (integer); only used if "time_ave_type" is "season"
-season_end      = 2               # Last month of season (integer); only used if "time_ave_type" is "season"
+season_start    = 01               # First month of season (integer); only used if "time_ave_type" is "season"
+season_end      = 02               # Last month of season (integer); only used if "time_ave_type" is "season"
 
 ####################
 ### Spatial inputs ###
