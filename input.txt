@@ -40,7 +40,7 @@ lon_range       = -155, -120      # West bound (degrees), east bound (degrees)
 ### Directory information ###
 ####################
 
-logs_folder           = .
+logs_folder           = Logs
 
 data_folder_primary   = Downloads
 data_folder_secondary = Downloads
