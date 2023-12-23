@@ -4,14 +4,14 @@
 
 time_ave_type   = monthly         # "monthly", "daily", or "season"
 
-initial_month   = 1992, 01         # Year (integer), month (integer)
+initial_month   = 1992, 01        # Year (integer), month (integer)
 final_month     = 1993, 12        # Year (integer), month (integer)
 
-initial_day     = 01               # Day (integer); only used if "time_ave_type" is "daily"
+initial_day     = 01              # Day (integer); only used if "time_ave_type" is "daily"
 final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
 
-season_start    = 01               # First month of season (integer); only used if "time_ave_type" is "season"
-season_end      = 02               # Last month of season (integer); only used if "time_ave_type" is "season"
+season_start    = 01              # First month of season (integer); only used if "time_ave_type" is "season"
+season_end      = 02              # Last month of season (integer); only used if "time_ave_type" is "season"
 
 ####################
 ### Spatial inputs ###
@@ -32,9 +32,8 @@ lon_range       = -155, -120      # West bound (degrees), east bound (degrees)
 ### Field selection ###
 ####################
 
-# add list of fields that can be plotted
-# scalar: 
-# vector: 
+scalar_fields   = pressure, vertical_vel # Comma-separated scalar fields, from options density, pressure, vertical_vel, vorticity, normal_strain, shear_strain, div_vel, div_Ek_vel
+vector_fields   = horizontal_vel # Comma-separated vector fields, from options horizontal_vel, geostrophic_vel, Ek_vel, wind_stress
 
 ####################
 ### Directory information ###
