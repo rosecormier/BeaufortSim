@@ -1,12 +1,11 @@
 """
 This script reads in the data from input.txt for use by driver.py.
-It saves the input parameters to a log file and prints them to the console.
+It prints the input parameters to the console.
 
 R. Cormier, F. Poulin, 2023
 """
 
 import numpy as np
-#import os, sys
 
 class Parameters():
     
@@ -116,8 +115,6 @@ def main():
     print("Visualization directory:", param_data.visualization_folder)
 
     print("Clear primary datafiles after use:", param_data.clear_data_files)
-
-    # save log file
     
 ##############################
 
