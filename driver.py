@@ -1,7 +1,7 @@
 """
 This script uses the data provided in the input file (input.txt) to do all of the following:
     -Save a txt file listing the input parameters to be used;
-    -Download data corresponding to specified fields (skips if done);
+    -Download data corresponding to specified fields;
     -Computes and saves secondary fields (skips if unnecessary or done);
     -Plots data for all fields specified and saves plots; and
     -Removes primary data files.
@@ -16,7 +16,9 @@ from os.path import expanduser, join
 
 import read_input
 
-from NEW_field_variables import field_is_primary
+from NEW_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string
+from functions_ecco_download import ecco_podaac_download
+from functions_ecco_general import get_monthstr, get_month_end
 
 ##############################
 
@@ -131,6 +133,42 @@ for vector_field_name in vector_fields:
         primary_vector_fields.append(vector_field_name)
     elif not field_is_primary(vector_field_name):
         secondary_vector_fields.append(vector_field_name)
+        
+##############################
+
+#DOWNLOAD DATA
+
+for scalar_field_name in primary_scalar_fields:
+    
+    month, year = int(initial_month), int(initial_year)
+    
+    if time_ave_type == "monthly": #This is the only case supported now; will modify to add others
+        
+        field_shortname = get_monthly_shortname(get_field_variable(scalar_field_name))
+        field_nc_string = get_monthly_nc_string(get_field_variable(scalar_field_name))
+    
+        while year < int(final_year):
+            
+            yearstr = str(year)
+            
+            while month <= 12:
+                
+                monthstr = get_monthstr(month-1) #The indexing is weird for months
+                datafile = join(datdir_primary, field_shortname, field_nc_string+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+                
+                if not os.path.exists(datafile): #If the file doesn't exist, download it
+                    endmonth = get_month_end(monthstr, yearstr)
+                    StartDate, EndDate = yearstr+"-"+monthstr+"-02", yearstr+"-"+monthstr+"-"+endmonth
+                    ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+                month += 1
+                
+            year += 1
+    
+#to add
+    #for scalar field
+        #download, compute if necessary
+    #for vector field
+        #download, compute if necessary
 
 ##############################
 
@@ -139,15 +177,6 @@ for vector_field_name in vector_fields:
 
 # To-do: what if either [scalar_fields or vector_fields] is empty?
 
-#for scalar_field in scalar_fields:
-    # check if primary vs secondary
-    # may have to download
-    # may have to compute (secondary)
-
-#for vector_field in vector_fields:
-    # check if primary vs secondary
-    # may have to download
-    # may have to compute (secondary)
 
 # try and read in secondary fields to be plotted
 #   if yes, good!
