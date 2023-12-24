@@ -60,8 +60,8 @@ def main(**kwargs):
                     #datafile = join(datdir_primary, field_shortname, field_nc_string+final_year+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
 
                     #if not os.path.exists(datafile): #If the file doesn't exist, download it
-                    endmonth = get_month_end(monthstr, yearstr)
-                    StartDate, EndDate = yearstr+"-"+monthstr+"-02", final_year+"-"+monthstr+"-"+endmonth
+                    endmonth = get_month_end(monthstr, final_year)
+                    StartDate, EndDate = final_year+"-"+monthstr+"-02", final_year+"-"+monthstr+"-"+endmonth
                     ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
 
                     month += 1
