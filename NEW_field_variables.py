@@ -51,7 +51,7 @@ def get_monthly_shortname(field_variable):
                          'DIVU': 'DIVU_MONTHLY', \
                          'DIVUEk': 'DIVUEk_MONTHLY'}
     
-    return monthly_shortnames[variable]
+    return monthly_shortnames[field_variable]
 
 ##############################
     
@@ -69,7 +69,7 @@ def get_monthly_nc_string(field_variable):
                          'DIVU': 'OCEAN_DIVU_mon_mean_', \
                          'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
     
-    return monthly_nc_strings[variable]
+    return monthly_nc_strings[field_variable]
 
 ##############################
 
