@@ -15,7 +15,7 @@ import sys
 from os.path import expanduser, join
 
 import read_input
-import NEW_download_data
+import download_data
 
 from NEW_field_variables import field_is_primary
 
