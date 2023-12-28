@@ -17,7 +17,7 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
-from NEW_field_variables import field_is_primary
+from functions_field_variables import field_is_primary
 
 ##############################
 
@@ -144,7 +144,7 @@ for field_name in primary_scalar_fields:
 #Iterate over primary vector fields; download associated data
 for field_name in primary_vector_fields:
     download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
-   
+
 ##############################
 
 #COMPUTE SECONDARY DATA

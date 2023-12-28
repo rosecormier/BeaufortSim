@@ -1,4 +1,11 @@
 """
+Contains functions that get the following attributes associated with a particular field:
+    -String ("field variable") used generally in data storage
+    -Boolean ("field is primary") indicating whether field comes directly from ECCO
+    -Monthly shortname used in monthly-averaged datafile directories
+    -String ("monthly nc string") used in monthly-averaged nc datafiles
+    -String ("field string") to be used in output filenames
+
 Rosalie Cormier, 2023
 """
 
