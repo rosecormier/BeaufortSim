@@ -21,7 +21,7 @@ from functions_field_variables import field_is_primary
 
 ##############################
 
-#READ AND LOG INPUT PARAMETERS
+#READ (AND LOG, AS APPROPRIATE) INPUT PARAMETERS
 
 param_data = read_input.main()
 
