@@ -138,7 +138,7 @@ for vector_field_name in vector_fields:
 #DOWNLOAD DATA
 
 for field_name in primary_scalar_fields:
-    NEW_download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
     
 #to add
     #for scalar field
