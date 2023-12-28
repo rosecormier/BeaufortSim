@@ -1,5 +1,5 @@
 """
-For a specified ECCO field and date range, iterates over time and:
+For a specified ECCO field (scalar or vector) and date range, iterates over time and:
     -Checks whether ECCO-field data is already downloaded; and
         -If not, downloads the data.
 
