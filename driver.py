@@ -135,24 +135,27 @@ for vector_field_name in vector_fields:
         
 ##############################
 
-#DOWNLOAD DATA
+#DOWNLOAD PRIMARY (ECCO) DATA
 
+#Iterate over primary scalar fields; download associated data
 for field_name in primary_scalar_fields:
     download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
     
+#Iterate over primary vector fields; download associated data
+for field_name in primary_vector_fields:
+    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+   
+##############################
+
+#COMPUTE SECONDARY DATA
+
 #to add
-    #for scalar field
-        #download, compute if necessary
-    #for vector field
-        #download, compute if necessary
+    #compute each secondary scalar, if missing
+    #compute each secondary vector, if missing
 
 ##############################
 
-#scalar_fields = list(plot_fields.keys())
-#vector_fields = list(plot_fields.values())
-
 # To-do: what if either [scalar_fields or vector_fields] is empty?
-
 
 # try and read in secondary fields to be plotted
 #   if yes, good!
