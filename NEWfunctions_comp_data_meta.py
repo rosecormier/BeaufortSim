@@ -67,7 +67,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
                     
                     #Create the file
-                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name)
+                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name)
                 
                 month += 1
                 
