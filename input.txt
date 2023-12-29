@@ -40,7 +40,7 @@ lon_range       = -155, -120      # West bound (degrees), east bound (degrees)
 ####################
 
 scalar_fields   = pressure, vertical_vel # Comma-separated scalar fields, from options density, pressure, vertical_vel, vorticity, normal_strain, shear_strain, div_vel, div_Ek_vel
-vector_fields   = horizontal_vel # Comma-separated vector fields, from options horizontal_vel, geostrophic_vel, Ek_vel, wind_stress
+vector_fields   = geostrophic_vel # Comma-separated vector fields, from options horizontal_vel, geostrophic_vel, Ek_vel, wind_stress
 
 ####################
 ### Directory information ###
@@ -49,7 +49,7 @@ vector_fields   = horizontal_vel # Comma-separated vector fields, from options h
 logs_folder           = Logs
 
 data_folder_primary   = Downloads
-data_folder_secondary = Downloads
+data_folder_secondary = Computed
 
 visualization_folder  = Downloads
 
