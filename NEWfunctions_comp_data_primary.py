@@ -20,7 +20,7 @@ from os.path import join
 
 import download_data
 
-from functions_ecco_general import load_dataset
+from functions_ecco_general import load_dataset, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 from functions_geostrophy import * #Ideally, I'd like to move all these function definitions to be defined within the respective functions here
@@ -55,7 +55,8 @@ def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, ti
         u_g.name = 'UG'
         v_g.name = 'VG'
         vel_g_ds = xr.merge([u_g, v_g])
-        vel_g_ds.to_netcdf(path=join(outdir, ug_monthly_shortname, ug_monthly_nc_str+date_string+".nc"), engine="scipy")
+        vel_g_shortname, vel_g_nc_string = get_monthly_shortname(get_field_variable('geostrophic_vel')), get_monthly_nc_string(get_field_variable('geostrophic_vel'))
+        vel_g_ds.to_netcdf(path=join(datdir_secondary, vel_g_shortname, vel_g_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################                
 
@@ -73,5 +74,20 @@ def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, ti
     
 ##############################
 
-#main loop should load the grid first
-#then identify the input variable and run the appropriate function
+def main(**kwargs):
+    
+    if kwargs:
+        
+        #Directories
+        
+        datdir_primary = kwargs.get('datdir_primary')
+        datdir_secondary = kwargs.get('datdir_secondary')
+    
+    ds_grid = load_grid(datdir_primary) #Load the grid DataSet
+
+    #then identify the input variable and run the appropriate function
+
+##############################
+
+if __name__ == "__main__":
+    main()
