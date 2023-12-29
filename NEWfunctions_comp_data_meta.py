@@ -61,6 +61,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
 
                 #if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
                     #create the file - to be added
+                        #call function from the other file
                 
                 month += 1
                 
@@ -68,11 +69,11 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
         
 ##############################
 
-#def load_comp_data_file():
+def load_comp_data_file():
     
-#    """
-#    Loads computed DataSet.
-#    """
+    """
+    Loads computed DataSet.
+    """
     
 #    #define variable 'filename' here
     
