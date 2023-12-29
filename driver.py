@@ -18,6 +18,7 @@ import read_input
 import download_data
 
 from functions_field_variables import field_is_primary
+from NEWfunctions_comp_data_meta import create_comp_data_file
 
 ##############################
 
@@ -148,6 +149,13 @@ for field_name in primary_vector_fields:
 ##############################
 
 #COMPUTE SECONDARY DATA
+
+for field_name in secondary_scalar_fields: #Iterate over any scalar fields
+    
+    #Check whether computed data exist and compute them if not
+    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_secondary, time_ave_type=time_ave_type)
+
+#Iterate over secondary vector fields; check whether computed data exist and compute them if not
 
 #to add
     #compute each secondary scalar, if missing
