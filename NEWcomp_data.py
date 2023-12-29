@@ -30,9 +30,6 @@ import download_data
 from functions_ecco_general import load_dataset, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
-#from functions_geostrophy import * #Ideally, I'd like to move all these function definitions to be defined within the respective functions here
-    #But for now, just import them
-
 ##############################
 
 #AUXILIARY VALUES/FUNCTIONS; USED DURING SUBSEQUENT COMPUTATIONS
@@ -196,9 +193,6 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
         ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
     
-        #Call this function to extract the density and pressure from the DataSet
-        #density, pressure_like = get_density_and_pressure(ds_denspress, rho_ref)
-        
         #Look for the surface wind-on-ocean-stress file in primary directory and download if it doesn't exist
         download_data.main(field_name='wind_stress', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
