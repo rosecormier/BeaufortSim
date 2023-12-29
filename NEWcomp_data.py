@@ -32,7 +32,7 @@ from functions_geostrophy import * #Ideally, I'd like to move all these function
 
 #GEOSTROPHIC VELOCITY
 
-def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
+def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly'):
     
     """
     Computes and saves geostrophic velocity components (u_g, v_g) to DataSet in NetCDF format.
@@ -91,21 +91,21 @@ def main(**kwargs):
     if kwargs:
         
         datdir_primary = kwargs.get('datdir_primary')
-        print(datdir_primary)
         datdir_secondary = kwargs.get('datdir_secondary')
-        print(datdir_secondary)
         
         monthstr = kwargs.get('monthstr')
         yearstr = kwargs.get('yearstr')
         
         field_name = kwargs.get('field_name')
+        
+        rho_ref = float(kwargs.get('rho_ref'))
     
     ds_grid = load_grid(datdir_primary) #Load the grid DataSet
     
     #then identify the input variable and run the appropriate function
 
     if field_name == 'geostrophic_vel':
-        comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly')
+        comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly')
 
 ##############################
 

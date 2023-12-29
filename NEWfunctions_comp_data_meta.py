@@ -18,7 +18,7 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 ##############################
 
-def create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, time_ave_type='monthly'):
+def create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly'):
     
     """
     Checks that a computed file exists, and creates it if it doesn't.
@@ -47,7 +47,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
                     
                     #Create the file
-                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name)
+                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref)
 
                 month += 1
                 
@@ -67,7 +67,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
                     
                     #Create the file
-                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name)
+                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref)
                 
                 month += 1
                 
