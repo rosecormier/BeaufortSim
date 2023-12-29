@@ -90,10 +90,10 @@ def main(**kwargs):
     
     if kwargs:
         
-        #Directories
-        
         datdir_primary = kwargs.get('datdir_primary')
+        print(datdir_primary)
         datdir_secondary = kwargs.get('datdir_secondary')
+        print(datdir_secondary)
         
         monthstr = kwargs.get('monthstr')
         yearstr = kwargs.get('yearstr')
