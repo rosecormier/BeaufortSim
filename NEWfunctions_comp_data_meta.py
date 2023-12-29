@@ -11,6 +11,7 @@ import xarray as xr
 
 from os.path import join
 
+from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
@@ -41,9 +42,10 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 filename = field_nc_string + date_string + '.nc'
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
-                #if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
+                if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
                     #create the file - to be added
-                
+                    NEWfunctions_comp_data_primary(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name)
+
                 month += 1
                 
             year += 1
@@ -54,7 +56,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
             while month <= int(final_month):
 
                 monthstr = get_monthstr(month-1) #The indexing is weird for months
-                date_string = yearstr + '-' + monthstr
+                date_string = final_year + '-' + monthstr
 
                 filename = field_nc_string + date_string + '.nc'
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
