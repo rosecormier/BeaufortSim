@@ -1,13 +1,15 @@
 """
 Contains functions that directly produce computed data.
+    -Geostrophic velocity
 
 To be added
-    -Geostrophic velocity
     -Vorticity
     -Normal strain
     -Shear strain
     -Horizontal vel div
-    -Ekman velocity
+    -Ekman velocity/div
+    
+The main function picks out the appropriate function to compute the requested field.
 
 Only does monthly averaging at the moment; will update.
 
@@ -28,7 +30,9 @@ from functions_geostrophy import * #Ideally, I'd like to move all these function
 
 ##############################
 
-def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
+#GEOSTROPHIC VELOCITY
+
+def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
     
     """
     Computes and saves geostrophic velocity components (u_g, v_g) to DataSet in NetCDF format.
@@ -47,8 +51,9 @@ def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, ti
     
         #Call this function to extract the density and pressure from the DataSet
         density, pressure = get_density_and_pressure(ds_denspress, rho_ref)
-    
-        u_g, v_g = comp_geos_vel(ds_grid, pressure, density) #Compute geostrophic velocity components
+        
+        #Compute geostrophic velocity components
+        u_g, v_g = comp_geos_vel(ds_grid, pressure, density)
         
         #Save the data
         
@@ -57,8 +62,13 @@ def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, ti
         vel_g_ds = xr.merge([u_g, v_g])
         vel_g_shortname, vel_g_nc_string = get_monthly_shortname(get_field_variable('geostrophic_vel')), get_monthly_nc_string(get_field_variable('geostrophic_vel'))
         vel_g_ds.to_netcdf(path=join(datdir_secondary, vel_g_shortname, vel_g_nc_string+date_string+".nc"), engine="scipy")
+            #Double check this part - might need to join directories first before saving
 
-##############################                
+############################## 
+
+
+
+##############################
 
 #each field gets a separate function
     #some of them will call other functions, as appropriate
@@ -69,7 +79,9 @@ def comp_geostrophic_vel(monthstr, yearstr, datdir_primary, datdir_secondary, ti
 
 #shear strain
 
-#Ekman velocity
+#vorticity
+
+#Ekman velocity, and divergence
     #First load ocean surface stresses (primary data)
     
 ##############################
@@ -82,10 +94,18 @@ def main(**kwargs):
         
         datdir_primary = kwargs.get('datdir_primary')
         datdir_secondary = kwargs.get('datdir_secondary')
+        
+        monthstr = kwargs.get('monthstr')
+        yearstr = kwargs.get('yearstr')
+        
+        field_name = kwargs.get('field_name')
     
     ds_grid = load_grid(datdir_primary) #Load the grid DataSet
-
+    
     #then identify the input variable and run the appropriate function
+
+    if field_name == 'geostrophic_vel':
+        comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly')
 
 ##############################
 
