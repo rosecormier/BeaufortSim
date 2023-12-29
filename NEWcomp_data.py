@@ -16,6 +16,7 @@ Only does monthly averaging at the moment; will update.
 Rosalie Cormier, 2023
 """
 
+import os
 import xarray as xr
 
 from os.path import join
@@ -61,8 +62,9 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
         v_g.name = 'VG'
         vel_g_ds = xr.merge([u_g, v_g])
         vel_g_shortname, vel_g_nc_string = get_monthly_shortname(get_field_variable('geostrophic_vel')), get_monthly_nc_string(get_field_variable('geostrophic_vel'))
+        if not os.path.exists(join(datdir_secondary, vel_g_shortname)):
+            os.makedirs(join(datdir_secondary, vel_g_shortname))
         vel_g_ds.to_netcdf(path=join(datdir_secondary, vel_g_shortname, vel_g_nc_string+date_string+".nc"), engine="scipy")
-            #Double check this part - might need to join directories first before saving
 
 ############################## 
 
@@ -102,7 +104,7 @@ def main(**kwargs):
     
     ds_grid = load_grid(datdir_primary) #Load the grid DataSet
     
-    #then identify the input variable and run the appropriate function
+    #Identify the input field and run the appropriate function to compute it
 
     if field_name == 'geostrophic_vel':
         comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly')
