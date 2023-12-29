@@ -71,7 +71,7 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
 
 #EKMAN VELOCITY
 
-def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly'):
+def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type='monthly'):
     
     """
     Computes and saves Ekman velocity components (u_Ek, v_Ek) to DataSet in NetCDF format.
@@ -141,6 +141,7 @@ def main(**kwargs):
         field_name = kwargs.get('field_name')
         
         rho_ref = float(kwargs.get('rho_ref'))
+        nu_E = float(kwargs.get('nu_E'))
     
     ds_grid = load_grid(datdir_primary) #Load the grid DataSet
     
@@ -149,7 +150,7 @@ def main(**kwargs):
     if field_name == 'geostrophic_vel':
         comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly')
     elif field_name == 'Ek_vel':
-        comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly')
+        comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type='monthly')
 
 ##############################
 
