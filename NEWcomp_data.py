@@ -20,6 +20,7 @@ Rosalie Cormier, 2023
 import os
 import xarray as xr
 import numpy as np
+import ecco_v4_py as ecco
 
 from os.path import join
 from math import e, pi
@@ -29,7 +30,7 @@ import download_data
 from functions_ecco_general import load_dataset, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
-from functions_geostrophy import * #Ideally, I'd like to move all these function definitions to be defined within the respective functions here
+#from functions_geostrophy import * #Ideally, I'd like to move all these function definitions to be defined within the respective functions here
     #But for now, just import them
 
 ##############################
