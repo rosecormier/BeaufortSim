@@ -19,9 +19,10 @@ Rosalie Cormier, 2023
 
 import os
 import xarray as xr
+import numpy as np
 
 from os.path import join
-from math import pi
+from math import e, pi
 
 import download_data
 
@@ -71,7 +72,7 @@ def get_density_and_pressure(ds_denspress, rho_ref):
     pressure_anom = ds_denspress.PHIHYDcR.copy() #Copy pressure data
     pressure_like = rho_ref * pressure_anom #Compute quantity to differentiate (units of density * pressure)
     
-    return density, pressure
+    return density, pressure_like
 
 def get_vel_g_components(ds_grid, pressure_like, density):
     
@@ -104,6 +105,37 @@ def get_vel_g_components(ds_grid, pressure_like, density):
     u_g, v_g = u_g.where(ds_grid.maskC), v_g.where(ds_grid.maskC) #Mask land on result
     
     return u_g, v_g
+
+def get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E):
+    
+    """
+    Computes Ekman-velocity components, using surface density, surface stress, Ekman-layer depth.
+    """
+    
+    z = ds_grid.Z #Get z-coordinate
+    
+    density = get_density_and_pressure(ds_denspress, rho_ref)[0] #Get density field
+    surface_density = density.isel(k=0) #Compute surface density field
+    
+    f = comp_f(ds_grid.YC) #Compute Coriolis param. from latitudes of grid cell centres
+    Ek_depth = (2 * nu_E / f)**0.5 #Compute Ekman-layer depth
+    
+    #Get wind-stress components (x-y coordinates) and rotate wind-stress vector (to E-N coordinates)
+    
+    tau_x, tau_y = ds_stress.EXFtaux, ds_stress.EXFtauy
+    tau_E = tau_x * ds_grid['CS'] - tau_y * ds_grid['SN']
+    tau_N = tau_x * ds_grid['SN'] + tau_y * ds_grid['CS']
+    
+    #Compute coefficient that multiplies Ekman velocity
+    Ek_coeff = (np.sqrt(2) / (surface_density * f * Ek_depth))
+    
+    #Compute Ekman velocity components
+    
+    u_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_E * np.cos((z/Ek_depth) - (pi/4)) - tau_N * np.sin((z/Ek_depth) - (pi/4)))
+    v_Ek = Ek_coeff * e**(z/Ek_depth) * (tau_E * np.sin((z/Ek_depth) - (pi/4)) + tau_N * np.cos((z/Ek_depth) - (pi/4)))
+    u_Ek, v_Ek = u_Ek.where(ds_grid.maskC), v_Ek.where(ds_grid.maskC) #Mask land on result
+    
+    return u_Ek, v_Ek
 
 ##############################
 
@@ -174,7 +206,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         ds_stress = load_dataset(stress_file) #Load the stress DataSet into workspace
     
         #Compute Ekman velocity components
-        u_Ek, v_Ek = comp_Ekman_vel(ds_grid, ds_denspress, ds_stress, nu_E, rho_ref)
+        u_Ek, v_Ek = get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E)
 
         #Save the data
         
