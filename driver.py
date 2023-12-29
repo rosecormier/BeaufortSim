@@ -51,9 +51,13 @@ logfile = join(logdir, "logfile_{}.txt".format(str(experiment_number))) #Create 
 
 f = open(logfile, "w") #When ready to use the script in full, switch "w" to "x"
 
+#Ocean properties
+
 rho_ref = param_data.rho_ref
 nu_E = param_data.nu_E
 f.write("rho_ref (kg/m^3) = " + rho_ref + "\n" + "nu_E (m^2/s) = " + nu_E + "\n\n")
+
+#Temporal inputs
 
 time_ave_type = param_data.time_ave_type
 initial_year, initial_month = param_data.initial_month[0], param_data.initial_month[1]
@@ -69,6 +73,8 @@ elif time_ave_type == "season":
     season_start, season_end = param_data.season_start, param_data.season_end
     f.write("season_start = " + season_start + "\n" + "season_end = " + season_end + "\n\n")
 
+#Spatial inputs
+    
 plot_plane_type = param_data.plot_plane_type
 f.write("plot_plane_type = " + plot_plane_type + "\n\n")
 
@@ -101,6 +107,8 @@ elif plot_plane_type == "longitude_const":
     f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
     
 # interp_type = #TBA
+
+#Field inputs
 
 scalar_fields = param_data.scalar_fields
 f.write("scalar_fields = ")
@@ -157,12 +165,12 @@ for field_name in primary_vector_fields:
 for field_name in secondary_scalar_fields: #Iterate over any scalar fields
     
     #Check whether computed data exist and compute them if not
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_secondary, time_ave_type=time_ave_type)
+    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
 
 for field_name in secondary_vector_fields: #Iterate over any vector fields
     
     #Check whether computed data exist and compute them if not
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_secondary, time_ave_type=time_ave_type)
+    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
 
 ##############################
 
