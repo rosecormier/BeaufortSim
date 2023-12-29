@@ -2,11 +2,7 @@
 For a specified ECCO field (scalar or vector) and date range, iterates over time and downloads the field data.
 
 Rosalie Cormier, 2023
-"""
-
-import os
-
-from os.path import join
+""" 
 
 from functions_ecco_download import ecco_podaac_download
 from functions_ecco_general import get_monthstr, get_month_end
