@@ -155,11 +155,7 @@ for field_name in secondary_scalar_fields: #Iterate over any scalar fields
     #Check whether computed data exist and compute them if not
     create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_secondary, time_ave_type=time_ave_type)
 
-#Iterate over secondary vector fields; check whether computed data exist and compute them if not
-
-#to add
-    #compute each secondary scalar, if missing
-    #compute each secondary vector, if missing
+#To add - iterate over secondary vector fields; check whether computed data exist and compute them if not
 
 ##############################
 
