@@ -11,6 +11,10 @@ import numpy as np
 
 class Parameters():
     
+    #Ocean properties
+    rho_ref = None
+    nu_E = None 
+    
     #Temporal parameters
     
     time_ave_type = None
@@ -92,6 +96,9 @@ def main():
     f.close
 
     #Console output
+    
+    print("Reference density (kg/m^3):", param_data.rho_ref)
+    print("Eddy viscosity (m^2/s):", param_data.nu_E)
 
     print("Time-averaging type:", param_data.time_ave_type)
     print("Initial month:", param_data.initial_month[1]+",", param_data.initial_month[0])

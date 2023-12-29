@@ -51,6 +51,10 @@ logfile = join(logdir, "logfile_{}.txt".format(str(experiment_number))) #Create 
 
 f = open(logfile, "w") #When ready to use the script in full, switch "w" to "x"
 
+rho_ref = param_data.rho_ref
+nu_E = param_data.nu_E
+f.write("rho_ref (kg/m^3) = " + rho_ref + "\n" + "nu_E (m^2/s) = " + nu_E + "\n\n")
+
 time_ave_type = param_data.time_ave_type
 initial_year, initial_month = param_data.initial_month[0], param_data.initial_month[1]
 final_year, final_month = param_data.final_month[0], param_data.final_month[1]
