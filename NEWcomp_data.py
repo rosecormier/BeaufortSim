@@ -8,11 +8,13 @@ To be added
     -Vorticity
     -Normal strain
     -Shear strain
-    -Ekman velocity div
     
 The main function picks out the appropriate function to compute the requested field.
 
-Only does monthly averaging at the moment; will update.
+Notes:
+    -Only does monthly averaging at the moment; will update this.
+    -Does not currently include divergence of Ekman velocity; could add this, but is a nontrivial process.
+        -There's an old script that computes this field in a format suitable for plotting, if needed.
 
 Rosalie Cormier, 2023
 """
@@ -250,7 +252,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         if not os.path.exists(join(datdir_secondary, vel_Ek_shortname)):
             os.makedirs(join(datdir_secondary, vel_Ek_shortname))
         vel_Ek_ds.to_netcdf(path=join(datdir_secondary, vel_Ek_shortname, vel_Ek_nc_string+date_string+".nc"), engine="scipy")
-            
+        
 ##############################
 
 #each field gets a separate function
@@ -261,8 +263,6 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
 #shear strain
 
 #vorticity
-
-#Ekman velocity divergence
     
 ##############################
 
@@ -286,7 +286,9 @@ def main(**kwargs):
     
     #Identify the input field and run the appropriate function to compute it
 
-    if field_name == 'geostrophic_vel':
+    if field_name == '2D_div_vel':
+        comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
+    elif field_name == 'geostrophic_vel':
         comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type=time_ave_type)
     elif field_name == 'Ek_vel':
         comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
