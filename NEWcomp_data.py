@@ -258,7 +258,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
 
 #NORMAL STRAIN
 
-def comp_normal_strain():
+def comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
     
     """
     Computes and saves normal strain to DataSet in NetCDF format.
@@ -296,7 +296,7 @@ def comp_normal_strain():
 
 #SHEAR STRAIN
 
-def comp_shear_strain():
+def comp_shear_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
     
     """
     Computes and saves shear strain to DataSet in NetCDF format.
@@ -396,6 +396,10 @@ def main(**kwargs):
         comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type=time_ave_type)
     elif field_name == 'Ek_vel':
         comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
+    elif field_name == 'normal_strain':
+        comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
+    elif field_name == 'shear_strain':
+        comp_shear_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
     elif field_name == 'vorticity':
         comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
 
