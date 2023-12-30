@@ -22,7 +22,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
     
     """
     Iterates over time, checks that computed files for a given field exist, and creates them if they don't.
-    Note - only does monthly avgs at the moment - will fix in future (i.e., will make time_ave_type variable)
+    Note - only does monthly avgs at the moment - will fix in future (i.e., will add conditions for other time_ave_type)
     """
     
     month, year = int(initial_month), int(initial_year)
@@ -71,17 +71,27 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
         
 ##############################
 
-def load_comp_data_file():
+def load_comp_data_file(field_name, monthstr, yearstr, datdir_secondary, time_ave_type):
     
     """
-    Loads computed DataSet.
+    Loads DataSet for a given computed field at a given time.
+    Note - only does monthly avgs at the moment - will fix in future (i.e., will add conditions for other time_ave_type)
     """
     
-#    #define variable 'filename' here
+    if time_ave_type == 'monthly':
     
-#    try:
-#        comp_ds = xr.open_mfdataset(filename, engine="scipy") #Load DataSet
-#        return comp_ds
+        field_shortname = get_monthly_shortname(get_field_variable(field_name))
+        field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
+        
+        date_string = yearstr + '-' + monthstr
+
+        filename = field_nc_string + date_string + '.nc'
+        path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
     
-#    except:
-#        print("DataSet does not exist.")
+        try:
+            computed_ds = xr.open_mfdataset(filename, engine="scipy") #Try to load DataSet
+            print("Loaded DataSet.")
+            return computed_ds
+    
+        except:
+            print("DataSet does not exist.")
