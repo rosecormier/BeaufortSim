@@ -28,7 +28,7 @@ from math import e, pi
 
 import download_data
 
-from functions_ecco_general import load_dataset, load_grid
+from NEWfunctions_ecco_general import load_ECCO_data_file, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
@@ -151,11 +151,11 @@ def comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary
         #Look for the velocity file in primary directory and download it if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_velocity = load_ECCO_data_file('horizontal_vel', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
     
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -172,6 +172,7 @@ def comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary
         div_vel_shortname, div_vel_nc_string = get_monthly_shortname(get_field_variable('2D_div_vel')), get_monthly_nc_string(get_field_variable('2D_div_vel'))
         if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
             os.makedirs(join(datdir_secondary, div_vel_shortname))
+        date_string = yearstr + '-' + monthstr
         div_vel.to_netcdf(path=join(datdir_secondary, div_vel_shortname, div_vel_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################
@@ -189,11 +190,11 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
         #Look for the density/pressure file in primary directory and download if it doesn't exist
         download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_denspress = load_ECCO_data_file('density', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
-        denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
+        #denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
+        #denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
     
         #Call this function to extract the density and pressure from the DataSet
         density, pressure_like = get_density_and_pressure(ds_denspress, rho_ref)
@@ -209,6 +210,7 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
         vel_g_shortname, vel_g_nc_string = get_monthly_shortname(get_field_variable('geostrophic_vel')), get_monthly_nc_string(get_field_variable('geostrophic_vel'))
         if not os.path.exists(join(datdir_secondary, vel_g_shortname)):
             os.makedirs(join(datdir_secondary, vel_g_shortname))
+        date_string = yearstr + '-' + monthstr
         vel_g_ds.to_netcdf(path=join(datdir_secondary, vel_g_shortname, vel_g_nc_string+date_string+".nc"), engine="scipy")
 
 ############################## 
@@ -226,18 +228,19 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         #Look for the density/pressure file in primary directory and download if it doesn't exist
         download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_denspress = load_ECCO_data_file('density', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
-        denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
+        #denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
+        #denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
     
         #Look for the surface wind-on-ocean-stress file in primary directory and download if it doesn't exist
         download_data.main(field_name='wind_stress', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        stress_shortname, stress_nc_string = get_monthly_shortname(get_field_variable('wind_stress')), get_monthly_nc_string(get_field_variable('wind_stress'))
-        stress_file = join(datdir_primary, stress_shortname, stress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_stress = load_dataset(stress_file) #Load the stress DataSet into workspace
+        ds_stress = load_ECCO_data_file('wind_stress', monthstr, yearstr, datdir_primary, time_ave_type)
+        #stress_shortname, stress_nc_string = get_monthly_shortname(get_field_variable('wind_stress')), get_monthly_nc_string(get_field_variable('wind_stress'))
+        #stress_file = join(datdir_primary, stress_shortname, stress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_stress = load_dataset(stress_file) #Load the stress DataSet into workspace
     
         #Compute Ekman velocity components
         u_Ek, v_Ek = get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E)
@@ -250,6 +253,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         vel_Ek_shortname, vel_Ek_nc_string = get_monthly_shortname(get_field_variable('Ek_vel')), get_monthly_nc_string(get_field_variable('Ek_vel'))
         if not os.path.exists(join(datdir_secondary, vel_Ek_shortname)):
             os.makedirs(join(datdir_secondary, vel_Ek_shortname))
+        date_string = yearstr + '-' + monthstr
         vel_Ek_ds.to_netcdf(path=join(datdir_secondary, vel_Ek_shortname, vel_Ek_nc_string+date_string+".nc"), engine="scipy")
         
 ##############################
@@ -267,11 +271,11 @@ def comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_second
         #Look for the velocity file in primary directory and download it if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_velocity = load_ECCO_data_file('horizontal_vel', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -288,6 +292,7 @@ def comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_second
         normal_shortname, normal_nc_string = get_monthly_shortname(get_field_variable('normal_strain')), get_monthly_nc_string(get_field_variable('normal_strain'))
         if not os.path.exists(join(datdir_secondary, normal_shortname)):
             os.makedirs(join(datdir_secondary, normal_shortname))
+        date_string = yearstr + '-' + monthstr
         normal_strain.to_netcdf(path=join(datdir_secondary, normal_shortname, normal_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################
@@ -305,11 +310,11 @@ def comp_shear_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_seconda
         #Look for the velocity file in primary directory and download it if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_velocity = load_ECCO_data_file('horizontal_vel', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -326,6 +331,7 @@ def comp_shear_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_seconda
         shear_shortname, shear_nc_string = get_monthly_shortname(get_field_variable('shear_strain')), get_monthly_nc_string(get_field_variable('shear_strain'))
         if not os.path.exists(join(datdir_secondary, shear_shortname)):
             os.makedirs(join(datdir_secondary, shear_shortname))
+        date_string = yearstr + '-' + monthstr
         shear_strain.to_netcdf(path=join(datdir_secondary, shear_shortname, shear_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################
@@ -343,11 +349,11 @@ def comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary,
         #Look for the velocity file in primary directory and download it if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        date_string = yearstr + '-' + monthstr
+        ds_velocity = load_ECCO_data_file('horizontal_vel', monthstr, yearstr, datdir_primary, time_ave_type)
         
-        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -364,6 +370,7 @@ def comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary,
         vorticity_shortname, vorticity_nc_string = get_monthly_shortname(get_field_variable('vorticity')), get_monthly_nc_string(get_field_variable('vorticity'))
         if not os.path.exists(join(datdir_secondary, vorticity_shortname)):
             os.makedirs(join(datdir_secondary, vorticity_shortname))
+        date_string = yearstr + '-' + monthstr
         vorticity.to_netcdf(path=join(datdir_secondary, vorticity_shortname, vorticity_nc_string+date_string+".nc"), engine="scipy") 
         
 ##############################
