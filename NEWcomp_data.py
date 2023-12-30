@@ -15,6 +15,7 @@ Notes:
     -Only does monthly averaging at the moment; will update this.
     -Does not currently include divergence of Ekman velocity; could add this, but is a nontrivial process.
         -There's an old script that computes this field in a format suitable for plotting, if needed.
+        -Okubo-Weiss computations are also in an old script.
 
 Rosalie Cormier, 2023
 """
@@ -156,7 +157,7 @@ def comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary
         
         velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
         velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        ds_velocity = load_dataset(velocity_file) #Load the density-/pressure-anomaly DataSet into workspace
+        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
     
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -255,15 +256,50 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         
 ##############################
 
-#each field gets a separate function
-    #some of them will call other functions, as appropriate
+#NORMAL STRAIN - tba
 
-#normal strain
+##############################
 
-#shear strain
+#SHEAR STRAIN - tba
 
-#vorticity
+##############################
+
+#VORTICITY
+
+def comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
     
+    """
+    Computes and saves vorticity to DataSet in NetCDF format.
+    """
+    
+    if time_ave_type == 'monthly':
+        
+        #Look for the velocity file in primary directory and download it if it doesn't exist
+        download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+        
+        date_string = yearstr + '-' + monthstr
+        
+        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
+
+        xgcm_grid = ecco.get_llc_grid(ds_grid)
+        
+        u_mean, v_mean = ds_velocity['UVEL'], ds_velocity['VVEL']
+        dx, dy = ds_grid.dxC, ds_grid.dyC
+        cell_area = ds_grid.rAz
+
+        vorticity = (-xgcm_grid.diff(u_mean*dx, 'Y') + xgcm_grid.diff(v_mean*dy, 'X')).squeeze() / cell_area #Compute vorticity
+
+        #Save the data
+    
+        vorticity.name = 'ZETA'
+        vorticity_shortname, vorticity_nc_string = get_monthly_shortname(get_field_variable('vorticity')), get_monthly_nc_string(get_field_variable('vorticity'))
+        if not os.path.exists(join(datdir_secondary, vorticity_shortname)):
+            os.makedirs(join(datdir_secondary, vorticity_shortname))
+        vorticity.to_netcdf(path=join(datdir_secondary, vorticity_shortname, vorticity_nc_string+date_string+".nc"), engine="scipy") 
+        
 ##############################
 
 def main(**kwargs):
@@ -292,6 +328,8 @@ def main(**kwargs):
         comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type=time_ave_type)
     elif field_name == 'Ek_vel':
         comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
+    elif field_name == 'vorticity':
+        comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type=time_ave_type)
 
 ##############################
 
