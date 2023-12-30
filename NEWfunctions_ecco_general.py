@@ -101,13 +101,21 @@ def get_month_end(monthstr, yearstr):
 
 ##############################
 
-def load_dataset(curr_file):
+def load_ECCO_data_file(field_name, monthstr, yearstr, datdir_primary, time_ave_type):
 
     """
-    Opens ECCO dataset given a file.
+    Load a specified ECCO (primary) DataSet.
     """
     
-    dataset = xr.open_mfdataset(curr_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    if time_ave_type == 'monthly': #will update to include other options
+        
+        date_string = yearstr + '-' + monthstr
+        
+        #find the filename
+        field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
+        data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+    
+    dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
     dataset.load()
     
     return dataset
