@@ -1,13 +1,13 @@
 """
-Contains functions that directly produce computed data.
-    -Geostrophic velocity
-    -Ekman velocity
+Contains necessary auxiliary functions and functions that directly produce computed data.
+    -Divergence of horizontal velocity;
+    -Geostrophic velocity;
+    -Ekman velocity.
 
 To be added
     -Vorticity
     -Normal strain
     -Shear strain
-    -Horizontal vel div
     -Ekman velocity div
     
 The main function picks out the appropriate function to compute the requested field.
@@ -137,6 +137,44 @@ def get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E):
 
 ##############################
 
+#DIVERGENCE OF HORIZONTAL VELOCITY
+
+def comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, time_ave_type='monthly'):
+    
+    """
+    Computes and saves divergence of horizontal velocity to DataSet in NetCDF format.
+    """
+    
+    if time_ave_type == 'monthly':
+        
+        #Look for the velocity file in primary directory and download it if it doesn't exist
+        download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+        
+        date_string = yearstr + '-' + monthstr
+        
+        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        ds_velocity = load_dataset(velocity_file) #Load the density-/pressure-anomaly DataSet into workspace
+        ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
+    
+        xgcm_grid = ecco.get_llc_grid(ds_grid)
+
+        u, v = ds_velocity['UVEL'], ds_velocity['VVEL']
+        dx, dy = ds_grid.dxG, ds_grid.dyG
+        cell_area = ds_grid.rA
+
+        div_vel = (xgcm_grid.diff(u*dy, 'X') + xgcm_grid.diff(v*dx, 'Y')).squeeze() / cell_area #Compute divergence
+
+        #Save the data
+
+        div_vel.name = 'DIVU'
+        div_vel_shortname, div_vel_nc_string = get_monthly_shortname(get_field_variable('2D_div_vel')), get_monthly_nc_string(get_field_variable('2D_div_vel'))
+        if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
+            os.makedirs(join(datdir_secondary, div_vel_shortname))
+        div_vel.to_netcdf(path=join(datdir_secondary, div_vel_shortname, div_vel_nc_string+date_string+".nc"), engine="scipy")
+
+##############################
+
 #GEOSTROPHIC VELOCITY
 
 def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly'):
@@ -217,8 +255,6 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
 
 #each field gets a separate function
     #some of them will call other functions, as appropriate
-
-#horizontal velocity div
 
 #normal strain
 
