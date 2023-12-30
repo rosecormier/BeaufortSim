@@ -71,7 +71,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
         
 ##############################
 
-def load_comp_data_file(field_name, monthstr, yearstr, datdir_secondary, time_ave_type):
+def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type):
     
     """
     Loads DataSet for a given computed field at a given time.
@@ -83,7 +83,7 @@ def load_comp_data_file(field_name, monthstr, yearstr, datdir_secondary, time_av
         field_shortname = get_monthly_shortname(get_field_variable(field_name))
         field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
         
-        date_string = yearstr + '-' + monthstr
+        #date_string = yearstr + '-' + monthstr
 
         filename = field_nc_string + date_string + '.nc'
         path_to_file = os.path.join(datdir_secondary, field_shortname, filename)

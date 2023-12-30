@@ -209,7 +209,7 @@ for date_string in date_strings:
             #Use code to load ECCO field
 
         elif not field_is_primary(scalar_field_name): #Call function that loads computed data
-            scalar_ds = load_comp_data_file(scalar_field_name, monthstr, yearstr, datdir_secondary, time_ave_type)
+            scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
         #Plot scalar field on its own 
 
