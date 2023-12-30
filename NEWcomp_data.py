@@ -256,7 +256,41 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         
 ##############################
 
-#NORMAL STRAIN - tba
+#NORMAL STRAIN
+
+def comp_normal_strain():
+    
+    """
+    Computes and saves normal strain to DataSet in NetCDF format.
+    """
+    
+    if time_ave_type == 'monthly':
+        
+        #Look for the velocity file in primary directory and download it if it doesn't exist
+        download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+        
+        date_string = yearstr + '-' + monthstr
+        
+        velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
+        velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+        ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
+
+        xgcm_grid = ecco.get_llc_grid(ds_grid)
+        
+        u_mean, v_mean = ds_velocity['UVEL'], ds_velocity['VVEL']
+        dx, dy = ds_grid.dxG, ds_grid.dyG
+        cell_area = ds_grid.rA
+ 
+        normal_strain = (xgcm_grid.diff(u_mean*dy, 'X') - xgcm_grid.diff(v_mean*dx, 'Y')) / cell_area #Compute strain
+        
+        #Save the data
+
+        normal_strain.name = 'NORMAL'
+        normal_shortname, normal_nc_string = get_monthly_shortname(get_field_variable('normal_strain')), get_monthly_nc_string(get_field_variable('normal_strain'))
+        if not os.path.exists(join(datdir_secondary, normal_shortname)):
+            os.makedirs(join(datdir_secondary, normal_shortname))
+        normal_strain.to_netcdf(path=join(datdir_secondary, normal_shortname, normal_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################
 
