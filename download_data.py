@@ -5,7 +5,7 @@ Rosalie Cormier, 2023
 """ 
 
 from functions_ecco_download import ecco_podaac_download
-from functions_ecco_general import get_monthstr, get_month_end
+from NEWfunctions_ecco_general import get_monthstr, get_month_end
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
