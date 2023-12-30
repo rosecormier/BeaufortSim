@@ -172,7 +172,7 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 
 ##############################
 
-#LOAD AND VISUALIZE DATA
+#ASSEMBLE A LIST OF STRINGS REPRESENTING TIMES TO ITERATE OVER
 
 if time_ave_type == 'monthly': #will update to include other options
 
@@ -197,6 +197,10 @@ if time_ave_type == 'monthly': #will update to include other options
             date_string = final_year + '-' + get_monthstr(month)
             date_strings.append(date_string)
             month += 1
+            
+##############################
+            
+#LOAD AND VISUALIZE DATA
         
 for date_string in date_strings:
 
@@ -206,14 +210,13 @@ for date_string in date_strings:
 
         if field_is_primary(scalar_field_name): #Call function that loads ECCO data
             scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
-            #Use code to load ECCO field
 
         elif not field_is_primary(scalar_field_name): #Call function that loads computed data
             scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
         #Plot scalar field on its own 
 
-        for vector_field_name in vector_fields:
+        #for vector_field_name in vector_fields:
 
             #Plot this vector with the scalar
 
