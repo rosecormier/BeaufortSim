@@ -237,6 +237,7 @@ def main(**kwargs):
         datdir_primary = kwargs.get('datdir_primary')
         datdir_secondary = kwargs.get('datdir_secondary')
         
+        time_ave_type = kwargs.get('time_ave_type')
         monthstr = kwargs.get('monthstr')
         yearstr = kwargs.get('yearstr')
         
@@ -250,9 +251,9 @@ def main(**kwargs):
     #Identify the input field and run the appropriate function to compute it
 
     if field_name == 'geostrophic_vel':
-        comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type='monthly')
+        comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, time_ave_type=time_ave_type)
     elif field_name == 'Ek_vel':
-        comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type='monthly')
+        comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
 
 ##############################
 

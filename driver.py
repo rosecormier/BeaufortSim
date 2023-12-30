@@ -165,12 +165,12 @@ for field_name in primary_vector_fields:
 for field_name in secondary_scalar_fields: #Iterate over any scalar fields
     
     #Check whether computed data exist and compute them if not
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
+    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
 for field_name in secondary_vector_fields: #Iterate over any vector fields
     
     #Check whether computed data exist and compute them if not
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type=time_ave_type)
+    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
 ##############################
 
