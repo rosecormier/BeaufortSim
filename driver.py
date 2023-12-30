@@ -17,7 +17,8 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
-from functions_comp_data_meta import create_comp_data_file
+from functions_comp_data_meta import create_comp_data_file, load_comp_data_file
+from NEWfunctions_ecco_general import load_ECCO_data_file
 from functions_field_variables import field_is_primary
 
 ##############################
@@ -173,17 +174,50 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 
 #LOAD AND VISUALIZE DATA
 
-for scalar_field_name in scalar_fields:
-    
-    #Load data
-    
-    #Plot scalar field on its own 
-    
-    for vector_field_name in vector_fields:
-        
-        #Plot this vector with the scalar
+if time_ave_type == 'monthly': #will update to include other options
 
-    #Save plots
+    date_strings = []
+    month, year = int(initial_month), int(initial_year)
+    
+    #Append every eligible date string to list 'date_strings'
+    
+    while year < int(final_year):
+        
+        while month <= 12:
+            date_string = str(year) + '-' + get_monthstr(month)
+            date_strings.append(date_string)
+            month += 1
+            
+        year += 1
+        month = 1
+        
+    if year == int(final_year):
+
+        while month <= int(final_month):
+            date_string = final_year + '-' + get_monthstr(month)
+            date_strings.append(date_string)
+            month += 1
+        
+for date_string in date_strings:
+
+    for scalar_field_name in scalar_fields:
+
+        #Load scalar data
+
+        if field_is_primary(scalar_field_name): #Call function that loads ECCO data
+            scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
+            #Use code to load ECCO field
+
+        elif not field_is_primary(scalar_field_name): #Call function that loads computed data
+            scalar_ds = load_comp_data_file(scalar_field_name, monthstr, yearstr, datdir_secondary, time_ave_type)
+
+        #Plot scalar field on its own 
+
+        for vector_field_name in vector_fields:
+
+            #Plot this vector with the scalar
+
+        #Save plots
     
 ##############################
 
