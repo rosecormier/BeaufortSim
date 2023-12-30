@@ -38,7 +38,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
             
             while month <= 12:
                 
-                monthstr = get_monthstr(month-1) #The indexing is weird for months
+                monthstr = get_monthstr(month)
                 date_string = yearstr + '-' + monthstr
 
                 filename = field_nc_string + date_string + '.nc'
@@ -56,7 +56,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
 
             while month <= int(final_month):
 
-                monthstr = get_monthstr(month-1) #The indexing is weird for months
+                monthstr = get_monthstr(month)
                 date_string = final_year + '-' + monthstr
 
                 filename = field_nc_string + date_string + '.nc'
