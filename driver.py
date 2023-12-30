@@ -18,7 +18,7 @@ import read_input
 import download_data
 
 from functions_comp_data_meta import create_comp_data_file, load_comp_data_file
-from NEWfunctions_ecco_general import load_ECCO_data_file
+from NEWfunctions_ecco_general import load_ECCO_data_file, get_monthstr
 from functions_field_variables import field_is_primary
 
 ##############################
@@ -182,17 +182,14 @@ if time_ave_type == 'monthly': #will update to include other options
     #Append every eligible date string to list 'date_strings'
     
     while year < int(final_year):
-        
         while month <= 12:
             date_string = str(year) + '-' + get_monthstr(month)
             date_strings.append(date_string)
             month += 1
-            
         year += 1
         month = 1
         
     if year == int(final_year):
-
         while month <= int(final_month):
             date_string = final_year + '-' + get_monthstr(month)
             date_strings.append(date_string)
