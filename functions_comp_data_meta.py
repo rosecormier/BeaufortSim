@@ -87,9 +87,9 @@ def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type
     path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
     
     try: #Try to load DataSet
-        computed_ds = xr.open_mfdataset(filename, engine="scipy")
+        computed_ds = xr.open_mfdataset(path_to_file, engine="scipy")
         print("Loaded DataSet.")
         return computed_ds
     
     except:
-        print("DataSet does not exist.")
+        print("DataSet does not exist." + field_name)
