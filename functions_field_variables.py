@@ -21,7 +21,6 @@ def get_field_variable(field_name):
                       'normal_strain': 'NORMAL', \
                       'shear_strain': 'SHEAR', \
                       '2D_div_vel': 'DIVU', \
-                      'div_Ek_vel': 'DIVUEk', \
                       'geostrophic_vel': 'UGVG', \
                       'Ek_vel': 'UEkVEk', \
                       'wind_stress': 'EXFtauxEXFtauy'}
@@ -35,7 +34,7 @@ def field_is_primary(field_name):
     field_variable = get_field_variable(field_name)
     
     primary_variables = ['PHIHYDcR', 'WVEL', 'UVELVVEL', 'EXFtauxEXFtauy']
-    secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'DIVUEk', 'UGVG', 'UEkVEk']
+    secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'UGVG', 'UEkVEk']
     
     if field_variable in primary_variables:
         return True
@@ -55,8 +54,7 @@ def get_monthly_shortname(field_variable):
                          'SHEAR': 'STRAIN_MONTHLY', \
                          'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UEkVEk': 'EK_VEL_MONTHLY', \
-                         'DIVU': 'DIVU_MONTHLY', \
-                         'DIVUEk': 'DIVUEk_MONTHLY'}
+                         'DIVU': 'DIVU_MONTHLY'}
     
     return monthly_shortnames[field_variable]
 
@@ -73,8 +71,7 @@ def get_monthly_nc_string(field_variable):
                          'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean_', \
                          'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
                          'UEkVEk': 'OCEAN_EK_VEL_mon_mean_', \
-                         'DIVU': 'OCEAN_DIVU_mon_mean_', \
-                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
+                         'DIVU': 'OCEAN_DIVU_mon_mean_'}
     
     return monthly_nc_strings[field_variable]
 
@@ -93,8 +90,7 @@ def get_field_string(field_variable):
                     'UGVG': 'u_g', \
                     'EXFtauxEXFtauy': 'tau', \
                     'UEkVEk': 'u_Ek', \
-                    'DIVU': 'div_u',
-                    'DIVUEk': 'div_u_Ek'}
+                    'DIVU': 'div_u'}
 
     field_string = field_strings[field_variable]
         
