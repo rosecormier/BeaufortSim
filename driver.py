@@ -11,6 +11,7 @@ R. Cormier, F. Poulin, 2023
 
 import os
 import sys
+import glob
 
 from os.path import expanduser, join
 
@@ -19,7 +20,7 @@ import download_data
 
 from functions_comp_data_meta import create_comp_data_file, load_comp_data_file
 from functions_ecco_general import load_ECCO_data_file, get_monthstr
-from functions_field_variables import field_is_primary
+from functions_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
 
@@ -230,5 +231,24 @@ for date_string in date_strings:
 ##############################
 
 #REMOVE SAVED PRIMARY DATA, IF INDICATED
+#may put this in a function in an aux file at a later time
 
-#if clear_data_files:
+if clear_data_files:
+
+    #Iterate over primary scalar fields and delete stored data
+    for scalar_field_name in primary_scalar_fields:
+        
+        if time_ave_type == 'monthly': #will add other options
+            field_shortname = get_monthly_shortname(get_field_variable(scalar_field_name))
+            field_nc_string = get_monthly_nc_string(get_field_variable(scalar_field_name))
+        
+        if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
+            
+            for date_string in date_strings:
+                pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
+                for item in glob.iglob(pattern, recursive=True): #Delete the files
+                    os.remove(item)
+                    
+            os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory
+            
+    print("Deleted scalar data.")
