@@ -216,8 +216,16 @@ for date_string in date_strings:
 
         #Plot scalar field on its own 
 
-        #for vector_field_name in vector_fields:
+        for vector_field_name in vector_fields:
+        
+            #Load vector data
+            
+            if field_is_primary(vector_field_name): #Call function that loads ECCO data
+                vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
 
+            elif not field_is_primary(vector_field_name): #Call function that loads computed data
+                vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
+                
             #Plot this vector with the scalar
 
         #Save plots
