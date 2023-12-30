@@ -2,12 +2,10 @@
 Contains necessary auxiliary functions and functions that directly produce computed data.
     -Divergence of horizontal velocity;
     -Geostrophic velocity;
-    -Ekman velocity.
-
-To be added
-    -Vorticity
-    -Normal strain
-    -Shear strain
+    -Ekman velocity;
+    -Normal strain;
+    -Shear strain;
+    -Vorticity.
     
 The main function picks out the appropriate function to compute the requested field.
 
