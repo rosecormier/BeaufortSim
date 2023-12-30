@@ -20,7 +20,7 @@ def get_field_variable(field_name):
                       'vorticity': 'ZETA', \
                       'normal_strain': 'NORMAL', \
                       'shear_strain': 'SHEAR', \
-                      'div_vel': 'DIVU', \
+                      '2D_div_vel': 'DIVU', \
                       'div_Ek_vel': 'DIVUEk', \
                       'geostrophic_vel': 'UGVG', \
                       'Ek_vel': 'UEkVEk', \
