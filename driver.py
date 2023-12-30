@@ -42,7 +42,7 @@ datdir_secondary = join(".", data_folder_secondary)
 visdir = join(".", visualization_folder)
 logdir = join(".", logs_folder)
 
-experiment_number = 0 #Hardcoded now; eventually will need to automatically produce a unique number for each run
+experiment_number = 0 #Hardcoded for now; eventually will need to automatically produce a unique number for each run
 
 if not os.path.exists(logdir):
     os.makedirs(logdir)
@@ -162,26 +162,17 @@ for field_name in primary_vector_fields:
 
 #COMPUTE SECONDARY DATA
 
-for field_name in secondary_scalar_fields: #Iterate over any scalar fields
-    
-    #Check whether computed data exist and compute them if not
+for field_name in secondary_scalar_fields: #Iterate over scalar fields; compute data if nonexistent
     create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
-for field_name in secondary_vector_fields: #Iterate over any vector fields
-    
-    #Check whether computed data exist and compute them if not
+for field_name in secondary_vector_fields: #Iterate over vector fields; compute data if nonexistent
     create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
 ##############################
 
+#Loop over fields and visualize data
+
 # To-do: what if either [scalar_fields or vector_fields] is empty?
-
-# try and read in secondary fields to be plotted
-#   if yes, good!
-#   else compute secondary fields and save them
-#       much work could be done here
-#   return
-
 
 ### Visualize data
 
