@@ -124,7 +124,8 @@ f.write(vector_fields[-1])
 
 f.close()
     
-clear_data_files = param_data.clear_data_files #Flag to clear primary datafiles after use (no need to log)
+#Flag to clear primary datafiles after use (no need to log)
+clear_data_files = param_data.clear_data_files 
 
 ##############################
 
@@ -170,13 +171,22 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 
 ##############################
 
-#Loop over fields; load and visualize data
+#LOAD AND VISUALIZE DATA
 
-### Visualize data
+for scalar_field_name in scalar_fields:
+    
+    #Load data
+    
+    #Plot scalar field on its own 
+    
+    for vector_field_name in vector_fields:
+        
+        #Plot this vector with the scalar
 
-#for scalar_field in scalar_fields:
-#    vector_field = plot_fields[scalar_field]
+    #Save plots
+    
+##############################
 
-    # plot and save
+#REMOVE SAVED PRIMARY DATA, IF INDICATED
 
-### Remove data files
+#if clear_data_files:
