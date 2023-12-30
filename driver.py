@@ -170,9 +170,7 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 
 ##############################
 
-#Loop over fields and visualize data
-
-# To-do: what if either [scalar_fields or vector_fields] is empty?
+#Loop over fields; load and visualize data
 
 ### Visualize data
 
@@ -180,6 +178,5 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 #    vector_field = plot_fields[scalar_field]
 
     # plot and save
-
 
 ### Remove data files
