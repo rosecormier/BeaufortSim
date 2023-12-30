@@ -12,6 +12,7 @@ import ecco_v4_py as ecco
 from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
+from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
 
