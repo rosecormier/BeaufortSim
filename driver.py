@@ -18,7 +18,7 @@ import read_input
 import download_data
 
 from functions_comp_data_meta import create_comp_data_file, load_comp_data_file
-from NEWfunctions_ecco_general import load_ECCO_data_file, get_monthstr
+from functions_ecco_general import load_ECCO_data_file, get_monthstr
 from functions_field_variables import field_is_primary
 
 ##############################

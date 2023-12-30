@@ -13,7 +13,7 @@ from os.path import join
 
 import comp_data
 
-from NEWfunctions_ecco_general import get_monthstr
+from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################

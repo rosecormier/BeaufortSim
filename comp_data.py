@@ -28,7 +28,7 @@ from math import e, pi
 
 import download_data
 
-from NEWfunctions_ecco_general import load_ECCO_data_file, load_grid
+from functions_ecco_general import load_ECCO_data_file, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
