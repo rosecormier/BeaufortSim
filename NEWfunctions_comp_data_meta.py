@@ -21,7 +21,7 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 def create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type):
     
     """
-    Checks that a computed file exists, and creates it if it doesn't.
+    Iterates over time, checks that computed files for a given field exist, and creates them if they don't.
     Note - only does monthly avgs at the moment - will fix in future (i.e., will make time_ave_type variable)
     """
     
@@ -44,10 +44,8 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 filename = field_nc_string + date_string + '.nc'
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
-                if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
-                    
-                    #Create the file
-                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
+                if not os.path.exists(path_to_file): #Create file if it doesn't exist
+                    comp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
 
                 month += 1
                 
@@ -64,10 +62,8 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 filename = field_nc_string + date_string + '.nc'
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
-                if not os.path.exists(path_to_file): #Execute only if the file doesn't already exist
-                    
-                    #Create the file
-                    NEWcomp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
+                if not os.path.exists(path_to_file): #Create file if it doesn't exist
+                    comp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
                 
                 month += 1
                 
