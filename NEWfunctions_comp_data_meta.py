@@ -11,7 +11,7 @@ import xarray as xr
 
 from os.path import join
 
-import NEWcomp_data
+import comp_data
 
 from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
