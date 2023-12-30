@@ -37,29 +37,16 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 Omega = (2 * pi) / 86164 #Earth angular velocity
 
-def to_radians(angle):
-    
-    """
-    Converts degrees to radians.
-    """
-    
+def to_radians(angle): #Converts degrees to radians
     return angle * pi / 180
 
-def comp_f(y):
-    
-    """
-    Computes local Coriolis parameter.
-    """
-    
+def comp_f(y): #Computes local Coriolis parameter
     lat = to_radians(y)
     return 2 * Omega * np.sin(lat)
 
+#Gets density and pressure-like attributes from a DataSet, given a reference density
 def get_density_and_pressure(ds_denspress, rho_ref):
-    
-    """
-    Gets density and pressure-like attributes from a DataSet, given a reference density.
-    """
-    
+
     density_anom = ds_denspress['RHOAnoma']
     density = density_anom + rho_ref #Compute absolute density
     
@@ -73,11 +60,8 @@ def get_density_and_pressure(ds_denspress, rho_ref):
     
     return density, pressure_like
 
+#Differentiates pressure-like quantity to compute geostrophic-velocity components
 def get_vel_g_components(ds_grid, pressure_like, density):
-    
-    """
-    Differentiates pressure-like quantity to compute geostrophic-velocity components.
-    """
     
     xgcm_grid = ecco.get_llc_grid(ds_grid)
     
@@ -105,11 +89,8 @@ def get_vel_g_components(ds_grid, pressure_like, density):
     
     return u_g, v_g
 
+#Computes Ekman-velocity components, using surface density, surface stress, Ekman-layer depth
 def get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E):
-    
-    """
-    Computes Ekman-velocity components, using surface density, surface stress, Ekman-layer depth.
-    """
     
     z = ds_grid.Z #Get z-coordinate
     
@@ -125,8 +106,7 @@ def get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E):
     tau_E = tau_x * ds_grid['CS'] - tau_y * ds_grid['SN']
     tau_N = tau_x * ds_grid['SN'] + tau_y * ds_grid['CS']
     
-    #Compute coefficient that multiplies Ekman velocity
-    Ek_coeff = (np.sqrt(2) / (surface_density * f * Ek_depth))
+    Ek_coeff = (np.sqrt(2) / (surface_density * f * Ek_depth)) #Coefficient that multiplies Ekman velocity
     
     #Compute Ekman velocity components
     
