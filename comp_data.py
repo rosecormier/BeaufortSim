@@ -152,11 +152,8 @@ def comp_2D_div_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type)
         
-        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type) #Load DataSet
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
     
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -191,13 +188,10 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
         download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_denspress = load_ECCO_data_file('density', date_string, datdir_primary, time_ave_type)
         
-        #denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
-        #denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
-    
-        #Call this function to extract the density and pressure from the DataSet
+        ds_denspress = load_ECCO_data_file('density', date_string, datdir_primary, time_ave_type) #Load DataSet
+        
+        #Extract density and pressure-like from the DataSet
         density, pressure_like = get_density_and_pressure(ds_denspress, rho_ref)
         
         #Compute geostrophic velocity components
@@ -229,20 +223,14 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_denspress = load_ECCO_data_file('density', date_string, datdir_primary, time_ave_type)
         
-        #denspress_shortname, denspress_nc_string = get_monthly_shortname(get_field_variable('density')), get_monthly_nc_string(get_field_variable('density'))
-        #denspress_file = join(datdir_primary, denspress_shortname, denspress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_denspress = load_dataset(denspress_file) #Load the density-/pressure-anomaly DataSet into workspace
-    
+        ds_denspress = load_ECCO_data_file('density', date_string, datdir_primary, time_ave_type) #Load DataSet
+       
         #Look for the surface wind-on-ocean-stress file in primary directory and download if it doesn't exist
         download_data.main(field_name='wind_stress', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        ds_stress = load_ECCO_data_file('wind_stress', date_string, datdir_primary, time_ave_type)
-        #stress_shortname, stress_nc_string = get_monthly_shortname(get_field_variable('wind_stress')), get_monthly_nc_string(get_field_variable('wind_stress'))
-        #stress_file = join(datdir_primary, stress_shortname, stress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_stress = load_dataset(stress_file) #Load the stress DataSet into workspace
-    
+        ds_stress = load_ECCO_data_file('wind_stress', date_string, datdir_primary, time_ave_type) #Load DataSet
+        
         #Compute Ekman velocity components
         u_Ek, v_Ek = get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E)
 
@@ -272,11 +260,9 @@ def comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_second
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type)
         
-        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type) #Load DataSet
+        
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -311,11 +297,8 @@ def comp_shear_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_seconda
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type)
         
-        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type) #Load DataSet
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
@@ -350,11 +333,8 @@ def comp_vorticity(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary,
         download_data.main(field_name='horizontal_vel', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
-        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type)
         
-        #velocity_shortname, velocity_nc_string = get_monthly_shortname(get_field_variable('horizontal_vel')), get_monthly_nc_string(get_field_variable('horizontal_vel'))
-        #velocity_file = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
-        #ds_velocity = load_dataset(velocity_file) #Load the velocity DataSet into workspace
+        ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type) #Load DataSet
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
