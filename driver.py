@@ -17,8 +17,8 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
+from functions_comp_data_meta import create_comp_data_file
 from functions_field_variables import field_is_primary
-from NEWfunctions_comp_data_meta import create_comp_data_file
 
 ##############################
 
