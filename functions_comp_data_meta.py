@@ -82,16 +82,14 @@ def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type
     
         field_shortname = get_monthly_shortname(get_field_variable(field_name))
         field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
-        
-        #date_string = yearstr + '-' + monthstr
 
-        filename = field_nc_string + date_string + '.nc'
-        path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
+    filename = field_nc_string + date_string + '.nc'
+    path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
     
-        try:
-            computed_ds = xr.open_mfdataset(filename, engine="scipy") #Try to load DataSet
-            print("Loaded DataSet.")
-            return computed_ds
+    try: #Try to load DataSet
+        computed_ds = xr.open_mfdataset(filename, engine="scipy")
+        print("Loaded DataSet.")
+        return computed_ds
     
-        except:
-            print("DataSet does not exist.")
+    except:
+        print("DataSet does not exist.")
