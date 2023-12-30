@@ -238,7 +238,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
         #Look for the surface wind-on-ocean-stress file in primary directory and download if it doesn't exist
         download_data.main(field_name='wind_stress', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
-        ds_stress = load_ECCO_data_file('wind_stress', monthstr, yearstr, datdir_primary, time_ave_type)
+        ds_stress = load_ECCO_data_file('wind_stress', date_string, datdir_primary, time_ave_type)
         #stress_shortname, stress_nc_string = get_monthly_shortname(get_field_variable('wind_stress')), get_monthly_nc_string(get_field_variable('wind_stress'))
         #stress_file = join(datdir_primary, stress_shortname, stress_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
         #ds_stress = load_dataset(stress_file) #Load the stress DataSet into workspace
