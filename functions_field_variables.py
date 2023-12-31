@@ -74,24 +74,3 @@ def get_monthly_nc_string(field_variable):
                          'DIVU': 'OCEAN_DIVU_mon_mean_'}
     
     return monthly_nc_strings[field_variable]
-
-##############################
-
-def get_field_string(field_variable):
-    
-    """
-    Strings to be used in filenames.
-    """
-    
-    field_strings = {'PHIHYDcR': 'p_anom', \
-                    'UVELVVEL': 'u', \
-                    'WVEL': 'w', \
-                    'ZETA': 'zeta', \
-                    'UGVG': 'u_g', \
-                    'EXFtauxEXFtauy': 'tau', \
-                    'UEkVEk': 'u_Ek', \
-                    'DIVU': 'div_u'}
-
-    field_string = field_strings[field_variable]
-        
-    return field_string
