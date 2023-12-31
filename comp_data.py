@@ -242,7 +242,6 @@ def comp_normal_strain(ds_grid, monthstr, yearstr, datdir_primary, datdir_second
         date_string = yearstr + '-' + monthstr
         
         ds_velocity = load_ECCO_data_file('horizontal_vel', date_string, datdir_primary, time_ave_type) #Load DataSet
-        
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
