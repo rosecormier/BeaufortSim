@@ -212,7 +212,7 @@ for date_string in date_strings:
         elif not field_is_primary(scalar_field_name): #Call function that loads computed data
             scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
-        #Plot scalar field on its own 
+        #Plot scalar field on its own - tba
 
         for vector_field_name in vector_fields:
         
@@ -224,9 +224,9 @@ for date_string in date_strings:
             elif not field_is_primary(vector_field_name): #Call function that loads computed data
                 vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
                 
-            #Plot this vector with the scalar
+            #Plot this vector with the scalar - tba
 
-        #Save plots
+        #Save plots - tba
     
 ##############################
 
@@ -235,8 +235,7 @@ for date_string in date_strings:
 
 if clear_data_files:
 
-    #Iterate over primary scalar fields and delete stored data
-    for scalar_field_name in primary_scalar_fields:
+    for scalar_field_name in primary_scalar_fields: #Delete primary scalar data
         
         if time_ave_type == 'monthly': #will add other options
             field_shortname = get_monthly_shortname(get_field_variable(scalar_field_name))
@@ -248,7 +247,24 @@ if clear_data_files:
                 pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
                 for item in glob.iglob(pattern, recursive=True): #Delete the files
                     os.remove(item)
-                    
             os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory
             
     print("Deleted scalar data.")
+    
+    for vector_field_name in primary_vector_fields: #Delete primary vector data
+        
+        if time_ave_type == 'monthly': #will add other options
+            field_shortname = get_monthly_shortname(get_field_variable(vector_field_name))
+            field_nc_string = get_monthly_nc_string(get_field_variable(vector_field_name))
+        
+        if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
+            
+            for date_string in date_strings:
+                pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
+                for item in glob.iglob(pattern, recursive=True): #Delete the files
+                    os.remove(item)
+            os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory
+            
+    print("Deleted vector data.")
+    
+    #tba - delete primary data associated with secondary fields
