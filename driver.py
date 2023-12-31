@@ -126,8 +126,7 @@ f.write(vector_fields[-1])
 
 f.close()
     
-#Flag to clear primary datafiles after use (no need to log)
-clear_data_files = param_data.clear_data_files 
+clear_data_files = param_data.clear_data_files #Flag to clear primary datafiles after use (no need to log)
 
 ##############################
 
@@ -231,7 +230,7 @@ for date_string in date_strings:
 ##############################
 
 #REMOVE SAVED PRIMARY DATA, IF INDICATED
-#may put this in a function in an aux file at a later time
+#may put this in a function in an aux file at a later time, to save space
 
 if clear_data_files:
 
@@ -242,12 +241,14 @@ if clear_data_files:
             field_nc_string = get_monthly_nc_string(get_field_variable(scalar_field_name))
         
         if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            
             for date_string in date_strings:
                 pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
                 for item in glob.iglob(pattern, recursive=True): #Delete the files
                     os.remove(item)
-            os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory
+            try:
+                os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory, if empty
+            except:
+                break
             
     print("Deleted scalar data.")
     
@@ -258,13 +259,67 @@ if clear_data_files:
             field_nc_string = get_monthly_nc_string(get_field_variable(vector_field_name))
         
         if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            
             for date_string in date_strings:
                 pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
                 for item in glob.iglob(pattern, recursive=True): #Delete the files
                     os.remove(item)
-            os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory
+            try:
+                os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory, if empty
+            except:
+                break
             
     print("Deleted vector data.")
     
-    #tba - delete primary data associated with secondary fields
+    #Identify any secondary fields that required primary data to be saved, and delete the primary data
+    
+    for scalar_field_name in secondary_scalar_fields:
+        
+        if scalar_field_name in ['vorticity', 'normal_strain', 'shear_strain', '2D_div_vel']: #Delete horizontal velocity
+            
+            if time_ave_type == 'monthly': #will add other options
+                velocity_shortname = get_monthly_shortname(get_field_variable('horizontal_vel'))
+                velocity_nc_string = get_monthly_nc_string(get_field_variable('horizontal_vel'))
+                
+            if os.path.exists(join(datdir_primary, velocity_shortname)): #To avoid errors, only remove files after confirming directory exists
+                for date_string in date_strings:
+                    pattern = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+r"*")
+                    for item in glob.iglob(pattern, recursive=True): #Delete the files
+                        os.remove(item)
+                try:
+                    os.rmdir(join(datdir_primary, velocity_shortname)) #Delete the directory, if empty
+                except:
+                    break
+        
+    for vector_field_name in secondary_vector_fields:
+        
+        if vector_field_name in ['geostrophic_vel', 'Ek_vel']: #Delete density
+
+            if time_ave_type == 'monthly': #will add other options
+                density_shortname = get_monthly_shortname(get_field_variable('density'))
+                density_nc_string = get_monthly_nc_string(get_field_variable('density'))
+                
+            if os.path.exists(join(datdir_primary, density_shortname)): #To avoid errors, only remove files after confirming directory exists
+                for date_string in date_strings:
+                    pattern = join(datdir_primary, density_shortname, density_nc_string+date_string+r"*")
+                    for item in glob.iglob(pattern, recursive=True): #Delete the files
+                        os.remove(item)
+                try:
+                    os.rmdir(join(datdir_primary, density_shortname)) #Delete the directory, if empty
+                except:
+                    break
+            
+        if vector_field_name in ['Ek_vel']: #Delete wind stress
+            
+            if time_ave_type == 'monthly': #will add other options
+                stress_shortname = get_monthly_shortname(get_field_variable('wind_stress'))
+                stress_nc_string = get_monthly_nc_string(get_field_variable('wind_stress'))
+                
+            if os.path.exists(join(datdir_primary, stress_shortname)): #To avoid errors, only remove files after confirming directory exists
+                for date_string in date_strings:
+                    pattern = join(datdir_primary, stress_shortname, stress_nc_string+date_string+r"*")
+                    for item in glob.iglob(pattern, recursive=True): #Delete the files
+                        os.remove(item)
+                try:
+                    os.rmdir(join(datdir_primary, stress_shortname)) #Delete the directory, if empty
+                except:
+                    break
