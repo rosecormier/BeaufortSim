@@ -38,7 +38,7 @@ def cbar_label(scalar_attr):
     """
     Returns label for plot colorbar.
     """
-    #add density
+    #add density; fix others
     cbar_label_dict = {'pressure': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
                       'WVEL': 'Velocity (m/s)', \
                       'Delta_u': r'$|\Delta \vec{u}|_n$', \
@@ -181,7 +181,6 @@ def get_scalar_bounds(scalar_field, scalar_bounds=None):
     
     if scalar_bounds == None:
         vmin, vmax = np.nanmin(scalar_field), np.nanmax(scalar_field) #Default to actual bounds on data
-        
     else:
         vmin, vmax = scalar_bounds[0], scalar_bounds[1] #If scalar bounds are explicitly given
     
@@ -197,7 +196,6 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
     
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
-        
     elif not logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
     
@@ -233,7 +231,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
         
-    #Create pcolormesh object #make a function for cmap
+    #Create pcolormesh object #tba - make a function for cmap
     ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) 
         
     ax = plot_geography(ax)
@@ -243,8 +241,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
     
     plt.savefig(outfile)
     plt.close()
-    
-    #return ax
     
 ##############################
 """
