@@ -215,16 +215,7 @@ if time_ave_type == 'monthly': #will update to include other options
 for date_string in date_strings: #Iterate over times
 
     for scalar_field_name in scalar_fields:
-
-        #Load scalar data
-
-        #if field_is_primary(scalar_field_name): #Call function that loads ECCO data
-        #    scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
-
-        #elif not field_is_primary(scalar_field_name): #Call function that loads computed data
-        #    scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
-
-        ######
+        
         #Plot scalar field on its own
         
         if not os.path.exists(join(visdir, plot_plane_type)):
