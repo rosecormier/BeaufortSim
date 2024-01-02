@@ -12,8 +12,8 @@ Rosalie Cormier, 2023
 ##############################
 
 def get_field_variable(field_name):
-    #fix density
-    field_variables = {'density': 'PHIHYDcR', \
+
+    field_variables = {'density': 'RHOAnoma', \
                       'pressure': 'PHIHYDcR', \
                       'vertical_vel': 'WVEL', \
                       'horizontal_vel': 'UVELVVEL', \
@@ -33,7 +33,7 @@ def field_is_primary(field_name):
     
     field_variable = get_field_variable(field_name)
     
-    primary_variables = ['PHIHYDcR', 'WVEL', 'UVELVVEL', 'EXFtauxEXFtauy']
+    primary_variables = ['RHOAnoma', 'PHIHYDcR', 'WVEL', 'UVELVVEL', 'EXFtauxEXFtauy']
     secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'UGVG', 'UEkVEk']
     
     if field_variable in primary_variables:
@@ -45,7 +45,8 @@ def field_is_primary(field_name):
 
 def get_monthly_shortname(field_variable):
     
-    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
+    monthly_shortnames = {'RHOAnoma': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
+                          'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'WVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'UGVG': 'GEOS_VEL_MONTHLY', \
@@ -62,7 +63,8 @@ def get_monthly_shortname(field_variable):
     
 def get_monthly_nc_string(field_variable):
     
-    monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
+    monthly_nc_strings = {'RHOAnoma': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
+                          'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'WVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'UGVG': 'OCEAN_GEOS_UVEL_mon_mean_', \
