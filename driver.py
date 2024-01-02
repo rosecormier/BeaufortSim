@@ -18,9 +18,11 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
-from functions_comp_data_meta import create_comp_data_file, load_comp_data_file
-from functions_ecco_general import load_ECCO_data_file, get_monthstr
+from functions_comp_data_meta import create_comp_data_file
+from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string
+
+from NEWfunctions_visualization import ArcCir_pcolormesh
 
 ##############################
 
@@ -81,6 +83,7 @@ plot_plane_type = param_data.plot_plane_type
 f.write("plot_plane_type = " + plot_plane_type + "\n\n")
 
 if plot_plane_type == "depth_const":
+    
     depth = param_data.depth_range[0]
     lat_res, lon_res = param_data.lat_res, param_data.lon_res
     latmin, latmax = param_data.lat_range[0], param_data.lat_range[1]
@@ -89,7 +92,11 @@ if plot_plane_type == "depth_const":
     f.write("lat_res = " + lat_res + "\n" + "lon_res" + lon_res + "\n")
     f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
     f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
+    
+    plane_string = 'k'+depth #To be used in filenames
+    
 elif plot_plane_type == "latitude_const":
+    
     lat = param_data.lat_range[0]
     lon_res = param_data.lon_res
     depthmin, depthmax = param_data.depth_range[0], param_data.depth_range[1]
@@ -98,7 +105,11 @@ elif plot_plane_type == "latitude_const":
     f.write("lon_res = " + lon_res + "\n")
     f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
     f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
+    
+    plane_string = 'lat'+lat #To be used in filenames
+    
 elif plot_plane_type == "longitude_const":
+    
     lon = param_data.lon_range[0]
     lat_res = param_data.lat_res
     depthmin, depthmax = param_data.depth_range[0], param_data.depth_range[1]
@@ -107,6 +118,8 @@ elif plot_plane_type == "longitude_const":
     f.write("lat_res = " + lat_res + "\n")
     f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
     f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
+    
+    plane_string = 'lon'+lon #To be used in filenames
     
 # interp_type = #TBA
 
@@ -197,21 +210,34 @@ if time_ave_type == 'monthly': #will update to include other options
             
 ##############################
             
-#LOAD AND VISUALIZE DATA
+#VISUALIZE DATA
         
-for date_string in date_strings:
+for date_string in date_strings: #Iterate over times
 
     for scalar_field_name in scalar_fields:
 
         #Load scalar data
 
-        if field_is_primary(scalar_field_name): #Call function that loads ECCO data
-            scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
+        #if field_is_primary(scalar_field_name): #Call function that loads ECCO data
+        #    scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
 
-        elif not field_is_primary(scalar_field_name): #Call function that loads computed data
-            scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
+        #elif not field_is_primary(scalar_field_name): #Call function that loads computed data
+        #    scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
-        #Plot scalar field on its own - tba
+        ######
+        #Plot scalar field on its own
+        
+        if not os.path.exists(join(visdir, plot_plane_type)):
+            os.makedirs(join(visdir, plot_plane_type)) #Set up output directory
+        
+        #File to save scalar plot to
+        outfile = join('.', visualization_folder, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
+        
+        #Plot scalar field on its own
+
+        spatial_bounds = [depth, latmin, latmax, lonmin, lonmax]
+        resolutions = [lat_res, lon_res]
+        ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
 
         for vector_field_name in vector_fields:
         
@@ -241,7 +267,7 @@ if clear_data_files:
             field_nc_string = get_monthly_nc_string(get_field_variable(scalar_field_name))
         
         if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            for date_string in date_strings:
+            for date_string in date_strings: #Iterate over times
                 pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
                 for item in glob.iglob(pattern, recursive=True): #Delete the files
                     os.remove(item)
@@ -259,7 +285,7 @@ if clear_data_files:
             field_nc_string = get_monthly_nc_string(get_field_variable(vector_field_name))
         
         if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            for date_string in date_strings:
+            for date_string in date_strings: #Iterate over times
                 pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
                 for item in glob.iglob(pattern, recursive=True): #Delete the files
                     os.remove(item)
@@ -281,7 +307,7 @@ if clear_data_files:
                 velocity_nc_string = get_monthly_nc_string(get_field_variable('horizontal_vel'))
                 
             if os.path.exists(join(datdir_primary, velocity_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings:
+                for date_string in date_strings: #Iterate over times
                     pattern = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+r"*")
                     for item in glob.iglob(pattern, recursive=True): #Delete the files
                         os.remove(item)
@@ -299,7 +325,7 @@ if clear_data_files:
                 density_nc_string = get_monthly_nc_string(get_field_variable('density'))
                 
             if os.path.exists(join(datdir_primary, density_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings:
+                for date_string in date_strings: #Iterate over times
                     pattern = join(datdir_primary, density_shortname, density_nc_string+date_string+r"*")
                     for item in glob.iglob(pattern, recursive=True): #Delete the files
                         os.remove(item)
@@ -315,7 +341,7 @@ if clear_data_files:
                 stress_nc_string = get_monthly_nc_string(get_field_variable('wind_stress'))
                 
             if os.path.exists(join(datdir_primary, stress_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings:
+                for date_string in date_strings: #Iterate over times
                     pattern = join(datdir_primary, stress_shortname, stress_nc_string+date_string+r"*")
                     for item in glob.iglob(pattern, recursive=True): #Delete the files
                         os.remove(item)

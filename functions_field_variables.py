@@ -12,7 +12,7 @@ Rosalie Cormier, 2023
 ##############################
 
 def get_field_variable(field_name):
-    
+    #fix density
     field_variables = {'density': 'PHIHYDcR', \
                       'pressure': 'PHIHYDcR', \
                       'vertical_vel': 'WVEL', \

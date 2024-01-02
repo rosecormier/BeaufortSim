@@ -16,7 +16,7 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 ##############################
 
-def load_grid(datdir):
+def load_grid(datdir_primary):
     
     """
     Loads ECCO grid.
@@ -24,7 +24,7 @@ def load_grid(datdir):
     
     grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
     grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-    grid_params_directory = join(datdir, grid_params_shortname)
+    grid_params_directory = join(datdir_primary, grid_params_shortname)
 
     if not os.path.exists(grid_params_directory): 
         
@@ -106,6 +106,7 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
 
     """
     Load a specified ECCO (primary) DataSet.
+    If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
     
     if time_ave_type == 'monthly': #will update to include other options
@@ -114,23 +115,27 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
     data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
     
     dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
-    dataset.load()
+    #dataset.load()
+                            
+    #if field_name == 'vertical_vel': #If w, interpolate vertically
+    #    xgcm_grid = ecco.get_llc_grid(ds_grid)
+    #    dataset['WVEL'] = xgcm_grid.interp(dataset.WVEL, axis="Z")
     
     return dataset
 
 ##############################
 
-def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
+#def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
     
-    """
-    Loads scalar field in xy-grid.
-    """
+#    """
+#    Loads scalar field in xy-grid.
+#    """
     
-    ds_grid = ecco_ds_grid.copy()
-    ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
-    ds_grid = ds_grid.load()
+#    ds_grid = ecco_ds_grid.copy()
+#    ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
+#    ds_grid = ds_grid.load()
     
-    return ds_grid
+#    return ds_grid
 
 ##############################
     
@@ -166,66 +171,39 @@ def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
 
 ##############################
 
-def ds_to_field(ecco_ds_grid, ecco_ds_scalar, scalar_attr, latmin, latmax, lonmin, lonmax, resolution):
+def ds_to_field(ds_grid, scalar_ds, field_variable, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
     
     """
-    Resamples scalar DataSet attribute to lat-lon grid.
+    Resamples scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
     """
+
+    curr_ds_grid = ds_grid.copy()
+    curr_ds_grid[field_variable] = scalar_ds[field_variable].squeeze()
+    curr_ds_grid.load()
+
+    curr_field = curr_ds_grid[field_variable]
     
-    ds_grid = ecco_ds_grid
-    curr_field = ds_grid[scalar_attr].squeeze()
+    latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
+    lat_res, lon_res = float(lat_res), float(lon_res)
     
     new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(ds_grid.XC, ds_grid.YC, curr_field, latmin, latmax, resolution, \
-                                            lonmin, lonmax, resolution, fill_value=np.NaN, \
+    field_nearest = ecco.resample_to_latlon(curr_ds_grid.XC, curr_ds_grid.YC, curr_field, latmin, latmax, lat_res, \
+                                            lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     return new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, field_nearest
 
 ##############################
 
-def comp_temp_mean(timeseries):
+#def ecco_resample(ds_grid, curr_field, latmin, latmax, lonmin, lonmax, resolution):
     
-    """
-    Computes temporal mean of a field.
-    """ 
+#    """
+#    Resamples field to lat-lon grid.
+#    """
     
-    mean = (timeseries[0]).copy() / len(timeseries)
+#    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    if len(timeseries) > 1:
-        for i in range(1, len(timeseries)):
-            mean = mean + (timeseries[i]).copy() / len(timeseries)
-        
-    return mean
-
-##############################
-
-def comp_residuals(fields, mean):
-    
-    """
-    Computes residuals relative to a mean.
-    """
-        
-    residual_list = []
-        
-    for field in fields:
-            
-        residual = field.copy() - mean.copy()
-        residual_list.append(residual)
-        
-    return residual_list
-
-##############################
-
-def ecco_resample(ds_grid, curr_field, latmin, latmax, lonmin, lonmax, resolution):
-    
-    """
-    Resamples field to lat-lon grid.
-    """
-    
-    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
-    
-    return lon_centers, lat_centers, lon_edges, lat_edges, field
+#    return lon_centers, lat_centers, lon_edges, lat_edges, field
 
 ##############################
 
