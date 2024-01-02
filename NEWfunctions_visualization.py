@@ -38,22 +38,15 @@ def cbar_label(scalar_attr):
     """
     Returns label for plot colorbar.
     """
-    #add density; fix others
+
     cbar_label_dict = {'pressure': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
-                      'WVEL': 'Velocity (m/s)', \
-                      'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                      'ZETA': 'Vorticity (1/s)', \
-                      'zetanorm': r'Vorticity per $f_{mean}$', \
-                      'OW': r'OW $(1/s^2)$', \
-                      's': r'Strain $(1/s^2)$', \
-                      'zeta_geos': r'Vorticity per $f_{mean}$', \
-                      'OW_geos': r'OW $(1/s^2)$', \
-                      'Ro_l': r'$Ro_{\ell}$', \
-                      'geos_metric': 'Velocity ratio', \
-                      'DIVU': 'Horizontal velocity divergence (1/s)', \
-                      'DIVUEk': 'Divergence of Ekman current (1/s)'}
+                       'density': r'Density anomaly $(kg/{m}^3)$', \
+                       'vertical_vel': 'Velocity (m/s)', \
+                       'vorticity': 'Vorticity (1/s)', \
+                       'normal_strain': r'Normal strain $(1/s^2)$', \
+                       'shear_strain': r'Shear strain $(1/s^2)$', \
+                       '2D_div_vel': 'Horizontal velocity divergence (1/s)'}
     label = cbar_label_dict[scalar_attr]
-    
     return label
 
 ##############################
