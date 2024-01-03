@@ -216,12 +216,11 @@ for date_string in date_strings: #Iterate over times
 
     for scalar_field_name in scalar_fields:
         
-        #Plot scalar field on its own
+        #Set up output directory and file to save scalar plot to
         
         if not os.path.exists(join(visdir, plot_plane_type)):
-            os.makedirs(join(visdir, plot_plane_type)) #Set up output directory
+            os.makedirs(join(visdir, plot_plane_type))
         
-        #File to save scalar plot to
         outfile = join('.', visualization_folder, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
         
         #Plot scalar field on its own
@@ -230,15 +229,15 @@ for date_string in date_strings: #Iterate over times
         resolutions = [lat_res, lon_res]
         ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
 
-        for vector_field_name in vector_fields:
+        #for vector_field_name in vector_fields:
         
             #Load vector data
             
-            if field_is_primary(vector_field_name): #Call function that loads ECCO data
-                vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
+        #    if field_is_primary(vector_field_name): #Call function that loads ECCO data
+        #        vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
 
-            elif not field_is_primary(vector_field_name): #Call function that loads computed data
-                vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
+        #    elif not field_is_primary(vector_field_name): #Call function that loads computed data
+        #        vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
                 
             #Plot this vector with the scalar - tba
 
