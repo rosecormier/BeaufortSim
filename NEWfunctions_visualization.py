@@ -205,13 +205,11 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
         depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
         lat_res, lon_res = resolutions[0], resolutions[1]
-    
-    #Load the scalar DataSet
-    
-    if field_is_primary(scalar_field_name): #Call function that loads ECCO data
+
+    if field_is_primary(scalar_field_name): #Load ECCO DataSet
         scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
 
-    elif not field_is_primary(scalar_field_name): #Call function that loads computed data
+    elif not field_is_primary(scalar_field_name): #Load computed DataSet
         scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
     lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
@@ -226,20 +224,15 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) 
     
     if vector_field_name is not None:
-
-        #Load the vector DataSet
         
-        if field_is_primary(vector_field_name): #Call function that loads ECCO data
+        if field_is_primary(vector_field_name): #Load ECCO DataSet
             vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
 
-        elif not field_is_primary(vector_field_name): #Call function that loads computed data
+        elif not field_is_primary(vector_field_name): #Load computed DataSet
             vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
         
-        #vec_E_comp = vector_to_grid(ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)[4]
-        #vec_N_comp = vector_to_grid(ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)[5]
-        
+        #Create quiver object #tba - make a function for quiv_scale
         quiv = get_quiver(ax, ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
-        #quiv = get_quiver(ax, ds_grid, vec_E_comp, vec_N_comp, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
         
     ax = plot_geography(ax)
     ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string)) #need to fix title function
