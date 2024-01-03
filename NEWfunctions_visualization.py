@@ -1,7 +1,7 @@
 """
 Auxiliary functions for visualizing ECCO data.
 
-Rosalie Cormier, 2023
+Rosalie Cormier, 2024
 """
 
 import os
@@ -16,11 +16,6 @@ import ecco_v4_py as ecco
 
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
-
-#from functions_divergence import comp_2d_Ek_divergence
-#from functions_ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset, get_vector_partner
-#from functions_field_variables import get_field_vars, get_variable_str
-#from functions_vorticity import get_OW_field, comp_local_Ro
 
 from functions_comp_data_meta import load_comp_data_file
 from functions_ecco_general import load_ECCO_data_file, load_grid, ds_to_field
