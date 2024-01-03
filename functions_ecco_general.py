@@ -1,7 +1,7 @@
 """
 General functions for use with ECCO data.
 
-Rosalie Cormier, 2023
+Rosalie Cormier, 2024
 """
 
 import os
@@ -38,19 +38,6 @@ def load_grid(datdir_primary):
     ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
     
     return ds_grid
-
-##############################
-"""
-def get_vector_partner(x_comp):
-    
-    y_comps = {'UVEL': 'VVEL', \
-              'UG': 'VG', \
-              'EXFtaux': 'EXFtauy', \
-              'UEk': 'VEk'}
-    y_comp = y_comps[x_comp]
-    
-    return y_comp
-"""
 
 ##############################
 
@@ -120,56 +107,27 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
 
 ##############################
 
-#def get_scalar_in_xy(ecco_ds_grid, ecco_ds_scalar, scalar_attr):
-    
-#    """
-#    Loads scalar field in xy-grid.
-#    """
-    
-#    ds_grid = ecco_ds_grid.copy()
-#    ds_grid[scalar_attr] = ecco_ds_scalar[scalar_attr]
-#    ds_grid = ds_grid.load()
-    
-#    return ds_grid
-
-##############################
-    
-def get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr): 
+def rotate_vector(curr_ds_grid, vector_ds, vector_comps):
     
     """
-    Loads vector field in xy-grid.
+    Get eastward and northward components of vector in x-y coordinates.
     """
+    
+    #xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
+    #interp_vector = xgcm_grid.interp_2d_vector({'X': vector_ds[vector_comps[0]], 'Y': vector_ds[vector_comps[1]]}, boundary='fill')
 
-    ds_grid = ecco_ds_grid.copy()
-    ds_grid = ds_grid.load()
-    XGCM_grid = ecco.get_llc_grid(ds_grid)
-
-    velc = XGCM_grid.interp_2d_vector({'X': ecco_ds_vector[xvec_attr], \
-                                           'Y': ecco_ds_vector[yvec_attr]}, \
-                                           boundary='fill')
-
-    return velc
+    vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
+    vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
+    #vel_N_comp = interp_vector['X'] * curr_ds_grid['SN'] + interp_vector['Y'] * curr_ds_grid['CS']
+    
+    return vel_E_comp, vel_N_comp
 
 ##############################
 
-def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
+def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
     
     """
-    Gets eastward and northward components of xy-vector.
-    """
-    
-    velc = get_vector_in_xy(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr)
-    velE = velc['X'] * ecco_ds_grid['CS'] - velc['Y'] * ecco_ds_grid['SN']
-    velN = velc['X'] * ecco_ds_grid['SN'] + velc['Y'] * ecco_ds_grid['CS']
-    
-    return velE, velN
-
-##############################
-
-def ds_to_field(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
-    
-    """
-    Resamples scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
+    Resample scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
     If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
     
@@ -183,30 +141,50 @@ def ds_to_field(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lonmi
     
     curr_ds_grid[field_variable] = scalar_ds[field_variable].squeeze()
     curr_ds_grid.load()
-
-    curr_field = curr_ds_grid[field_variable]
     
     latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
     lat_res, lon_res = float(lat_res), float(lon_res)
     
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, \
-    field_nearest = ecco.resample_to_latlon(curr_ds_grid.XC, curr_ds_grid.YC, curr_field, latmin, latmax, lat_res, \
-                                            lonmin, lonmax, lon_res, fill_value=np.NaN, \
+    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(curr_ds_grid.XC, \
+                                            curr_ds_grid.YC, curr_ds_grid[field_variable], latmin, latmax, \
+                                            lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
-    return new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, field_nearest
+    return lon_centers, lat_centers, lon_edges, lat_edges, field
 
 ##############################
 
-#def ecco_resample(ds_grid, curr_field, latmin, latmax, lonmin, lonmax, resolution):
+def vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
     
-#    """
-#    Resamples field to lat-lon grid.
-#    """
+    """
+    Interpolate/rotate 2D vector from DataSet (x-y coordinates) onto east-north axes.
+    Resample vector components at specific k-value (depth) to lat-lon grid.
+    """
     
-#    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_field, latmin, latmax, resolution, lonmin, lonmax, resolution, fill_value=np.NaN, mapping_method='nearest_neighbor', radius_of_influence=120000)
+    curr_ds_grid = ds_grid.copy()
     
-#    return lon_centers, lat_centers, lon_edges, lat_edges, field
+    vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds, vector_comps) #Rotate vector
+    
+    #Isolate plane at specified depth and squeeze along time axis
+    vec_E_comp, vec_N_comp = vec_E_comp.isel(k=int(depth)).squeeze(), vec_N_comp.isel(k=int(depth)).squeeze() 
+    
+    curr_ds_grid[vector_comps[0]] = vec_E_comp
+    curr_ds_grid[vector_comps[1]] = vec_N_comp
+    curr_ds_grid.load()
+    
+    latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
+    lat_res, lon_res = float(lat_res), float(lon_res)
+    
+    lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(ds_grid.XG, \
+                                            ds_grid.YG, curr_ds_grid[vector_comps[0]], latmin, latmax, \
+                                            lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    lon_centers, lat_centers, lon_edges, lat_edges, field_N_comp = ecco.resample_to_latlon(ds_grid.XG, \
+                                            ds_grid.YG, curr_ds_grid[vector_comps[1]], latmin, latmax, \
+                                            lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
+    
+    return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
 
 ##############################
 

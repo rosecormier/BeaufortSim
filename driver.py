@@ -211,6 +211,9 @@ if time_ave_type == 'monthly': #will update to include other options
 ##############################
             
 #VISUALIZE DATA
+
+spatial_bounds = [depth, latmin, latmax, lonmin, lonmax] #Will update these lines when I modify to allow other plane types
+resolutions = [lat_res, lon_res]
         
 for date_string in date_strings: #Iterate over times
 
@@ -221,25 +224,18 @@ for date_string in date_strings: #Iterate over times
         if not os.path.exists(join(visdir, plot_plane_type)):
             os.makedirs(join(visdir, plot_plane_type))
         
-        outfile = join('.', visualization_folder, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
+        outfile = join(visdir, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
         
         #Plot scalar field on its own
+        ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
 
-        spatial_bounds = [depth, latmin, latmax, lonmin, lonmax]
-        resolutions = [lat_res, lon_res]
-        ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
+        for vector_field_name in vector_fields:
 
-        #for vector_field_name in vector_fields:
-        
-            #Load vector data
+            #Set up file to save scalar/vector plot to
+            outfile = join(visdir, plot_plane_type, '{}_{}_{}_{}.pdf'.format(scalar_field_name, vector_field_name, plane_string, date_string))
             
-        #    if field_is_primary(vector_field_name): #Call function that loads ECCO data
-        #        vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
-
-        #    elif not field_is_primary(vector_field_name): #Call function that loads computed data
-        #        vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
-                
-            #Plot this vector with the scalar - tba
+            #Plot this vector with the scalar
+            ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, vector_field_name=vector_field_name)
 
         #Save plots - tba
     

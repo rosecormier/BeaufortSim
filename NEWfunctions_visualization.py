@@ -18,8 +18,8 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
 from functions_comp_data_meta import load_comp_data_file
-from functions_ecco_general import load_ECCO_data_file, load_grid, ds_to_field
-from functions_field_variables import get_field_variable, field_is_primary
+from functions_ecco_general import load_ECCO_data_file, load_grid, scalar_to_grid, vector_to_grid
+from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
 
 ##############################
 
@@ -87,7 +87,7 @@ def cbar_label(scalar_attr):
 
 def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
  
-    depth = - ds_grid.Z[k_plot].values
+    depth = -ds_grid.Z[k_plot].values
     depthstr = str(depth) + ' m depth'
         
     variable_dict = {'WVEL': 'Vertical velocity', \
@@ -111,24 +111,26 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
 
 ##############################
 
-#def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax, resolution, quiv_scale):
+def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
     
-#    """
-#    Resamples to lat-lon grid and gets quiver object given an ax.
-#    """
-"""    
-    ds_grid = ecco_ds_grid.copy()
+    """
+    Resamples to lat-lon grid and gets quiver object given an ax.
+    """
     
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = ecco_resample(ds_grid, u_plot, latmin, latmax, lonmin, lonmax, resolution)
-    v_nearest = ecco_resample(ds_grid, v_plot, latmin, latmax, lonmin, lonmax, resolution)[4]
+    #curr_ds_grid = ds_grid.load()
+
+    lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+    
+    #lons, lats, lon_edges, lat_edges, vec_x_comp = vector_to_grid(curr_ds_grid, vec_E_comp, latmin, latmax, lonmin, lonmax, resolution)
+    #vec_y_comp = ecco_resample(curr_ds_grid, vec_N_comp, latmin, latmax, lonmin, lonmax, resolution)[4]
             
     skip = (slice(0, -1, 1), slice(0, -1, 1))
         
-    quiv = ax.quiver(new_grid_lon_centers[skip], new_grid_lat_centers[skip], u_nearest[skip], v_nearest[skip], color='k', \
+    quiv = ax.quiver(lons[skip], lats[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
                      transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
     
     return quiv
-"""
+
 ##############################
 
 def plot_geography(ax, labels=True):
@@ -191,13 +193,18 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
 
 ##############################
 
-def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='both'):
+def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='both', vector_field_name=None):
     
     """
-    Creates pcolormesh plot of a scalar variable in a subdomain of the Arctic.
+    Create pcolormesh plot of a scalar variable in a subdomain of the Arctic.
+    Optional - overlay quiver plot of a vector variable.
     """
     
     ds_grid = load_grid(datdir_primary) #Load the ECCO grid
+    
+    if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
+        depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
+        lat_res, lon_res = resolutions[0], resolutions[1]
     
     #Load the scalar DataSet
     
@@ -206,12 +213,8 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
 
     elif not field_is_primary(scalar_field_name): #Call function that loads computed data
         scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
-        
-    if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
-        depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
-        lat_res, lon_res = resolutions[0], resolutions[1]
 
-    lons, lats, lon_edges, lat_edges, scalar_field = ds_to_field(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+    lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
     
     vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
 
@@ -221,52 +224,26 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
         
     #Create pcolormesh object #tba - make a function for cmap
     ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) 
+    
+    if vector_field_name is not None:
+
+        #Load the vector DataSet
+        
+        if field_is_primary(vector_field_name): #Call function that loads ECCO data
+            vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
+
+        elif not field_is_primary(vector_field_name): #Call function that loads computed data
+            vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
+        
+        #vec_E_comp = vector_to_grid(ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)[4]
+        #vec_N_comp = vector_to_grid(ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)[5]
+        
+        quiv = get_quiver(ax, ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+        #quiv = get_quiver(ax, ds_grid, vec_E_comp, vec_N_comp, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
         
     ax = plot_geography(ax)
-    ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string))
+    ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string)) #need to fix title function
     fig.colorbar((color), ax=ax, label=cbar_label(scalar_field_name), extend=extend, location='bottom')
     
     plt.savefig(outfile)
     plt.close()
-    
-##############################
-"""
-def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
-                           scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", \
-                           lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3):
-    
-"""
-    #Creates pcolormesh plot of scalar variable in a subdomain of the Arctic,
-    #    overlaid with quiver plot of vector variable.
-"""
-
-    scalar_mean = comp_temp_mean(scalars)
-    scalar = scalar_mean
-        
-    vecE_mean, vecN_mean = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
-    vecE, vecN = vecE_mean, vecN_mean
-
-    latmin, latmax, lonmin, lonmax = lats_lons
-
-    fig = plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))
-    ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
-    
-    vmin, vmax = get_scalar_bounds(scalar_bounds, scalar) #Set scalar bounds
-    
-    #Create pcolormesh object
-    ax, color = get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=logscale) 
-   
-    quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
-    
-    ax = plot_geography(ax)
-    ax.set_title(pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
-        
-    fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='bottom')
-    
-    plt.savefig(outfile)
-    plt.close()
-    
-    return scalar_mean, vecE_mean, vecN_mean
-"""

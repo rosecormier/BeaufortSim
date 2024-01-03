@@ -1,12 +1,12 @@
 """
 Contains functions that get the following attributes associated with a particular field:
     -String ("field variable") used generally in data storage
+    -Strings ("vector comps") associated with x- and y-components of a vector variable
     -Boolean ("field is primary") indicating whether field comes directly from ECCO
     -Monthly shortname used in monthly-averaged datafile directories
     -String ("monthly nc string") used in monthly-averaged nc datafiles
-    -String ("field string") to be used in output filenames
 
-Rosalie Cormier, 2023
+Rosalie Cormier, 2024
 """
 
 ##############################
@@ -26,6 +26,21 @@ def get_field_variable(field_name):
                       'wind_stress': 'EXFtauxEXFtauy'}
     
     return field_variables[field_name]
+
+##############################
+
+def get_vector_comps(vector_field_name):
+
+    horizontal_comps = {'horizontal_vel': 'UVEL', \
+                       'geostrophic_vel': 'UG', \
+                       'Ek_vel': 'UEk', \
+                       'wind_stress': 'EXFtaux'}
+    vertical_comps = {'horizontal_vel': 'VVEL', \
+                     'geostrophic_vel': 'VG', \
+                     'Ek_vel': 'VEk', \
+                     'wind_stress': 'EXFtauy'}
+    
+    return horizontal_comps[vector_field_name], vertical_comps[vector_field_name]
 
 ##############################
 
