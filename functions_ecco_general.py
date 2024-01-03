@@ -106,7 +106,6 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
 
     """
     Load a specified ECCO (primary) DataSet.
-    If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
     
     if time_ave_type == 'monthly': #will update to include other options
@@ -115,11 +114,7 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
     data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
     
     dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
-    #dataset.load()
-                            
-    #if field_name == 'vertical_vel': #If w, interpolate vertically
-    #    xgcm_grid = ecco.get_llc_grid(ds_grid)
-    #    dataset['WVEL'] = xgcm_grid.interp(dataset.WVEL, axis="Z")
+    dataset.load()
     
     return dataset
 
@@ -171,13 +166,21 @@ def rotate_vector(ecco_ds_grid, ecco_ds_vector, xvec_attr, yvec_attr):
 
 ##############################
 
-def ds_to_field(ds_grid, scalar_ds, field_variable, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
+def ds_to_field(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
     
     """
     Resamples scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
+    If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
-
+    
     curr_ds_grid = ds_grid.copy()
+    
+    if field_variable == 'WVEL': #If w, interpolate vertically
+        xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
+        scalar_ds['WVEL'] = xgcm_grid.interp(scalar_ds.WVEL, axis='Z')
+    
+    scalar_ds = scalar_ds.isel(k=int(depth)) #Isolate plane at specified depth
+    
     curr_ds_grid[field_variable] = scalar_ds[field_variable].squeeze()
     curr_ds_grid.load()
 

@@ -216,7 +216,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
         depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
         lat_res, lon_res = resolutions[0], resolutions[1]
 
-    lons, lats, lon_edges, lat_edges, scalar_field = ds_to_field(ds_grid, scalar_ds.isel(k=int(depth)), get_field_variable(scalar_field_name), latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+    lons, lats, lon_edges, lat_edges, scalar_field = ds_to_field(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
     
     vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
 
@@ -229,7 +229,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, time_ave_t
         
     ax = plot_geography(ax)
     ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string))
-    
     fig.colorbar((color), ax=ax, label=cbar_label(scalar_field_name), extend=extend, location='bottom')
     
     plt.savefig(outfile)
