@@ -12,7 +12,7 @@ import ecco_v4_py as ecco
 from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
-from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
+from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
 
@@ -101,24 +101,44 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
     data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
     
     dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
-    dataset.load()
+    #dataset.load()
     
     return dataset
 
 ##############################
 
-def rotate_vector(curr_ds_grid, vector_ds, vector_comps):
+def rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps):
     
     """
     Get eastward and northward components of vector in x-y coordinates.
     """
-    
-    #xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
-    #interp_vector = xgcm_grid.interp_2d_vector({'X': vector_ds[vector_comps[0]], 'Y': vector_ds[vector_comps[1]]}, boundary='fill')
 
-    vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
-    vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
-    #vel_N_comp = interp_vector['X'] * curr_ds_grid['SN'] + interp_vector['Y'] * curr_ds_grid['CS']
+    if field_is_primary(vector_field_name):
+        
+        vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
+        vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
+        xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
+        interp_vector = xgcm_grid.interp_2d_vector({'X': vector_ds[vector_comps[0]], 'Y': vector_ds[vector_comps[1]]}, boundary='fill')
+        #vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
+        vel_E_comp = interp_vector['X'] * curr_ds_grid['CS'] - interp_vector['Y'] * curr_ds_grid['SN']
+        #vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
+        vel_N_comp = interp_vector['X'] * curr_ds_grid['SN'] + interp_vector['Y'] * curr_ds_grid['CS']
+        
+    elif not field_is_primary(vector_field_name):
+        
+        vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
+        vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
+        
+        vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
+        vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
+
+        #if not surface:
+        #    vel_E_comp, vel_N_comp = vel_E_comp.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
+
+        #elif surface:
+        #    u_g, v_g = u_g.squeeze(), v_g.squeeze()
+
+        #return u_g, v_g
     
     return vel_E_comp, vel_N_comp
 
@@ -154,7 +174,7 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
 
 ##############################
 
-def vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
+def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res):
     
     """
     Interpolate/rotate 2D vector from DataSet (x-y coordinates) onto east-north axes.
@@ -163,10 +183,12 @@ def vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonm
     
     curr_ds_grid = ds_grid.copy()
     
-    vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds, vector_comps) #Rotate vector
+    vector_comps = get_vector_comps(vector_field_name)
+    vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds.isel(k=int(depth)), vector_field_name, vector_comps) #Rotate vector
     
     #Isolate plane at specified depth and squeeze along time axis
-    vec_E_comp, vec_N_comp = vec_E_comp.isel(k=int(depth)).squeeze(), vec_N_comp.isel(k=int(depth)).squeeze() 
+    #vec_E_comp, vec_N_comp = vec_E_comp.isel(k=int(depth)).squeeze(), vec_N_comp.isel(k=int(depth)).squeeze() 
+    vec_E_comp, vec_N_comp = vec_E_comp.squeeze(), vec_N_comp.squeeze()
     
     curr_ds_grid[vector_comps[0]] = vec_E_comp
     curr_ds_grid[vector_comps[1]] = vec_N_comp
@@ -175,14 +197,17 @@ def vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonm
     latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
     lat_res, lon_res = float(lat_res), float(lon_res)
     
-    lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(ds_grid.XG, \
-                                            ds_grid.YG, curr_ds_grid[vector_comps[0]], latmin, latmax, \
+    try:
+        lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XG, \
+                                            curr_ds_grid.YG, curr_ds_grid[vector_comps[0]], latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
-    lon_centers, lat_centers, lon_edges, lat_edges, field_N_comp = ecco.resample_to_latlon(ds_grid.XG, \
+        lon_centers, lat_centers, lon_edges, lat_edges, field_N_comp = ecco.resample_to_latlon(ds_grid.XG, \
                                             ds_grid.YG, curr_ds_grid[vector_comps[1]], latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
+    except:
+        print(curr_ds_grid)
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
 

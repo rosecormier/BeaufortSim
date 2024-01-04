@@ -84,7 +84,7 @@ def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type
         field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
 
     filename = field_nc_string + date_string + '.nc'
-    path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
+    path_to_file = join(datdir_secondary, field_shortname, filename)
     
     try: #Try to load DataSet
         computed_ds = xr.open_mfdataset(path_to_file, engine="scipy")

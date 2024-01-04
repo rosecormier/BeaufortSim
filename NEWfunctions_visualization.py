@@ -117,8 +117,6 @@ def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonm
     Resamples to lat-lon grid and gets quiver object given an ax.
     """
     
-    #curr_ds_grid = ds_grid.load()
-
     lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
     
     #lons, lats, lon_edges, lat_edges, vec_x_comp = vector_to_grid(curr_ds_grid, vec_E_comp, latmin, latmax, lonmin, lonmax, resolution)
@@ -227,12 +225,12 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
         
         if field_is_primary(vector_field_name): #Load ECCO DataSet
             vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
-
+            
         elif not field_is_primary(vector_field_name): #Load computed DataSet
             vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
         
         #Create quiver object #tba - make a function for quiv_scale
-        quiv = get_quiver(ax, ds_grid, vector_ds, get_vector_comps(vector_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+        quiv = get_quiver(ax, ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
         
     ax = plot_geography(ax)
     ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string)) #need to fix title function
