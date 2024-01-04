@@ -6,7 +6,7 @@ This script uses the data provided in the input file (input.txt) to do all of th
     -Plots data for all fields specified and saves plots; and
     -Removes primary data files.
 
-R. Cormier, F. Poulin, 2023
+R. Cormier, F. Poulin, 2024
 """
 
 import os
