@@ -28,10 +28,10 @@ plt.rcParams['text.usetex'] = True
 
 ##############################
 
-def cbar_label(scalar_attr):
+def get_cbar_label(scalar_field_name):
     
     """
-    Returns label for plot colorbar.
+    Return label for plot colorbar.
     """
 
     cbar_label_dict = {'pressure': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
@@ -41,72 +41,45 @@ def cbar_label(scalar_attr):
                        'normal_strain': r'Normal strain $(1/s^2)$', \
                        'shear_strain': r'Shear strain $(1/s^2)$', \
                        '2D_div_vel': 'Horizontal velocity divergence (1/s)'}
-    label = cbar_label_dict[scalar_attr]
+    
+    label = cbar_label_dict[scalar_field_name]
+    
     return label
 
 ##############################
 
-#def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr, resid=False):
-    
-#    """
-#    Returns title for contourf-quiver plot.
-#    """
-"""    
-    ds_grid = ecco_ds_grid.copy()
-   
-    depth = - ds_grid.Z[k_plot].values
-    depthstr = str(depth) + ' m depth'
-        
-    scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
-                  'OW': 'Okubo-Weiss parameter', \
-                  'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
-                  'Ro_l': 'Local Rossby number', \
-                  'ZETA': 'Vorticity', \
-                  'WVEL': 'Vertical component of water velocity', \
-                  'DIVU': 'Divergence of horizontal water velocity', \
-                  'DIVUEk': 'Divergence of Ekman current'}
-    scalar_str = scalar_dict[scalar_attr]
-    
-    vector_dict = {'UVEL': 'horizontal water velocity', \
-                  'UG': 'geostrophic water velocity', \
-                  'UEk': 'Ekman current'}
-    vector_str = vector_dict[xvec_attr]
-    
-    if resid:
-        title = scalar_str + ' and ' + vector_str + \
-            ' residuals (relative to annual mean) \n in Arctic Circle at {}, {} \n'.format(depthstr, \
-                                                                                           datestr)
-
-    else:
-        title = scalar_str + ' and ' + vector_str + ' in BGR \n at {}, {} \n'.format(depthstr, \
-                                                                                               datestr)
-    
-    return title
-"""
-##############################
-
-def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
+def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, spatial_bounds, ds_grid, date_string):
  
-    depth = -ds_grid.Z[k_plot].values
-    depthstr = str(depth) + ' m depth'
+    """
+    Return main title for plot.
+    """
+
+    if plot_plane_type == 'depth_const':
+        k_val = int(spatial_bounds[0])
+        depth = -ds_grid.Z[k_val].values
+        depth_string = str(depth) + ' m depth'
         
-    variable_dict = {'WVEL': 'Vertical velocity', \
-                    'Delta_u': r'$|\Delta \vec{u}|_n$', \
+    field_titles = {'RHOAnoma': 'Density Anomaly', \
+                    'PHIHYDcR': 'Hydrostatic Pressure Anomaly', \
+                    'WVEL': 'Vertical Velocity', \
                     'ZETA': 'Vorticity', \
-                    'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
-                    'OW': 'Okubo-Weiss parameter', \
-                    's': 'Strain', \
-                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
-                    'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
-                    'Ro_l': 'Local Rossby number', \
-                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
-                    'PHIHYDcR': 'Hydrostatic pressure anomaly', \
-                    'DIVU': 'Divergence of horizontal water velocity', \
-                    'DIVUEk': 'Divergence of Ekman current'}
-    variable_name = variable_dict[variable]
+                    'NORMAL': 'Normal Strain', \
+                    'SHEAR': 'Shear Strain', \
+                    'DIVU': 'Divergence of Horizontal Velocity', \
+                    'UVELVVEL': 'Horizontal Velocity', \
+                    'UGVG': 'Geostrophic Velocity', \
+                    'EXFtauxEXFtauy': 'Surface Wind-on-Ocean Stress', \
+                    'UEkVEk': 'Ekman Velocity'}
+
+    scalar_field_title = field_titles[get_field_variable(scalar_field_name)]
     
-    title = variable_name + ' in BGR at {}, {} \n'.format(depthstr, datestr)
-    
+    if vector_field_name is None:
+        title = '{} in BGR at {}, {} \n'.format(scalar_field_title, depth_string, date_string)
+
+    elif vector_field_name is not None:
+        vector_field_title = field_titles[get_field_variable(vector_field_name)]
+        title = '{} and {} in BGR \n at {}, {} \n'.format(scalar_field_title, vector_field_title, depth_string, date_string)
+        
     return title
 
 ##############################
@@ -114,7 +87,7 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
 def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
     
     """
-    Resamples to lat-lon grid and gets quiver object given an ax.
+    Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
     """
     
     lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
@@ -131,7 +104,7 @@ def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonm
 def plot_geography(ax, labels=True):
     
     """
-    Adds land, coastlines, and grid to an ax.
+    Add land, coastlines, and grid to an ax.
     """
     
     ax.add_feature(cfeature.LAND)
@@ -196,10 +169,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     """
     
     ds_grid = load_grid(datdir_primary) #Load the ECCO grid
-    
-    if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
-        depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
-        lat_res, lon_res = resolutions[0], resolutions[1]
 
     if field_is_primary(scalar_field_name): #Load ECCO DataSet
         scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
@@ -207,6 +176,10 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     elif not field_is_primary(scalar_field_name): #Load computed DataSet
         scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
+    if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
+        depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
+        lat_res, lon_res = resolutions[0], resolutions[1]
+        
     lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
     
     vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
@@ -215,8 +188,8 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
         
-    #Create pcolormesh object #tba - make a function for cmap
-    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) 
+    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) #Create pcolormesh object 
+    #tba - make a function for cmap
     
     if vector_field_name is not None:
         
@@ -226,12 +199,14 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
         elif not field_is_primary(vector_field_name): #Load computed DataSet
             vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
         
-        #Create quiver object #tba - make a function for quiv_scale
+        #Create quiver object 
         quiv = get_quiver(ax, ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+        #tba - make a function for quiv_scale
         
     ax = plot_geography(ax)
-    ax.set_title(pcolormesh_k_title(ds_grid, int(depth), get_field_variable(scalar_field_name), date_string)) #need to fix title function
-    fig.colorbar((color), ax=ax, label=cbar_label(scalar_field_name), extend=extend, location='bottom')
+    ax.set_title(get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, spatial_bounds, ds_grid, date_string))
+    
+    fig.colorbar((color), ax=ax, label=get_cbar_label(scalar_field_name), extend=extend, location='bottom')
     
     plt.savefig(outfile)
     plt.close()
