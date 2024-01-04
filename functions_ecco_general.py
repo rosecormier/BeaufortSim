@@ -41,7 +41,7 @@ def load_grid(datdir_primary):
 
 ##############################
 
-def get_monthstr(i):
+def get_monthstr(i): #would like to simplify this
     
     """
     Returns a string corresponding to month i.
@@ -54,7 +54,7 @@ def get_monthstr(i):
 
 ##############################
 
-def get_month_name(monthstr):
+def get_month_name(monthstr): #would like to simplify this
     
     monthnames = {"01": [0, "January"], "02": [1, "February"], "03": [2, "March"], "04": [3, "April"], "05": [4, "May"], \
                   "06": [5, "June"], "07": [6, "July"], "08": [7, "August"], "09": [8, "September"], "10": [9, "October"], \
@@ -101,7 +101,6 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
     data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
     
     dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
-    #dataset.load()
     
     return dataset
 
@@ -117,11 +116,10 @@ def rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps):
         
         vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
         vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
+        
         xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
         interp_vector = xgcm_grid.interp_2d_vector({'X': vector_ds[vector_comps[0]], 'Y': vector_ds[vector_comps[1]]}, boundary='fill')
-        #vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
         vel_E_comp = interp_vector['X'] * curr_ds_grid['CS'] - interp_vector['Y'] * curr_ds_grid['SN']
-        #vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
         vel_N_comp = interp_vector['X'] * curr_ds_grid['SN'] + interp_vector['Y'] * curr_ds_grid['CS']
         
     elif not field_is_primary(vector_field_name):
@@ -131,14 +129,6 @@ def rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps):
         
         vel_E_comp = vector_ds[vector_comps[0]] * curr_ds_grid['CS'] - vector_ds[vector_comps[1]] * curr_ds_grid['SN']
         vel_N_comp = vector_ds[vector_comps[0]] * curr_ds_grid['SN'] + vector_ds[vector_comps[1]] * curr_ds_grid['CS']
-
-        #if not surface:
-        #    vel_E_comp, vel_N_comp = vel_E_comp.isel(k=k_val).squeeze(), v_g.isel(k=k_val).squeeze()
-
-        #elif surface:
-        #    u_g, v_g = u_g.squeeze(), v_g.squeeze()
-
-        #return u_g, v_g
     
     return vel_E_comp, vel_N_comp
 
@@ -185,10 +175,7 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     
     vector_comps = get_vector_comps(vector_field_name)
     vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds.isel(k=int(depth)), vector_field_name, vector_comps) #Rotate vector
-    
-    #Isolate plane at specified depth and squeeze along time axis
-    #vec_E_comp, vec_N_comp = vec_E_comp.isel(k=int(depth)).squeeze(), vec_N_comp.isel(k=int(depth)).squeeze() 
-    vec_E_comp, vec_N_comp = vec_E_comp.squeeze(), vec_N_comp.squeeze()
+    vec_E_comp, vec_N_comp = vec_E_comp.squeeze(), vec_N_comp.squeeze() #Squeeze along time axis
     
     curr_ds_grid[vector_comps[0]] = vec_E_comp
     curr_ds_grid[vector_comps[1]] = vec_N_comp
@@ -197,17 +184,13 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
     lat_res, lon_res = float(lat_res), float(lon_res)
     
-    try:
-        lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XG, \
+    lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XG, \
                                             curr_ds_grid.YG, curr_ds_grid[vector_comps[0]], latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
-        lon_centers, lat_centers, lon_edges, lat_edges, field_N_comp = ecco.resample_to_latlon(ds_grid.XG, \
-                                            ds_grid.YG, curr_ds_grid[vector_comps[1]], latmin, latmax, \
+    field_N_comp = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_ds_grid[vector_comps[1]], latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
-                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
-    except:
-        print(curr_ds_grid)
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
 
