@@ -304,8 +304,8 @@ if clear_data_files:
         if vector_field_name in ['geostrophic_vel', 'Ek_vel']: #Delete density
 
             if time_ave_type == 'monthly': #will add other options
-                density_shortname = get_monthly_shortname(get_field_variable('density'))
-                density_nc_string = get_monthly_nc_string(get_field_variable('density'))
+                density_shortname = get_monthly_shortname(get_field_variable('density_anom'))
+                density_nc_string = get_monthly_nc_string(get_field_variable('density_anom'))
                 
             if os.path.exists(join(datdir_primary, density_shortname)): #To avoid errors, only remove files after confirming directory exists
                 for date_string in date_strings: #Iterate over times

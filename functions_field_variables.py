@@ -1,11 +1,11 @@
 """
-Contains functions that get the following attributes associated with a particular field:
+Contains functions that get each of the following attributes associated with a particular field:
     -String ("field variable") used generally in data storage
     -Strings ("vector comps") associated with x- and y-components of a vector variable
     -Boolean ("field is primary") indicating whether field comes directly from ECCO
     -Monthly shortname used in monthly-averaged datafile directories
     -String ("monthly nc string") used in monthly-averaged nc datafiles
-
+    
 Rosalie Cormier, 2024
 """
 
@@ -13,7 +13,7 @@ Rosalie Cormier, 2024
 
 def get_field_variable(field_name):
 
-    field_variables = {'density': 'RHOAnoma', \
+    field_variables = {'density_anom': 'RHOAnoma', \
                       'pressure': 'PHIHYDcR', \
                       'vertical_vel': 'WVEL', \
                       'horizontal_vel': 'UVELVVEL', \

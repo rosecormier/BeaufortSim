@@ -165,11 +165,11 @@ def comp_geostrophic_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_seco
     if time_ave_type == 'monthly':
         
         #Look for the density/pressure file in primary directory and download if it doesn't exist
-        download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+        download_data.main(field_name='density_anom', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
         
-        ds_denspress = load_ECCO_data_file('density', date_string, datdir_primary, time_ave_type) #Load DataSet
+        ds_denspress = load_ECCO_data_file('density_anom', date_string, datdir_primary, time_ave_type) #Load DataSet
         
         #Extract density and pressure-like from the DataSet
         density, pressure_like = get_density_and_pressure(ds_denspress, rho_ref)
@@ -200,7 +200,7 @@ def comp_Ek_vel(ds_grid, monthstr, yearstr, datdir_primary, datdir_secondary, rh
     if time_ave_type == 'monthly':
         
         #Look for the density/pressure file in primary directory and download if it doesn't exist
-        download_data.main(field_name='density', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+        download_data.main(field_name='density_anom', initial_month=monthstr, initial_year=yearstr, final_month=monthstr, final_year=yearstr, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
         
         date_string = yearstr + '-' + monthstr
         
