@@ -92,4 +92,4 @@ def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type
         return computed_ds
     
     except:
-        print("DataSet does not exist." + field_name)
+        print("DataSet does not exist.")
