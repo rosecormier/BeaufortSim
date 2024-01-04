@@ -21,8 +21,7 @@ import download_data
 from functions_comp_data_meta import create_comp_data_file
 from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string
-
-from NEWfunctions_visualization import ArcCir_pcolormesh
+from functions_visualization import ArcCir_pcolormesh
 
 ##############################
 
