@@ -236,8 +236,6 @@ for date_string in date_strings: #Iterate over times
             
             #Plot this vector with the scalar
             ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, vector_field_name=vector_field_name)
-
-        #Save plots - tba
     
 ##############################
 
