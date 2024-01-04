@@ -118,10 +118,7 @@ def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonm
     """
     
     lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
-    
-    #lons, lats, lon_edges, lat_edges, vec_x_comp = vector_to_grid(curr_ds_grid, vec_E_comp, latmin, latmax, lonmin, lonmax, resolution)
-    #vec_y_comp = ecco_resample(curr_ds_grid, vec_N_comp, latmin, latmax, lonmin, lonmax, resolution)[4]
-            
+
     skip = (slice(0, -1, 1), slice(0, -1, 1))
         
     quiv = ax.quiver(lons[skip], lats[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
