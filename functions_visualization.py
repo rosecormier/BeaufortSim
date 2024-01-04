@@ -201,7 +201,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
         
         #Create quiver object 
         quiv = get_quiver(ax, ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
-        #tba - make a function for quiv_scale
         
     ax = plot_geography(ax)
     ax.set_title(get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, spatial_bounds, ds_grid, date_string))
