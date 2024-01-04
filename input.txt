@@ -39,7 +39,7 @@ lon_range       = -180, -90       # West bound (degrees), east bound (degrees)
 ### Field selection ###
 ####################
 
-scalar_fields   = pressure, vorticity # Comma-separated scalar fields, from options density, pressure, vertical_vel, vorticity, normal_strain, shear_strain, 2D_div_vel
+scalar_fields   = pressure, vorticity # Comma-separated scalar fields, from options density_anom, pressure, vertical_vel, vorticity, normal_strain, shear_strain, 2D_div_vel
 vector_fields   = horizontal_vel, Ek_vel # Comma-separated vector fields, from options horizontal_vel, geostrophic_vel, Ek_vel, wind_stress
 
 ####################
