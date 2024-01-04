@@ -32,7 +32,7 @@ def load_grid(datdir_primary):
     
         #Download ECCO grid parameters (date is arbitrary)
         ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
-                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
+                     EndDate="2000-01-02", download_root_dir=datdir_primary, n_workers=6, \
                      force_redownload=False)
 
     ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
