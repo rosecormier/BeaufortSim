@@ -6,10 +6,10 @@ rho_ref         = 1029.0          # Reference density of seawater (kg/m^3)
 nu_E            = 1e-2            # Eddy viscosity (m^2/s)
 
 ####################
-### Temporal inputs - days and months are to be provided as two digits each! ###
+### Temporal inputs ###
 ####################
 
-time_ave_type   = monthly         # "monthly", "daily", or "season"
+time_ave_type   = seasonal        # "monthly", "daily", or "seasonal"
 
 initial_month   = 1995, 01        # Year (integer), month (integer)
 final_month     = 1995, 12        # Year (integer), month (integer)
@@ -17,8 +17,9 @@ final_month     = 1995, 12        # Year (integer), month (integer)
 initial_day     = 01              # Day (integer); only used if "time_ave_type" is "daily"
 final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
 
-season_start    = 01              # First month of season (integer); only used if "time_ave_type" is "season"
-season_end      = 02              # Last month of season (integer); only used if "time_ave_type" is "season"
+# To do full-year averages, must set season_start = 01 and season_end = 12
+season_start    = 11              # First month of season (integer); only used if "time_ave_type" is "seasonal"
+season_end      = 05              # Last month of season (integer); only used if "time_ave_type" is "seasonal"
 
 ####################
 ### Spatial inputs ###
