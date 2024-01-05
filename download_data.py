@@ -89,6 +89,8 @@ def main(**kwargs):
                         if month > 12:
                             year += 1
                             month = 1
+                        elif month == season_end:
+                            month = season_start
                     
                 if year == int(final_year):
                     while month <= int(final_month):
