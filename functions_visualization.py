@@ -17,7 +17,7 @@ import ecco_v4_py as ecco
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
-from functions_comp_data_meta import load_comp_data_file
+from functions_comp_secondary_meta import load_secondary_data_file
 from functions_ecco_general import load_ECCO_data_file, load_grid, scalar_to_grid, vector_to_grid
 from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
 
@@ -174,7 +174,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
         scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
 
     elif not field_is_primary(scalar_field_name): #Load computed DataSet
-        scalar_ds = load_comp_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
+        scalar_ds = load_secondary_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
     if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
         depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
@@ -197,7 +197,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
             vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
             
         elif not field_is_primary(vector_field_name): #Load computed DataSet
-            vector_ds = load_comp_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
+            vector_ds = load_secondary_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
         
         #Create quiver object 
         quiv = get_quiver(ax, ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
