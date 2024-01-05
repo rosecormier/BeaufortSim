@@ -17,7 +17,7 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
-from functions_comp_data_meta import create_comp_data_file
+from functions_comp_secondary_meta import create_secondary_data_file
 from functions_ecco_general import get_monthstr
 from functions_field_variables import field_is_primary
 from functions_remove_data import remove_primary_files
@@ -72,9 +72,13 @@ f.write("final_month = " + final_month + "\n" + "final_year = " + final_year + "
 if time_ave_type == "daily":
     initial_day, final_day = param_data.initial_day, param_data.final_day
     f.write("initial_day = " + initial_day + "\n" + "final_day = " + final_day + "\n\n")
-elif time_ave_type == "season":
+    time_kwargs = [initial_day, final_day]
+elif time_ave_type == "seasonal":
     season_start, season_end = param_data.season_start, param_data.season_end
     f.write("season_start = " + season_start + "\n" + "season_end = " + season_end + "\n\n")
+    time_kwargs = [season_start, season_end]
+else:
+    time_kwargs = None
 
 #Spatial inputs
     
@@ -166,29 +170,30 @@ for vector_field_name in vector_fields:
 
 #Iterate over primary scalar fields; download associated data
 for field_name in primary_scalar_fields:
-    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
     
 #Iterate over primary vector fields; download associated data
 for field_name in primary_vector_fields:
-    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary)
+    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
 
 ##############################
 
 #COMPUTE SECONDARY DATA
 
 for field_name in secondary_scalar_fields: #Iterate over scalar fields; compute data if nonexistent
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
+    create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
 for field_name in secondary_vector_fields: #Iterate over vector fields; compute data if nonexistent
-    create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
+    create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
 
 ##############################
 
 #ASSEMBLE A LIST OF STRINGS REPRESENTING TIMES TO ITERATE OVER
 
+date_strings = []
+
 if time_ave_type == 'monthly': #will update to include other options
 
-    date_strings = []
     month, year = int(initial_month), int(initial_year)
     
     #Append every eligible date string to list 'date_strings'
@@ -206,7 +211,7 @@ if time_ave_type == 'monthly': #will update to include other options
             date_string = final_year + '-' + get_monthstr(month)
             date_strings.append(date_string)
             month += 1
-            
+
 ##############################
             
 #VISUALIZE DATA

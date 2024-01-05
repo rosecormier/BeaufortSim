@@ -1,5 +1,6 @@
 """
 For a specified ECCO field (scalar or vector) and date range, iterates over time and downloads the field data.
+If "seasonal" time-average type is specified, saves seasonal data.
 
 Rosalie Cormier, 2023
 """ 
@@ -19,42 +20,83 @@ def main(**kwargs):
         final_month, final_year = kwargs.get('final_month'), kwargs.get('final_year')
         time_ave_type = kwargs.get('time_ave_type')
         datdir_primary = kwargs.get('datdir_primary')
-    
+        time_kwargs = kwargs.get('time_kwargs')
+        
         month, year = int(initial_month), int(initial_year)
     
-        if time_ave_type == "monthly": #This is the only case supported now; will modify to add others
+        if time_ave_type == "monthly":
         
             field_shortname = get_monthly_shortname(get_field_variable(field_name))
             field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
     
             while year < int(final_year):
-            
                 yearstr = str(year)
-            
                 while month <= 12:
-                
                     monthstr = get_monthstr(month)
-                   
                     endmonth = get_month_end(monthstr, yearstr)
                     StartDate, EndDate = yearstr+"-"+monthstr+"-02", yearstr+"-"+monthstr+"-"+endmonth
                     ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-                        
                     month += 1
-                
                 year += 1
                 month = 1
         
             if year == int(final_year):
-
                 while month <= int(final_month):
-
                     monthstr = get_monthstr(month)
-                   
                     endmonth = get_month_end(monthstr, final_year)
                     StartDate, EndDate = final_year+"-"+monthstr+"-02", final_year+"-"+monthstr+"-"+endmonth
                     ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-
                     month += 1
+        
+        elif time_ave_type == "seasonal":
+            
+            field_shortname = get_monthly_shortname(get_field_variable(field_name))
+            field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
+            
+            season_start, season_end = int(time_kwargs[0]), int(time_kwargs[1])
+            
+            if season_start < season_end:
+                
+                while year < int(final_year):
+                    yearstr = str(year)
+                    while month <= season_end:
+                        monthstr = get_monthstr(month)
+                        endmonth = get_month_end(monthstr, yearstr)
+                        StartDate, EndDate = yearstr+"-"+monthstr+"-02", yearstr+"-"+monthstr+"-"+endmonth
+                        ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+                        month += 1
+                    year += 1
+                    month = season_start
+                    
+                if year == int(final_year):
+                    while month <= season_end:
+                        monthstr = get_monthstr(month)
+                        endmonth = get_month_end(monthstr, final_year)
+                        StartDate, EndDate = final_year+"-"+monthstr+"-02", final_year+"-"+monthstr+"-"+endmonth
+                        ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+                        month += 1
+                        
+            elif season_start > season_end:
+                
+                while year <= int(final_year):
+                    yearstr = str(year)
+                    while (season_start <= month and month <= 12) or (month <= season_end):
+                        monthstr = get_monthstr(month)
+                        endmonth = get_month_end(monthstr, yearstr)
+                        StartDate, EndDate = yearstr+"-"+monthstr+"-02", yearstr+"-"+monthstr+"-"+endmonth
+                        ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+                        month += 1
+                        if month > 12:
+                            year += 1
+                            month = 1
+                    
+                if year == int(final_year):
+                    while month <= int(final_month):
+                        monthstr = get_monthstr(month)
+                        endmonth = get_month_end(monthstr, final_year)
+                        StartDate, EndDate = final_year+"-"+monthstr+"-02", final_year+"-"+monthstr+"-"+endmonth
+                        ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+                        month += 1
     
     print("Done downloading ECCO data.")
     
