@@ -31,9 +31,7 @@ def load_grid(datdir_primary):
         os.makedirs(grid_params_directory)
     
         #Download ECCO grid parameters (date is arbitrary)
-        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
-                     EndDate="2000-01-02", download_root_dir=datdir_primary, n_workers=6, \
-                     force_redownload=False)
+        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
 
     ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
     
@@ -41,14 +39,13 @@ def load_grid(datdir_primary):
 
 ##############################
 
-def get_monthstr(i): #would like to simplify this
+def get_monthstr(i):
     
     """
     Returns a string corresponding to month i.
     """
     
-    month_dict = {1: "01", 2: "02", 3: "03", 4: "04", 5: "05", 6: "06",
-              7: "07", 8: "08", 9: "09", 10: "10", 11: "11", 12: "12"}
+    month_dict = {1: "01", 2: "02", 3: "03", 4: "04", 5: "05", 6: "06", 7: "07", 8: "08", 9: "09", 10: "10", 11: "11", 12: "12"}
     
     return month_dict[((i-1) % 12) + 1]
 
@@ -60,13 +57,10 @@ def get_month_end(monthstr, yearstr):
     Return string representing last day of specified month.
     """
     
-    month_end_dict = {"01": "31", "03": "31", "04": "30",
-                 "05": "31", "06": "30", "07": "31", "08": "31",
-                 "09": "30", "10": "31", "11": "30", "12": "31"}
+    month_end_dict = {"01": "31", "03": "31", "04": "30", "05": "31", "06": "30", "07": "31", "08": "31", "09": "30", "10": "31", "11": "30", "12": "31"}
     
     if monthstr != "02":
         endmonth = month_end_dict[monthstr]
-        
     elif monthstr == "02":
         if int(yearstr) % 4 == 0:
             endmonth = "29"
