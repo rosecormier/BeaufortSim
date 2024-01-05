@@ -248,10 +248,9 @@ for date_string in date_strings: #Iterate over times
         
         #Set up output directory and file to save scalar plot to
         
+        outfile = join(visdir, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
         if not os.path.exists(join(visdir, plot_plane_type)):
             os.makedirs(join(visdir, plot_plane_type))
-        
-        outfile = join(visdir, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
         
         #Plot scalar field on its own
         ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
