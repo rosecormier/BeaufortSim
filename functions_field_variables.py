@@ -91,3 +91,39 @@ def get_monthly_nc_string(field_variable):
                          'DIVU': 'OCEAN_DIVU_mon_mean_'}
     
     return monthly_nc_strings[field_variable]
+
+##############################
+
+def get_seasonal_shortname(field_variable):
+    
+    seasonal_shortnames = {'RHOAnoma': 'RHOAnoma_SEASONAL', \
+                             'PHIHYDcR': 'PHIHYDcR_SEASONAL', \
+                             'UVELVVEL': 'UVELVVEL_SEASONAL', \
+                             'WVEL': 'WVEL_SEASONAL', \
+                             'UGVG': 'GEOS_VEL_SEASONAL', \
+                             'ZETA': 'VORTICITY_SEASONAL', \
+                             'NORMAL': 'STRAIN_SEASONAL', \
+                             'SHEAR': 'STRAIN_SEASONAL', \
+                             'EXFtauxEXFtauy': 'EXFtauxEXFtauy_SEASONAL', \
+                             'UEkVEk': 'EK_VEL_SEASONAL', \
+                             'DIVU': 'DIVU_SEASONAL'}
+    
+    return seasonal_shortnames[field_variable]
+
+##############################
+
+def get_seasonal_nc_string(field_variable):
+    
+    seasonal_nc_strings = {'RHOAnoma': 'OCEAN_DENS_STRAT_PRESS_seas_mean_', \
+                         'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_seas_mean_', \
+                         'UVELVVEL': 'OCEAN_VELOCITY_seas_mean_', \
+                         'WVEL': 'OCEAN_VELOCITY_seas_mean_', \
+                         'UGVG': 'OCEAN_GEOS_UVEL_seas_mean_', \
+                         'ZETA': 'OCEAN_VORTICITY_seas_mean_', \
+                         'NORMAL': 'OCEAN_NORMAL_STRAIN_seas_mean_', \
+                         'SHEAR': 'OCEAN_SHEAR_STRAIN_seas_mean_', \
+                         'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_seas_mean_', \
+                         'UEkVEk': 'OCEAN_EK_VEL_seas_mean_', \
+                         'DIVU': 'OCEAN_DIVU_seas_mean_'}
+    
+    return seasonal_nc_strings[field_variable]
