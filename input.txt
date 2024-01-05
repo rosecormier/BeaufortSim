@@ -17,9 +17,9 @@ final_month     = 1995, 12        # Year (integer), month (integer)
 initial_day     = 01              # Day (integer); only used if "time_ave_type" is "daily"
 final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
 
-# To do full-year averages, must set season_start = 01 and season_end = 12
 season_start    = 11              # First month of season (integer); only used if "time_ave_type" is "seasonal"
 season_end      = 05              # Last month of season (integer); only used if "time_ave_type" is "seasonal"
+# To do full-year averages, must set season_start = 01 and season_end = 12
 
 ####################
 ### Spatial inputs ###
