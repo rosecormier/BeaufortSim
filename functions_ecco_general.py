@@ -77,7 +77,7 @@ def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
     Load a specified ECCO (primary) DataSet.
     """
     
-    if time_ave_type == 'monthly': #will update to include other options
+    if time_ave_type in ['monthly', 'seasonal']:
         field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
     
     data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
@@ -175,36 +175,3 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
-
-##############################
-
-def get_season_months_and_years(start_month, end_month):
-    
-    months = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-
-    season_start_i, season_end_i = months.index(start_month), months.index(end_month)
-    
-    if season_end_i >= season_start_i:
-    
-        season_months = months[season_start_i:season_end_i+1]
-        season_years = []
-
-        for month in season_months:
-            season_years.append(0)
-
-    elif season_end_i < season_start_i:
-
-        season_1 = months[season_start_i:]
-        season_2 = months[0:season_end_i+1]
-
-        season_years = []
-
-        for month in season_1:
-            season_years.append(0)
-
-        for month in season_2:
-            season_years.append(1)
-
-        season_months = season_1 + season_2
-        
-    return season_months, season_years
