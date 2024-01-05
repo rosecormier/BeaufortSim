@@ -192,11 +192,11 @@ for field_name in secondary_vector_fields: #Iterate over vector fields; compute 
 
 date_strings = []
 
-if time_ave_type == 'monthly': #will update to include other options
+month, year = int(initial_month), int(initial_year)
 
-    month, year = int(initial_month), int(initial_year)
-    
-    #Append every eligible date string to list 'date_strings'
+#Append every eligible date string to list 'date_strings'
+
+if time_ave_type == 'monthly':
     
     while year < int(final_year):
         while month <= 12:
@@ -211,6 +211,29 @@ if time_ave_type == 'monthly': #will update to include other options
             date_string = final_year + '-' + get_monthstr(month)
             date_strings.append(date_string)
             month += 1
+            
+elif time_ave_type == 'seasonal':
+    
+    if int(season_start) < int(season_end):
+        while year <= int(final_year):
+            while month <= season_end:
+                date_string = str(year) + '-' + get_monthstr(month)
+                date_strings.append(date_string) 
+                month += 1
+            year += 1
+            month = int(season_start)
+            
+    elif int(season_end) < int(season_start):
+        while year <= int(final_year):
+            while (int(season_start) <= month) or (month <= int(season_end)):
+                date_string = str(year) + '-' + get_monthstr(month)
+                date_strings.append(date_string)
+                if month == 12:
+                    year += 1
+                    month = 1
+                else:
+                    month += 1
+            month = int(season_start)
 
 ##############################
             
