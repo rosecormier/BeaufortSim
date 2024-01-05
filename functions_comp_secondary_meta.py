@@ -11,14 +11,14 @@ import xarray as xr
 
 from os.path import join
 
-import comp_data
+import comp_secondary
 
 from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string
 
 ##############################
 
-def create_comp_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type):
+def create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type):
     
     """
     Iterates over time, checks that computed files for a given field exist, and creates them if they don't.
@@ -45,7 +45,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
                 if not os.path.exists(path_to_file): #Create file if it doesn't exist
-                    comp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
+                    comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
 
                 month += 1
                 
@@ -63,7 +63,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
                 path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
                 if not os.path.exists(path_to_file): #Create file if it doesn't exist
-                    comp_data.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
+                    comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
                 
                 month += 1
                 
@@ -71,7 +71,7 @@ def create_comp_data_file(field_name, initial_month, initial_year, final_month, 
         
 ##############################
 
-def load_comp_data_file(field_name, date_string, datdir_secondary, time_ave_type):
+def load_secondary_data_file(field_name, date_string, datdir_secondary, time_ave_type):
     
     """
     Loads DataSet for a given computed field at a given time.

@@ -1,5 +1,5 @@
 """
-Contains necessary auxiliary functions and functions that directly produce computed data.
+Contains necessary auxiliary functions and functions that directly produce secondary data.
     -Divergence of horizontal velocity;
     -Geostrophic velocity;
     -Ekman velocity;
