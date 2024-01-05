@@ -11,7 +11,6 @@ R. Cormier, F. Poulin, 2024
 
 import os
 import sys
-import glob
 
 from os.path import expanduser, join
 
@@ -20,7 +19,8 @@ import download_data
 
 from functions_comp_data_meta import create_comp_data_file
 from functions_ecco_general import get_monthstr
-from functions_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string
+from functions_field_variables import field_is_primary
+from functions_remove_data import remove_primary_files
 from functions_visualization import ArcCir_pcolormesh
 
 ##############################
@@ -239,96 +239,27 @@ for date_string in date_strings: #Iterate over times
 ##############################
 
 #REMOVE SAVED PRIMARY DATA, IF INDICATED
-#may put this in a function in an aux file at a later time, to save space
 
 if clear_data_files:
 
     for scalar_field_name in primary_scalar_fields: #Delete primary scalar data
-        
-        if time_ave_type == 'monthly': #will add other options
-            field_shortname = get_monthly_shortname(get_field_variable(scalar_field_name))
-            field_nc_string = get_monthly_nc_string(get_field_variable(scalar_field_name))
-        
-        if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            for date_string in date_strings: #Iterate over times
-                pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
-                for item in glob.iglob(pattern, recursive=True): #Delete the files
-                    os.remove(item)
-            try:
-                os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory, if empty
-            except:
-                break
-            
+        remove_primary_files(scalar_field_name, datdir_primary, time_ave_type, date_strings)    
     print("Deleted scalar data.")
     
     for vector_field_name in primary_vector_fields: #Delete primary vector data
-        
-        if time_ave_type == 'monthly': #will add other options
-            field_shortname = get_monthly_shortname(get_field_variable(vector_field_name))
-            field_nc_string = get_monthly_nc_string(get_field_variable(vector_field_name))
-        
-        if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
-            for date_string in date_strings: #Iterate over times
-                pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
-                for item in glob.iglob(pattern, recursive=True): #Delete the files
-                    os.remove(item)
-            try:
-                os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory, if empty
-            except:
-                break
-            
+        remove_primary_files(vector_field_name, datdir_primary, time_ave_type, date_strings)   
     print("Deleted vector data.")
     
     #Identify any secondary fields that required primary data to be saved, and delete the primary data
     
     for scalar_field_name in secondary_scalar_fields:
-        
-        if scalar_field_name in ['vorticity', 'normal_strain', 'shear_strain', '2D_div_vel']: #Delete horizontal velocity
-            
-            if time_ave_type == 'monthly': #will add other options
-                velocity_shortname = get_monthly_shortname(get_field_variable('horizontal_vel'))
-                velocity_nc_string = get_monthly_nc_string(get_field_variable('horizontal_vel'))
-                
-            if os.path.exists(join(datdir_primary, velocity_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings: #Iterate over times
-                    pattern = join(datdir_primary, velocity_shortname, velocity_nc_string+date_string+r"*")
-                    for item in glob.iglob(pattern, recursive=True): #Delete the files
-                        os.remove(item)
-                try:
-                    os.rmdir(join(datdir_primary, velocity_shortname)) #Delete the directory, if empty
-                except:
-                    break
+        if scalar_field_name in ['vorticity', 'normal_strain', 'shear_strain', '2D_div_vel']:
+            remove_primary_files('horizontal_vel', datdir_primary, time_ave_type, date_strings)
         
     for vector_field_name in secondary_vector_fields:
-        
-        if vector_field_name in ['geostrophic_vel', 'Ek_vel']: #Delete density
-
-            if time_ave_type == 'monthly': #will add other options
-                density_shortname = get_monthly_shortname(get_field_variable('density_anom'))
-                density_nc_string = get_monthly_nc_string(get_field_variable('density_anom'))
-                
-            if os.path.exists(join(datdir_primary, density_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings: #Iterate over times
-                    pattern = join(datdir_primary, density_shortname, density_nc_string+date_string+r"*")
-                    for item in glob.iglob(pattern, recursive=True): #Delete the files
-                        os.remove(item)
-                try:
-                    os.rmdir(join(datdir_primary, density_shortname)) #Delete the directory, if empty
-                except:
-                    break
-            
-        if vector_field_name in ['Ek_vel']: #Delete wind stress
-            
-            if time_ave_type == 'monthly': #will add other options
-                stress_shortname = get_monthly_shortname(get_field_variable('wind_stress'))
-                stress_nc_string = get_monthly_nc_string(get_field_variable('wind_stress'))
-                
-            if os.path.exists(join(datdir_primary, stress_shortname)): #To avoid errors, only remove files after confirming directory exists
-                for date_string in date_strings: #Iterate over times
-                    pattern = join(datdir_primary, stress_shortname, stress_nc_string+date_string+r"*")
-                    for item in glob.iglob(pattern, recursive=True): #Delete the files
-                        os.remove(item)
-                try:
-                    os.rmdir(join(datdir_primary, stress_shortname)) #Delete the directory, if empty
-                except:
-                    break
+        if vector_field_name in ['geostrophic_vel', 'Ek_vel']:
+            remove_primary_files('density_anom', datdir_primary, time_ave_type, date_strings)
+        if vector_field_name in ['Ek_vel']:
+            remove_primary_files('wind_stress', datdir_primary, time_ave_type, date_strings)
+                    
+    print("Done deleting primary data.")
