@@ -129,7 +129,7 @@ def main(**kwargs):
                     
                     monthly_fields = []
                     
-                    while (season_start <= month and month <= 12) or (month <= season_end):
+                    while (season_start <= month) or (month <= season_end):
                         
                         yearstr = str(year)
                         monthstr = get_monthstr(month)
