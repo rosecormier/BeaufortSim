@@ -54,18 +54,6 @@ def get_monthstr(i): #would like to simplify this
 
 ##############################
 
-def get_month_name(monthstr): #would like to simplify this
-    
-    monthnames = {"01": [0, "January"], "02": [1, "February"], "03": [2, "March"], "04": [3, "April"], "05": [4, "May"], \
-                  "06": [5, "June"], "07": [6, "July"], "08": [7, "August"], "09": [8, "September"], "10": [9, "October"], \
-                  "11": [10, "November"], "12": [11, "December"]}
-
-    month_i, monthname = monthnames[monthstr]
-    
-    return month_i, monthname
-
-##############################
-
 def get_month_end(monthstr, yearstr):
     
     """
