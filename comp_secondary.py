@@ -117,45 +117,73 @@ def get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E):
 
 ##############################
 
+def get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, field_name):
+    
+    """
+    Gets variables associated with the time-average type specified.
+    Note - only handles time_ave_type == 'monthly' or 'seasonal'.
+    """
+    
+    initial_month, initial_year, final_month, final_year = get_args_from_date_string(date_string, time_ave_type, time_kwargs)
+    
+    if time_ave_type == 'monthly':
+        month_strings = [date_string]
+        
+    elif time_ave_type == 'seasonal':
+        
+        month_strings = []
+        month, year = int(initial_month), int(initial_year)
+        
+        while year < int(final_year):
+            while month <= 12:
+                
+                month_string = str(year) + '-' + get_monthstr(month)
+                month_strings.append(month_string)
+                month += 1
+                
+                if month == int(final_month) + 1:
+                    break
+                if month == 13:
+                    year += 1
+                    month = 1
+                    
+        if year == int(final_year):
+            while month <= int(final_month):
+                
+                month_string = str(year) + '-' + get_monthstr(month)
+                month_strings.append(month_string)
+                month += 1
+                
+    month_string_dict = {}
+    for month_string in month_strings:
+        month_string_dict[month_string] = [month_string[5:7], month_string[0:4]]
+        #This creates a dictionary whose keys are of the form 'YYYY-MM' and whose values are of the form ['MM', 'YYYY']
+        #This is useful in the loops used in the following functions
+        
+    if time_ave_type == 'monthly':
+        var_shortname, var_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
+    elif time_ave_type == 'seasonal':
+        var_shortname, var_nc_string = get_seasonal_shortname(get_field_variable(field_name)), get_seasonal_nc_string(get_field_variable(field_name))
+    
+    return initial_month, initial_year, final_month, final_year, month_string_dict, var_shortname, var_nc_string
+
+##############################
+
 #DIVERGENCE OF HORIZONTAL VELOCITY
 
 def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs):
 
     """
     Compute and save divergence of horizontal velocity to DataSet in NetCDF format.
-    Note - only handles time_ave_type == 'monthly' or 'seasonal'
     """
     
-    initial_month, initial_year, final_month, final_year = get_args_from_date_string(date_string, time_ave_type, time_kwargs)
-    
-    #put this block in its own function
-    if time_ave_type == 'monthly':
-        month_strings = [date_string]
-    elif time_ave_type == 'seasonal':
-        month_strings = []
-        month, year = int(initial_month), int(initial_year)    
-        while year < int(final_year):
-            while month <= 12:
-                month_string = str(year) + '-' + get_monthstr(month)
-                month_strings.append(month_string)
-                month += 1
-                if month == int(final_month) + 1:
-                    break
-                if month == 13:
-                    year += 1
-                    month = 1
-        if year == int(final_year):
-            while month <= int(final_month):
-                month_string = str(year) + '-' + get_monthstr(month)
-                month_strings.append(month_string)
-                month += 1
-    print(month_strings)
-        
+    initial_month, initial_year, final_month, final_year, month_string_dict, div_vel_shortname, div_vel_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, '2D_div_vel')
+
     div_vels = []
     
-    for month_string in month_strings:
+    for month_string in month_string_dict:
         
-        month, year = month_string[5:7], month_string[0:4]
+        month, year = month_string_dict[month_string][0], month_string_dict[month_string][1]
         
         #Look for the corresponding velocity file(s) in primary directory and download if nonexistent
         download_data.main(field_name='horizontal_vel', initial_month=month, initial_year=year, final_month=month, final_year=year, time_ave_type='monthly', datdir_primary=datdir_primary, time_kwargs=None)
@@ -172,21 +200,13 @@ def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time
         div_vel = (xgcm_grid.diff(u*dy, 'X') + xgcm_grid.diff(v*dx, 'Y')).squeeze() / cell_area #Compute divergence
         div_vels.append(div_vel)
 
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    div_vel = compute_temporal_mean(div_vels)
+    div_vel = compute_temporal_mean(div_vels) #Average over all months in season (trivial if time_ave_type == 'monthly')
     
     #Save the data
 
     div_vel.name = 'DIVU'
-    
-    if time_ave_type == 'monthly':
-        div_vel_shortname, div_vel_nc_string = get_monthly_shortname(get_field_variable('2D_div_vel')), get_monthly_nc_string(get_field_variable('2D_div_vel'))
-    elif time_ave_type == 'seasonal':
-        div_vel_shortname, div_vel_nc_string = get_seasonal_shortname(get_field_variable('2D_div_vel')), get_seasonal_nc_string(get_field_variable('2D_div_vel'))
-    
     if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
         os.makedirs(join(datdir_secondary, div_vel_shortname))
-        
     div_vel.to_netcdf(path=join(datdir_secondary, div_vel_shortname, div_vel_nc_string+date_string+".nc"), engine="scipy")
 
 ##############################
