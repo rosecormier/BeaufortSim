@@ -175,3 +175,29 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
+
+##############################
+
+def get_args_from_date_string(date_string, time_ave_type, time_kwargs):
+    
+    if time_ave_type == 'monthly':
+        
+        month, year = date_string[5:9], date_string[0:4]
+        #initial_month, initial_year = month, year
+        #final_month, final_year = month, year
+        
+        return [month, year, month, year]
+        
+    elif time_ave_type == 'seasonal':
+        
+        season_start, season_end = time_kwargs[0], time_kwargs[1]
+        
+        if int(season_start) < int(season_end):
+            year = date_string[6:10]
+            initial_month, initial_year = date_string[0:2], year
+            final_month, final_year = date_string[3:5], year
+        elif int(season_end) < int(season_start):
+            initial_month, initial_year = date_string[0:2], date_string[6:10]
+            final_month, final_year = date_string[3:5], date_string[11:15]
+            
+        return [initial_month, initial_year, final_month, final_year]
