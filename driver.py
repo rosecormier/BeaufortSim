@@ -222,12 +222,10 @@ elif time_ave_type == 'seasonal':
 
 for field_name in secondary_scalar_fields: #Iterate over scalar fields
     for date_string in date_strings: #Iterate over times; compute data if nonexistent
-        #create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
         create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
         
 for field_name in secondary_vector_fields: #Iterate over vector fields
     for date_string in date_strings: #Iterate over times; compute data if nonexistent
-        #create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
         create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
 
 ##############################
