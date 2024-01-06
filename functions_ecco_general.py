@@ -12,7 +12,23 @@ import ecco_v4_py as ecco
 from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
-from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary, get_monthly_shortname, get_monthly_nc_string
+from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
+
+##############################
+
+def compute_temporal_mean(timeseries):
+    
+    """
+    Compute temporal mean of a field.
+    """ 
+    
+    mean = (timeseries[0]).copy() / len(timeseries)
+    
+    if len(timeseries) > 1:
+        for i in range(1, len(timeseries)):
+            mean = mean + (timeseries[i]).copy() / len(timeseries)
+        
+    return mean
 
 ##############################
 
@@ -71,18 +87,30 @@ def get_month_end(monthstr, yearstr):
 
 ##############################
 
-def load_ECCO_data_file(field_name, date_string, datdir_primary, time_ave_type):
+def load_primary_data_file(field_name, date_string, datdir_primary, time_ave_type):
 
     """
-    Load a specified ECCO (primary) DataSet.
+    Load a specified ECCO (primary) DataSet, or a time-averaged primary-data DataSet.
     """
     
-    if time_ave_type in ['monthly', 'seasonal']:
+    if time_ave_type == 'monthly':
+        datdir = datdir_primary
         field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
+        file_suffix = '_ECCO_V4r4_native_llc0090.nc'
+        
+    elif time_ave_type == 'seasonal':
+        datdir = join(datdir_primary, 'Seasonal')
+        field_shortname, field_nc_string = get_seasonal_shortname(get_field_variable(field_name)), get_seasonal_nc_string(get_field_variable(field_name))
+        file_suffix = '.nc'
     
-    data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+    #data_file = join(datdir_primary, field_shortname, field_nc_string+date_string+"_ECCO_V4r4_native_llc0090.nc")
+    data_file_path = join(datdir, field_shortname, field_nc_string+date_string+file_suffix)
+    print(data_file_path)
     
-    dataset = xr.open_mfdataset(data_file, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    try: #This option should work for files (e.g. monthly averages) that come directly from ECCO
+        dataset = xr.open_mfdataset(data_file_path, parallel=True, data_vars='minimal', coords='minimal', compat='override')
+    except: #This case should catch the computed (e.g. seasonal) averages
+        dataset = xr.open_mfdataset(data_file_path, engine="scipy")
     
     return dataset
 

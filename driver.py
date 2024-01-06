@@ -178,16 +178,6 @@ for field_name in primary_vector_fields:
 
 ##############################
 
-#COMPUTE SECONDARY DATA
-
-for field_name in secondary_scalar_fields: #Iterate over scalar fields; compute data if nonexistent
-    create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
-
-for field_name in secondary_vector_fields: #Iterate over vector fields; compute data if nonexistent
-    create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
-
-##############################
-
 #ASSEMBLE A LIST OF STRINGS REPRESENTING TIMES TO ITERATE OVER
 
 date_strings = []
@@ -216,24 +206,29 @@ elif time_ave_type == 'seasonal':
     
     if int(season_start) < int(season_end):
         while year <= int(final_year):
-            while month <= season_end:
-                date_string = str(year) + '-' + get_monthstr(month)
-                date_strings.append(date_string) 
-                month += 1
+            date_string = season_start + '-' + season_end + '_' + str(year)
+            date_strings.append(date_string) 
             year += 1
-            month = int(season_start)
             
     elif int(season_end) < int(season_start):
-        while year <= int(final_year):
-            while (int(season_start) <= month) or (month <= int(season_end)):
-                date_string = str(year) + '-' + get_monthstr(month)
-                date_strings.append(date_string)
-                if month == 12:
-                    year += 1
-                    month = 1
-                else:
-                    month += 1
-            month = int(season_start)
+        while year < int(final_year):
+            date_string = season_start + '-' + season_end + '_' + str(year) + '-' + str(year+1)
+            date_strings.append(date_string)
+            year += 1
+
+##############################
+
+#COMPUTE SECONDARY DATA
+
+for field_name in secondary_scalar_fields: #Iterate over scalar fields
+    for date_string in date_strings: #Iterate over times; compute data if nonexistent
+        #create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
+        create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
+        
+for field_name in secondary_vector_fields: #Iterate over vector fields
+    for date_string in date_strings: #Iterate over times; compute data if nonexistent
+        #create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type)
+        create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
 
 ##############################
             

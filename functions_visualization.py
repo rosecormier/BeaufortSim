@@ -18,7 +18,7 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
 from functions_comp_secondary_meta import load_secondary_data_file
-from functions_ecco_general import load_ECCO_data_file, load_grid, scalar_to_grid, vector_to_grid
+from functions_ecco_general import load_primary_data_file, load_grid, scalar_to_grid, vector_to_grid
 from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
 
 ##############################
@@ -171,7 +171,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     ds_grid = load_grid(datdir_primary) #Load the ECCO grid
 
     if field_is_primary(scalar_field_name): #Load ECCO DataSet
-        scalar_ds = load_ECCO_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
+        scalar_ds = load_primary_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
 
     elif not field_is_primary(scalar_field_name): #Load computed DataSet
         scalar_ds = load_secondary_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
@@ -194,7 +194,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     if vector_field_name is not None:
         
         if field_is_primary(vector_field_name): #Load ECCO DataSet
-            vector_ds = load_ECCO_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
+            vector_ds = load_primary_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
             
         elif not field_is_primary(vector_field_name): #Load computed DataSet
             vector_ds = load_secondary_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)

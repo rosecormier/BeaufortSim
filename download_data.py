@@ -10,24 +10,8 @@ import os
 from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
-from functions_ecco_general import get_monthstr, get_month_end, load_ECCO_data_file
+from functions_ecco_general import compute_temporal_mean, get_monthstr, get_month_end, load_primary_data_file
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
-
-##############################
-
-def compute_temporal_mean(timeseries):
-    
-    """
-    Compute temporal mean of a field.
-    """ 
-    
-    mean = (timeseries[0]).copy() / len(timeseries)
-    
-    if len(timeseries) > 1:
-        for i in range(1, len(timeseries)):
-            mean = mean + (timeseries[i]).copy() / len(timeseries)
-        
-    return mean
 
 ##############################
 
@@ -113,7 +97,7 @@ def main(**kwargs):
                         date_string = yearstr + "-" + monthstr
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-                        ds_month = load_ECCO_data_file(field_name, date_string, datdir_primary, 'seasonal') #Load the DataSet
+                        ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
                         monthly_fields.append(ds_month)
                         month += 1
                         
@@ -137,7 +121,7 @@ def main(**kwargs):
                         date_string = yearstr + "-" + monthstr
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-                        ds_month = load_ECCO_data_file(field_name, date_string, datdir_primary, 'seasonal') #Load the DataSet
+                        ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
                         monthly_fields.append(ds_month)
                         if month == 12:
                             year += 1

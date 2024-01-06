@@ -15,7 +15,7 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 def remove_primary_files(field_name, datdir_primary, time_ave_type, date_strings):
 
-    if time_ave_type == 'monthly': #will add other options
+    if time_ave_type in ['monthly', 'seasonal']: 
         field_shortname = get_monthly_shortname(get_field_variable(field_name))
         field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
         
