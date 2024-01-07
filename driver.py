@@ -230,7 +230,7 @@ for field_name in secondary_vector_fields: #Iterate over vector fields
 
 ##############################
             
-#VISUALIZE DATA
+#VISUALIZE DATA #modify for seasonal averaging
 
 spatial_bounds = [depth, latmin, latmax, lonmin, lonmax] #Will update these lines when I modify to allow other plane types
 resolutions = [lat_res, lon_res]
@@ -258,7 +258,7 @@ for date_string in date_strings: #Iterate over times
     
 ##############################
 
-#REMOVE SAVED PRIMARY DATA, IF INDICATED
+#REMOVE SAVED PRIMARY DATA, IF INDICATED #modify for seasonal averaging
 
 if clear_data_files:
 
