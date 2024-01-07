@@ -28,7 +28,7 @@ def compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_
         os.makedirs(outdir)
     
     #File to save data to
-    filename = '{}_{}-{}_{}.nc'.format(get_seasonal_nc_string(get_field_variable(field_name)), season_start_string, season_end_string, yearstr)
+    filename = '{}{}-{}_{}.nc'.format(get_seasonal_nc_string(get_field_variable(field_name)), season_start_string, season_end_string, yearstr)
                     
     if not os.path.exists(join(outdir, filename)): #Only compute if file doesn't already exist
         seasonal_avg_field.to_netcdf(path=join(outdir, filename), engine="scipy")
