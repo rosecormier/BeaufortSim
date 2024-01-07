@@ -32,29 +32,6 @@ def compute_temporal_mean(timeseries):
 
 ##############################
 
-def load_grid(datdir_primary):
-    
-    """
-    Loads ECCO grid.
-    """
-    
-    grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
-    grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
-    grid_params_directory = join(datdir_primary, grid_params_shortname)
-
-    if not os.path.exists(grid_params_directory): 
-        
-        os.makedirs(grid_params_directory)
-    
-        #Download ECCO grid parameters (date is arbitrary)
-        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-
-    ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
-    
-    return ds_grid
-
-##############################
-
 def get_monthstr(i):
     
     """
@@ -84,6 +61,55 @@ def get_month_end(monthstr, yearstr):
             endmonth = "28"
     
     return endmonth
+
+##############################
+
+def get_args_from_date_string(date_string, time_ave_type, time_kwargs):
+    
+    if time_ave_type == 'monthly':
+        
+        month, year = date_string[5:9], date_string[0:4]
+        #initial_month, initial_year = month, year
+        #final_month, final_year = month, year
+        
+        return [month, year, month, year]
+        
+    elif time_ave_type == 'seasonal':
+        
+        season_start, season_end = time_kwargs[0], time_kwargs[1]
+        
+        if int(season_start) < int(season_end):
+            year = date_string[6:10]
+            initial_month, initial_year = date_string[0:2], year
+            final_month, final_year = date_string[3:5], year
+        elif int(season_end) < int(season_start):
+            initial_month, initial_year = date_string[0:2], date_string[6:10]
+            final_month, final_year = date_string[3:5], date_string[11:15]
+            
+        return [initial_month, initial_year, final_month, final_year]
+
+##############################
+
+def load_grid(datdir_primary):
+    
+    """
+    Loads ECCO grid.
+    """
+    
+    grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
+    grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
+    grid_params_directory = join(datdir_primary, grid_params_shortname)
+
+    if not os.path.exists(grid_params_directory): 
+        
+        os.makedirs(grid_params_directory)
+    
+        #Download ECCO grid parameters (date is arbitrary)
+        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", EndDate="2000-01-02", download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
+
+    ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
+    
+    return ds_grid
 
 ##############################
 
@@ -199,29 +225,3 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
-
-##############################
-
-def get_args_from_date_string(date_string, time_ave_type, time_kwargs):
-    
-    if time_ave_type == 'monthly':
-        
-        month, year = date_string[5:9], date_string[0:4]
-        #initial_month, initial_year = month, year
-        #final_month, final_year = month, year
-        
-        return [month, year, month, year]
-        
-    elif time_ave_type == 'seasonal':
-        
-        season_start, season_end = time_kwargs[0], time_kwargs[1]
-        
-        if int(season_start) < int(season_end):
-            year = date_string[6:10]
-            initial_month, initial_year = date_string[0:2], year
-            final_month, final_year = date_string[3:5], year
-        elif int(season_end) < int(season_start):
-            initial_month, initial_year = date_string[0:2], date_string[6:10]
-            final_month, final_year = date_string[3:5], date_string[11:15]
-            
-        return [initial_month, initial_year, final_month, final_year]
