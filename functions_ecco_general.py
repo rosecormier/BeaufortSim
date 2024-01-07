@@ -16,22 +16,6 @@ from functions_field_variables import get_field_variable, get_vector_comps, fiel
 
 ##############################
 
-def compute_temporal_mean(timeseries):
-    
-    """
-    Compute temporal mean of a field.
-    """ 
-    
-    mean = (timeseries[0]).copy() / len(timeseries)
-    
-    if len(timeseries) > 1:
-        for i in range(1, len(timeseries)):
-            mean = mean + (timeseries[i]).copy() / len(timeseries)
-        
-    return mean
-
-##############################
-
 def get_monthstr(i):
     
     """
@@ -69,9 +53,6 @@ def get_args_from_date_string(date_string, time_ave_type, time_kwargs):
     if time_ave_type == 'monthly':
         
         month, year = date_string[5:9], date_string[0:4]
-        #initial_month, initial_year = month, year
-        #final_month, final_year = month, year
-        
         return [month, year, month, year]
         
     elif time_ave_type == 'seasonal':
@@ -225,3 +206,19 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp, field_N_comp
+
+##############################
+
+def compute_temporal_mean(timeseries):
+    
+    """
+    Compute temporal mean of a field.
+    """ 
+    
+    mean = (timeseries[0]).copy() / len(timeseries)
+    
+    if len(timeseries) > 1:
+        for i in range(1, len(timeseries)):
+            mean = mean + (timeseries[i]).copy() / len(timeseries)
+        
+    return mean
