@@ -12,21 +12,17 @@ import xarray as xr
 from os.path import join
 
 import comp_secondary
-#from comp_secondary import comp_2D_div_vel
 
 from functions_ecco_general import get_monthstr, load_grid
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
 
-#def create_secondary_data_file(field_name, initial_month, initial_year, final_month, final_year, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type):
 def create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs):
     
     """
     Iterates over time, checks that computed files for a given field exist, and creates them if they don't.
     """
-    
-    #month, year = int(initial_month), int(initial_year)
     
     if time_ave_type == 'monthly':
         field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
@@ -38,47 +34,7 @@ def create_secondary_data_file(field_name, date_string, datdir_primary, datdir_s
 
     if not os.path.exists(path_to_file): #Create file if it doesn't exist
         comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, date_string=date_string, time_ave_type=time_ave_type, time_kwargs=time_kwargs, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E)
-        
-        #ds_grid = load_grid(datdir_primary) #Load the grid DataSet
-        #comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
-        
-    """
-        while year < int(final_year):
-            
-            yearstr = str(year)
-            
-            while month <= 12:
-                
-                monthstr = get_monthstr(month)
-                date_string = yearstr + '-' + monthstr
 
-                filename = field_nc_string + date_string + '.nc'
-                path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
-
-                if not os.path.exists(path_to_file): #Create file if it doesn't exist
-                    comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=yearstr, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
-
-                month += 1
-                
-            year += 1
-            month = 1
-        
-        if year == int(final_year):
-
-            while month <= int(final_month):
-
-                monthstr = get_monthstr(month)
-                date_string = final_year + '-' + monthstr
-
-                filename = field_nc_string + date_string + '.nc'
-                path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
-
-                if not os.path.exists(path_to_file): #Create file if it doesn't exist
-                    comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, monthstr=monthstr, yearstr=final_year, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E, time_ave_type=time_ave_type)
-                
-                month += 1
-    """
-                
     print("Done computing secondary data.")
         
 ##############################
