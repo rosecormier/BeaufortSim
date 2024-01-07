@@ -78,8 +78,8 @@ def main(**kwargs):
         
         elif time_ave_type == "seasonal":
         
-            field_shortname = get_monthly_shortname(get_field_variable(field_name))
-            field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
+            field_shortname = get_seasonal_shortname(get_field_variable(field_name))
+            field_nc_string = get_seasonal_nc_string(get_field_variable(field_name))
             
             season_start_string, season_end_string = time_kwargs[0], time_kwargs[1]
             season_start, season_end = int(season_start_string), int(season_end_string)
