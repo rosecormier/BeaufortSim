@@ -165,7 +165,7 @@ def get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, field_name)
     elif time_ave_type == 'seasonal':
         var_shortname, var_nc_string = get_seasonal_shortname(get_field_variable(field_name)), get_seasonal_nc_string(get_field_variable(field_name))
     
-    return initial_month, initial_year, final_month, final_year, month_string_dict, var_shortname, var_nc_string
+    return month_string_dict, var_shortname, var_nc_string
 
 ##############################
 
@@ -177,7 +177,7 @@ def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time
     Compute and save divergence of horizontal velocity to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, div_vel_shortname, div_vel_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, '2D_div_vel')
+    month_string_dict, div_vel_shortname, div_vel_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, '2D_div_vel')
 
     div_vel_list = []
     
@@ -219,7 +219,7 @@ def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
     Compute and save geostrophic velocity components (u_g, v_g) to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, vel_g_shortname, vel_g_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'geostrophic_vel')
+    month_string_dict, vel_g_shortname, vel_g_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'geostrophic_vel')
     
     u_g_list, v_g_list = [], []
     
@@ -260,7 +260,7 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave
     Compute and save Ekman velocity components (u_Ek, v_Ek) to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, vel_Ek_shortname, vel_Ek_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'Ek_vel')
+    month_string_dict, vel_Ek_shortname, vel_Ek_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'Ek_vel')
 
     u_Ek_list, v_Ek_list = [], []
     
@@ -304,7 +304,7 @@ def comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary, t
     Compute and save normal strain to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, normal_shortname, normal_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'normal_strain')
+    month_string_dict, normal_shortname, normal_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'normal_strain')
         
     normal_strain_list = []
     
@@ -346,7 +346,7 @@ def comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary, ti
     Compute and save shear strain to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, shear_shortname, shear_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'shear_strain')
+    month_string_dict, shear_shortname, shear_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'shear_strain')
     
     shear_strain_list = []
     
@@ -388,7 +388,7 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary, time_
     Compute and save vorticity to DataSet in NetCDF format.
     """
     
-    initial_month, initial_year, final_month, final_year, month_string_dict, vorticity_shortname, vorticity_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'vorticity')
+    month_string_dict, vorticity_shortname, vorticity_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'vorticity')
     
     vorticity_list = []
     
