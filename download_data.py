@@ -98,7 +98,7 @@ def main(**kwargs):
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
                         ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
-                        monthly_fields.append(ds_month)
+                        monthly_fields.append(ds_month[get_field_variable(field_name)])
                         month += 1
                         
                     #After loading data for all months in the season, compute seasonal average
@@ -122,7 +122,7 @@ def main(**kwargs):
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
                         ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
-                        monthly_fields.append(ds_month)
+                        monthly_fields.append(ds_month[get_field_variable(field_name)])
                         if month == 12:
                             year += 1
                             month = 1

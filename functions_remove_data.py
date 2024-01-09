@@ -15,11 +15,8 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 def remove_primary_files(field_name, datdir_primary, date_strings): #, time_ave_type, date_strings):
 
-    #if time_ave_type == 'monthly':
     field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
-    #elif time_ave_type == 'seasonal':
-    #    field_shortname, field_nc_string = get_seasonal_shortname(get_field_variable(field_name)), get_seasonal_nc_string(get_field_variable(field_name))
-        
+
     if os.path.exists(join(datdir_primary, field_shortname)): #To avoid errors, only remove files after confirming directory exists
         for date_string in date_strings: #Iterate over times
             pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")

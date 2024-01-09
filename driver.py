@@ -181,7 +181,6 @@ for field_name in primary_vector_fields:
 #ASSEMBLE A LIST OF STRINGS REPRESENTING TIMES TO ITERATE OVER
 
 date_strings = []
-
 month, year = int(initial_month), int(initial_year)
 
 #Append every eligible date string to list 'date_strings'
@@ -241,9 +240,9 @@ for date_string in date_strings: #Iterate over times
         
         #Set up output directory and file to save scalar plot to
         
-        outfile = join(visdir, plot_plane_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
-        if not os.path.exists(join(visdir, plot_plane_type)):
-            os.makedirs(join(visdir, plot_plane_type))
+        outfile = join(visdir, plot_plane_type, time_ave_type, '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, date_string))
+        if not os.path.exists(join(visdir, plot_plane_type, time_ave_type)):
+            os.makedirs(join(visdir, plot_plane_type, time_ave_type))
         
         #Plot scalar field on its own
         ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile)
@@ -251,7 +250,7 @@ for date_string in date_strings: #Iterate over times
         for vector_field_name in vector_fields:
 
             #Set up file to save scalar/vector plot to
-            outfile = join(visdir, plot_plane_type, '{}_{}_{}_{}.pdf'.format(scalar_field_name, vector_field_name, plane_string, date_string))
+            outfile = join(visdir, plot_plane_type, time_ave_type, '{}_{}_{}_{}.pdf'.format(scalar_field_name, vector_field_name, plane_string, date_string))
             
             #Plot this vector with the scalar
             ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, vector_field_name=vector_field_name)

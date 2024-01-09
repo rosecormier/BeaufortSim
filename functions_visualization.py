@@ -172,7 +172,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
 
     if field_is_primary(scalar_field_name): #Load ECCO DataSet
         scalar_ds = load_primary_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
-
     elif not field_is_primary(scalar_field_name): #Load computed DataSet
         scalar_ds = load_secondary_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
 
@@ -195,7 +194,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
         
         if field_is_primary(vector_field_name): #Load ECCO DataSet
             vector_ds = load_primary_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
-            
         elif not field_is_primary(vector_field_name): #Load computed DataSet
             vector_ds = load_secondary_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
         

@@ -115,6 +115,8 @@ def load_primary_data_file(field_name, date_string, datdir_primary, time_ave_typ
     except: #This case should catch the computed (e.g. seasonal) averages
         dataset = xr.open_mfdataset(data_file_path, engine="scipy")
     
+    dataset.load()
+        
     return dataset
 
 ##############################
@@ -153,23 +155,23 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
     Resample scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
     If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
-    
+
     curr_ds_grid = ds_grid.copy()
     
     if field_variable == 'WVEL': #If w, interpolate vertically
         xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
         scalar_ds['WVEL'] = xgcm_grid.interp(scalar_ds.WVEL, axis='Z')
     
-    scalar_ds = scalar_ds.isel(k=int(depth)) #Isolate plane at specified depth
+    curr_ds_grid[field_variable] = scalar_ds[field_variable]
     
-    curr_ds_grid[field_variable] = scalar_ds[field_variable].squeeze()
     curr_ds_grid.load()
+    field = curr_ds_grid[field_variable].isel(k=int(depth)) #Isolate plane at specified depth
     
     latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
     lat_res, lon_res = float(lat_res), float(lon_res)
-    
+
     lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(curr_ds_grid.XC, \
-                                            curr_ds_grid.YC, curr_ds_grid[field_variable], latmin, latmax, \
+                                            curr_ds_grid.YC, field, latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
     
@@ -220,5 +222,5 @@ def compute_temporal_mean(timeseries):
     if len(timeseries) > 1:
         for i in range(1, len(timeseries)):
             mean = mean + (timeseries[i]).copy() / len(timeseries)
-        
+
     return mean
