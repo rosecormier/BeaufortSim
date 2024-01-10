@@ -139,7 +139,7 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
     
     curr_ds_grid.load()
     field = curr_ds_grid[field_variable].isel(k=int(depth)) #Isolate plane at specified depth
-    print(type(field))
+
     if type(field) == xr.Dataset:
     
         latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
