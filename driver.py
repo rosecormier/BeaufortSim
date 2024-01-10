@@ -17,7 +17,6 @@ from os.path import expanduser, join
 import read_input
 import download_data
 
-from functions_comp_secondary_meta import create_secondary_data_file
 from functions_ecco_general import get_monthstr
 from functions_field_variables import field_is_primary
 from functions_remove_data import remove_primary_files

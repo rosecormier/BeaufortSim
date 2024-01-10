@@ -26,7 +26,7 @@ from math import e, pi
 
 import download_data
 
-from functions_ecco_general import compute_temporal_mean, load_primary_data_file, load_grid, get_args_from_date_string, get_monthstr
+from functions_ecco_general import compute_temporal_mean, load_grid, get_args_from_date_string, get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################

@@ -17,8 +17,7 @@ import ecco_v4_py as ecco
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
-from functions_comp_secondary_meta import load_secondary_data_file
-from functions_ecco_general import load_primary_data_file, load_grid, scalar_to_grid, vector_to_grid
+from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
 from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
 
 ##############################

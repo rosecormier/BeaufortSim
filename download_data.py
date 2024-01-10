@@ -10,7 +10,7 @@ import os
 from os.path import join
 
 from functions_ecco_download import ecco_podaac_download
-from functions_ecco_general import compute_temporal_mean, get_monthstr, get_month_end, load_primary_data_file
+from functions_ecco_general import compute_temporal_mean, get_monthstr, get_month_end
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
