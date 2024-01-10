@@ -85,23 +85,6 @@ def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, spatia
 
 ##############################
 
-def get_quiver(ax, ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
-    
-    """
-    Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
-    """
-    
-    lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
-
-    skip = (slice(0, -1, 1), slice(0, -1, 1))
-        
-    quiv = ax.quiver(lons[skip], lats[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
-                     transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
-    
-    return quiv
-
-##############################
-
 def plot_geography(ax, labels=True):
     
     """
@@ -162,6 +145,22 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
 
 ##############################
 
+def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=0.3): #ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
+    
+    """
+    Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
+    """
+    
+    #lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+
+    skip = (slice(0, -1, 1), slice(0, -1, 1))
+    quiv = ax.quiver(lon_centers[skip], lat_centers[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
+                     transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
+    
+    return quiv
+
+##############################
+
 def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='both', vector_field_name=None):
     
     """
@@ -190,15 +189,13 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     #tba - make a function for cmap
     
     if vector_field_name is not None:
+       
+        #Load vector DataSet
+        vector_ds = load_data_files.main(field_name=vector_field_name, date_string=date_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, time_ave_type=time_ave_type)
         
-        if field_is_primary(vector_field_name): #Load ECCO DataSet
-            vector_ds = load_primary_data_file(vector_field_name, date_string, datdir_primary, time_ave_type)
-        elif not field_is_primary(vector_field_name): #Load computed DataSet
-            vector_ds = load_secondary_data_file(vector_field_name, date_string, datdir_secondary, time_ave_type)
-        
-        #Create quiver object 
-        quiv = get_quiver(ax, ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
-        
+        lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+        quiv = get_quiver(ax, lons, lats, vec_E_comp, vec_N_comp) #Create quiver object 
+   
     ax = plot_geography(ax)
     ax.set_title(get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, spatial_bounds, ds_grid, date_string))
     
