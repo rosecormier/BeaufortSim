@@ -14,7 +14,7 @@ import load_data_files
 
 from functions_ecco_download import ecco_podaac_download
 from functions_ecco_general import compute_temporal_mean, get_monthstr, get_month_end
-from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
+from functions_field_variables import get_field_variable, get_vector_comps, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
 
@@ -101,7 +101,18 @@ def main(**kwargs):
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
                         ds_month = load_data_files.main(field_name=field_name, date_string=date_string, datdir_primary=datdir_primary, time_ave_type='monthly') 
-                        monthly_fields.append(ds_month[get_field_variable(field_name)])
+                        
+                        try:
+                            attributes = get_vector_comps(field_name) #For vector fields
+                            array_to_concat = xr.merge([ds_month[attributes[0]], ds_month[attributes[1]]])
+                        except:
+                            array_to_concat = ds_month[get_field_variable(field_name)] #For scalar fields
+                        
+                        if monthly_fields is None:
+                            monthly_fields = array_to_concat
+                        elif monthly_fields is not None:
+                            monthly_fields = xr.concat([monthly_fields, array_to_concat], 'time')
+                        
                         month += 1
                         
                     #After loading data for all months in the season, compute seasonal average
@@ -125,12 +136,17 @@ def main(**kwargs):
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
                         ds_month = load_data_files.main(field_name=field_name, date_string=date_string, datdir_primary=datdir_primary, time_ave_type='monthly') 
-                        #monthly_fields.append(ds_month[get_field_variable(field_name)])
 
-                        if monthly_fields is not None:
-                            monthly_fields = xr.concat([monthly_fields, ds_month[get_field_variable(field_name)]], 'time')
-                        elif monthly_fields is None:
-                            monthly_fields = ds_month[get_field_variable(field_name)]
+                        try:
+                            attributes = get_vector_comps(field_name) #For vector fields
+                            array_to_concat = xr.merge([ds_month[attributes[0]], ds_month[attributes[1]]])
+                        except:
+                            array_to_concat = ds_month[get_field_variable(field_name)] #For scalar fields
+                        
+                        if monthly_fields is None:
+                            monthly_fields = array_to_concat
+                        elif monthly_fields is not None:
+                            monthly_fields = xr.concat([monthly_fields, array_to_concat], 'time')
                         
                         if month == 12:
                             year += 1
