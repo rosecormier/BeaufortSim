@@ -25,6 +25,7 @@ from os.path import join
 from math import e, pi
 
 import download_data
+import load_data_files
 
 from functions_ecco_general import compute_temporal_mean, load_grid, get_args_from_date_string, get_monthstr
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
@@ -220,7 +221,7 @@ def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
     
     month_string_dict, vel_g_shortname, vel_g_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'geostrophic_vel')
     
-    u_g_list, v_g_list = [], []
+    u_gs, v_gs = None, None
     
     for month_string in month_string_dict:
         
@@ -229,16 +230,18 @@ def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
         #Look for the density/pressure file in primary directory and download if it doesn't exist
         download_data.main(field_name='density_anom', initial_month=month, initial_year=year, final_month=month, final_year=year, time_ave_type='monthly', datdir_primary=datdir_primary, time_kwargs=None)
 
-        ds_denspress = load_primary_data_file('density_anom', month_string, datdir_primary, 'monthly') #Load monthly DataSet
+        ds_denspress = load_data_files.main(field_name='density_anom', time_ave_type='monthly', date_string=month_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary) #Load monthly DataSet
 
         density, pressure_like = get_density_and_pressure(ds_denspress, rho_ref) #Extract density and pressure-like from the DataSet
 
         u_g, v_g = get_vel_g_components(ds_grid, pressure_like, density) #Compute geostrophic velocity components
-        u_g_list.append(u_g)
-        v_g_list.append(v_g)
+        if u_gs is None:
+            u_gs, v_gs = u_g, v_g
+        elif u_gs is not None:
+            u_gs, v_gs = xr.concat([u_gs, u_g], 'time'), xr.concat([v_gs, v_g], 'time')
     
     #Average over all months in season (trivial if time_ave_type == 'monthly')
-    u_g, v_g = compute_temporal_mean(u_g_list), compute_temporal_mean(v_g_list)
+    u_g, v_g = compute_temporal_mean(u_gs).squeeze(), compute_temporal_mean(v_gs).squeeze()
         
     #Save the data
         
@@ -261,7 +264,7 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave
     
     month_string_dict, vel_Ek_shortname, vel_Ek_nc_string = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'Ek_vel')
 
-    u_Ek_list, v_Ek_list = [], []
+    u_Eks, v_Eks = None, None
     
     for month_string in month_string_dict:
         
@@ -270,19 +273,21 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave
         #Look for the density/pressure file in primary directory and download if it doesn't exist
         download_data.main(field_name='density_anom', initial_month=month, initial_year=year, final_month=month, final_year=year, time_ave_type='monthly', datdir_primary=datdir_primary, time_kwargs=None)
 
-        ds_denspress = load_primary_data_file('density_anom', month_string, datdir_primary, 'monthly') #Load monthly DataSet
+        ds_denspress = load_data_files.main(field_name='density_anom', time_ave_type='monthly', date_string=month_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary) #Load monthly DataSet
 
         #Look for the surface wind-on-ocean-stress file in primary directory and download if it doesn't exist
         download_data.main(field_name='wind_stress', initial_month=month, initial_year=year, final_month=month, final_year=year, time_ave_type='monthly', datdir_primary=datdir_primary, time_kwargs=None)
 
-        ds_stress = load_primary_data_file('wind_stress', month_string, datdir_primary, 'monthly') #Load monthly DataSet
-
+        ds_stress = load_data_files.main(field_name='wind_stress', time_ave_type='monthly', date_string=month_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary) #Load monthly DataSet
+        
         u_Ek, v_Ek = get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, rho_ref, nu_E) #Compute Ekman velocity components
-        u_Ek_list.append(u_Ek)
-        v_Ek_list.append(v_Ek)
+        if u_Eks is None:
+            u_Eks, v_Eks = u_Ek, v_Ek
+        elif u_Eks is not None:
+            u_Eks, v_Eks = xr.concat([u_Eks, u_Ek], 'time'), xr.concat([v_Eks, v_Ek], 'time')
     
     #Average over all months in season (trivial if time_ave_type == 'monthly')
-    u_Ek, v_Ek = compute_temporal_mean(u_Ek_list), compute_temporal_mean(v_Ek_list)
+    u_Ek, v_Ek = compute_temporal_mean(u_Eks).squeeze(), compute_temporal_mean(v_Eks).squeeze()
 
     #Save the data
         

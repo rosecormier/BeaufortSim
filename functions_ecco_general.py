@@ -165,13 +165,13 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     
     vector_comps = get_vector_comps(vector_field_name)
     vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps) #Rotate vector
-
+    
     curr_ds_grid[vector_comps[0]], curr_ds_grid[vector_comps[1]] = vec_E_comp, vec_N_comp
     curr_ds_grid.load()
 
     field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth)) #Isolate plane at specified depth
     field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth)) #Isolate plane at specified depth
-    
+
     lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XC, \
                                             curr_ds_grid.YC, field_0, latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
