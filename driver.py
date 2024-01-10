@@ -16,6 +16,7 @@ from os.path import expanduser, join
 
 import read_input
 import download_data
+import comp_secondary
 
 from functions_ecco_general import get_monthstr
 from functions_field_variables import field_is_primary
@@ -224,7 +225,8 @@ elif time_ave_type == 'seasonal':
 
 for field_name in secondary_scalar_fields: #Iterate over scalar fields
     for date_string in date_strings: #Iterate over times; compute data if nonexistent
-        create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
+        comp_secondary.main(datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, date_string=date_string, time_ave_type=time_ave_type, time_kwargs=time_kwargs, field_name=field_name, rho_ref=rho_ref, nu_E=nu_E)
+        #create_secondary_data_file(field_name, date_string, datdir_primary, datdir_secondary, rho_ref, nu_E, time_ave_type, time_kwargs)
         
 for field_name in secondary_vector_fields: #Iterate over vector fields
     for date_string in date_strings: #Iterate over times; compute data if nonexistent
