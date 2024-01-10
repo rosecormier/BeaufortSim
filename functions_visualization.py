@@ -152,7 +152,7 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
     """
     Create pcolormesh object given an axis.
     """
-    
+
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
     elif not logscale:
