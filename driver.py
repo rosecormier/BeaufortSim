@@ -135,9 +135,12 @@ f.write(scalar_fields[-1] + "\n")
         
 vector_fields = param_data.vector_fields
 f.write("vector_fields = ")
-for i in range(len(vector_fields)-1):
-    f.write(vector_fields[i] + ", ")
-f.write(vector_fields[-1])
+if vector_fields == ['']:
+    vector_fields = []
+else:
+    for i in range(len(vector_fields)-1):
+        f.write(vector_fields[i] + ", ")
+    f.write(vector_fields[-1])
 
 f.close()
     
@@ -157,11 +160,12 @@ for scalar_field_name in scalar_fields:
         
 primary_vector_fields, secondary_vector_fields = [], []
 
-for vector_field_name in vector_fields:
-    if field_is_primary(vector_field_name):
-        primary_vector_fields.append(vector_field_name)
-    elif not field_is_primary(vector_field_name):
-        secondary_vector_fields.append(vector_field_name)
+if len(vector_fields) != 0:
+    for vector_field_name in vector_fields:
+        if field_is_primary(vector_field_name):
+            primary_vector_fields.append(vector_field_name)
+        elif not field_is_primary(vector_field_name):
+            secondary_vector_fields.append(vector_field_name)
         
 ##############################
 
