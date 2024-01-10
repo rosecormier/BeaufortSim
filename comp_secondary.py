@@ -6,8 +6,7 @@ Contains necessary auxiliary functions and functions that directly produce secon
     -Normal strain;
     -Shear strain;
     -Vorticity.
-    
-The main function picks out the appropriate function to compute the requested field.
+The main function checks whether computed data already exist and computes them if not.
 
 Notes:
     -Does not currently include divergence of Ekman velocity; could add this, but is a nontrivial process.
@@ -423,7 +422,7 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary, time_
 ##############################
 
 def main(**kwargs):
-    
+   
     if kwargs:
         
         datdir_primary = kwargs.get('datdir_primary')
@@ -437,23 +436,35 @@ def main(**kwargs):
         
         rho_ref = float(kwargs.get('rho_ref'))
         nu_E = float(kwargs.get('nu_E'))
-    
-    ds_grid = load_grid(datdir_primary) #Load the grid DataSet
-    
-    #Identify the input field and run the appropriate function to compute it
+        
+    if time_ave_type == 'monthly':
+        field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
+    elif time_ave_type == 'seasonal':
+        field_shortname, field_nc_string = get_seasonal_shortname(get_field_variable(field_name)), get_seasonal_nc_string(get_field_variable(field_name))
+        
+    filename = field_nc_string + date_string + '.nc'
+    path_to_file = os.path.join(datdir_secondary, field_shortname, filename)
 
-    if field_name == '2D_div_vel':
-        comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
-    elif field_name == 'geostrophic_vel':
-        comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs, rho_ref)
-    elif field_name == 'Ek_vel':
-        comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs, rho_ref, nu_E)
-    elif field_name == 'normal_strain':
-        comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
-    elif field_name == 'shear_strain':
-        comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
-    elif field_name == 'vorticity':
-        comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
+    if not os.path.exists(path_to_file): #Create file if it doesn't exist
+    
+        ds_grid = load_grid(datdir_primary) #Load the grid DataSet
+
+        #Identify the input field and run the appropriate function to compute it
+
+        if field_name == '2D_div_vel':
+            comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
+        elif field_name == 'geostrophic_vel':
+            comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs, rho_ref)
+        elif field_name == 'Ek_vel':
+            comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs, rho_ref, nu_E)
+        elif field_name == 'normal_strain':
+            comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
+        elif field_name == 'shear_strain':
+            comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
+        elif field_name == 'vorticity':
+            comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary, time_ave_type, time_kwargs)
+            
+    print("Done computing secondary data.")
 
 ##############################
 
