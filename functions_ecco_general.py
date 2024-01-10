@@ -128,6 +128,9 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
     Resample scalar DataSet attribute at specific k-value (depth) to lat-lon grid.
     If field is vertical velocity (w), interpolate along z-axis (helpful for visualization).
     """
+    
+    latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
+    lat_res, lon_res = float(lat_res), float(lon_res)
 
     curr_ds_grid = ds_grid.copy()
     
@@ -140,18 +143,10 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
     curr_ds_grid.load()
     field = curr_ds_grid[field_variable].isel(k=int(depth)) #Isolate plane at specified depth
 
-    if type(field) == xr.Dataset:
-    
-        latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
-        lat_res, lon_res = float(lat_res), float(lon_res)
-
-        lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(curr_ds_grid.XC, \
-                                                curr_ds_grid.YC, field, latmin, latmax, \
-                                                lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
-                                                mapping_method='nearest_neighbor', radius_of_influence=120000)
-    
-    else:
-        lon_centers, lat_centers, lon_edges, lat_edges = None, None, None, None
+    lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(curr_ds_grid.XC, \
+                                            curr_ds_grid.YC, field, latmin, latmax, \
+                                            lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
+                                            mapping_method='nearest_neighbor', radius_of_influence=120000)
     
     return lon_centers, lat_centers, lon_edges, lat_edges, field
 
@@ -197,12 +192,5 @@ def compute_temporal_mean(timeseries):
     
     mean = timeseries.sum('time')
     mean = mean / len(timeseries)
-    
-    #mean = (timeseries[0]).copy() / len(timeseries)
-    """
-    if len(timeseries) > 1:
-        for i in range(1, len(timeseries)):
-            mean = mean + (timeseries[i]).copy() / len(timeseries)
-    """
 
     return mean
