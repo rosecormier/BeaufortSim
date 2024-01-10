@@ -1,4 +1,6 @@
 """
+TBA
+
 Rosalie Cormier, 2024
 """
 
@@ -7,7 +9,7 @@ import xarray as xr
 from os.path import join
 
 from functions_ecco_general import get_monthstr, load_grid
-from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
+from functions_field_variables import get_field_variable, field_is_primary, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
 
@@ -40,7 +42,7 @@ def load_primary_data_file(field_name, date_string, datdir_primary, time_ave_typ
 def load_secondary_data_file(field_name, date_string, datdir_secondary, time_ave_type):
     
     """
-    Loads DataSet for a given computed field at a given time.
+    Load a specified computed DataSet consisting of secondary field variables.
     """
     
     if time_ave_type == 'monthly':
@@ -58,3 +60,30 @@ def load_secondary_data_file(field_name, date_string, datdir_secondary, time_ave
     
     except:
         print("DataSet does not exist.")
+        
+##############################
+
+def main(**kwargs):
+   
+    if kwargs:
+        
+        field_name = kwargs.get('field_name')
+        
+        time_ave_type = kwargs.get('time_ave_type')
+        date_string = kwargs.get('date_string')
+        
+        datdir_primary = kwargs.get('datdir_primary')
+        datdir_secondary = kwargs.get('datdir_secondary')
+    
+    if field_is_primary(field_name):
+        dataset = load_primary_data_file(field_name, date_string, datdir_primary, time_ave_type)
+        
+    elif not field_is_primary(field_name):
+        dataset = load_secondary_data_file(field_name, date_string, datdir_secondary, time_ave_type)
+
+    return dataset
+        
+##############################
+
+if __name__ == "__main__":
+    main()
