@@ -139,7 +139,6 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
         scalar_ds['WVEL'] = xgcm_grid.interp(scalar_ds.WVEL, axis='Z')
     
     curr_ds_grid[field_variable] = scalar_ds[field_variable]
-    
     curr_ds_grid.load()
     field = curr_ds_grid[field_variable].isel(k=int(depth)) #Isolate plane at specified depth
 
@@ -159,24 +158,25 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     Resample vector components at specific k-value (depth) to lat-lon grid.
     """
     
-    curr_ds_grid = ds_grid.copy()
-    
-    vector_comps = get_vector_comps(vector_field_name)
-    vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds.isel(k=int(depth)), vector_field_name, vector_comps) #Rotate vector
-    vec_E_comp, vec_N_comp = vec_E_comp.squeeze(), vec_N_comp.squeeze() #Squeeze along time axis
-    
-    curr_ds_grid[vector_comps[0]] = vec_E_comp
-    curr_ds_grid[vector_comps[1]] = vec_N_comp
-    curr_ds_grid.load()
-    
     latmin, latmax, lonmin, lonmax = float(latmin), float(latmax), float(lonmin), float(lonmax)
     lat_res, lon_res = float(lat_res), float(lon_res)
     
-    lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XG, \
-                                            curr_ds_grid.YG, curr_ds_grid[vector_comps[0]], latmin, latmax, \
+    curr_ds_grid = ds_grid.copy()
+    
+    vector_comps = get_vector_comps(vector_field_name)
+    vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps) #Rotate vector
+
+    curr_ds_grid[vector_comps[0]], curr_ds_grid[vector_comps[1]] = vec_E_comp, vec_N_comp
+    curr_ds_grid.load()
+
+    field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth)) #Isolate plane at specified depth
+    field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth)) #Isolate plane at specified depth
+    
+    lon_centers, lat_centers, lon_edges, lat_edges, field_E_comp = ecco.resample_to_latlon(curr_ds_grid.XC, \
+                                            curr_ds_grid.YC, field_0, latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)
-    field_N_comp = ecco.resample_to_latlon(ds_grid.XG, ds_grid.YG, curr_ds_grid[vector_comps[1]], latmin, latmax, \
+    field_N_comp = ecco.resample_to_latlon(curr_ds_grid.XC, curr_ds_grid.YC, field_1, latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \
                                             mapping_method='nearest_neighbor', radius_of_influence=120000)[4]
     
