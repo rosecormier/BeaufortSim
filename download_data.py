@@ -6,7 +6,7 @@ Rosalie Cormier, 2023
 """
 
 import os
-import xarray as xr #
+import xarray as xr
 
 from os.path import join
 
@@ -24,7 +24,11 @@ def compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_
     Compute seasonal average of field from monthly averages; save output to NetCDF file.
     """ 
 
-    seasonal_avg_field = compute_temporal_mean(monthly_fields)
+    if monthly_fields[1] is None:
+        seasonal_avg = compute_temporal_mean(monthly_fields[0])
+    elif monthly_fields[1] is not None:
+        seasonal_avg_0, seasonal_avg_1 = compute_temporal_mean(monthly_fields[0]).squeeze(), compute_temporal_mean(monthly_fields[1]).squeeze()
+        seasonal_avg = xr.merge([seasonal_avg_0, seasonal_avg_1])
     
     outdir = join(datdir_primary, get_seasonal_shortname(get_field_variable(field_name)))
     if not os.path.exists(outdir):
@@ -34,9 +38,9 @@ def compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_
     filename = '{}{}-{}_{}.nc'.format(get_seasonal_nc_string(get_field_variable(field_name)), season_start_string, season_end_string, yearstr)
                     
     if not os.path.exists(join(outdir, filename)): #Only compute if file doesn't already exist
-        seasonal_avg_field.to_netcdf(path=join(outdir, filename), engine="scipy")
+        seasonal_avg.to_netcdf(path=join(outdir, filename), engine="scipy")
     
-    seasonal_avg_field.close()
+    seasonal_avg.close()
 
 ##############################
 
@@ -92,7 +96,7 @@ def main(**kwargs):
                 while year <= int(final_year):
                     
                     yearstr = str(year)
-                    monthly_fields = []
+                    monthly_fields_0, monthly_fields_1 = None, None
                     
                     while month <= season_end:
                         monthstr = get_monthstr(month)
@@ -104,19 +108,21 @@ def main(**kwargs):
                         
                         try:
                             attributes = get_vector_comps(field_name) #For vector fields
-                            array_to_concat = xr.merge([ds_month[attributes[0]], ds_month[attributes[1]]])
+                            if monthly_fields_0 is None:
+                                monthly_fields_0, monthly_fields_1 = ds_month[attributes[0]], ds_month[attributes[1]]
+                            elif monthly_fields_0 is not None:
+                                monthly_fields_0 = xr.concat([monthly_fields_0, ds_month[attributes[0]]], 'time')
+                                monthly_fields_1 = xr.concat([monthly_fields_1, ds_month[attributes[1]]], 'time')
                         except:
-                            array_to_concat = ds_month[get_field_variable(field_name)] #For scalar fields
-                        
-                        if monthly_fields is None:
-                            monthly_fields = array_to_concat
-                        elif monthly_fields is not None:
-                            monthly_fields = xr.concat([monthly_fields, array_to_concat], 'time')
+                            if monthly_fields_0 is None:
+                                monthly_fields_0 = ds_month[get_field_variable(field_name)]
+                            elif monthly_fields_0 is not None:
+                                monthly_fields_0 = xr.concat([monthly_fields_0, ds_month[get_field_variable(field_name)]], 'time')
                         
                         month += 1
                         
                     #After loading data for all months in the season, compute seasonal average
-                    compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_start_string, season_end_string, yearstr)
+                    compute_seasonal_average([monthly_fields_0, monthly_fields_1], datdir_primary, field_name, season_start_string, season_end_string, yearstr)
                         
                     year += 1
                     month = season_start
@@ -125,7 +131,7 @@ def main(**kwargs):
                 
                 while year <= int(final_year):
                     
-                    monthly_fields = None
+                    monthly_fields_0, monthly_fields_1 = None, None
                     
                     while (season_start <= month) or (month <= season_end):
                         
@@ -139,14 +145,16 @@ def main(**kwargs):
 
                         try:
                             attributes = get_vector_comps(field_name) #For vector fields
-                            array_to_concat = xr.merge([ds_month[attributes[0]], ds_month[attributes[1]]])
+                            if monthly_fields_0 is None:
+                                monthly_fields_0, monthly_fields_1 = ds_month[attributes[0]], ds_month[attributes[1]]
+                            elif monthly_fields_0 is not None:
+                                monthly_fields_0 = xr.concat([monthly_fields_0, ds_month[attributes[0]]], 'time')
+                                monthly_fields_1 = xr.concat([monthly_fields_1, ds_month[attributes[1]]], 'time')
                         except:
-                            array_to_concat = ds_month[get_field_variable(field_name)] #For scalar fields
-                        
-                        if monthly_fields is None:
-                            monthly_fields = array_to_concat
-                        elif monthly_fields is not None:
-                            monthly_fields = xr.concat([monthly_fields, array_to_concat], 'time')
+                            if monthly_fields_0 is None:
+                                monthly_fields_0 = ds_month[get_field_variable(field_name)]
+                            elif monthly_fields_0 is not None:
+                                monthly_fields_0 = xr.concat([monthly_fields_0, ds_month[get_field_variable(field_name)]], 'time')
                         
                         if month == 12:
                             year += 1
@@ -155,7 +163,7 @@ def main(**kwargs):
                             month += 1
                     
                     #After loading data for all months in the season, compute seasonal average
-                    compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_start_string, season_end_string, '{}-{}'.format(str(year-1), yearstr))
+                    compute_seasonal_average([monthly_fields_0, monthly_fields_1], datdir_primary, field_name, season_start_string, season_end_string, '{}-{}'.format(str(year-1), yearstr))
                         
                     month = season_start
     
