@@ -17,6 +17,8 @@ import ecco_v4_py as ecco
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from os.path import join
 
+import load_data_files
+
 from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
 from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
 
@@ -169,16 +171,17 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     
     ds_grid = load_grid(datdir_primary) #Load the ECCO grid
 
-    if field_is_primary(scalar_field_name): #Load ECCO DataSet
-        scalar_ds = load_primary_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
-    elif not field_is_primary(scalar_field_name): #Load computed DataSet
-        scalar_ds = load_secondary_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
-
+    #if field_is_primary(scalar_field_name): #Load ECCO DataSet
+    scalar_ds = load_data_files.main(field_name=scalar_field_name, date_string=date_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary, time_ave_type=time_ave_type) #load_primary_data_file(scalar_field_name, date_string, datdir_primary, time_ave_type)
+    #elif not field_is_primary(scalar_field_name): #Load computed DataSet
+    #    scalar_ds = load_secondary_data_file(scalar_field_name, date_string, datdir_secondary, time_ave_type)
+    
     if plot_plane_type == 'depth_const': #will add options 'latitude_const' and 'longitude_const'
         depth, latmin, latmax, lonmin, lonmax = spatial_bounds[0], spatial_bounds[1], spatial_bounds[2], spatial_bounds[3], spatial_bounds[4]
         lat_res, lon_res = resolutions[0], resolutions[1]
         
     lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, scalar_ds, get_field_variable(scalar_field_name), depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
+    print(scalar_field)
     
     vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
 

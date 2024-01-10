@@ -6,6 +6,7 @@ Rosalie Cormier, 2023
 """
 
 import os
+import xarray as xr #
 
 from os.path import join
 
@@ -113,7 +114,7 @@ def main(**kwargs):
                 
                 while year <= int(final_year):
                     
-                    monthly_fields = []
+                    monthly_fields = None
                     
                     while (season_start <= month) or (month <= season_end):
                         
@@ -124,8 +125,13 @@ def main(**kwargs):
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
                         ds_month = load_data_files.main(field_name=field_name, date_string=date_string, datdir_primary=datdir_primary, time_ave_type='monthly') 
-                        print(ds_month)
-                        monthly_fields.append(ds_month[get_field_variable(field_name)])
+                        #monthly_fields.append(ds_month[get_field_variable(field_name)])
+
+                        if monthly_fields is not None:
+                            monthly_fields = xr.concat([monthly_fields, ds_month[get_field_variable(field_name)]], 'time')
+                        elif monthly_fields is None:
+                            monthly_fields = ds_month[get_field_variable(field_name)]
+                        
                         if month == 12:
                             year += 1
                             month = 1
