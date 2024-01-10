@@ -9,6 +9,8 @@ import os
 
 from os.path import join
 
+import load_data_files
+
 from functions_ecco_download import ecco_podaac_download
 from functions_ecco_general import compute_temporal_mean, get_monthstr, get_month_end
 from functions_field_variables import get_field_variable, get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
@@ -97,7 +99,7 @@ def main(**kwargs):
                         date_string = yearstr + "-" + monthstr
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-                        ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
+                        ds_month = load_data_files.main(field_name=field_name, date_string=date_string, datdir_primary=datdir_primary, time_ave_type='monthly') 
                         monthly_fields.append(ds_month[get_field_variable(field_name)])
                         month += 1
                         
@@ -121,7 +123,8 @@ def main(**kwargs):
                         date_string = yearstr + "-" + monthstr
                         StartDate, EndDate = date_string + "-02", date_string + "-" + endmonth
                         ecco_podaac_download(ShortName=field_shortname, StartDate=StartDate, EndDate=EndDate, download_root_dir=datdir_primary, n_workers=6, force_redownload=False)
-                        ds_month = load_primary_data_file(field_name, date_string, datdir_primary, 'monthly') #Load the DataSet for the month
+                        ds_month = load_data_files.main(field_name=field_name, date_string=date_string, datdir_primary=datdir_primary, time_ave_type='monthly') 
+                        print(ds_month)
                         monthly_fields.append(ds_month[get_field_variable(field_name)])
                         if month == 12:
                             year += 1
