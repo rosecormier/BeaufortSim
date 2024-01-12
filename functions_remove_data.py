@@ -21,7 +21,7 @@ def remove_primary_files(field_name, datdir_primary, date_strings):
         for date_string in date_strings: #Iterate over times
             pattern = join(datdir_primary, field_shortname, field_nc_string+date_string+r"*")
             for item in glob.iglob(pattern, recursive=True): #Delete the files
-                os.remove(item)  
+                os.remove(item)
         try:
             os.rmdir(join(datdir_primary, field_shortname)) #Delete the directory, if empty
         except:

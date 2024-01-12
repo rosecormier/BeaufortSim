@@ -233,7 +233,7 @@ for field_name in secondary_vector_fields: #Iterate over vector fields
 
 ##############################
             
-#VISUALIZE DATA #modify for seasonal averaging
+#VISUALIZE DATA
 
 spatial_bounds = [depth, latmin, latmax, lonmin, lonmax] #Will update these lines when I modify to allow other plane types
 resolutions = [lat_res, lon_res]
