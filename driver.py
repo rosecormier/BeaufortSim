@@ -266,23 +266,23 @@ for date_string in date_strings: #Iterate over times
 if clear_data_files:
 
     for scalar_field_name in primary_scalar_fields: #Delete primary scalar data
-        remove_primary_files(scalar_field_name, datdir_primary, time_ave_type, date_strings)    
+        remove_primary_files(scalar_field_name, datdir_primary, date_strings)
     print("Deleted scalar data.")
     
     for vector_field_name in primary_vector_fields: #Delete primary vector data
-        remove_primary_files(vector_field_name, datdir_primary, time_ave_type, date_strings)   
+        remove_primary_files(vector_field_name, datdir_primary, date_strings)
     print("Deleted vector data.")
     
     #Identify any secondary fields that required primary data to be saved, and delete the primary data
     
     for scalar_field_name in secondary_scalar_fields:
         if scalar_field_name in ['vorticity', 'normal_strain', 'shear_strain', '2D_div_vel']:
-            remove_primary_files('horizontal_vel', datdir_primary, time_ave_type, date_strings)
+            remove_primary_files('horizontal_vel', datdir_primary, date_strings)
         
     for vector_field_name in secondary_vector_fields:
         if vector_field_name in ['geostrophic_vel', 'Ek_vel']:
-            remove_primary_files('density_anom', datdir_primary, time_ave_type, date_strings)
+            remove_primary_files('density_anom', datdir_primary, date_strings)
         if vector_field_name in ['Ek_vel']:
-            remove_primary_files('wind_stress', datdir_primary, time_ave_type, date_strings)
+            remove_primary_files('wind_stress', datdir_primary, date_strings)
                     
     print("Done deleting primary data.")

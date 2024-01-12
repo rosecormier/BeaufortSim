@@ -13,7 +13,7 @@ from functions_field_variables import get_field_variable, get_monthly_shortname,
 
 ##############################
 
-def remove_primary_files(field_name, datdir_primary, date_strings): #, time_ave_type, date_strings):
+def remove_primary_files(field_name, datdir_primary, date_strings):
 
     field_shortname, field_nc_string = get_monthly_shortname(get_field_variable(field_name)), get_monthly_nc_string(get_field_variable(field_name))
 
