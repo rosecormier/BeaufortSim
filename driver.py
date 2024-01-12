@@ -209,7 +209,6 @@ elif time_ave_type == 'seasonal':
         
     if int(season_start) < int(season_end):
         while year <= int(final_year):
-            
             date_string = season_start + '-' + season_end + '_' + str(year)
             date_strings.append(date_string) 
             year += 1
