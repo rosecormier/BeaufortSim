@@ -174,11 +174,11 @@ if len(vector_fields) != 0:
 
 #Iterate over primary scalar fields; download associated data
 for field_name in primary_scalar_fields:
-    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
+    ECCO_file_date_strings = download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
     
 #Iterate over primary vector fields; download associated data
 for field_name in primary_vector_fields:
-    download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
+    ECCO_file_date_strings = download_data.main(field_name=field_name, initial_month=initial_month, initial_year=initial_year, final_month=final_month, final_year=final_year, time_ave_type=time_ave_type, datdir_primary=datdir_primary, time_kwargs=time_kwargs)
 
 ##############################
 
@@ -206,9 +206,10 @@ if time_ave_type == 'monthly':
             month += 1
             
 elif time_ave_type == 'seasonal':
-    
+        
     if int(season_start) < int(season_end):
         while year <= int(final_year):
+            
             date_string = season_start + '-' + season_end + '_' + str(year)
             date_strings.append(date_string) 
             year += 1
@@ -261,9 +262,12 @@ for date_string in date_strings: #Iterate over times
     
 ##############################
 
-#REMOVE SAVED PRIMARY DATA, IF INDICATED #modify for seasonal averaging
+#REMOVE SAVED PRIMARY DATA, IF INDICATED
 
 if clear_data_files:
+    
+    if time_ave_type == 'seasonal': #In this case, data will have been downloaded for every month in each season
+        date_strings = ECCO_file_date_strings #Update the set of date strings to loop through
 
     for scalar_field_name in primary_scalar_fields: #Delete primary scalar data
         remove_primary_files(scalar_field_name, datdir_primary, date_strings)
