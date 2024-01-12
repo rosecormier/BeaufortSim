@@ -1,10 +1,67 @@
 """
-Rosalie Cormier, 2023
+Contains functions that get each of the following attributes associated with a particular field:
+    -String ("field variable") used generally in data storage
+    -Strings ("vector comps") associated with x- and y-components of a vector variable
+    -Boolean ("field is primary") indicating whether field comes directly from ECCO
+    -Monthly shortname used in monthly-averaged datafile directories
+    -String ("monthly nc string") used in monthly-averaged nc datafiles
+    
+Rosalie Cormier, 2024
 """
 
-def get_field_vars(attribute):
+##############################
+
+def get_field_variable(field_name):
+
+    field_variables = {'density_anom': 'RHOAnoma', \
+                      'pressure': 'PHIHYDcR', \
+                      'vertical_vel': 'WVEL', \
+                      'horizontal_vel': 'UVELVVEL', \
+                      'vorticity': 'ZETA', \
+                      'normal_strain': 'NORMAL', \
+                      'shear_strain': 'SHEAR', \
+                      '2D_div_vel': 'DIVU', \
+                      'geostrophic_vel': 'UGVG', \
+                      'Ek_vel': 'UEkVEk', \
+                      'wind_stress': 'EXFtauxEXFtauy'}
     
-    monthly_shortnames = {'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
+    return field_variables[field_name]
+
+##############################
+
+def get_vector_comps(vector_field_name):
+
+    horizontal_comps = {'horizontal_vel': 'UVEL', \
+                       'geostrophic_vel': 'UG', \
+                       'Ek_vel': 'UEk', \
+                       'wind_stress': 'EXFtaux'}
+    vertical_comps = {'horizontal_vel': 'VVEL', \
+                     'geostrophic_vel': 'VG', \
+                     'Ek_vel': 'VEk', \
+                     'wind_stress': 'EXFtauy'}
+    
+    return horizontal_comps[vector_field_name], vertical_comps[vector_field_name]
+
+##############################
+
+def field_is_primary(field_name):
+    
+    field_variable = get_field_variable(field_name)
+    
+    primary_variables = ['RHOAnoma', 'PHIHYDcR', 'WVEL', 'UVELVVEL', 'EXFtauxEXFtauy']
+    secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'UGVG', 'UEkVEk']
+    
+    if field_variable in primary_variables:
+        return True
+    elif field_variable in secondary_variables:
+        return False
+
+##############################
+
+def get_monthly_shortname(field_variable):
+    
+    monthly_shortnames = {'RHOAnoma': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
+                          'PHIHYDcR': 'ECCO_L4_DENS_STRAT_PRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UVELVVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'WVEL': 'ECCO_L4_OCEAN_VEL_LLC0090GRID_MONTHLY_V4R4', \
                          'UGVG': 'GEOS_VEL_MONTHLY', \
@@ -13,10 +70,16 @@ def get_field_vars(attribute):
                          'SHEAR': 'STRAIN_MONTHLY', \
                          'EXFtauxEXFtauy': 'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4', \
                          'UEkVEk': 'EK_VEL_MONTHLY', \
-                         'DIVU': 'DIVU_MONTHLY', \
-                         'DIVUEk': 'DIVUEk_MONTHLY'}
+                         'DIVU': 'DIVU_MONTHLY'}
     
-    monthly_nc_strings = {'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
+    return monthly_shortnames[field_variable]
+
+##############################
+    
+def get_monthly_nc_string(field_variable):
+    
+    monthly_nc_strings = {'RHOAnoma': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
+                          'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_mon_mean_', \
                          'UVELVVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'WVEL': 'OCEAN_VELOCITY_mon_mean_', \
                          'UGVG': 'OCEAN_GEOS_UVEL_mon_mean_', \
@@ -25,23 +88,42 @@ def get_field_vars(attribute):
                          'SHEAR': 'OCEAN_SHEAR_STRAIN_mon_mean_', \
                          'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_', \
                          'UEkVEk': 'OCEAN_EK_VEL_mon_mean_', \
-                         'DIVU': 'OCEAN_DIVU_mon_mean_', \
-                         'DIVUEk': 'OCEAN_DIVUEk_mon_mean_'}
+                         'DIVU': 'OCEAN_DIVU_mon_mean_'}
     
-    return monthly_shortnames[attribute], monthly_nc_strings[attribute]
+    return monthly_nc_strings[field_variable]
 
-def get_variable_str(attribute, geostrophic=False):
+##############################
+
+def get_seasonal_shortname(field_variable):
     
-    variables = {'PHIHYDcR': 'p_anom', \
-                'UVELVVEL': 'u', \
-                'WVEL': 'w', \
-                'ZETA': 'zeta', \
-                'UGVG': 'u_g', \
-                'EXFtauxEXFtauy': 'tau', \
-                'UEkVEk': 'u_Ek', \
-                'DIVU': 'div_u',
-                'DIVUEk': 'div_u_Ek'}
+    seasonal_shortnames = {'RHOAnoma': 'RHOAnoma_SEASONAL', \
+                             'PHIHYDcR': 'PHIHYDcR_SEASONAL', \
+                             'UVELVVEL': 'UVELVVEL_SEASONAL', \
+                             'WVEL': 'WVEL_SEASONAL', \
+                             'UGVG': 'GEOS_VEL_SEASONAL', \
+                             'ZETA': 'VORTICITY_SEASONAL', \
+                             'NORMAL': 'STRAIN_SEASONAL', \
+                             'SHEAR': 'STRAIN_SEASONAL', \
+                             'EXFtauxEXFtauy': 'EXFtauxEXFtauy_SEASONAL', \
+                             'UEkVEk': 'EK_VEL_SEASONAL', \
+                             'DIVU': 'DIVU_SEASONAL'}
+    
+    return seasonal_shortnames[field_variable]
 
-    variable_string = variables[attribute]
-        
-    return variable_string
+##############################
+
+def get_seasonal_nc_string(field_variable):
+    
+    seasonal_nc_strings = {'RHOAnoma': 'OCEAN_DENS_STRAT_PRESS_seas_mean_', \
+                         'PHIHYDcR': 'OCEAN_DENS_STRAT_PRESS_seas_mean_', \
+                         'UVELVVEL': 'OCEAN_VELOCITY_seas_mean_', \
+                         'WVEL': 'OCEAN_VELOCITY_seas_mean_', \
+                         'UGVG': 'OCEAN_GEOS_UVEL_seas_mean_', \
+                         'ZETA': 'OCEAN_VORTICITY_seas_mean_', \
+                         'NORMAL': 'OCEAN_NORMAL_STRAIN_seas_mean_', \
+                         'SHEAR': 'OCEAN_SHEAR_STRAIN_seas_mean_', \
+                         'EXFtauxEXFtauy': 'OCEAN_AND_ICE_SURFACE_STRESS_seas_mean_', \
+                         'UEkVEk': 'OCEAN_EK_VEL_seas_mean_', \
+                         'DIVU': 'OCEAN_DIVU_seas_mean_'}
+    
+    return seasonal_nc_strings[field_variable]
