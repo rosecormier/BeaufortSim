@@ -45,7 +45,7 @@ def compute_seasonal_average(monthly_fields, datdir_primary, field_name, season_
 ##############################
 
 def main(**kwargs):
-    
+
     if kwargs:
         
         field_name = kwargs.get('field_name')
