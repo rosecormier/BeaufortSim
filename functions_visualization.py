@@ -166,7 +166,7 @@ def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=
 
 ##############################
 
-def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='both', vector_field_name=None):
+def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='neither', vector_field_name=None):
     
     """
     Create pcolormesh plot of a scalar variable in a subdomain of the Arctic.
