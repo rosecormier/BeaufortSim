@@ -134,13 +134,13 @@ def main(**kwargs):
                 month = season_start
 
         elif season_start > season_end:
-                
+            
             while year <= int(final_year):
                     
                 monthly_fields_0, monthly_fields_1 = None, None
-                    
-                while (season_start <= month) or (month <= season_end):
-                        
+                
+                while ((year != int(final_year)) and (season_start <= month)) or ((year != int(initial_year)) and (month <= season_end)):
+
                     yearstr = str(year)
                     monthstr = get_monthstr(month)
                     endmonth = get_month_end(monthstr, yearstr)
