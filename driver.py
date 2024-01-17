@@ -47,8 +47,9 @@ logdir = join(".", logs_folder)
 
 experiment_number = 0 #Hardcoded for now; eventually will need to automatically produce a unique number for each run
 
-if not os.path.exists(logdir):
-    os.makedirs(logdir)
+for directory in [visdir, logdir]:
+    if not os.path.exists(directory):
+        os.makedirs(directory)
 
 logfile = join(logdir, "logfile_{}.txt".format(str(experiment_number))) #Create the log file
 
