@@ -1,10 +1,10 @@
 """
-This script uses the data provided in the input file (input.txt) to do all of the following:
+This script uses the data provided in the input file (input.txt) to do the following:
     -Save a txt file listing the input parameters to be used;
     -Download data corresponding to specified fields;
-    -Computes and saves secondary fields (skips if unnecessary or done);
-    -Plots data for all fields specified and saves plots; and
-    -Removes primary data files.
+    -Compute and save secondary fields (skips if unnecessary or done);
+    -Plot data for all fields specified and save plots; and
+    -Remove primary data files.
 
 R. Cormier, F. Poulin, 2024
 """
