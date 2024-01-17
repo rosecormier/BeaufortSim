@@ -20,7 +20,7 @@ from os.path import join
 import load_data_files
 
 from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
-from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary
+from functions_field_variables import get_field_variable, get_vector_comps, field_is_primary, get_cmap_and_symmetry
 
 ##############################
 
@@ -130,12 +130,19 @@ def get_scalar_bounds(scalar_field, scalar_bounds=None):
 
 ##############################
 
-def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=False):
+def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax, logscale=False):
     
     """
     Create pcolormesh object given an axis.
     """
-
+    
+    #Get appropriate colormap and symmetry (boolean)
+    cmap, symmetry = get_cmap_and_symmetry(field_name)
+    
+    if symmetry: #If variable is symmetric about zero, reset bounds on colorbar to be symmetric
+        abs_max_value = max(abs(vmax), abs(vmin))
+        vmin, vmax = -abs_max_value, abs_max_value
+        
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
     elif not logscale:
@@ -145,13 +152,11 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
 
 ##############################
 
-def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=0.3): #ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
+def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=0.3):
     
     """
     Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
     """
-    
-    #lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
 
     skip = (slice(0, -1, 1), slice(0, -1, 1))
     quiv = ax.quiver(lon_centers[skip], lat_centers[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
@@ -161,7 +166,7 @@ def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=
 
 ##############################
 
-def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='both', vector_field_name=None):
+def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_secondary, time_ave_type, plot_plane_type, spatial_bounds, resolutions, outfile, extend='neither', vector_field_name=None):
     
     """
     Create pcolormesh plot of a scalar variable in a subdomain of the Arctic.
@@ -185,8 +190,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, datdir_sec
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
         
-    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, 'viridis', vmin, vmax) #Create pcolormesh object 
-    #tba - make a function for cmap
+    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, scalar_field_name, vmin, vmax) #Create pcolormesh object 
     
     if vector_field_name is not None:
        

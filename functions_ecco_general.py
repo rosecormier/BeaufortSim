@@ -142,6 +142,8 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin, latmax, lo
     curr_ds_grid.load()
     field = curr_ds_grid[field_variable].isel(k=int(depth)) #Isolate plane at specified depth
 
+    field = field.where(ds_grid.isel(k=int(depth)).maskC) #Mask land with NaNs
+
     lon_centers, lat_centers, lon_edges, lat_edges, field = ecco.resample_to_latlon(curr_ds_grid.XC, \
                                             curr_ds_grid.YC, field, latmin, latmax, \
                                             lat_res, lonmin, lonmax, lon_res, fill_value=np.NaN, \

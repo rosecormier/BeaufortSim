@@ -5,6 +5,7 @@ Contains functions that get each of the following attributes associated with a p
     -Boolean ("field is primary") indicating whether field comes directly from ECCO
     -Monthly shortname used in monthly-averaged datafile directories
     -String ("monthly nc string") used in monthly-averaged nc datafiles
+    -Name of colormap to be used in plotting a scalar variable, and whether that scalar should be symmetric about zero
     
 Rosalie Cormier, 2024
 """
@@ -127,3 +128,27 @@ def get_seasonal_nc_string(field_variable):
                          'DIVU': 'OCEAN_DIVU_seas_mean_'}
     
     return seasonal_nc_strings[field_variable]
+
+##############################
+
+def get_cmap_and_symmetry(field_name):
+    
+    #True iff we want the range of the variable to be centered on zero for plotting
+    symmetry_about_zero = {'density_anom': True, \
+                          'pressure': False, \
+                          'vertical_vel': True, \
+                          'vorticity': True, \
+                          'normal_strain': True, \
+                          'shear_strain': True, \
+                          '2D_div_vel': True}
+    
+    #MPL colormap name
+    cmap = {'density_anom': 'seismic', \
+            'pressure': 'viridis', \
+            'vertical_vel': 'seismic', \
+            'vorticity': 'seismic', \
+            'normal_strain': 'seismic', \
+            'shear_strain': 'seismic', \
+            '2D_div_vel': 'seismic'}
+    
+    return cmap[field_name], symmetry_about_zero[field_name]
