@@ -135,11 +135,11 @@ def main(**kwargs):
 
         elif season_start > season_end:
             
+            monthly_fields_0, monthly_fields_1 = None, None
+            
             while year <= int(final_year):
-                    
-                monthly_fields_0, monthly_fields_1 = None, None
                 
-                while ((year != int(final_year)) and (season_start <= month)) or ((year != int(initial_year)) and (month <= season_end)):
+                if (year != int(final_year) and season_start <= month) or (year != int(initial_year) and month <= season_end):
 
                     yearstr = str(year)
                     monthstr = get_monthstr(month)
@@ -164,16 +164,19 @@ def main(**kwargs):
                         
                     all_seasons_all_date_strings.append(date_string)
                         
-                    if month == 12:
-                        year += 1
-                        month = 1
-                    else:
-                        month += 1
-                    
-                #After loading data for all months in the season, compute seasonal average
-                compute_seasonal_average([monthly_fields_0, monthly_fields_1], datdir_primary, field_name, season_start_string, season_end_string, '{}-{}'.format(str(year-1), yearstr))
+                if month == season_end and monthly_fields_0 is not None:
                         
-                month = season_start
+                    #After loading data for all months in the season, compute seasonal average
+                    compute_seasonal_average([monthly_fields_0, monthly_fields_1], datdir_primary, field_name, season_start_string, season_end_string, '{}-{}'.format(str(year-1), yearstr))
+                        
+                    month = season_start
+                    monthly_fields_0, monthly_fields_1 = None, None
+                    
+                elif month == 12:
+                    year += 1
+                    month = 1   
+                else:
+                    month += 1
     
         print("Done downloading ECCO data and saving seasonal averages.")
         return all_seasons_all_date_strings
