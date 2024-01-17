@@ -188,7 +188,7 @@ def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, time
         #Look for the corresponding velocity file(s) in primary directory and download if nonexistent
         download_data.main(field_name='horizontal_vel', initial_month=month, initial_year=year, final_month=month, final_year=year, time_ave_type='monthly', datdir_primary=datdir_primary, time_kwargs=None)
         
-        ds_velocity = load_data_files.main('horizontal_vel', month_string, datdir_primary, 'monthly') #load_primary_data_file('horizontal_vel', month_string, datdir_primary, 'monthly') #Load monthly DataSet 
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', time_ave_type='monthly', date_string=month_string, datdir_primary=datdir_primary, datdir_secondary=datdir_secondary) #load_primary_data_file('horizontal_vel', month_string, datdir_primary, 'monthly') #Load monthly DataSet 
         ds_velocity['UVEL'].data, ds_velocity['VVEL'].data = ds_velocity['UVEL'].values, ds_velocity['VVEL'].values
 
         xgcm_grid = ecco.get_llc_grid(ds_grid)
