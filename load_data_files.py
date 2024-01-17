@@ -1,5 +1,6 @@
 """
-TBA
+Contains functions to load primary (ECCO) and secondary (computed) datafiles.
+The main function receives a field name and calls the correct function to load the data.
 
 Rosalie Cormier, 2024
 """
