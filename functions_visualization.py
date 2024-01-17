@@ -145,13 +145,11 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logsc
 
 ##############################
 
-def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=0.3): #ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res, quiv_scale=0.3):
+def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, quiv_scale=0.3):
     
     """
     Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
     """
-    
-    #lons, lats, lon_edges, lat_edges, vec_E_comp, vec_N_comp = vector_to_grid(ds_grid, vector_ds, vector_comps, depth, latmin, latmax, lonmin, lonmax, lat_res, lon_res)
 
     skip = (slice(0, -1, 1), slice(0, -1, 1))
     quiv = ax.quiver(lon_centers[skip], lat_centers[skip], vec_E_comp[skip], vec_N_comp[skip], color='k', \
