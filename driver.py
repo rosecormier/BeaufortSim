@@ -18,10 +18,11 @@ from os.path import expanduser, join
 import read_input
 import download_data
 import comp_secondary
+import remove_data
 
 from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_lists
-from functions_remove_data import get_date_strings, remove_primary_files
+from functions_remove_data import get_date_strings
 from functions_visualization import ArcCir_pcolormesh
 
 ##############################
@@ -268,39 +269,16 @@ for date_string in date_strings: #Iterate over times
     
 ##############################
 
-#REMOVE SAVED PRIMARY DATA, IF INDICATED
+#REMOVE PRIMARY DATAFILES, IF INDICATED
 
-if clear_data_files:
-    
-    if time_ave_type == 'seasonal': 
-        #In this case, data will have been downloaded for every month in each 
-        #season
-        
-        #Update the set of date strings to loop through
-        date_strings = ECCO_file_date_strings 
-        
-    for scalar_field_name in primary_scalar_fields: #Delete primary scalar data
-        remove_primary_files(scalar_field_name, datdir_primary, date_strings)
-        
-    print("Deleted scalar data.")
-    
-    for vector_field_name in primary_vector_fields: #Delete primary vector data
-        remove_primary_files(vector_field_name, datdir_primary, date_strings)
-        
-    print("Deleted vector data.")
-    
-    #Identify any secondary fields that required primary data to be saved, and 
-    #delete the primary data
-    
-    for scalar_field_name in secondary_scalar_fields:
-        if scalar_field_name in ['vorticity', 'normal_strain', 'shear_strain', 
-                                 '2D_div_vel']:
-            remove_primary_files('horizontal_vel', datdir_primary, date_strings)
-        
-    for vector_field_name in secondary_vector_fields:
-        if vector_field_name in ['geostrophic_vel', 'Ek_vel']:
-            remove_primary_files('density_anom', datdir_primary, date_strings)
-        if vector_field_name in ['Ek_vel']:
-            remove_primary_files('wind_stress', datdir_primary, date_strings)
-                    
-    print("Done deleting primary data.")
+if time_ave_type == 'seasonal': 
+    #In this case, data will have been downloaded for every month in each 
+    #season, so update the set of date strings to loop through
+    date_strings = ECCO_file_date_strings 
+
+remove_data.main(clear_data_files=clear_data_files, date_strings=date_strings, 
+                 primary_scalar_fields=primary_scalar_fields, 
+                 primary_vector_fields=primary_vector_fields, 
+                 datdir_primary=datdir_primary, 
+                 secondary_scalar_fields=secondary_scalar_fields, 
+                 secondary_vector_fields=secondary_vector_fields)
