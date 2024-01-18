@@ -21,33 +21,12 @@ import load_data_files
 
 from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
 from functions_field_variables import get_field_variable, get_vector_comps, \
-field_is_primary, get_cmap_and_symmetry
+field_is_primary, get_cmap_and_symmetry, get_cbar_label, get_field_title
 
 ##############################
 
 plt.rcParams['font.size'] = 16
 plt.rcParams['text.usetex'] = True
-
-##############################
-
-def get_cbar_label(scalar_field_name):
-    
-    """
-    Return label for plot colorbar.
-    """
-
-    cbar_label_dict = {'pressure': 
-                       r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$',
-                       'density': r'Density anomaly $(kg/{m}^3)$',
-                       'vertical_vel': 'Velocity (m/s)',
-                       'vorticity': 'Vorticity (1/s)',
-                       'normal_strain': r'Normal strain $(1/s^2)$',
-                       'shear_strain': r'Shear strain $(1/s^2)$',
-                       '2D_div_vel': 'Horizontal velocity divergence (1/s)'}
-    
-    label = cbar_label_dict[scalar_field_name]
-    
-    return label
 
 ##############################
 
@@ -63,26 +42,14 @@ def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type,
         depth = -ds_grid.Z[k_val].values
         depth_string = str(depth) + ' m depth'
         
-    field_titles = {'RHOAnoma': 'Density Anomaly',
-                    'PHIHYDcR': 'Hydrostatic Pressure Anomaly',
-                    'WVEL': 'Vertical Velocity',
-                    'ZETA': 'Vorticity',
-                    'NORMAL': 'Normal Strain',
-                    'SHEAR': 'Shear Strain',
-                    'DIVU': 'Divergence of Horizontal Velocity',
-                    'UVELVVEL': 'Horizontal Velocity',
-                    'UGVG': 'Geostrophic Velocity',
-                    'EXFtauxEXFtauy': 'Surface Wind-on-Ocean Stress',
-                    'UEkVEk': 'Ekman Velocity'}
-
-    scalar_field_title = field_titles[get_field_variable(scalar_field_name)]
+    scalar_field_title = get_field_title(scalar_field_name)
     
     if vector_field_name is None:
         title = '{} in BGR at {}, {} \n'.format(scalar_field_title, 
                                                 depth_string, date_string)
 
     elif vector_field_name is not None:
-        vector_field_title = field_titles[get_field_variable(vector_field_name)]
+        vector_field_title = get_field_title(vector_field_name)
         title = '{} and {} in BGR \n at {}, {} \n'.format(scalar_field_title, 
                                                           vector_field_title, 
                                                           depth_string, 

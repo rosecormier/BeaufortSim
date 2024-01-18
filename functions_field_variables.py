@@ -10,6 +10,8 @@ particular field:
     -String ("monthly nc string") used in monthly-averaged nc datafiles
     -Name of colormap to be used in plotting a scalar variable, and whether that
     scalar should be symmetric about zero
+    -Colorbar label to be used in plotting a scalar variable
+    -String to be used in plot titles
     
 Rosalie Cormier, 2024
 """
@@ -165,3 +167,40 @@ def get_cmap_and_symmetry(field_name):
             '2D_div_vel': 'seismic'}
     
     return cmap[field_name], symmetry_about_zero[field_name]
+
+##############################
+
+def get_cbar_label(scalar_field_name):
+
+    cbar_label_dict = {'pressure': 
+                       r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$',
+                       'density': r'Density anomaly $(kg/{m}^3)$',
+                       'vertical_vel': 'Velocity (m/s)',
+                       'vorticity': 'Vorticity (1/s)',
+                       'normal_strain': r'Normal strain $(1/s^2)$',
+                       'shear_strain': r'Shear strain $(1/s^2)$',
+                       '2D_div_vel': 'Horizontal velocity divergence (1/s)'}
+    
+    label = cbar_label_dict[scalar_field_name]
+    
+    return label
+
+##############################
+
+def get_field_title(field_name):
+    
+    field_titles = {'RHOAnoma': 'Density Anomaly',
+                    'PHIHYDcR': 'Hydrostatic Pressure Anomaly',
+                    'WVEL': 'Vertical Velocity',
+                    'ZETA': 'Vorticity',
+                    'NORMAL': 'Normal Strain',
+                    'SHEAR': 'Shear Strain',
+                    'DIVU': 'Divergence of Horizontal Velocity',
+                    'UVELVVEL': 'Horizontal Velocity',
+                    'UGVG': 'Geostrophic Velocity',
+                    'EXFtauxEXFtauy': 'Surface Wind-on-Ocean Stress',
+                    'UEkVEk': 'Ekman Velocity'}
+
+    field_title = field_titles[get_field_variable(field_name)]
+    
+    return field_title
