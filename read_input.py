@@ -73,25 +73,34 @@ def main():
                 else:
                     var_len = var_len + 1
 
-            var = line[0:var_len].strip() #Strip leading/trailing whitespace from variable name
-            line = line[var_len+1:].strip() #Strip leading/trailing whitespace from remainder of line
+            #Strip leading/trailing whitespace from variable name
+            var = line[0:var_len].strip()
+            #Strip leading/trailing whitespace from remainder of line
+            line = line[var_len+1:].strip()
 
             val_len = 0
 
-            for char in line: #Isolate parameter value from trailing comment, if any
+            for char in line: 
                 if char == '#': 
-                    break
+                    break #Isolate parameter value from trailing comment, if any
                 else:
                     val_len = val_len + 1
 
-            val = line[0:val_len].strip() #Strip leading/trailing whitespace from parameter value
-            val_list = val.split(", ") #Split into a list of strings
+            #Strip leading/trailing whitespace from parameter value
+            val = line[0:val_len].strip()
+            #Split into a list of strings
+            val_list = val.split(", ") 
 
-            if len(val_list) > 1 or var == "scalar_fields" or var == "vector_fields":
-                setattr(param_data, var, val_list) #If list of values (or in the cases of scalar/vector fields), save list (as strings) to variable
+            if (len(val_list) > 1 or var == "scalar_fields" 
+                or var == "vector_fields"):
+                #If list of values (or in the cases of scalar/vector fields), 
+                #save list (as strings) to variable
+                setattr(param_data, var, val_list) 
             
-            elif len(val_list) == 1 and var != "scalar_fields" and var != "vector_fields": 
-                setattr(param_data, var, val) #If just one value, save value (as string) to variable
+            elif (len(val_list) == 1 and var != "scalar_fields" 
+                and var != "vector_fields"): 
+                #If just one value, save value (as string) to variable
+                setattr(param_data, var, val) 
 
     f.close
 
@@ -101,8 +110,10 @@ def main():
     print("Eddy viscosity (m^2/s):", param_data.nu_E)
 
     print("Time-averaging type:", param_data.time_ave_type)
-    print("Initial month:", param_data.initial_month[1]+",", param_data.initial_month[0])
-    print("Final month:", param_data.final_month[1]+",", param_data.final_month[0])
+    print("Initial month:", param_data.initial_month[1]+",", 
+          param_data.initial_month[0])
+    print("Final month:", param_data.final_month[1]+",", 
+          param_data.final_month[0])
     print("Initial day:", param_data.initial_day)
     print("Final day:", param_data.final_day)
     print("First month of season:", param_data.season_start)
@@ -111,9 +122,12 @@ def main():
     print("Resolution (latitude):", param_data.lat_res)
     print("Resolution (longitude):", param_data.lon_res)
     print("Plane type:", param_data.plot_plane_type)
-    print("Depth range:", param_data.depth_range[0]+",", param_data.depth_range[1])
-    print("Latitude range:", param_data.lat_range[0]+",", param_data.lat_range[1])
-    print("Longitude range:", param_data.lon_range[0]+",", param_data.lon_range[1])
+    print("Depth range:", param_data.depth_range[0]+",", 
+          param_data.depth_range[1])
+    print("Latitude range:", param_data.lat_range[0]+",", 
+          param_data.lat_range[1])
+    print("Longitude range:", param_data.lon_range[0]+",", 
+          param_data.lon_range[1])
     #print("Interpolation type:", param_data.interp_type)
 
     print("Scalar fields:", param_data.scalar_fields)
