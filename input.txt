@@ -1,51 +1,75 @@
-####################
+############################################################################
 ### Ocean properties - please don't change these values unless necessary ###
-####################
+############################################################################
 
 rho_ref         = 1029.0          # Reference density of seawater (kg/m^3)
 nu_E            = 1e-2            # Eddy viscosity (m^2/s)
 
-####################
+#######################
 ### Temporal inputs ###
-####################
+#######################
 
 time_ave_type   = seasonal        # "monthly", "daily", or "seasonal"
 
 initial_month   = 1995, 01        # Year (integer), month (integer)
 final_month     = 1998, 12        # Year (integer), month (integer)
 
-initial_day     = 01              # Day (integer); only used if "time_ave_type" is "daily"
-final_day       = 28              # Day (integer); only used if "time_ave_type" is "daily"
+#Day (integer); only used if "time_ave_type" is "daily"
+initial_day     = 01
 
-season_start    = 11              # First month of season (integer); only used if "time_ave_type" is "seasonal"
-season_end      = 05              # Last month of season (integer); only used if "time_ave_type" is "seasonal"
+#Day (integer); only used if "time_ave_type" is "daily"
+final_day       = 28
+
+#First month of season (integer); only used if "time_ave_type" is "seasonal"
+season_start    = 11
+
+# Last month of season (integer); only used if "time_ave_type" is "seasonal"
+season_end      = 05
+
 # To do full-year averages, must set season_start = 01 and season_end = 12
 
-####################
+######################
 ### Spatial inputs ###
-####################
+######################
 
 lat_res         = 0.25            # Latitudinal resolution (degrees)
 lon_res         = 0.25            # Longitudinal resolution (degrees)
 
-plot_plane_type = depth_const     # "depth_const", "latitude_const", or "longitude_const"; the left endpoint of the corresponding range below will be used as the constant value
+#"depth_const", "latitude_const", or "longitude_const"
+plot_plane_type = depth_const
+#The left endpoint of the corresponding range below will be used as the constant
+    #value
 
 depth_range     = 0, 50           # Top layer (k-value), bottom layer (k-value)
-lat_range       = 70.0, 85.0      # South bound (degrees-N), north bound (degrees-N)
-lon_range       = -180, -90       # West bound (degrees), east bound (degrees)
+lat_range       = 70.0, 85.0      # South bound (deg-N), north bound (deg-N)
+lon_range       = -180, -90       # West bound (deg), east bound (deg)
 
 # interp_type   = TBD
 
-####################
+#######################
 ### Field selection ###
-####################
+#######################
 
-scalar_fields   = pressure, 2D_div_vel # Comma-separated scalar fields, from options density_anom, pressure, vertical_vel, vorticity, normal_strain, shear_strain, 2D_div_vel
-vector_fields   = horizontal_vel, Ek_vel # Comma-separated vector fields, from options horizontal_vel, geostrophic_vel, Ek_vel, wind_stress
+#Comma-separated scalar fields, from options 
+#    density_anom
+#    pressure
+#    vertical_vel
+#    vorticity
+#    normal_strain
+#    shear_strain
+#    2D_div_vel
+scalar_fields   = pressure, 2D_div_vel
 
-####################
+#Comma-separated vector fields, from options 
+#    horizontal_vel
+#    geostrophic_vel
+#    Ek_vel
+#    wind_stress
+vector_fields   = horizontal_vel, Ek_vel
+
+#############################
 ### Directory information ###
-####################
+#############################
 
 logs_folder           = Logs
 
@@ -54,8 +78,8 @@ data_folder_secondary = Computed
 
 visualization_folder  = Visualization
 
-####################
+#################################################
 ### Flag to clear primary datafiles after use ###
-####################
+#################################################
 
 clear_data_files = True
