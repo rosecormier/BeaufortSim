@@ -20,7 +20,7 @@ import download_data
 import comp_secondary
 
 from functions_ecco_general import get_monthstr
-from functions_field_variables import field_is_primary
+from functions_field_variables import get_field_lists
 from functions_remove_data import get_date_strings, remove_primary_files
 from functions_visualization import ArcCir_pcolormesh
 
@@ -166,22 +166,12 @@ clear_data_files = param_data.clear_data_files
 
 #DISTINGUISH PRIMARY (ECCO) FIELDS FROM SECONDARY (COMPUTED) FIELDS
 
-primary_scalar_fields, secondary_scalar_fields = [], []
+field_lists = get_field_lists(scalar_fields, vector_fields)
 
-for scalar_field_name in scalar_fields:
-    if field_is_primary(scalar_field_name):
-        primary_scalar_fields.append(scalar_field_name)
-    elif not field_is_primary(scalar_field_name):
-        secondary_scalar_fields.append(scalar_field_name)
-        
-primary_vector_fields, secondary_vector_fields = [], []
-
-if len(vector_fields) != 0:
-    for vector_field_name in vector_fields:
-        if field_is_primary(vector_field_name):
-            primary_vector_fields.append(vector_field_name)
-        elif not field_is_primary(vector_field_name):
-            secondary_vector_fields.append(vector_field_name)
+primary_scalar_fields = field_lists[0]
+secondary_scalar_fields = field_lists[1]
+primary_vector_fields = field_lists[2]
+secondary_vector_fields = field_lists[3]
         
 ##############################
 

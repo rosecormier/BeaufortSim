@@ -1,18 +1,22 @@
 """
 Contains functions that get each of the following attributes associated with a 
 particular field:
-    -String ("field variable") used generally in data storage
-    -Strings ("vector comps") associated with x- and y-components of a vector 
-    variable
+    -String ("field variable") used generally in data storage;
+    -Strings ("vector comps") associated with x- and y-components of a vector
+    variable;
     -Boolean ("field is primary") indicating whether field comes directly from 
-    ECCO
-    -Monthly shortname used in monthly-averaged datafile directories
-    -String ("monthly nc string") used in monthly-averaged nc datafiles
+    ECCO;
+    -Monthly shortname used in monthly-averaged datafile directories;
+    -String ("monthly nc string") used in monthly-averaged nc datafiles;
     -Name of colormap to be used in plotting a scalar variable, and whether that
-    scalar should be symmetric about zero
-    -Colorbar label to be used in plotting a scalar variable
-    -String to be used in plot titles
+    scalar should be symmetric about zero;
+    -Colorbar label to be used in plotting a scalar variable;
+    -String to be used in plot titles.
     
+Also contains a function that, given lists of scalar and vector fields,
+separates each list into a list of primary fields and a list of secondary 
+fields.
+
 Rosalie Cormier, 2024
 """
 
@@ -204,3 +208,27 @@ def get_field_title(field_name):
     field_title = field_titles[get_field_variable(field_name)]
     
     return field_title
+
+##############################
+
+def get_field_lists(scalar_fields, vector_fields):
+
+    primary_scalar_fields, secondary_scalar_fields = [], []
+
+    for scalar_field_name in scalar_fields:
+        if field_is_primary(scalar_field_name):
+            primary_scalar_fields.append(scalar_field_name)
+        elif not field_is_primary(scalar_field_name):
+            secondary_scalar_fields.append(scalar_field_name)
+        
+    primary_vector_fields, secondary_vector_fields = [], []
+
+    if len(vector_fields) != 0:
+        for vector_field_name in vector_fields:
+            if field_is_primary(vector_field_name):
+                primary_vector_fields.append(vector_field_name)
+            elif not field_is_primary(vector_field_name):
+                secondary_vector_fields.append(vector_field_name)
+
+    return (primary_scalar_fields, secondary_scalar_fields, 
+            primary_vector_fields, secondary_vector_fields)
