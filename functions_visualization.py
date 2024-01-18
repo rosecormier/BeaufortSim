@@ -58,7 +58,7 @@ def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type,
     Return main title for plot.
     """
 
-    if plot_plane_type == 'depth_const':
+    if plot_plane_type == 'depth_index_const':
         k_val = int(spatial_bounds[0])
         depth = -ds_grid.Z[k_val].values
         depth_string = str(depth) + ' m depth'
@@ -203,7 +203,7 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary,
                                      datdir_secondary=datdir_secondary, 
                                      time_ave_type=time_ave_type)
     
-    if plot_plane_type == 'depth_const':
+    if plot_plane_type == 'depth_index_const':
         depth = spatial_bounds[0]
         latmin, latmax = spatial_bounds[1], spatial_bounds[2] 
         lonmin, lonmax = spatial_bounds[3], spatial_bounds[4]
