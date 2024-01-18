@@ -36,7 +36,7 @@ lat_res         = 0.25            # Latitudinal resolution (degrees)
 lon_res         = 0.25            # Longitudinal resolution (degrees)
 
 #"depth_index_const", "latitude_const", or "longitude_const"
-plot_plane_type = depth_const
+plot_plane_type = depth_index_const
 #The left endpoint of the corresponding range below will be used as the constant
     #value
 
