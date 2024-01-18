@@ -21,7 +21,7 @@ import comp_secondary
 
 from functions_ecco_general import get_monthstr
 from functions_field_variables import field_is_primary
-from functions_remove_data import remove_primary_files
+from functions_remove_data import get_date_strings, remove_primary_files
 from functions_visualization import ArcCir_pcolormesh
 
 ##############################
@@ -211,47 +211,11 @@ for field_name in primary_vector_fields:
 
 ##############################
 
-#ASSEMBLE A LIST OF STRINGS REPRESENTING TIMES TO ITERATE OVER
-
-date_strings = []
-month, year = int(initial_month), int(initial_year)
-
-#Append every eligible date string to list 'date_strings'
-
-if time_ave_type == 'monthly':
-    
-    while year < int(final_year):
-        while month <= 12:
-            date_string = str(year) + '-' + get_monthstr(month)
-            date_strings.append(date_string)
-            month += 1
-        year += 1
-        month = 1
-        
-    if year == int(final_year):
-        while month <= int(final_month):
-            date_string = final_year + '-' + get_monthstr(month)
-            date_strings.append(date_string)
-            month += 1
-            
-elif time_ave_type == 'seasonal':
-        
-    if int(season_start) < int(season_end):
-        while year <= int(final_year):
-            date_string = '{}-{}_{}'.format(season_start, season_end, str(year))
-            date_strings.append(date_string) 
-            year += 1
-            
-    elif int(season_end) < int(season_start):
-        while year < int(final_year):
-            date_string = '{}-{}_{}-{}'.format(season_start, season_end, 
-                                               str(year), str(year+1))
-            date_strings.append(date_string)
-            year += 1
-
-##############################
-
 #COMPUTE SECONDARY DATA
+
+#Get date strings to iterate over
+date_strings = get_date_strings(initial_month, initial_year, final_month, 
+                                final_year, time_ave_type, time_kwargs)
 
 for field_name in secondary_scalar_fields: #Iterate over scalar fields
     for date_string in date_strings: #Iterate over times 
