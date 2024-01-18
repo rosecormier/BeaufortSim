@@ -30,7 +30,7 @@ class Parameters():
     lat_res = None      
     lon_res = None
     plot_plane_type = None
-    depth_range = None
+    depth_index_range = None
     lat_range = None  
     lon_range = None 
     # interp_type   = None #TBA
@@ -122,8 +122,8 @@ def main():
     print("Resolution (latitude):", param_data.lat_res)
     print("Resolution (longitude):", param_data.lon_res)
     print("Plane type:", param_data.plot_plane_type)
-    print("Depth range:", param_data.depth_range[0]+",", 
-          param_data.depth_range[1])
+    print("Depth range:", param_data.depth_index_range[0]+",", 
+          param_data.depth_index_range[1])
     print("Latitude range:", param_data.lat_range[0]+",", 
           param_data.lat_range[1])
     print("Longitude range:", param_data.lon_range[0]+",", 

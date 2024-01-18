@@ -35,14 +35,14 @@ season_end      = 05
 lat_res         = 0.25            # Latitudinal resolution (degrees)
 lon_res         = 0.25            # Longitudinal resolution (degrees)
 
-#"depth_const", "latitude_const", or "longitude_const"
+#"depth_index_const", "latitude_const", or "longitude_const"
 plot_plane_type = depth_const
 #The left endpoint of the corresponding range below will be used as the constant
     #value
 
-depth_range     = 0, 50           # Top layer (k-value), bottom layer (k-value)
-lat_range       = 70.0, 85.0      # South bound (deg-N), north bound (deg-N)
-lon_range       = -180, -90       # West bound (deg), east bound (deg)
+depth_index_range  = 0, 50       # Top layer (k-value), bottom layer (k-value)
+lat_range          = 70.0, 85.0  # South bound (deg-N), north bound (deg-N)
+lon_range          = -180, -90   # West bound (deg), east bound (deg)
 
 # interp_type   = TBD
 
