@@ -11,8 +11,10 @@ nu_E            = 1e-2            # Eddy viscosity (m^2/s)
 
 time_ave_type   = seasonal        # "monthly", "daily", or "seasonal"
 
-initial_month   = 1995, 01        # Year (integer), month (integer)
-final_month     = 1998, 12        # Year (integer), month (integer)
+initial_month   = 01              # Month (integer)
+initial_year    = 1995            # Year (integer)
+final_month     = 12              # Month (integer)
+final_year      = 1998            # Year (integer)
 
 #Day (integer); only used if "time_ave_type" is "daily"
 initial_day     = 01
