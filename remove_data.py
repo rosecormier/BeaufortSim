@@ -32,14 +32,10 @@ def main(**kwargs):
             remove_primary_files(scalar_field_name, datdir_primary, 
                                  date_strings)
 
-        print("Deleted scalar data.")
-
         #Delete primary vector data
         for vector_field_name in primary_vector_fields: 
             remove_primary_files(vector_field_name, datdir_primary, 
                                  date_strings)
-
-        print("Deleted vector data.")
 
         #Identify any secondary fields that required primary data to be saved, 
         #and delete the primary data
@@ -58,11 +54,6 @@ def main(**kwargs):
                 remove_primary_files('wind_stress', datdir_primary, 
                                      date_strings)
 
-        print("Done deleting primary data.")
-        
-    else:
-        print("Not deleting primary data.")
-        
 ##############################
 
 if __name__ == "__main__":

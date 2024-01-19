@@ -71,7 +71,6 @@ def load_secondary_data_file(field_name, date_string, datdir_secondary,
     
     try: #Try to load DataSet
         computed_ds = xr.open_mfdataset(path_to_file, engine="scipy")
-        print("Loaded DataSet.")
         return computed_ds
     
     except:

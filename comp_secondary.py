@@ -651,8 +651,6 @@ def main(**kwargs):
         elif field_name == 'vorticity':
             comp_vorticity(ds_grid, date_string, datdir_primary, 
                            datdir_secondary, time_ave_type, time_kwargs)
-            
-    print("Done computing secondary data.")
 
 ##############################
 

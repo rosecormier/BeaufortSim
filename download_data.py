@@ -104,8 +104,7 @@ def main(**kwargs):
                                      download_root_dir=datdir_primary, 
                                      n_workers=6, force_redownload=False)
                 month += 1
-                    
-        print("Done downloading ECCO data.")
+
         return None
         
     elif time_ave_type == "seasonal":
@@ -254,8 +253,7 @@ def main(**kwargs):
                     month = 1   
                 else:
                     month += 1
-    
-        print("Done downloading ECCO data and saving seasonal averages.")
+
         return all_seasons_all_date_strings
             
 ##############################
