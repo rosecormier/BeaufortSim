@@ -10,93 +10,43 @@ following:
 R. Cormier, F. Poulin, 2024
 """
 
-import os
-import sys
-
-from os.path import expanduser, join
-
 import read_input
 import download_data
 import comp_secondary
 import remove_data
 
-from functions_ecco_general import get_monthstr
 from functions_field_variables import get_field_lists
 from functions_remove_data import get_date_strings
 from functions_visualization import ArcCir_pcolormesh
 
 ##############################
 
-#READ (AND LOG, AS APPROPRIATE) INPUT PARAMETERS
+#READ (AND LOG) INPUT PARAMETERS; SAVE TO VARIABLES
 
-param_data = read_input.main()
+logfile_path, param_data = read_input.main()
 
-#Input directory information
+#Directories
 
-logs_folder = param_data.logs_folder
-data_folder_primary = param_data.data_folder_primary
-data_folder_secondary = param_data.data_folder_secondary
-visualization_folder = param_data.visualization_folder
-
-#Set up directories
-
-homedir = expanduser('~')
-sys.path.append(join(homedir, 'ECCOv4-py'))
-datdir_primary = join(homedir, data_folder_primary, 'ECCO_V4r4_PODAAC')
-datdir_secondary = join(".", data_folder_secondary)
-visdir = join(".", visualization_folder)
-logdir = join(".", logs_folder)
-
-experiment_number = 0 
-#Hardcoded for now; eventually will need to automatically produce a unique 
-#number for each run
-
-for directory in [visdir, logdir]:
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-#Create the log file
-logfile = join(logdir, "logfile_{}.txt".format(str(experiment_number))) 
-
-f = open(logfile, "w") 
-#When ready to use the script in full, switch "w" to "x"
+datdir_primary = param_data.data_folder_primary
+datdir_secondary = param_data.data_folder_secondary
+visdir = param_data.visualization_folder
 
 #Ocean properties
 
 rho_ref = param_data.rho_ref
 nu_E = param_data.nu_E
-f.write("rho_ref (kg/m^3) = " + rho_ref + "\n" + "nu_E (m^2/s) = " + nu_E + 
-        "\n\n")
 
 #Temporal inputs
 
 time_ave_type = param_data.time_ave_type
-initial_year = param_data.initial_month[0]
-initial_month = param_data.initial_month[1]
-final_year, final_month = param_data.final_month[0], param_data.final_month[1]
-f.write("time_ave_type = " + time_ave_type + "\n")
-f.write("initial_month = " + initial_month + "\n" + "initial_year = " + 
-        initial_year + "\n")
-f.write("final_month = " + final_month + "\n" + "final_year = " + final_year 
-        + "\n\n")
-
-if time_ave_type == "daily":
-    initial_day, final_day = param_data.initial_day, param_data.final_day
-    f.write("initial_day = " + initial_day + "\n" + "final_day = " + 
-            final_day + "\n\n")
-    time_kwargs = [initial_day, final_day]
-elif time_ave_type == "seasonal":
-    season_start, season_end = param_data.season_start, param_data.season_end
-    f.write("season_start = " + season_start + "\n" + "season_end = " + 
-            season_end + "\n\n")
-    time_kwargs = [season_start, season_end]
-else:
-    time_kwargs = None
+initial_month, initial_year = param_data.initial_month, param_data.initial_year
+final_month, final_year = param_data.final_month, param_data.final_year
+time_kwargs = param_date.time_kwargs
 
 #Spatial inputs
-    
+
 plot_plane_type = param_data.plot_plane_type
-f.write("plot_plane_type = " + plot_plane_type + "\n\n")
+depth, depth_index_range = param_data.depth, param_data.depth_index_range
 
 if plot_plane_type == "depth_index_const":
     
@@ -104,12 +54,8 @@ if plot_plane_type == "depth_index_const":
     lat_res, lon_res = param_data.lat_res, param_data.lon_res
     latmin, latmax = param_data.lat_range[0], param_data.lat_range[1]
     lonmin, lonmax = param_data.lon_range[0], param_data.lon_range[1]
-    f.write("depth = " + depth + "\n")
-    f.write("lat_res = " + lat_res + "\n" + "lon_res" + lon_res + "\n")
-    f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
-    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
     
-    plane_string = 'k'+depth #To be used in filenames
+    plane_string = "k{}".format(depth) #To be used in filenames
     
 elif plot_plane_type == "latitude_const":
     
@@ -118,12 +64,8 @@ elif plot_plane_type == "latitude_const":
     depthmin = param_data.depth_index_range[0] 
     depthmax = param_data.depth_index_range[1]
     lonmin, lonmax = param_data.lon_range[0], param_data.lon_range[1]
-    f.write("lat = " + lat + "\n")
-    f.write("lon_res = " + lon_res + "\n")
-    f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
-    f.write("lonmin = " + lonmin + "\n" + "lonmax = " + lonmax + "\n")
     
-    plane_string = 'lat'+lat #To be used in filenames
+    plane_string = "lat{}".format(lat) #To be used in filenames
     
 elif plot_plane_type == "longitude_const":
     
@@ -132,35 +74,15 @@ elif plot_plane_type == "longitude_const":
     depthmin = param_data.depth_index_range[0]
     depthmax = param_data.depth_index_range[1]
     latmin, latmax = param_data.lat_range[0], param_data.lat_range[1]
-    f.write("lon = " + lon + "\n")
-    f.write("lat_res = " + lat_res + "\n")
-    f.write("depthmin = " + depthmin + "\n" + "depthmax = " + depthmax + "\n")
-    f.write("latmin = " + latmin + "\n" + "latmax = " + latmax + "\n")
     
-    plane_string = 'lon'+lon #To be used in filenames
+    plane_string = "lon{}".format(lon) #To be used in filenames
     
-# interp_type = #TBA
-
 #Field inputs
 
-scalar_fields = param_data.scalar_fields
-f.write("scalar_fields = ")
-for i in range(len(scalar_fields)-1):
-    f.write(scalar_fields[i] + ", ")
-f.write(scalar_fields[-1] + "\n")
-        
+scalar_fields = param_data.scalar_fields 
 vector_fields = param_data.vector_fields
-f.write("vector_fields = ")
-if vector_fields == ['']:
-    vector_fields = []
-else:
-    for i in range(len(vector_fields)-1):
-        f.write(vector_fields[i] + ", ")
-    f.write(vector_fields[-1])
 
-f.close()
-    
-#Flag to clear primary datafiles after use (no need to log)
+#Flag to clear primary datafiles after use
 clear_data_files = param_data.clear_data_files 
 
 ##############################
