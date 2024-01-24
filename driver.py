@@ -41,7 +41,7 @@ nu_E = param_data.nu_E
 time_ave_type = param_data.time_ave_type
 initial_month, initial_year = param_data.initial_month, param_data.initial_year
 final_month, final_year = param_data.final_month, param_data.final_year
-time_kwargs = param_date.time_kwargs
+time_kwargs = param_data.time_kwargs
 
 #Spatial inputs
 
