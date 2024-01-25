@@ -10,6 +10,10 @@ following:
 R. Cormier, F. Poulin, 2024
 """
 
+import os
+
+from os.path import join
+
 import read_input
 import download_data
 import comp_secondary
@@ -46,7 +50,6 @@ time_kwargs = param_data.time_kwargs
 #Spatial inputs
 
 plot_plane_type = param_data.plot_plane_type
-depth, depth_index_range = param_data.depth, param_data.depth_index_range
 
 if plot_plane_type == "depth_index_const":
     
