@@ -106,7 +106,8 @@ def get_scalar_bounds(scalar_field, scalar_bounds=None):
 
 ##############################
 
-def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax, logscale=False):
+def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax,
+                   logscale=False):
     
     """
     Create pcolormesh object given an axis.
@@ -116,9 +117,8 @@ def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax,
     cmap, symmetry = get_cmap_and_symmetry(field_name)
     
     if symmetry: 
-        
-        #If variable is symmetric about zero, reset bounds on colorbar to be symmetric
-        
+        #If variable is symmetric about zero, reset bounds on colorbar to be 
+        #symmetric
         abs_max_value = max(abs(vmax), abs(vmin))
         vmin, vmax = -abs_max_value, abs_max_value
         
@@ -139,7 +139,8 @@ def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp,
                quiv_scale=0.3):
     
     """
-    Resample vector field to lat-lon grid and get quiver object; add quiver to given ax.
+    Resample vector field to lat-lon grid and get quiver object; add quiver to 
+    given ax.
     """
 
     skip = (slice(0, -1, 1), slice(0, -1, 1))
