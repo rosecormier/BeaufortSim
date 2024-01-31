@@ -217,69 +217,6 @@ def get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs,
 
 ##############################
 
-#DIVERGENCE OF HORIZONTAL VELOCITY
-
-def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, 
-                    time_ave_type, time_kwargs):
-
-    """
-    Compute and save divergence of horizontal velocity to DataSet in NetCDF 
-    format.
-    """
-    
-    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
-                                                  time_kwargs, '2D_div_vel')
-    month_string_dict = time_ave_type_attrs[0] 
-    div_vel_shortname = time_ave_type_attrs[1]
-    div_vel_nc_string = time_ave_type_attrs[2]
-
-    div_vel_list = []
-    
-    for month_string in month_string_dict:
-        
-        month = month_string_dict[month_string][0] 
-        year = month_string_dict[month_string][1]
-        
-        #Look for the corresponding velocity file(s) in primary directory and 
-        #download if nonexistent
-        download_data.main(field_name='horizontal_vel', initial_month=month, 
-                           initial_year=year, final_month=month, 
-                           final_year=year, time_ave_type='monthly', 
-                           datdir_primary=datdir_primary, time_kwargs=None)
-        
-        ds_velocity = load_data_files.main(field_name='horizontal_vel', 
-                                           time_ave_type='monthly', 
-                                           date_string=month_string, 
-                                           datdir_primary=datdir_primary, 
-                                           datdir_secondary=datdir_secondary) 
-        ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
-        ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
-
-        xgcm_grid = ecco.get_llc_grid(ds_grid)
-
-        u, v = ds_velocity['UVEL'], ds_velocity['VVEL']
-        dx, dy = ds_grid.dxG, ds_grid.dyG
-        cell_area = ds_grid.rA
-
-        #Compute divergence
-        div_vel = ((xgcm_grid.diff(u*dy, 'X') 
-                    + xgcm_grid.diff(v*dx, 'Y')).squeeze() / cell_area) 
-        div_vel_list.append(div_vel)
-
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    div_vel = compute_temporal_mean(div_vel_list)
-    
-    #Save the data
-
-    div_vel.name = 'DIVU'
-    if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
-        os.makedirs(join(datdir_secondary, div_vel_shortname))
-    div_vel.to_netcdf(path=join(datdir_secondary, div_vel_shortname, 
-                                div_vel_nc_string+date_string+".nc"), 
-                      engine="scipy")
-
-##############################
-
 #GEOSTROPHIC VELOCITY
 
 def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
@@ -418,6 +355,87 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
                                   vel_Ek_nc_string+date_string+".nc"), 
                         engine="scipy")
         
+##############################
+
+#DIVERGENCE OF HORIZONTAL VELOCITY
+
+def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary, 
+                    time_ave_type, time_kwargs):
+
+    """
+    Compute and save divergence of horizontal velocity to DataSet in NetCDF 
+    format.
+    """
+    
+    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
+                                                  time_kwargs, '2D_div_vel')
+    month_string_dict = time_ave_type_attrs[0]
+
+    monthly_file_list = []
+    
+    for month_string in month_string_dict:
+        
+        month = month_string_dict[month_string][0] 
+        year = month_string_dict[month_string][1]
+        
+        div_vel_shortname = get_monthly_shortname('DIVU')
+        div_vel_nc_string = get_monthly_nc_string('DIVU')
+        
+        #Look for the monthly velocity file in primary directory and download it
+        #if it doesn't exist
+        download_data.main(field_name='horizontal_vel', initial_month=month, 
+                           initial_year=year, final_month=month, 
+                           final_year=year, time_ave_type='monthly', 
+                           datdir_primary=datdir_primary, time_kwargs=None)
+        
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', 
+                                           time_ave_type='monthly', 
+                                           date_string=month_string, 
+                                           datdir_primary=datdir_primary, 
+                                           datdir_secondary=datdir_secondary)
+        ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
+        ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
+
+        xgcm_grid = ecco.get_llc_grid(ds_grid)
+
+        u, v = ds_velocity['UVEL'], ds_velocity['VVEL']
+        dx, dy = ds_grid.dxG, ds_grid.dyG
+        cell_area = ds_grid.rA
+
+        #Compute divergence
+        div_vel = ((xgcm_grid.diff(u*dy, 'X') 
+                    + xgcm_grid.diff(v*dx, 'Y')).squeeze() / cell_area) 
+        
+        #Save the monthly data
+        
+        div_vel.name = 'DIVU'
+        if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
+            os.makedirs(join(datdir_secondary, div_vel_shortname))
+        file_path = join(datdir_secondary, div_vel_shortname,
+                        div_vel_nc_string+month_string+".nc")
+        div_vel.to_netcdf(path=file_path, engine="scipy")
+        monthly_file_list.append(file_path)
+
+    #If seasonal, compute the seasonally-averaged data if missing
+    if time_ave_type == 'seasonal':
+        
+        div_vel_shortname = time_ave_type_attrs[1]
+        div_vel_nc_string = time_ave_type_attrs[2]
+        
+        if not os.path.exists(join(datdir_secondary, div_vel_shortname)):
+            os.makedirs(join(datdir_secondary, div_vel_shortname))
+        
+        div_vel_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        div_vel_seasonal_avg = (div_vel_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        div_vel_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        div_vel_shortname, 
+                                        div_vel_nc_string+date_string+".nc"), 
+                                         engine="scipy")
+
 ##############################
 
 #NORMAL STRAIN
