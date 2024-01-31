@@ -108,13 +108,13 @@ def rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps):
     """
     Gets eastward and northward components of vector in x-y coordinates.
     """
-
-    if field_is_primary(vector_field_name):
         
-        vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
-        vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
+    vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
+    vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
         
-        xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
+    xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
+    
+    try:
         interp_vector = xgcm_grid.interp_2d_vector({'X': vector_ds
                                                     [vector_comps[0]], 
                                                     'Y': vector_ds
@@ -124,12 +124,8 @@ def rotate_vector(curr_ds_grid, vector_ds, vector_field_name, vector_comps):
                       - interp_vector['Y'] * curr_ds_grid['SN'])
         vel_N_comp = (interp_vector['X'] * curr_ds_grid['SN'] 
                       + interp_vector['Y'] * curr_ds_grid['CS'])
-        
-    elif not field_is_primary(vector_field_name):
-        
-        vector_ds[vector_comps[0]].data = vector_ds[vector_comps[0]].values
-        vector_ds[vector_comps[1]].data = vector_ds[vector_comps[1]].values
-        
+     
+    except:
         vel_E_comp = (vector_ds[vector_comps[0]] * curr_ds_grid['CS'] 
                       - vector_ds[vector_comps[1]] * curr_ds_grid['SN'])
         vel_N_comp = (vector_ds[vector_comps[0]] * curr_ds_grid['SN'] 
@@ -143,7 +139,7 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin,
                    latmax, lonmin, lonmax, lat_res, lon_res):
     
     """
-    Resamples scalar DataSet attribute at specific k-value (depth) to lat-lon 
+    Resamples scalar DataSet attribute at single k-value (depth) to lat-lon 
     grid.
     If field is vertical velocity (w), interpolates along z-axis (helpful for 
     visualization).
@@ -153,18 +149,24 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin,
     lonmin, lonmax, lon_res = float(lonmin), float(lonmax), float(lon_res)
 
     curr_ds_grid = ds_grid.copy()
+    xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
     
     if field_variable == 'WVEL': #If w, interpolate vertically
-        xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
         scalar_ds['WVEL'] = xgcm_grid.interp(scalar_ds.WVEL, axis='Z')
+        
+    #If variable is defined on cell edges in the horizontal, interpolate 
+    #horizontally
+    if field_variable == 'ZETA':
+        scalar_ds['ZETA'] = xgcm_grid.interp(scalar_ds.ZETA, axis=('X', 'Y'))
     
     curr_ds_grid[field_variable] = scalar_ds[field_variable]
     curr_ds_grid.load()
-    #Isolate plane at specified depth
-    field = curr_ds_grid[field_variable].isel(k=int(depth))
+
+    if 'k' in scalar_ds.coords:
+        #Multiple depths exist, so isolate the plane at specified depth
+        field = curr_ds_grid[field_variable].isel(k=int(depth))
 
     field = field.where(ds_grid.isel(k=int(depth)).maskC) #Mask land with NaNs
-
     resample_output = ecco.resample_to_latlon(curr_ds_grid.XC, curr_ds_grid.YC, 
                                               field, latmin, latmax, lat_res, 
                                               lonmin, lonmax, lon_res, 
@@ -203,11 +205,25 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     curr_ds_grid[vector_comps[1]] = vec_N_comp
     curr_ds_grid.load()
 
-    #Isolate plane at specified depth
-    field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth)) 
-    #Isolate plane at specified depth
-    field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth)) 
+    if 'k' in vec_E_comp.coords:
+        #Multiple depths exist, so isolate the plane at specified depth
+        field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth))
+        field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth))
+    else:
+        field_0 = curr_ds_grid[vector_comps[0]]
+        field_1 = curr_ds_grid[vector_comps[1]]
+    
+    #Isolate plane at specified depth, if not already done
+    #try:
+    #    field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth)) 
+    #    field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth)) 
+    #except:
+    #    field_0 = curr_ds_grid[vector_comps[0]]
+    #    field_1 = curr_ds_grid[vector_comps[1]]
 
+    #Mask land with NaNs
+    field_0 = field_0.where(ds_grid.isel(k=int(depth)).maskC)
+    field_1 = field_1.where(ds_grid.isel(k=int(depth)).maskC)
     resample_output_E = ecco.resample_to_latlon(curr_ds_grid.XC, 
                                             curr_ds_grid.YC, field_0, latmin, 
                                             latmax, lat_res, lonmin, lonmax, 
