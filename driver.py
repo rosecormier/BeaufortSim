@@ -99,6 +99,8 @@ secondary_vector_fields = field_lists[3]
 
 #DOWNLOAD PRIMARY (ECCO) DATA
 
+ECCO_file_date_strings = []
+
 #Iterate over primary scalar fields; download associated data
 for field_name in primary_scalar_fields:
     ECCO_file_date_strings = download_data.main(field_name=field_name, 
