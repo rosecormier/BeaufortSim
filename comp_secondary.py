@@ -432,26 +432,30 @@ def comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
     time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
                                                   time_kwargs, 'normal_strain')
     month_string_dict = time_ave_type_attrs[0]
-    normal_shortname = time_ave_type_attrs[1]
-    normal_nc_string = time_ave_type_attrs[2]
-        
-    normal_strain_list = []
+    
+    monthly_file_list = []
     
     for month_string in month_string_dict:
         
         month = month_string_dict[month_string][0]
         year = month_string_dict[month_string][1]
         
-        #Look for the velocity file in primary directory and download it if it 
-        #doesn't exist
+        normal_shortname = get_monthly_shortname('NORMAL')
+        normal_nc_string = get_monthly_nc_string('NORMAL')
+        
+        #Look for the monthly velocity file in primary directory and download it
+        #if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=month, 
                            initial_year=year, final_month=month, 
                            final_year=year, time_ave_type='monthly', 
                            datdir_primary=datdir_primary, time_kwargs=None)
 
         #Load monthly DataSet
-        ds_velocity = load_primary_data_file('horizontal_vel', month_string, 
-                                             datdir_primary, 'monthly') 
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', 
+                                           time_ave_type='monthly', 
+                                           date_string=month_string, 
+                                           datdir_primary=datdir_primary,
+                                           datdir_secondary=datdir_secondary)
         ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
         ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
 
@@ -464,19 +468,36 @@ def comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
         #Compute strain
         normal_strain = ((xgcm_grid.diff(u_mean*dy, 'X') - 
                           xgcm_grid.diff(v_mean*dx, 'Y')) / cell_area)
-        normal_strain_list.append(normal_strain)
         
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    normal_strain = compute_temporal_mean(normal_strain_list)
+        #Save the monthly data
         
-    #Save the data
-
-    normal_strain.name = 'NORMAL'
-    if not os.path.exists(join(datdir_secondary, normal_shortname)):
-        os.makedirs(join(datdir_secondary, normal_shortname))
-    normal_strain.to_netcdf(path=join(datdir_secondary, normal_shortname, 
-                                      normal_nc_string+date_string+".nc"), 
-                            engine="scipy")
+        normal_strain.name = 'NORMAL'
+        if not os.path.exists(join(datdir_secondary, normal_shortname)):
+            os.makedirs(join(datdir_secondary, normal_shortname))
+        file_path = join(datdir_secondary, normal_shortname,
+                        normal_nc_string+month_string+".nc")
+        normal_strain.to_netcdf(path=file_path, engine="scipy")
+        monthly_file_list.append(file_path)
+        
+    #If seasonal, compute the seasonally-averaged data if missing
+    if time_ave_type == 'seasonal':
+        
+        normal_shortname = time_ave_type_attrs[1]
+        normal_nc_string = time_ave_type_attrs[2]
+        
+        if not os.path.exists(join(datdir_secondary, normal_shortname)):
+            os.makedirs(join(datdir_secondary, normal_shortname))
+        
+        normal_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        normal_seasonal_avg = (normal_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        normal_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        normal_shortname, 
+                                        normal_nc_string+date_string+".nc"), 
+                                         engine="scipy")
 
 ##############################
 
