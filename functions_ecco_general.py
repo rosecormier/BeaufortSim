@@ -143,6 +143,8 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin,
     grid.
     If field is vertical velocity (w), interpolates along z-axis (helpful for 
     visualization).
+    If field needs to be interpolated to cell centres in the horizontal before 
+    visualization, do this.
     """
     
     latmin, latmax, lat_res = float(latmin), float(latmax), float(lat_res)
@@ -190,17 +192,28 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
     east-north axes.
     Resamples vector components at specific k-value (depth index) to lat-lon 
     grid.
+    If field needs to be interpolated to cell centres in the horizontal before 
+    visualization, do this.
     """
     
     latmin, latmax, lat_res = float(latmin), float(latmax), float(lat_res)
     lonmin, lonmax, lon_res = float(lonmin), float(lonmax), float(lon_res)
     
     curr_ds_grid = ds_grid.copy()
+    xgcm_grid = ecco.get_llc_grid(curr_ds_grid)
     
     vector_comps = get_vector_comps(vector_field_name)
     #Rotate vector
     vec_E_comp, vec_N_comp = rotate_vector(curr_ds_grid, vector_ds, 
                                            vector_field_name, vector_comps)
+    
+    #If variable is defined on cell edges in the horizontal, interpolate 
+    #horizontally
+    if vector_field_name == 'Ek_vel':
+        vec_E_comp.isel(k=int(depth)).data = xgcm_grid.interp(
+            vec_E_comp.isel(k=int(depth)), axis=('X', 'Y'))
+        vec_N_comp.isel(k=int(depth)).data = xgcm_grid.interp(
+            vec_N_comp.isel(k=int(depth)), axis=('X', 'Y'))
     
     curr_ds_grid[vector_comps[0]] = vec_E_comp
     curr_ds_grid[vector_comps[1]] = vec_N_comp
@@ -214,14 +227,6 @@ def vector_to_grid(ds_grid, vector_ds, vector_field_name, depth, latmin, latmax,
         field_0 = curr_ds_grid[vector_comps[0]]
         field_1 = curr_ds_grid[vector_comps[1]]
     
-    #Isolate plane at specified depth, if not already done
-    #try:
-    #    field_0 = curr_ds_grid[vector_comps[0]].isel(k=int(depth)) 
-    #    field_1 = curr_ds_grid[vector_comps[1]].isel(k=int(depth)) 
-    #except:
-    #    field_0 = curr_ds_grid[vector_comps[0]]
-    #    field_1 = curr_ds_grid[vector_comps[1]]
-
     #Mask land with NaNs
     field_0 = field_0.where(ds_grid.isel(k=int(depth)).maskC)
     field_1 = field_1.where(ds_grid.isel(k=int(depth)).maskC)

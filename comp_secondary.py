@@ -31,8 +31,8 @@ from math import e, pi
 import download_data
 import load_data_files
 
-from functions_ecco_general import compute_temporal_mean, load_grid, \
-get_args_from_date_string, get_monthstr
+from functions_ecco_general import load_grid, get_args_from_date_string, \
+get_monthstr
 from functions_field_variables import get_field_variable, \
 get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, \
 get_seasonal_nc_string
@@ -231,15 +231,16 @@ def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
                                                   time_kwargs, 
                                                   'geostrophic_vel')
     month_string_dict = time_ave_type_attrs[0]
-    vel_g_shortname = time_ave_type_attrs[1]
-    vel_g_nc_string = time_ave_type_attrs[2]
     
-    u_gs, v_gs = None, None
+    monthly_file_list = []
     
     for month_string in month_string_dict:
         
         month = month_string_dict[month_string][0]
         year = month_string_dict[month_string][1]
+        
+        vel_g_shortname = get_monthly_shortname('UGVG')
+        vel_g_nc_string = get_monthly_nc_string('UGVG')
     
         #Look for the density/pressure file in primary directory and download if
         #it doesn't exist
@@ -259,27 +260,39 @@ def comp_geostrophic_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
 
         #Compute geostrophic velocity components
         u_g, v_g = get_vel_g_components(ds_grid, pressure_like, density) 
-        if u_gs is None:
-            u_gs, v_gs = u_g, v_g
-        elif u_gs is not None:
-            u_gs = xr.concat([u_gs, u_g], 'time')
-            v_gs = xr.concat([v_gs, v_g], 'time')
-    
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    s
-    u_g = compute_temporal_mean(u_gs).squeeze()
-    v_g = compute_temporal_mean(v_gs).squeeze()
+        u_g, v_g = u_g.squeeze(), v_g.squeeze()
         
-    #Save the data
+        #Save the monthly data
         
-    u_g.name = 'UG'
-    v_g.name = 'VG'
-    vel_g_ds = xr.merge([u_g, v_g])
-    if not os.path.exists(join(datdir_secondary, vel_g_shortname)):
-        os.makedirs(join(datdir_secondary, vel_g_shortname))
-    vel_g_ds.to_netcdf(path=join(datdir_secondary, vel_g_shortname, 
-                                 vel_g_nc_string+date_string+".nc"), 
-                       engine="scipy")
+        u_g.name = 'UG'
+        v_g.name = 'VG'
+        vel_g_ds = xr.merge([u_g, v_g], combine_attrs='no_conflicts')
+        if not os.path.exists(join(datdir_secondary, vel_g_shortname)):
+            os.makedirs(join(datdir_secondary, vel_g_shortname))
+        file_path = join(datdir_secondary, vel_g_shortname,
+                        vel_g_nc_string+month_string+".nc")
+        vel_g_ds.to_netcdf(path=file_path, engine="scipy")
+        monthly_file_list.append(file_path)
+
+    #If seasonal, compute the seasonally-averaged data if missing
+    if time_ave_type == 'seasonal':
+        
+        vel_g_shortname = time_ave_type_attrs[1]
+        vel_g_nc_string = time_ave_type_attrs[2]
+        
+        if not os.path.exists(join(datdir_secondary, vel_g_shortname)):
+            os.makedirs(join(datdir_secondary, vel_g_shortname))
+        
+        vel_g_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        vel_g_seasonal_avg = (vel_g_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        vel_g_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        vel_g_shortname, 
+                                        vel_g_nc_string+date_string+".nc"), 
+                                         engine="scipy")
 
 ############################## 
 
@@ -293,17 +306,19 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
     format.
     """
     
-    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'Ek_vel')
+    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
+                                                  time_kwargs, 'Ek_vel')
     month_string_dict = time_ave_type_attrs[0]
-    vel_Ek_shortname = time_ave_type_attrs[1] 
-    vel_Ek_nc_string = time_ave_type_attrs[2]
-
-    u_Eks, v_Eks = None, None
+    
+    monthly_file_list = []
     
     for month_string in month_string_dict:
         
         month = month_string_dict[month_string][0]
         year = month_string_dict[month_string][1]
+        
+        vel_Ek_shortname = get_monthly_shortname('UEkVEk')
+        vel_Ek_nc_string = get_monthly_nc_string('UEkVEk')
     
         #Look for the density/pressure file in primary directory and download if
         #it doesn't exist
@@ -324,6 +339,7 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
                            initial_year=year, final_month=month, 
                            final_year=year, time_ave_type='monthly', 
                            datdir_primary=datdir_primary, time_kwargs=None)
+        
         #Load monthly DataSet
         ds_stress = load_data_files.main(field_name='wind_stress', 
                                          time_ave_type='monthly', 
@@ -334,26 +350,39 @@ def comp_Ek_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
         #Compute Ekman velocity components
         u_Ek, v_Ek = get_vel_Ek_components(ds_grid, ds_denspress, ds_stress, 
                                            rho_ref, nu_E) 
-        if u_Eks is None:
-            u_Eks, v_Eks = u_Ek, v_Ek
-        elif u_Eks is not None:
-            u_Eks = xr.concat([u_Eks, u_Ek], 'time')
-            v_Eks = xr.concat([v_Eks, v_Ek], 'time')
-    
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    u_Ek = compute_temporal_mean(u_Eks).squeeze()
-    v_Ek = compute_temporal_mean(v_Eks).squeeze()
-
-    #Save the data
+        u_Ek, v_Ek = u_Ek.squeeze(), v_Ek.squeeze()
         
-    u_Ek.name = 'UEk'
-    v_Ek.name = 'VEk'
-    vel_Ek_ds = xr.merge([u_Ek, v_Ek])
-    if not os.path.exists(join(datdir_secondary, vel_Ek_shortname)):
-        os.makedirs(join(datdir_secondary, vel_Ek_shortname))
-    vel_Ek_ds.to_netcdf(path=join(datdir_secondary, vel_Ek_shortname, 
-                                  vel_Ek_nc_string+date_string+".nc"), 
-                        engine="scipy")
+        #Save the monthly data
+        
+        u_Ek.name = 'UEk'
+        v_Ek.name = 'VEk'
+        vel_Ek_ds = xr.merge([u_Ek, v_Ek], combine_attrs='no_conflicts')
+        if not os.path.exists(join(datdir_secondary, vel_Ek_shortname)):
+            os.makedirs(join(datdir_secondary, vel_Ek_shortname))
+        file_path = join(datdir_secondary, vel_Ek_shortname,
+                        vel_Ek_nc_string+month_string+".nc")
+        vel_Ek_ds.to_netcdf(path=file_path, engine="scipy")
+        monthly_file_list.append(file_path)
+
+    #If seasonal, compute the seasonally-averaged data if missing
+    if time_ave_type == 'seasonal':
+        
+        vel_Ek_shortname = time_ave_type_attrs[1]
+        vel_Ek_nc_string = time_ave_type_attrs[2]
+        
+        if not os.path.exists(join(datdir_secondary, vel_Ek_shortname)):
+            os.makedirs(join(datdir_secondary, vel_Ek_shortname))
+        
+        vel_Ek_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        vel_Ek_seasonal_avg = (vel_Ek_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        vel_Ek_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        vel_Ek_shortname, 
+                                        vel_Ek_nc_string+date_string+".nc"), 
+                                         engine="scipy")
         
 ##############################
 
@@ -388,6 +417,7 @@ def comp_2D_div_vel(ds_grid, date_string, datdir_primary, datdir_secondary,
                            final_year=year, time_ave_type='monthly', 
                            datdir_primary=datdir_primary, time_kwargs=None)
         
+        #Load monthly DataSet
         ds_velocity = load_data_files.main(field_name='horizontal_vel', 
                                            time_ave_type='monthly', 
                                            date_string=month_string, 
@@ -485,7 +515,7 @@ def comp_normal_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
 
         #Compute strain
         normal_strain = ((xgcm_grid.diff(u_mean*dy, 'X') - 
-                          xgcm_grid.diff(v_mean*dx, 'Y')) / cell_area)
+                          xgcm_grid.diff(v_mean*dx, 'Y')).squeeze() / cell_area)
         
         #Save the monthly data
         
@@ -566,7 +596,7 @@ def comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
 
         #Compute strain
         shear_strain = ((xgcm_grid.diff(v_mean*dy, 'X') + 
-                         xgcm_grid.diff(u_mean*dx, 'Y')) / cell_area)
+                         xgcm_grid.diff(u_mean*dx, 'Y')).squeeze() / cell_area)
         
         #Save the monthly data
         
