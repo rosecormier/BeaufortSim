@@ -30,18 +30,15 @@ from functions_visualization import ArcCir_pcolormesh
 logfile_path, param_data = read_input.main()
 
 #Directories
-
 datdir_primary = param_data.data_folder_primary
 datdir_secondary = param_data.data_folder_secondary
 visdir = param_data.visualization_folder
 
 #Ocean properties
-
 rho_ref = param_data.rho_ref
 nu_E = param_data.nu_E
 
 #Temporal inputs
-
 time_ave_type = param_data.time_ave_type
 initial_month, initial_year = param_data.initial_month, param_data.initial_year
 final_month, final_year = param_data.final_month, param_data.final_year
@@ -81,7 +78,6 @@ elif plot_plane_type == "longitude_const":
     plane_string = "lon{}".format(lon) #To be used in filenames
     
 #Field inputs
-
 scalar_fields = param_data.scalar_fields 
 vector_fields = param_data.vector_fields
 
@@ -141,7 +137,7 @@ for field_name in secondary_scalar_fields: #Iterate over scalar fields
                             date_string=date_string, 
                             time_ave_type=time_ave_type, 
                             time_kwargs=time_kwargs, field_name=field_name, 
-                            rho_ref=rho_ref, nu_E=nu_E)
+                            rho_ref=rho_ref, nu_E=nu_E, depth_index=int(depth))
         
 for field_name in secondary_vector_fields: #Iterate over vector fields
     for date_string in date_strings: #Iterate over times
@@ -151,10 +147,10 @@ for field_name in secondary_vector_fields: #Iterate over vector fields
                             date_string=date_string, 
                             time_ave_type=time_ave_type, 
                             time_kwargs=time_kwargs, field_name=field_name, 
-                            rho_ref=rho_ref, nu_E=nu_E)
+                            rho_ref=rho_ref, nu_E=nu_E, depth_index=int(depth))
 
 ##############################
-            
+        
 #VISUALIZE DATA
 
 spatial_bounds = [depth, latmin, latmax, lonmin, lonmax] 
