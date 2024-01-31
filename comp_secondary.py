@@ -492,26 +492,30 @@ def comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
     time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
                                                   time_kwargs, 'shear_strain')
     month_string_dict = time_ave_type_attrs[0]
-    shear_shortname = time_ave_type_attrs[1]
-    shear_nc_string = time_ave_type_attrs[2]
     
-    shear_strain_list = []
+    monthly_file_list = []
     
     for month_string in month_string_dict:
         
         month = month_string_dict[month_string][0]
         year = month_string_dict[month_string][1]
+        
+        shear_shortname = get_monthly_shortname('SHEAR')
+        shear_nc_string = get_monthly_nc_string('SHEAR')
     
-        #Look for the velocity file in primary directory and download it if it 
-        #doesn't exist
+        #Look for the monthly velocity file in primary directory and download it
+        #if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=month, 
                            initial_year=year, final_month=month, 
                            final_year=year, time_ave_type='monthly', 
                            datdir_primary=datdir_primary, time_kwargs=None)
 
         #Load monthly DataSet
-        ds_velocity = load_primary_data_file('horizontal_vel', month_string, 
-                                             datdir_primary, 'monthly')
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', 
+                                           time_ave_type='monthly', 
+                                           date_string=month_string, 
+                                           datdir_primary=datdir_primary,
+                                           datdir_secondary=datdir_secondary) 
         ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
         ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
 
@@ -524,19 +528,36 @@ def comp_shear_strain(ds_grid, date_string, datdir_primary, datdir_secondary,
         #Compute strain
         shear_strain = ((xgcm_grid.diff(v_mean*dy, 'X') + 
                          xgcm_grid.diff(u_mean*dx, 'Y')) / cell_area)
-        shear_strain_list.append(shear_strain)
         
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    shear_strain = compute_temporal_mean(shear_strain_list) 
+        #Save the monthly data
         
-    #Save the data
-
-    shear_strain.name = 'SHEAR'
-    if not os.path.exists(join(datdir_secondary, shear_shortname)):
-        os.makedirs(join(datdir_secondary, shear_shortname))
-    shear_strain.to_netcdf(path=join(datdir_secondary, shear_shortname, 
-                                     shear_nc_string+date_string+".nc"), 
-                           engine="scipy")
+        shear_strain.name = 'SHEAR'
+        if not os.path.exists(join(datdir_secondary, shear_shortname)):
+            os.makedirs(join(datdir_secondary, shear_shortname))
+        file_path = join(datdir_secondary, shear_shortname,
+                        shear_nc_string+month_string+".nc")
+        shear_strain.to_netcdf(path=file_path, engine="scipy")
+        monthly_file_list.append(file_path)
+    
+    #If seasonal, compute the seasonally-averaged data if missing
+    if time_ave_type == 'seasonal':
+        
+        shear_shortname = time_ave_type_attrs[1]
+        shear_nc_string = time_ave_type_attrs[2]
+        
+        if not os.path.exists(join(datdir_secondary, shear_shortname)):
+            os.makedirs(join(datdir_secondary, shear_shortname))
+        
+        shear_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        shear_seasonal_avg = (shear_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        shear_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        shear_shortname, 
+                                        shear_nc_string+date_string+".nc"), 
+                                         engine="scipy")
 
 ##############################
 
@@ -549,29 +570,33 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary,
     Compute and save vorticity to DataSet in NetCDF format.
     """
     
-    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, time_kwargs, 'vorticity')
+    time_ave_type_attrs = get_time_ave_type_attrs(date_string, time_ave_type, 
+                                                  time_kwargs, 'vorticity')
     month_string_dict = time_ave_type_attrs[0]
-    vorticity_shortname = time_ave_type_attrs[1]
-    vorticity_nc_string = time_ave_type_attrs[2]
     
-    file_list = []
+    monthly_file_list = []
     
     for month_string in month_string_dict:
         
         month = month_string_dict[month_string][0] 
         year = month_string_dict[month_string][1]
+        
+        vorticity_shortname = get_monthly_shortname('ZETA')
+        vorticity_nc_string = get_monthly_nc_string('ZETA')
     
-        #Look for the velocity file in primary directory and download it if it 
-        #doesn't exist
+        #Look for the monthly velocity file in primary directory and download it
+        #if it doesn't exist
         download_data.main(field_name='horizontal_vel', initial_month=month, 
                            initial_year=year, final_month=month, 
                            final_year=year, time_ave_type='monthly', 
                            datdir_primary=datdir_primary, time_kwargs=None)
 
         #Load monthly DataSet
-        ds_velocity = load_data_files.main(field_name='horizontal_vel', time_ave_type='monthly',
-                                     date_string=month_string, datdir_primary=datdir_primary,
-                                     datdir_secondary=datdir_secondary) 
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', 
+                                           time_ave_type='monthly', 
+                                           date_string=month_string, 
+                                           datdir_primary=datdir_primary,
+                                           datdir_secondary=datdir_secondary) 
         ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
         ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
 
@@ -585,26 +610,35 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary,
         vorticity = ((-xgcm_grid.diff(u_mean*dx, 'Y') 
                       + xgcm_grid.diff(v_mean*dy, 'X')).squeeze() / cell_area)
         
-        #Save the monthly data - clean this up
-        vorticity.name = 'ZETA'
-        if not os.path.exists(join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity')))):
-            os.makedirs(join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity'))))
+        #Save the monthly data
         
-        file_path = join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity')),
-                                  get_monthly_nc_string(get_field_variable('vorticity'))+month_string+".nc")
+        vorticity.name = 'ZETA'
+        if not os.path.exists(join(datdir_secondary, vorticity_shortname)):
+            os.makedirs(join(datdir_secondary, vorticity_shortname))
+        file_path = join(datdir_secondary, vorticity_shortname,
+                        vorticity_nc_string+month_string+".nc")
         vorticity.to_netcdf(path=file_path, engine="scipy")
-        file_list.append(file_path)
+        monthly_file_list.append(file_path)
     
-    #If seasonal, compute the seasonally-averaged data if it doesn't exist
+    #If seasonal, compute the seasonally-averaged data if missing
     if time_ave_type == 'seasonal':
         
-        if not os.path.exists(join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity')))):
-            os.makedirs(join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity'))))
+        vorticity_shortname = time_ave_type_attrs[1]
+        vorticity_nc_string = time_ave_type_attrs[2]
         
-        vorticity_seasonal = xr.open_mfdataset(file_list, combine='nested', concat_dim='month')
-        vorticity_seasonal = vorticity_seasonal.sum('month') / len(file_list)
+        if not os.path.exists(join(datdir_secondary, vorticity_shortname)):
+            os.makedirs(join(datdir_secondary, vorticity_shortname))
         
-        vorticity_seasonal.to_netcdf(path=join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity')), get_seasonal_nc_string(get_field_variable('vorticity'))+date_string+".nc"), engine="scipy")
+        vorticity_seasonal = xr.open_mfdataset(monthly_file_list, 
+                                               combine='nested', 
+                                               concat_dim='month')
+        vorticity_seasonal_avg = (vorticity_seasonal.sum('month') 
+                                  / len(monthly_file_list))
+        
+        vorticity_seasonal_avg.to_netcdf(path=join(datdir_secondary, 
+                                        vorticity_shortname, 
+                                        vorticity_nc_string+date_string+".nc"), 
+                                         engine="scipy")
         
 ##############################
 
