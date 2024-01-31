@@ -178,7 +178,7 @@ def get_cbar_label(scalar_field_name):
 
     cbar_label_dict = {'pressure': 
                        r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$',
-                       'density': r'Density anomaly $(kg/{m}^3)$',
+                       'density_anom': r'Density anomaly $(kg/{m}^3)$',
                        'vertical_vel': 'Velocity (m/s)',
                        'vorticity': 'Vorticity (1/s)',
                        'normal_strain': r'Normal strain $(1/s^2)$',
