@@ -156,8 +156,9 @@ def scalar_to_grid(ds_grid, scalar_ds, field_variable, depth, latmin,
         
     #If variable is defined on cell edges in the horizontal, interpolate 
     #horizontally
-    if field_variable == 'ZETA':
-        scalar_ds['ZETA'] = xgcm_grid.interp(scalar_ds.ZETA, axis=('X', 'Y'))
+    if field_variable in ['ZETA', 'SHEAR']:
+        scalar_ds[field_variable] = xgcm_grid.interp(scalar_ds[field_variable], 
+                                                     axis=('X', 'Y'))
     
     curr_ds_grid[field_variable] = scalar_ds[field_variable]
     curr_ds_grid.load()
