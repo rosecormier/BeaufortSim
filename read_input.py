@@ -78,7 +78,7 @@ class Parameters():
                                         "ECCO_V4r4_PODAAC")
         self.data_folder_secondary = join(".", self.data_folder_secondary)
         
-        for directory in [self.logs_folder, self.visualization_folder]:
+        for directory in [self.logs_folder, self.data_folder_secondary, self.visualization_folder]:
             if not os.path.exists(directory):
                 os.makedirs(directory) #Make if nonexistent
                 
