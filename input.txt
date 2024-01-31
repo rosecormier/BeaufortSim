@@ -60,7 +60,7 @@ lon_range          = -180, -90   # West bound (deg), east bound (deg)
 #    normal_strain
 #    shear_strain
 #    2D_div_vel
-scalar_fields   = density_anom, pressure, vertical_vel, vorticity, shear_strain
+scalar_fields   = 2D_div_vel
 
 #Comma-separated vector fields, from options 
 #    horizontal_vel
