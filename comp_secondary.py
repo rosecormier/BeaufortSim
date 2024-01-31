@@ -554,7 +554,7 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary,
     vorticity_shortname = time_ave_type_attrs[1]
     vorticity_nc_string = time_ave_type_attrs[2]
     
-    vorticity_list = []
+    file_list = []
     
     for month_string in month_string_dict:
         
@@ -569,9 +569,9 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary,
                            datdir_primary=datdir_primary, time_kwargs=None)
 
         #Load monthly DataSet
-        ds_velocity = load_primary_data_file('horizontal_vel', 
-                                             month_string, datdir_primary, 
-                                             'monthly') 
+        ds_velocity = load_data_files.main(field_name='horizontal_vel', time_ave_type='monthly',
+                                     date_string=month_string, datdir_primary=datdir_primary,
+                                     datdir_secondary=datdir_secondary) 
         ds_velocity['UVEL'].data = ds_velocity['UVEL'].values
         ds_velocity['VVEL'].data = ds_velocity['VVEL'].values
 
@@ -584,19 +584,27 @@ def comp_vorticity(ds_grid, date_string, datdir_primary, datdir_secondary,
         #Compute vorticity
         vorticity = ((-xgcm_grid.diff(u_mean*dx, 'Y') 
                       + xgcm_grid.diff(v_mean*dy, 'X')).squeeze() / cell_area)
-        vorticity_list.append(vorticity)
         
-    #Average over all months in season (trivial if time_ave_type == 'monthly')
-    vorticity = compute_temporal_mean(vorticity_list)
-
-    #Save the data
+        #Save the monthly data - clean this up
+        vorticity.name = 'ZETA'
+        if not os.path.exists(join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity')))):
+            os.makedirs(join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity'))))
+        
+        file_path = join(datdir_secondary, get_monthly_shortname(get_field_variable('vorticity')),
+                                  get_monthly_nc_string(get_field_variable('vorticity'))+month_string+".nc")
+        vorticity.to_netcdf(path=file_path, engine="scipy")
+        file_list.append(file_path)
     
-    vorticity.name = 'ZETA'
-    if not os.path.exists(join(datdir_secondary, vorticity_shortname)):
-        os.makedirs(join(datdir_secondary, vorticity_shortname))
-    vorticity.to_netcdf(path=join(datdir_secondary, vorticity_shortname, 
-                                  vorticity_nc_string+date_string+".nc"), 
-                        engine="scipy") 
+    #If seasonal, compute the seasonally-averaged data if it doesn't exist
+    if time_ave_type == 'seasonal':
+        
+        if not os.path.exists(join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity')))):
+            os.makedirs(join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity'))))
+        
+        vorticity_seasonal = xr.open_mfdataset(file_list, combine='nested', concat_dim='month')
+        vorticity_seasonal = vorticity_seasonal.sum('month') / len(file_list)
+        
+        vorticity_seasonal.to_netcdf(path=join(datdir_secondary, get_seasonal_shortname(get_field_variable('vorticity')), get_seasonal_nc_string(get_field_variable('vorticity'))+date_string+".nc"), engine="scipy")
         
 ##############################
 
