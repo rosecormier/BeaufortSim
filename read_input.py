@@ -78,7 +78,8 @@ class Parameters():
                                         "ECCO_V4r4_PODAAC")
         self.data_folder_secondary = join(".", self.data_folder_secondary)
         
-        for directory in [self.logs_folder, self.data_folder_secondary, self.visualization_folder]:
+        for directory in [self.logs_folder, self.data_folder_secondary, 
+                          self.visualization_folder]:
             if not os.path.exists(directory):
                 os.makedirs(directory) #Make if nonexistent
                 
@@ -90,8 +91,8 @@ class Parameters():
         #When ready to use the script in full, switch "w" to "x"
         
         #Log input ocean properties
-        f.write("rho_ref (kg/m^3) = " + self.rho_ref + "\n" + "nu_E (m^2/s) = " + 
-                self.nu_E + "\n\n")
+        f.write("rho_ref (kg/m^3) = " + self.rho_ref + "\n" + "nu_E (m^2/s) = " 
+                + self.nu_E + "\n\n")
         
         #Log temporal inputs
         
@@ -109,6 +110,8 @@ class Parameters():
             f.write("season_start = " + self.season_start + "\n" 
                     + "season_end = " + self.season_end + "\n\n")
             self.time_kwargs = [self.season_start, self.season_end]
+        else:
+            self.time_kwargs = None
             
         #Log spatial inputs
 
