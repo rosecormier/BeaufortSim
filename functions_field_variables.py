@@ -34,7 +34,8 @@ def get_field_variable(field_name):
                       '2D_div_vel': 'DIVU', \
                       'geostrophic_vel': 'UGVG', \
                       'Ek_vel': 'UEkVEk', \
-                      'wind_stress': 'EXFtauxEXFtauy'}
+                      'wind_stress': 'EXFtauxEXFtauy', \
+                      'ssh': 'SSH'}
     
     return field_variables[field_name]
 
@@ -61,7 +62,7 @@ def field_is_primary(field_name):
     field_variable = get_field_variable(field_name)
     
     primary_variables = ['RHOAnoma', 'PHIHYDcR', 'WVEL', 'UVELVVEL', 
-                         'EXFtauxEXFtauy']
+                         'EXFtauxEXFtauy', 'SSH']
     secondary_variables = ['ZETA', 'NORMAL', 'SHEAR', 'DIVU', 'UGVG', 'UEkVEk']
     
     if field_variable in primary_variables:
@@ -87,7 +88,8 @@ def get_monthly_shortname(field_variable):
                         'EXFtauxEXFtauy': 
                           'ECCO_L4_STRESS_LLC0090GRID_MONTHLY_V4R4',
                         'UEkVEk': 'EK_VEL_MONTHLY',
-                        'DIVU': 'DIVU_MONTHLY'}
+                        'DIVU': 'DIVU_MONTHLY', 
+                        'SSH': 'ECCO_L4_SSH_LLC0090GRID_MONTHLY_V4R4'}
     
     return monthly_shortnames[field_variable]
 
@@ -106,7 +108,8 @@ def get_monthly_nc_string(field_variable):
                          'EXFtauxEXFtauy': 
                           'OCEAN_AND_ICE_SURFACE_STRESS_mon_mean_',
                          'UEkVEk': 'OCEAN_EK_VEL_mon_mean_',
-                         'DIVU': 'OCEAN_DIVU_mon_mean_'}
+                         'DIVU': 'OCEAN_DIVU_mon_mean_',
+                         'SSH': 'SEA_SURFACE_HEIGHT_mon_mean_'}
     
     return monthly_nc_strings[field_variable]
 
@@ -124,7 +127,8 @@ def get_seasonal_shortname(field_variable):
                            'SHEAR': 'STRAIN_SEASONAL',
                            'EXFtauxEXFtauy': 'EXFtauxEXFtauy_SEASONAL', 
                            'UEkVEk': 'EK_VEL_SEASONAL', 
-                           'DIVU': 'DIVU_SEASONAL'}
+                           'DIVU': 'DIVU_SEASONAL',
+                           'SSH': 'SSH_SEASONAL'}
     
     return seasonal_shortnames[field_variable]
 
@@ -143,7 +147,8 @@ def get_seasonal_nc_string(field_variable):
                          'EXFtauxEXFtauy': 
                            'OCEAN_AND_ICE_SURFACE_STRESS_seas_mean_',
                          'UEkVEk': 'OCEAN_EK_VEL_seas_mean_',
-                         'DIVU': 'OCEAN_DIVU_seas_mean_'}
+                         'DIVU': 'OCEAN_DIVU_seas_mean_',
+                         'SSH': 'SSH_seas_mean_'}
     
     return seasonal_nc_strings[field_variable]
 
@@ -153,22 +158,24 @@ def get_cmap_and_symmetry(field_name):
     
     #True iff we want the range of the variable to be centered on zero for 
     #plotting
-    symmetry_about_zero = {'density_anom': True,
+    symmetry_about_zero = {'density_anom': False,
                           'pressure': False,
                           'vertical_vel': True,
                           'vorticity': True,
                           'normal_strain': True,
                           'shear_strain': True,
-                          '2D_div_vel': True}
+                          '2D_div_vel': True,
+                          'ssh': True}
     
     #MPL colormap name
-    cmap = {'density_anom': 'seismic',
+    cmap = {'density_anom': 'viridis',
             'pressure': 'viridis', 
             'vertical_vel': 'seismic',
             'vorticity': 'seismic',
             'normal_strain': 'seismic',
             'shear_strain': 'seismic', 
-            '2D_div_vel': 'seismic'}
+            '2D_div_vel': 'seismic',
+            'ssh': 'seismic'}
     
     return cmap[field_name], symmetry_about_zero[field_name]
 
@@ -183,7 +190,8 @@ def get_cbar_label(scalar_field_name):
                        'vorticity': 'Vorticity (1/s)',
                        'normal_strain': r'Normal strain $(1/s^2)$',
                        'shear_strain': r'Shear strain $(1/s^2)$',
-                       '2D_div_vel': 'Horizontal velocity divergence (1/s)'}
+                       '2D_div_vel': 'Horizontal velocity divergence (1/s)',
+                       'ssh': 'Height (m)'}
     
     label = cbar_label_dict[scalar_field_name]
     
@@ -203,7 +211,8 @@ def get_field_title(field_name):
                     'UVELVVEL': 'Horizontal Velocity',
                     'UGVG': 'Geostrophic Velocity',
                     'EXFtauxEXFtauy': 'Surface Wind-on-Ocean Stress',
-                    'UEkVEk': 'Ekman Velocity'}
+                    'UEkVEk': 'Ekman Velocity',
+                    'SSH': 'Dynamic Sea-Surface Height Anomaly'}
 
     field_title = field_titles[get_field_variable(field_name)]
     

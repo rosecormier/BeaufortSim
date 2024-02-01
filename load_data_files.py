@@ -34,7 +34,8 @@ def load_primary_data_file(field_name, date_string, datdir_primary,
         field_nc_string = get_seasonal_nc_string(get_field_variable(field_name))
         file_suffix = '.nc'
     
-    data_file_path = join(datdir_primary, field_shortname, field_nc_string+date_string+file_suffix)
+    data_file_path = join(datdir_primary, field_shortname, 
+                          field_nc_string+date_string+file_suffix)
 
     try: 
         #This option should work for files (e.g. monthly averages) that come 
