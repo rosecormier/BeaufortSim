@@ -36,24 +36,59 @@ def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type,
     """
     Return main title for plot.
     """
-
-    if plot_plane_type == 'depth_index_const':
-        k_val = int(spatial_bounds[0])
-        depth = -ds_grid.Z[k_val].values
-        depth_string = str(depth) + ' m depth'
-        
-    scalar_field_title = get_field_title(scalar_field_name)
     
-    if vector_field_name is None:
-        title = '{} in BGR at {}, {} \n'.format(scalar_field_title, 
-                                                depth_string, date_string)
+    scalar_field_title, multiple_depths = get_field_title(scalar_field_name)
 
-    elif vector_field_name is not None:
-        vector_field_title = get_field_title(vector_field_name)
-        title = '{} and {} in BGR \n at {}, {} \n'.format(scalar_field_title, 
-                                                          vector_field_title, 
-                                                          depth_string, 
-                                                          date_string)
+    if multiple_depths:
+    
+        if plot_plane_type == 'depth_index_const':
+            k_val = int(spatial_bounds[0])
+            depth = -ds_grid.Z[k_val].values
+            depth_string = str(depth) + ' m depth'
+    
+        if vector_field_name is None:
+            title = '{} in BGR at {}, {} \n'.format(scalar_field_title, 
+                                                    depth_string, date_string)
+
+        elif vector_field_name is not None:
+            
+            vector_field_title, vector_multiple_depths = get_field_title(
+                vector_field_name)
+            
+            if vector_multiple_depths:
+                title = '{} and {} in BGR \n at {}, {} \n'.format(
+                    scalar_field_title, vector_field_title, depth_string, 
+                    date_string)
+            elif not vector_multiple_depths:
+                title = '{} at {} and {} in BGR, \n {} \n'.format(
+                    scalar_field_title, depth_string, vector_field_title, 
+                    date_string)
+            
+    elif not multiple_depths:
+        
+        if vector_field_name is None:
+            title = '{} in BGR, {} \n'.format(scalar_field_title, date_string)
+
+        elif vector_field_name is not None:
+            
+            vector_field_title, vector_multiple_depths = get_field_title(
+                vector_field_name)
+            
+            if vector_multiple_depths:
+                
+                if plot_plane_type == 'depth_index_const':
+                    k_val = int(spatial_bounds[0])
+                    depth = -ds_grid.Z[k_val].values
+                    depth_string = str(depth) + ' m depth'
+                    
+                title = '{} and {} at {} in BGR, \n {} \n'.format(
+                    scalar_field_title, vector_field_title, depth_string, 
+                    date_string)
+                
+            elif not vector_multiple_depths:
+                title = '{} and {} in BGR, \n {} \n'.format(scalar_field_title, 
+                                                            vector_field_title, 
+                                                            date_string)
         
     return title
 

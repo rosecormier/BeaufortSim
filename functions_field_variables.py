@@ -165,7 +165,7 @@ def get_cmap_and_symmetry(field_name):
                           'normal_strain': True,
                           'shear_strain': True,
                           '2D_div_vel': True,
-                          'ssh': True}
+                          'ssh': False}
     
     #MPL colormap name
     cmap = {'density_anom': 'viridis',
@@ -175,7 +175,7 @@ def get_cmap_and_symmetry(field_name):
             'normal_strain': 'seismic',
             'shear_strain': 'seismic', 
             '2D_div_vel': 'seismic',
-            'ssh': 'seismic'}
+            'ssh': 'viridis'}
     
     return cmap[field_name], symmetry_about_zero[field_name]
 
@@ -216,7 +216,23 @@ def get_field_title(field_name):
 
     field_title = field_titles[get_field_variable(field_name)]
     
-    return field_title
+    #Whether the variable is (can be) defined at multiple depth indices
+    multiple_depths_dict = {'RHOAnoma': True,
+                            'PHIHYDcR': True,
+                            'WVEL': True,
+                            'ZETA': True,
+                            'NORMAL': True,
+                            'SHEAR': True,
+                            'DIVU': True,
+                            'UVELVVEL': True,
+                            'UGVG': True,
+                            'EXFtauxEXFtauy': False,
+                            'UEkVEk': True,
+                            'SSH': False}
+    
+    multiple_depths = multiple_depths_dict[get_field_variable(field_name)]
+    
+    return field_title, multiple_depths
 
 ##############################
 
