@@ -9,12 +9,12 @@ nu_E            = 1e-2            # Eddy viscosity (m^2/s)
 ### Temporal inputs ###
 #######################
 
-time_ave_type   = seasonal        # "monthly", "daily", or "seasonal"
+time_ave_type   = seasonal        # "monthly" or "seasonal"
 
-initial_month   = 01              # Month (integer)
-initial_year    = 1995            # Year (integer)
+initial_month   = 12              # Month (integer)
+initial_year    = 2002            # Year (integer)
 final_month     = 12              # Month (integer)
-final_year      = 1998            # Year (integer)
+final_year      = 2006            # Year (integer)
 
 #Day (integer); only used if "time_ave_type" is "daily"
 initial_day     = 01
@@ -23,10 +23,10 @@ initial_day     = 01
 final_day       = 28
 
 #First month of season (integer); only used if "time_ave_type" is "seasonal"
-season_start    = 11
+season_start    = 12
 
 # Last month of season (integer); only used if "time_ave_type" is "seasonal"
-season_end      = 05
+season_end      = 03
 
 # To do full-year averages, must set season_start = 01 and season_end = 12
 
@@ -39,6 +39,7 @@ lon_res         = 0.25            # Longitudinal resolution (degrees)
 
 #"depth_index_const", "latitude_const", or "longitude_const"
 plot_plane_type = depth_index_const
+
 #The left endpoint of the corresponding range below will be used as the constant
     #value
 
@@ -68,7 +69,7 @@ scalar_fields   = ssh
 #    geostrophic_vel
 #    Ek_vel
 #    wind_stress
-vector_fields   = wind_stress, geostrophic_vel
+vector_fields   = wind_stress
 
 #############################
 ### Directory information ###
