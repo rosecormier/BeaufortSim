@@ -1,7 +1,7 @@
 """
-Auxiliary visualization file for ECCO data.
+Auxiliary functions for visualizing ECCO data.
 
-Rosalie Cormier, 2023
+Rosalie Cormier, 2024
 """
 
 import os
@@ -18,12 +18,11 @@ from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from matplotlib.lines import Line2D
 from os.path import join
 
-from functions_divergence import comp_2d_Ek_divergence
-from functions_ecco_general import get_month_name, get_scalar_in_xy, ds_to_field, comp_temp_mean, ecco_resample, load_dataset, get_vector_partner
-from functions_field_variables import get_field_vars, get_variable_str
-from functions_vorticity import get_OW_field, comp_local_Ro
+import load_data_files
 
-import save_seasonal_avgs
+from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
+from functions_field_variables import get_field_variable, get_vector_comps, \
+field_is_primary, get_cmap_and_symmetry, get_cbar_label, get_field_title
 
 ##############################
 
@@ -32,6 +31,11 @@ plt.rcParams['text.usetex'] = True
 
 ##############################
 
+<<<<<<< HEAD
+def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, 
+                   spatial_bounds, ds_grid, date_string):
+ 
+=======
 def cbar_label(scalar_attr):
     
     """
@@ -127,28 +131,72 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
 
 def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax, resolution, quiv_scale):
     
+>>>>>>> main
     """
-    Resamples to lat-lon grid and gets quiver object given an ax.
+    Return main title for plot.
     """
     
-    ds_grid = ecco_ds_grid.copy()
+    scalar_field_title, multiple_depths = get_field_title(scalar_field_name)
+
+    if multiple_depths:
     
-    new_grid_lon_centers, new_grid_lat_centers, new_grid_lon_edges, new_grid_lat_edges, u_nearest = ecco_resample(ds_grid, u_plot, latmin, latmax, lonmin, lonmax, resolution)
-    v_nearest = ecco_resample(ds_grid, v_plot, latmin, latmax, lonmin, lonmax, resolution)[4]
+        if plot_plane_type == 'depth_index_const':
+            k_val = int(spatial_bounds[0])
+            depth = -ds_grid.Z[k_val].values
+            depth_string = str(depth) + ' m depth'
+    
+        if vector_field_name is None:
+            title = '{} in BGR at {}, {} \n'.format(scalar_field_title, 
+                                                    depth_string, date_string)
+
+        elif vector_field_name is not None:
             
-    skip = (slice(0, -1, 1), slice(0, -1, 1))
+            vector_field_title, vector_multiple_depths = get_field_title(
+                vector_field_name)
+            
+            if vector_multiple_depths:
+                title = '{} and {} in BGR \n at {}, {} \n'.format(
+                    scalar_field_title, vector_field_title, depth_string, 
+                    date_string)
+            elif not vector_multiple_depths:
+                title = '{} at {} and {} in BGR, \n {} \n'.format(
+                    scalar_field_title, depth_string, vector_field_title, 
+                    date_string)
+            
+    elif not multiple_depths:
         
-    quiv = ax.quiver(new_grid_lon_centers[skip], new_grid_lat_centers[skip], u_nearest[skip], v_nearest[skip], color='k', \
-                     transform=ccrs.PlateCarree(), scale=quiv_scale, scale_units='width', regrid_shape=30)
-    
-    return quiv
+        if vector_field_name is None:
+            title = '{} in BGR, {} \n'.format(scalar_field_title, date_string)
+
+        elif vector_field_name is not None:
+            
+            vector_field_title, vector_multiple_depths = get_field_title(
+                vector_field_name)
+            
+            if vector_multiple_depths:
+                
+                if plot_plane_type == 'depth_index_const':
+                    k_val = int(spatial_bounds[0])
+                    depth = -ds_grid.Z[k_val].values
+                    depth_string = str(depth) + ' m depth'
+                    
+                title = '{} and {} at {} in BGR, \n {} \n'.format(
+                    scalar_field_title, vector_field_title, depth_string, 
+                    date_string)
+                
+            elif not vector_multiple_depths:
+                title = '{} and {} in BGR, \n {} \n'.format(scalar_field_title, 
+                                                            vector_field_title, 
+                                                            date_string)
+        
+    return title
 
 ##############################
 
 def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lonmax=-120.0):
     
     """
-    Adds land, coastlines, and grid to an ax.
+    Add land, coastlines, and grid to an ax.
     """
     
     ax.add_feature(cfeature.LAND)
@@ -179,55 +227,77 @@ def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lon
 
 ##############################
 
-def get_scalar_bounds(scalar_bounds, scalar):
+def get_scalar_bounds(scalar_field, scalar_bounds=None):
     
     """
     Set vmin, vmax for a scalar field.
     """
     
-    if scalar_bounds[0] == scalar_bounds[1]:
-        vmin, vmax = np.nanmin(scalar), np.nanmax(scalar) #Default to actual bounds on data
-        
+    if scalar_bounds == None:
+        #Default to actual bounds on data
+        vmin, vmax = np.nanmin(scalar_field), np.nanmax(scalar_field)
     else:
+        #If scalar bounds are explicitly given
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
     
     return vmin, vmax
 
 ##############################
 
-def get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=False):
+def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax,
+                   logscale=False):
     
     """
     Create pcolormesh object given an axis.
     """
     
+<<<<<<< HEAD
+    #Get appropriate colormap and symmetry (boolean)
+    cmap, symmetry = get_cmap_and_symmetry(field_name)
+    
+    if symmetry: 
+        #If variable is symmetric about zero, reset bounds on colorbar to be 
+        #symmetric
+        abs_max_value = max(abs(vmax), abs(vmin))
+        vmin, vmax = -abs_max_value, abs_max_value
+=======
     cmap = plt.get_cmap(cmap).copy()
     cmap.set_bad('grey')
 
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
+>>>>>>> main
         
+    if logscale:
+        color = ax.pcolormesh(lon_centers, lat_centers, scalar, 
+                              transform=ccrs.PlateCarree(), cmap=cmap, 
+                              norm=colors.LogNorm(vmin=vmin, vmax=vmax))
     elif not logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
+        color = ax.pcolormesh(lon_centers, lat_centers, scalar, 
+                              transform=ccrs.PlateCarree(), cmap=cmap, 
+                              vmin=vmin, vmax=vmax)
     
     return ax, color
 
 ##############################
 
-def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_centers, k_centers, datestr, scalar_attr='Delta_u', scalar_bounds=[1, 1], k_plot=None, extend='both', logscale=False, outfile="", lats_lons=[70.0, 85.0, -180.0, -90.0]):
+def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, 
+               quiv_scale=0.3):
     
     """
-    Creates pcolormesh plot of a scalar variable in a subdomain of the Arctic.
+    Resample vector field to lat-lon grid and get quiver object; add quiver to 
+    given ax.
     """
-    
-    scalar = comp_temp_mean(scalars)
-    
-    vmin, vmax = get_scalar_bounds(scalar_bounds, scalar) #Set scalar bounds
 
-    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds
+    skip = (slice(0, -1, 1), slice(0, -1, 1))
+    quiv = ax.quiver(lon_centers[skip], lat_centers[skip], vec_E_comp[skip], 
+                     vec_N_comp[skip], color='k', transform=ccrs.PlateCarree(),
+                     scale=quiv_scale, scale_units='width', regrid_shape=30)
     
-    if latmin != latmax and lonmin != lonmax: #If plotting a horizontal plane
+    return quiv
 
+<<<<<<< HEAD
+=======
         fig = plt.figure(figsize=(10, 8))
         ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
         ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
@@ -252,43 +322,82 @@ def ArcCir_pcolormesh(ecco_ds_grid, scalars, resolution, cmap, lon_centers, lat_
     
     return ax
     
+>>>>>>> main
 ##############################
 
-def ArcCir_pcolormesh_quiver(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
-                           resolution, cmap, datestr, lon_centers, lat_centers, scalar_attr='PHIHYDcR', xvec_attr='UVEL', \
-                           scalar_bounds=[1, 1], extend='both', logscale=False, outfile="", \
-                           lats_lons=[70.0, 85.0, -175.5, -90.5], quiv_scale=0.3):
+def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, 
+                      datdir_secondary, time_ave_type, plot_plane_type, 
+                      spatial_bounds, resolutions, outfile, extend='neither', 
+                      vector_field_name=None):
     
     """
-    Creates pcolormesh plot of scalar variable in a subdomain of the Arctic,
-        overlaid with quiver plot of vector variable.
+    Create pcolormesh plot of a scalar variable in a subdomain of the Arctic.
+    Optional - overlay quiver plot of a vector variable.
     """
+    
+    ds_grid = load_grid(datdir_primary) #Load the ECCO grid
 
-    scalar_mean = comp_temp_mean(scalars)
-    scalar = scalar_mean
+    #Load scalar DataSet
+    scalar_ds = load_data_files.main(field_name=scalar_field_name, 
+                                     date_string=date_string, 
+                                     datdir_primary=datdir_primary, 
+                                     datdir_secondary=datdir_secondary, 
+                                     time_ave_type=time_ave_type)
+    
+    if plot_plane_type == 'depth_index_const':
+        depth = spatial_bounds[0]
+        latmin, latmax = spatial_bounds[1], spatial_bounds[2] 
+        lonmin, lonmax = spatial_bounds[3], spatial_bounds[4]
+        lat_res, lon_res = resolutions[0], resolutions[1]
+    #will add options 'latitude_const' and 'longitude_const'
         
-    vecE_mean, vecN_mean = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
-    vecE, vecN = vecE_mean, vecN_mean
-
-    latmin, latmax, lonmin, lonmax = lats_lons
+    lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, 
+                                        scalar_ds, 
+                                        get_field_variable(scalar_field_name),
+                                        depth, latmin, latmax, lonmin, lonmax, 
+                                        lat_res, lon_res)
+    
+    vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
 
     fig = plt.figure(figsize=(10, 8))
-    ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))
+    ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    vmin, vmax = get_scalar_bounds(scalar_bounds, scalar) #Set scalar bounds
+    #Create pcolormesh object 
+    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, scalar_field_name,
+                               vmin, vmax) 
     
-    #Create pcolormesh object
-    ax, color = get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=logscale) 
-   
-    quiv = get_quiver(ax, ecco_ds_grid, vecE, vecN, latmin, latmax, lonmin, lonmax, resolution, quiv_scale)
-    
-    ax = plot_geography(ax)
-    ax.set_title(pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr))
+    if vector_field_name is not None:
+       
+        #Load vector DataSet
+        vector_ds = load_data_files.main(field_name=vector_field_name, 
+                                         date_string=date_string, 
+                                         datdir_primary=datdir_primary, 
+                                         datdir_secondary=datdir_secondary, 
+                                         time_ave_type=time_ave_type)
         
-    fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='bottom')
+        vector_to_grid_output = vector_to_grid(ds_grid, vector_ds, 
+                                               vector_field_name, depth, latmin,
+                                               latmax, lonmin, lonmax, lat_res,
+                                               lon_res)
+        lons, lats = vector_to_grid_output[0], vector_to_grid_output[1]
+        vec_E_comp = vector_to_grid_output[4]
+        vec_N_comp = vector_to_grid_output[5]
+        #Create quiver object 
+        quiv = get_quiver(ax, lons, lats, vec_E_comp, vec_N_comp) 
+   
+    ax = plot_geography(ax)
+    ax.set_title(get_plot_title(scalar_field_name, vector_field_name, 
+                                plot_plane_type, spatial_bounds, ds_grid, 
+                                date_string))
+    
+    fig.colorbar((color), ax=ax, label=get_cbar_label(scalar_field_name), 
+                 extend=extend, location='bottom')
     
     plt.savefig(outfile)
+<<<<<<< HEAD
+    plt.close()
+=======
     plt.close()
     
     return scalar_mean, vecE_mean, vecN_mean
@@ -656,3 +765,4 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     plt.rcdefaults()
 """
 ##############################
+>>>>>>> main

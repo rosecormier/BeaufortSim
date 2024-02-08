@@ -1,0 +1,89 @@
+############################################################################
+### Ocean properties - please don't change these values unless necessary ###
+############################################################################
+
+rho_ref         = 1029.0          # Reference density of seawater (kg/m^3)
+nu_E            = 1e-2            # Eddy viscosity (m^2/s)
+
+#######################
+### Temporal inputs ###
+#######################
+
+time_ave_type   = seasonal        # "monthly" or "seasonal"
+
+initial_month   = 12              # Month (integer)
+initial_year    = 2002            # Year (integer)
+final_month     = 12              # Month (integer)
+final_year      = 2006            # Year (integer)
+
+#Day (integer); only used if "time_ave_type" is "daily"
+initial_day     = 01
+
+#Day (integer); only used if "time_ave_type" is "daily"
+final_day       = 28
+
+#First month of season (integer); only used if "time_ave_type" is "seasonal"
+season_start    = 12
+
+# Last month of season (integer); only used if "time_ave_type" is "seasonal"
+season_end      = 03
+
+# To do full-year averages, must set season_start = 01 and season_end = 12
+
+######################
+### Spatial inputs ###
+######################
+
+lat_res         = 0.25            # Latitudinal resolution (degrees)
+lon_res         = 0.25            # Longitudinal resolution (degrees)
+
+#"depth_index_const", "latitude_const", or "longitude_const"
+plot_plane_type = depth_index_const
+
+#The left endpoint of the corresponding range below will be used as the constant
+    #value
+
+depth_index_range  = 0, 50       # Top layer (k-value), bottom layer (k-value)
+lat_range          = 70.0, 85.0  # South bound (deg-N), north bound (deg-N)
+lon_range          = -180, -90   # West bound (deg), east bound (deg)
+
+# interp_type   = TBD
+
+#######################
+### Field selection ###
+#######################
+
+#Comma-separated scalar fields, from options 
+#    density_anom
+#    pressure
+#    vertical_vel
+#    vorticity
+#    normal_strain
+#    shear_strain
+#    2D_div_vel
+#    ssh
+scalar_fields   = ssh
+
+#Comma-separated vector fields, from options 
+#    horizontal_vel
+#    geostrophic_vel
+#    Ek_vel
+#    wind_stress
+vector_fields   = wind_stress
+
+#############################
+### Directory information ###
+#############################
+
+logs_folder           = Logs
+
+data_folder_primary   = Downloads
+data_folder_secondary = Computed
+
+visualization_folder  = Visualization
+
+#################################################
+### Flag to clear primary datafiles after use ###
+#################################################
+
+clear_data_files = True
