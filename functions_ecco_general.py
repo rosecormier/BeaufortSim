@@ -16,7 +16,43 @@ from functions_field_variables import get_field_variable, get_vector_comps, \
 field_is_primary, get_monthly_shortname, get_monthly_nc_string, \
 get_seasonal_shortname, get_seasonal_nc_string
 
+<<<<<<< HEAD
 ##############################
+=======
+def load_grid(datdir):
+    
+    """
+    Loads ECCO grid.
+    """
+    
+    grid_params_shortname = "ECCO_L4_GEOMETRY_LLC0090GRID_V4R4"
+    grid_params_file = "GRID_GEOMETRY_ECCO_V4r4_native_llc0090.nc"
+    grid_params_directory = join(datdir, grid_params_shortname)
+
+    if not os.path.exists(grid_params_directory): 
+        
+        os.makedirs(grid_params_directory)
+    
+        #Download ECCO grid parameters (date is arbitrary)
+        ecco_podaac_download(ShortName=grid_params_shortname, StartDate="2000-01-01", \
+                     EndDate="2000-01-02", download_root_dir=datdir, n_workers=6, \
+                     force_redownload=False)
+
+    ds_grid = xr.open_dataset(join(grid_params_directory, grid_params_file)) #Load grid parameters
+    
+    return ds_grid
+
+def get_vector_partner(x_comp):
+    
+    y_comps = {'UVEL': 'VVEL', \
+              'UG': 'VG', \
+              'EXFtaux': 'EXFtauy', \
+              'UEk': 'VEk', \
+              'EXFuwind': 'EXFvwind'}
+    y_comp = y_comps[x_comp]
+    
+    return y_comp
+>>>>>>> main
 
 def get_monthstr(i):
     
