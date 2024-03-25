@@ -6,16 +6,16 @@ SIMULATION PARAMETERS AND GEOMETRY
 =#
 
 Nx, Ny, Nz = 32, 32, 32 #Numbers of gridpoints
-Lx, Ly, Lz = 2000 * 1e3, 2000 * 1e3, 1400 #Domain extents
+Lx, Ly, Lz = 1000 * 1e3, 1000 * 1e3, 700 #Domain extents
 
-grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Periodic, Periodic, Bounded))
+grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
+    topology=(Periodic, Periodic, Bounded))
 
 #=
 DIFFUSIVITIES
 =#
 
-#Constant anisotropic diffusivities
-h_diffusivity, v_diffusivity = 5e-1, 5e-5 #5e-3, 5e-7
+h_diffusivity, v_diffusivity = 5e-1, 5e-5 #Constant anisotropic diffusivities
 h_closure = HorizontalScalarDiffusivity(ν=h_diffusivity)
 v_closure = VerticalScalarDiffusivity(ν=v_diffusivity)
 
@@ -45,7 +45,7 @@ SET INITIAL CONDITIONS
 
 σr, σz = 3e5, 4e2 #Standard deviations of pressure in r and z
 p_surf_max = 1.3e5 #Maximum surface pressure
-p0 = p_surf_max / exp(1) # 2π * σr * σz * p_surf_max / exp(1)
+p0 = p_surf_max / exp(1)
 x0, y0 = Lx / 2, Ly / 2 #Centres of horizontal axes
 
 #Function to compute (mean) pressure
