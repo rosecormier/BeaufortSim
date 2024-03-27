@@ -1,0 +1,35 @@
+################################################
+### Numbers of gridpoints and domain extents ###
+################################################
+
+Nx               = 32
+Ny               = 32
+Nz               = 32
+
+Lx               = 1200            # km
+Ly               = 1200            # km
+Lz               = 700             # m
+
+#####################
+### Diffusivities ###
+#####################
+
+h_diffusivity    = 5e-1            # m^2/s
+v_diffusivity    = 5e-5            # m^2/s
+
+########################
+### f-plane latitude ###
+########################
+
+latitude         = 73.0            # Degrees N
+
+######################################################
+### Pressure and density parameters (assuming GSB) ###
+######################################################
+
+σr               = 250            # Standard deviation of pressure in r (km)
+σz               = 300            # Standard deviations of pressure in z (m)
+p_surf_max       = 1.3e5          # Maximum surface pressure (Pa)
+grav             = 9.80665        # Gravitational acceleration (m/s^2)
+rho_sw           = 1020           # Reference seawater density (kg/m^3)
+N                = 5e-3           # BV frequency (1/s); cf. Jackson et al, 2012
