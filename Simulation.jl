@@ -6,7 +6,7 @@ SIMULATION PARAMETERS AND GEOMETRY
 =#
 
 Nx, Ny, Nz = 32, 32, 32 #Numbers of gridpoints
-Lx, Ly, Lz = 1000 * 1e3, 1000 * 1e3, 700 #Domain extents
+Lx, Ly, Lz = 1200 * 1e3, 1200 * 1e3, 700 #Domain extents
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
     topology=(Periodic, Periodic, Bounded))
@@ -34,6 +34,7 @@ INSTANTIATE THE MODEL
 model = NonhydrostaticModel(; 
     grid=grid, 
     timestepper=:QuasiAdamsBashforth2, 
+    advection=UpwindBiasedFifthOrder(),
     closure=(h_closure, v_closure), 
     coriolis=BG_f_plane,
     tracers=(:b),
@@ -43,7 +44,7 @@ model = NonhydrostaticModel(;
 SET INITIAL CONDITIONS
 =#
 
-σr, σz = 3e5, 4e2 #Standard deviations of pressure in r and z
+σr, σz = 2.5e5, 3e2 #Standard deviations of pressure in r and z
 p_surf_max = 1.3e5 #Maximum surface pressure
 p0 = p_surf_max / exp(1)
 x0, y0 = Lx / 2, Ly / 2 #Centres of horizontal axes
@@ -57,7 +58,8 @@ rho_sw = 1020 #Surface seawater density
 #Function to compute mean density from mean pressure
 rho_bar(x,y,z) = rho_sw - (2 * p_bar(x,y,z) * z / (grav * (σz^2)))
 
-N2 = 1e-3 #Squared BV frequency
+N = 5e-3 #Approx. BV frequency (1/s); cf. Jackson et al, 2012
+N2 = N^2
 
 #Function to compute initial buoyancy profile with perturbation
 function initial_b(x,y,z)
