@@ -152,6 +152,7 @@ open(log_filepath, "w") do file
     write(file, "Max. surf. p, σr, σz = $(p_surf_max), $(σr), $(σz) \n")
     write(file, "x0, y0 = $(x0), $(y0) \n")
     write(file, "g = $(grav) \n")
+    write(file, "Reference density = $(rho_sw) \n")
     write(file, "N^2 = $(N2) \n")
     write(file, "Timestep = $(timestep)")
 end

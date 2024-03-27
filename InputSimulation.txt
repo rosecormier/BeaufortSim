@@ -2,12 +2,9 @@
 ### Numbers of gridpoints and domain extents ###
 ################################################
 
-Nx               = 32
-Ny               = 32
-Nz               = 32
+Nx, Ny, Nz       = 32, 32, 32
 
-Lx               = 1200            # km
-Ly               = 1200            # km
+Lx, Ly           = 1200, 1200      # km
 Lz               = 700             # m
 
 #####################
@@ -33,3 +30,9 @@ p_surf_max       = 1.3e5          # Maximum surface pressure (Pa)
 grav             = 9.80665        # Gravitational acceleration (m/s^2)
 rho_sw           = 1020           # Reference seawater density (kg/m^3)
 N                = 5e-3           # BV frequency (1/s); cf. Jackson et al, 2012
+
+###########################
+### Simulation timestep ###
+###########################
+
+Delta_t          = 10             # Timestep (s)
