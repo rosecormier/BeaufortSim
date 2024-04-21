@@ -101,12 +101,16 @@ s = sqrt(u^2 + v^2 + w^2)
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
                     "s" => s, "b" => b)
-output_filename = "output.nc"
-rm("output.nc", force=true) #Remove file if already existing
+
+timenow = Dates.format(now(), "yymmdd-HHMMSS")
+
+output_filename = "$(timenow)output.nc"
+output_filepath = joinpath("./Output", output_filename)
+mkpath(dirname(output_filepath)) #Make output directory if nonexistent
 
 simulation.output_writers[:field_writer] = NetCDFOutputWriter(model, 
     output_fields, 
-    filename=output_filename, 
+    filename=output_filepath, 
     schedule=IterationInterval(1))
 
 #=
@@ -119,10 +123,9 @@ run!(simulation)
 SAVE PARAMETERS TO LOG FILE
 =#
 
-timenow=Dates.format(now(), "yymmdd-HHMMSS")
 log_filename = "log$(timenow).txt"
 log_filepath = joinpath("./Logs", log_filename)
-mkpath(dirname(log_filepath)) #Make log directory if it doesn't exist
+mkpath(dirname(log_filepath)) #Make log directory if nonexistent
 
 open(log_filepath, "w") do file
     write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
