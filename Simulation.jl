@@ -24,7 +24,9 @@ grid = RectilinearGrid(size=(Nx, Ny, Nz),
 DIFFUSIVITIES
 =#
 
-h_diffusivity, v_diffusivity = 5e-1, 5e-5 #Constant anisotropic diffusivities
+#Constant anisotropic diffusivities
+h_diffusivity, v_diffusivity = 5e-1, 5e-5 
+
 h_closure = HorizontalScalarDiffusivity(ν=h_diffusivity)
 v_closure = VerticalScalarDiffusivity(ν=v_diffusivity)
 
@@ -104,7 +106,7 @@ output_fields = Dict("u" => u, "v" => v, "w" => w,
 
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
-output_filename = "$(timenow)output.nc"
+output_filename = "output_$(timenow).nc"
 output_filepath = joinpath("./Output", output_filename)
 mkpath(dirname(output_filepath)) #Make output directory if nonexistent
 
@@ -118,12 +120,13 @@ RUN SIMULATION
 =#
 
 run!(simulation)
+print(timenow, "\n")
 
 #=
 SAVE PARAMETERS TO LOG FILE
 =#
 
-log_filename = "log$(timenow).txt"
+log_filename = "log_$(timenow).txt"
 log_filepath = joinpath("./Logs", log_filename)
 mkpath(dirname(log_filepath)) #Make log directory if nonexistent
 
