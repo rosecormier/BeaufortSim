@@ -1,14 +1,23 @@
-using Dates
+using Dates, DelimitedFiles
 using Oceananigans, Oceananigans.Coriolis, Oceananigans.TurbulenceClosures
+
+#=
+GET INPUTS
+=#
+
+#print(readdlm("InputSimulation.txt", Any))
 
 #=
 SIMULATION PARAMETERS AND GEOMETRY
 =#
 
-Nx, Ny, Nz = 32, 32, 32 #Numbers of gridpoints
-Lx, Ly, Lz = 1200 * 1e3, 1200 * 1e3, 700 #Domain extents
+Nx, Ny, Nz = 128, 128, 2 #Numbers of gridpoints
+Lx, Ly, Lz = 2000 * 1e3, 2000 * 1e3, 1000 #Domain extents
 
-grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
+grid = RectilinearGrid(size=(Nx, Ny, Nz), 
+    x = (-Lx/2, Lx/2),
+    y = (-Ly/2, Ly/2),
+    z = (-Lz, 0),
     topology=(Periodic, Periodic, Bounded))
 
 #=
@@ -23,9 +32,9 @@ v_closure = VerticalScalarDiffusivity(ν=v_diffusivity)
 EFFECT OF ROTATION
 =#
 
-latitude = 73 #Degrees
-BG_f = 2 * 7.2921 * 1e-5 * sin(π * latitude / 180) #Units s^-1
-BG_f_plane = FPlane(f=BG_f)
+latitude = 73 #Degrees N
+f = 2 * 7.2921 * 1e-5 * sin(π * latitude / 180) #Units s^-1
+f_plane = FPlane(f=f)
 
 #=
 INSTANTIATE THE MODEL
@@ -36,7 +45,7 @@ model = NonhydrostaticModel(;
     timestepper=:QuasiAdamsBashforth2, 
     advection=UpwindBiasedFifthOrder(),
     closure=(h_closure, v_closure), 
-    coriolis=BG_f_plane,
+    coriolis=f_plane,
     tracers=(:b),
     buoyancy=BuoyancyTracer())
 
@@ -44,73 +53,45 @@ model = NonhydrostaticModel(;
 SET INITIAL CONDITIONS
 =#
 
-σr, σz = 2.5e5, 3e2 #Standard deviations of pressure in r and z
-p_surf_max = 1.3e5 #Maximum surface pressure
-p0 = p_surf_max / exp(1)
-x0, y0 = Lx / 2, Ly / 2 #Centres of horizontal axes
-
-#Function to compute (mean) pressure
-p_bar(x,y,z) = p0 * exp(-((x-x0)/σr)^2) * exp(-((y-y0)/σr)^2) * exp(-(z/σz)^2)
-    
-grav = 9.80665 #Gravitational acceleration; units m/s^2
-rho_sw = 1020 #Surface seawater density
-
-#Function to compute mean density from mean pressure
-rho_bar(x,y,z) = rho_sw - (2 * p_bar(x,y,z) * z / (grav * (σz^2)))
+σr, σz = 2.5e5, 3e2 #Radial and vertical gyre lengthscales
 
 N = 5e-3 #Approx. BV frequency (1/s); cf. Jackson et al, 2012
 N2 = N^2
 
-#Function to compute initial buoyancy profile with perturbation
-function initial_b(x,y,z)
-    mean_rho = rho_bar(x,y,z)
-    mean_b = mean_rho .* N2
-    #add perturbation
-    buoyancy = mean_b
+p0 = 100 #Reference value for reduced pressure (m^2/s^2)
+
+#Function to compute initial buoyancy profile
+function b_initial(x,y,z)
+    mean_b = N2*z - (2*p0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
+    b_perturbation = 0
+    buoyancy = mean_b + b_perturbation
 end
 
-#Function to compute initial zonal velocity with perturbation
-function initial_u(x,y,z)
-    pbar, rhobar = p_bar(x,y,z), rho_bar(x,y,z)
-    mean_u = 2 * pbar * (y-y0) / (rhobar * BG_f * (σr^2))
-    #add perturbation
-    u = mean_u
-end
-
-#Function to compute initial zonal velocity with perturbation
-function initial_v(x,y,z)
-    pbar, rhobar = p_bar(x,y,z), rho_bar(x,y,z)
-    mean_v = -2 * pbar * (x-x0) / (rhobar * BG_f * (σr^2))
-    #add perturbation
-    v = mean_v
-end
-
-#Function to compute initial vertical velocity with perturbation
-function initial_w(x,y,z)
-    mean_w = 0
-    #add perturbation
-    w = mean_w
-end
+#Functions to compute initial velocities
+u_initial(x,y,z) = (2*p0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
+v_initial(x,y,z) = (-2*p0/(f*σr^2)) * x * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
+w_initial(x,y,z) = 0
 
 u, v, w = model.velocities
 b = model.tracers.b
 
-set!(model, u=initial_u, v=initial_v, w=initial_w, b=initial_b)
+set!(model, u=u_initial, v=v_initial, w=w_initial, b=b_initial)
 
 #=
 DEFINE SIMULATION
 =#
 
 timestep = 10
-simulation = Simulation(model, Δt=timestep, stop_time=5*60*60)
+simulation = Simulation(model, Δt=timestep, stop_time=5*60)
 
 #=
 SET UP CALLBACK AND OUTPUT WRITER FOR SIMULATION
 =#
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-add_callback!(simulation, progress, IterationInterval(10))
+add_callback!(simulation, progress, IterationInterval(1))
 
+b = model.tracers.b
 u, v, w = model.velocities
 ωx = ∂y(w) - ∂z(v)
 ωy = ∂z(u) - ∂x(w)
@@ -119,7 +100,7 @@ s = sqrt(u^2 + v^2 + w^2)
 
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "s" => s)
+                    "s" => s, "b" => b)
 output_filename = "output.nc"
 rm("output.nc", force=true) #Remove file if already existing
 
@@ -149,10 +130,7 @@ open(log_filepath, "w") do file
     write(file, "Horizontal diffusivity = $(h_diffusivity) \n")
     write(file, "Vertical diffusivity = $(v_diffusivity) \n")
     write(file, "f-Plane latitude = $(latitude) degrees N \n")
-    write(file, "Max. surf. p, σr, σz = $(p_surf_max), $(σr), $(σz) \n")
-    write(file, "x0, y0 = $(x0), $(y0) \n")
-    write(file, "g = $(grav) \n")
-    write(file, "Reference density = $(rho_sw) \n")
+    write(file, "p0, σr, σz = $(p0), $(σr), $(σz) \n")
     write(file, "N^2 = $(N2) \n")
     write(file, "Timestep = $(timestep)")
 end
