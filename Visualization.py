@@ -37,10 +37,15 @@ parser.add_argument("-slice",
                     help="Timeseries index slice (>1 speeds up plotting)", 
                     type=int, 
                     default=1)
+parser.add_argument("-depth",
+                    help="Depth (i.e., zC) index at which to plot data",
+                    type=int,
+                    default=1)
 args = parser.parse_args()
 
 file_label = args.label
 slice_len = args.slice
+depth_idx = args.depth
 
 ####################
 
@@ -52,8 +57,7 @@ vis_dir = "Visualization"
 if not os.path.exists(join(vis_dir)):
     os.makedirs(join(vis_dir)) #Make vis directory if nonexistent
     
-output_filepath = join(output_dir, 
-                       "output_{}.nc".format(file_label))
+output_filepath = join(output_dir, "output_{}.nc".format(file_label))
 
 ####################
 
@@ -86,31 +90,32 @@ def load_data(filename, slice_len):
     time_iter = time_iter[::slice_len] #Slice iterable to speed up visualization
     return C_grid, time_iter
 
-def animate_zvorticity(time, C_grid, vmax): 
+def animate_zvorticity(time, C_grid, vmax, depth_str=""): 
     time_title=C_grid.time[time].values.astype('timedelta64[m]')
-    fig.suptitle("z-Vorticity, t={}".format(time_title))
-    frame_vorticity = C_grid["zvorticity"].isel(zC=1, time=time)
+    fig.suptitle("z-Vorticity{}, t={}".format(depth_str, time_title))
+    frame_vorticity = C_grid["zvorticity"].isel(zC=depth_idx, time=time)
     frame_vorticity.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_vorticity.values, 
                         cmap="PuOr_r", vmin=-vmax, vmax=vmax)
     return pcm
 
-def animate_speed(time, C_grid, vmax):
+def animate_speed(time, C_grid, vmax, depth_str=""):
     time_title=C_grid.time[time].values.astype('timedelta64[m]')
-    fig.suptitle("Speed, t={}".format(time_title))
-    frame_speed = C_grid["speed"].isel(zC=1, time=time)
+    fig.suptitle("Speed{}, t={}".format(depth_str, time_title))
+    frame_speed = C_grid["speed"].isel(zC=depth_idx, time=time)
     frame_speed.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_speed.values, 
                         cmap="Reds", vmin=0, vmax=vmax)
     return pcm
 
-def animate_velocity_uv_comps(time, C_grid, vmax):
+def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
     time_title=C_grid.time[time].values.astype('timedelta64[m]')
-    fig.suptitle("Horizontal Velocity Components, t={}".format(time_title))
-    frame_u = C_grid["u"].isel(zC=1, time=time)
-    frame_v = C_grid["v"].isel(zC=1, time=time)
+    fig.suptitle("Horizontal Velocity Components{}, t={}".format(depth_str,
+                                                                 time_title))
+    frame_u = C_grid["u"].isel(zC=depth_idx, time=time)
+    frame_v = C_grid["v"].isel(zC=depth_idx, time=time)
     frame_u.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     frame_v.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm1 = ax1.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
@@ -122,20 +127,21 @@ def animate_velocity_uv_comps(time, C_grid, vmax):
                           cmap="seismic", vmin=-vmax, vmax=vmax)
     return pcm1, pcm2
 
-def animate_velocity_w_comp(time, C_grid, vmax):
+def animate_velocity_w_comp(time, C_grid, vmax, depth_str=""):
     time_title=C_grid.time[time].values.astype('timedelta64[m]')
-    fig.suptitle("Vertical Velocity Component, t={}".format(time_title))
-    frame_w = C_grid["w"].isel(zC=1, time=time)
+    fig.suptitle("Vertical Velocity Component{}, t={}".format(depth_str, 
+                                                              time_title))
+    frame_w = C_grid["w"].isel(zC=depth_idx, time=time)
     frame_w.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_w.values, 
                         cmap="seismic", vmin=-vmax, vmax=vmax)
     return pcm
 
-def animate_buoyancy(time, C_grid, vmax):
+def animate_buoyancy(time, C_grid, vmax, depth_str=""):
     time_title=C_grid.time[time].values.astype('timedelta64[m]')
-    fig.suptitle("Buoyancy, t={}".format(time_title))
-    frame_buoyancy = C_grid["buoyancy"].isel(zC=1, time=time)
+    fig.suptitle("Buoyancy{}, t={}".format(depth_str, time_title))
+    frame_buoyancy = C_grid["buoyancy"].isel(zC=depth_idx, time=time)
     frame_buoyancy.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_buoyancy.values, 
@@ -147,6 +153,9 @@ def animate_buoyancy(time, C_grid, vmax):
 #LOAD SIMULATION DATA
 
 C_grid, time_iter = load_data(output_filepath, slice_len)
+
+#For plot titles
+depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values) 
 
 ####################
 
@@ -160,7 +169,7 @@ vmax = np.max(abs(C_grid["zvorticity"].isel(zC=1, time=0)))
 fig.colorbar(animate_zvorticity(0, C_grid, vmax), extend="both", 
              label=r"$s^{-1}$")
 anim = animation.FuncAnimation(fig, animate_zvorticity, 
-                               fargs=(C_grid, vmax), 
+                               fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "zvorticity_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
@@ -173,7 +182,7 @@ ax.set_ylabel(r"y ($km$)")
 vmax = np.max(abs(C_grid["speed"].isel(zC=1, time=0)))
 fig.colorbar(animate_speed(0, C_grid, vmax), extend="max", label=r"$m/s$")
 anim = animation.FuncAnimation(fig, animate_speed, 
-                               fargs=(C_grid, vmax), 
+                               fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "speed_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
@@ -186,7 +195,7 @@ ax.set_ylabel(r"y ($km$)")
 vmax = np.max(abs(C_grid["buoyancy"].isel(zC=1, time=0)))
 fig.colorbar(animate_buoyancy(0, C_grid, vmax), extend="max", label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_buoyancy, 
-                               fargs=(C_grid, vmax), 
+                               fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "buoyancy_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
@@ -205,7 +214,7 @@ vmax = max(vmax_u, vmax_v)
 fig.colorbar(animate_velocity_uv_comps(0, C_grid, vmax)[0], ax=[ax1, ax2], 
              extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
 anim = animation.FuncAnimation(fig, animate_velocity_uv_comps, 
-                               fargs=(C_grid, vmax), 
+                               fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "velocity_uv_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
@@ -216,10 +225,11 @@ fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
 vmax = np.max(abs(C_grid["w"].isel(zC=1, time=0)))
-fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax), extend="both", 
-             label=r"$m/s$")
+fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax, depth_title_str), 
+             extend="both", label=r"$m/s$")
 anim = animation.FuncAnimation(fig, animate_velocity_w_comp, 
-                               fargs=(C_grid, vmax), 
+                               fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "velocity_w_{}.gif".format(file_label)), progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
+anim.save(join(vis_dir, "velocity_w_{}.gif".format(file_label)), 
+          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
