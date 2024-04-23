@@ -1,23 +1,63 @@
-using Dates, DelimitedFiles
+using Dates
 using Oceananigans, Oceananigans.Coriolis, Oceananigans.TurbulenceClosures
 
 #=
 GET INPUTS
 =#
 
-#print(readdlm("InputSimulation.txt", Any))
+input_params = Dict()
+
+for (i, line) in enumerate(eachline("InputSimulation.txt"))
+    
+    var_len, line_len = 0, length(line)
+    if (line_len > 1 && line[1] != '#')
+ 
+        for char in line
+            if char == '='
+                break
+            else
+                var_len += 1
+            end
+        end
+        
+        #Variable name (whitespace stripped)
+        var = strip(line[1:var_len])
+        #Strip leading/trailing whitespace from rest of line
+        line = strip(line[var_len:end])
+        
+        val_len = 0
+        for char in line
+            if char == '#' 
+                break #Isolate parameter value from trailing comment
+            else
+                val_len += 1
+            end
+        end
+        
+        #Strip leading/trailing whitespace from parameter value
+        val_str = strip(line[2:val_len]) #Index 1 is "="
+        
+        val = tryparse(Int, val_str)
+        if isnothing(val)
+            val = parse(Float64, val_str)
+        end
+        input_params[var] = val
+        
+    end    
+end
 
 #=
 SIMULATION PARAMETERS AND GEOMETRY
 =#
 
-Nx, Ny, Nz = 128, 128, 2 #Numbers of gridpoints
-Lx, Ly, Lz = 2000 * 1e3, 2000 * 1e3, 1000 #Domain extents
+#Numbers of gridpoints
+Nx, Ny, Nz = input_params["Nx"], input_params["Ny"], input_params["Nz"]
+
+#Numbers of gridpoints
+Lx, Ly, Lz = input_params["Lx"], input_params["Ly"], input_params["Lz"]
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), 
-    x = (-Lx/2, Lx/2),
-    y = (-Ly/2, Ly/2),
-    z = (-Lz, 0),
+    x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0),
     topology=(Periodic, Periodic, Bounded))
 
 #=
@@ -25,7 +65,8 @@ DIFFUSIVITIES
 =#
 
 #Constant anisotropic diffusivities
-h_diffusivity, v_diffusivity = 5e-1, 5e-5 
+h_diffusivity = input_params["h_diffusivity"]
+v_diffusivity = input_params["v_diffusivity"]
 
 h_closure = HorizontalScalarDiffusivity(ν=h_diffusivity)
 v_closure = VerticalScalarDiffusivity(ν=v_diffusivity)
@@ -34,7 +75,7 @@ v_closure = VerticalScalarDiffusivity(ν=v_diffusivity)
 EFFECT OF ROTATION
 =#
 
-latitude = 73 #Degrees N
+latitude = input_params["latitude"]
 f = 2 * 7.2921 * 1e-5 * sin(π * latitude / 180) #Units s^-1
 f_plane = FPlane(f=f)
 
@@ -42,8 +83,7 @@ f_plane = FPlane(f=f)
 INSTANTIATE THE MODEL
 =#
 
-model = NonhydrostaticModel(; 
-    grid=grid, 
+model = NonhydrostaticModel(; grid=grid, 
     timestepper=:QuasiAdamsBashforth2, 
     advection=UpwindBiasedFifthOrder(),
     closure=(h_closure, v_closure), 
@@ -55,12 +95,15 @@ model = NonhydrostaticModel(;
 SET INITIAL CONDITIONS
 =#
 
-σr, σz = 2.5e5, 3e2 #Radial and vertical gyre lengthscales
+#Radial and vertical gyre lengthscales
+σr, σz = input_params["σr"], input_params["σz"]
 
-N = 5e-3 #Approx. BV frequency (1/s); cf. Jackson et al, 2012
+#BV frequency
+N = input_params["N"]
 N2 = N^2
 
-p0 = 100 #Reference value for reduced pressure (m^2/s^2)
+#Reference value for reduced pressure 
+p0 = input_params["p0"]
 
 #Function to compute initial buoyancy profile
 function b_initial(x,y,z)
@@ -83,8 +126,8 @@ set!(model, u=u_initial, v=v_initial, w=w_initial, b=b_initial)
 DEFINE SIMULATION
 =#
 
-timestep = 10
-simulation = Simulation(model, Δt=timestep, stop_time=5*60)
+timestep, stop_time = input_params["timestep"], input_params["stop_time"]
+simulation = Simulation(model, Δt=timestep, stop_time=stop_time)
 
 #=
 SET UP CALLBACK AND OUTPUT WRITER FOR SIMULATION
@@ -138,5 +181,5 @@ open(log_filepath, "w") do file
     write(file, "f-Plane latitude = $(latitude) degrees N \n")
     write(file, "p0, σr, σz = $(p0), $(σr), $(σz) \n")
     write(file, "N^2 = $(N2) \n")
-    write(file, "Timestep = $(timestep)")
+    write(file, "Timestep, stop time = $(timestep), $(stop_time)")
 end
