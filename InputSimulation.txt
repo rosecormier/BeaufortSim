@@ -28,8 +28,8 @@ latitude         = 73.0            # Degrees N
 ######################################################
 
 p0               = 100            # Reference [reduced] pressure
-σr               = 250            # Standard deviation of pressure in r (km)
-σz               = 300            # Standard deviations of pressure in z (m)
+σr               = 250            # Radial gyre lengthscale (km)
+σz               = 300            # Vertical gyre lengthscale (m)
 N                = 5e-3           # BV frequency (1/s); cf. Jackson et al, 2012
 
 ###########################
@@ -37,3 +37,4 @@ N                = 5e-3           # BV frequency (1/s); cf. Jackson et al, 2012
 ###########################
 
 timestep         = 10             # Timestep (s)
+stop_time        = 300            # Wall time (s; simulation time)
