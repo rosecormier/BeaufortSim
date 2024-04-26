@@ -11,7 +11,7 @@ for (i, line) in enumerate(eachline("InputSimulation.txt"))
     
     var_len, line_len = 0, length(line)
     if (line_len > 1 && line[1] != '#')
- 
+
         for char in line
             if char == '='
                 break
@@ -53,8 +53,10 @@ SIMULATION PARAMETERS AND GEOMETRY
 #Numbers of gridpoints
 Nx, Ny, Nz = input_params["Nx"], input_params["Ny"], input_params["Nz"]
 
-#Numbers of gridpoints
-Lx, Ly, Lz = input_params["Lx"], input_params["Ly"], input_params["Lz"]
+#Horizontal extents - convert to km
+Lx, Ly = input_params["Lx"] * 1e3, input_params["Ly"] * 1e3
+#Vertical extent [m]
+Lz = input_params["Lz"]
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), 
     x = (-Lx/2, Lx/2), y = (-Ly/2, Ly/2), z = (-Lz, 0),
@@ -95,8 +97,10 @@ model = NonhydrostaticModel(; grid=grid,
 SET INITIAL CONDITIONS
 =#
 
-#Radial and vertical gyre lengthscales
-σr, σz = input_params["σr"], input_params["σz"]
+#Radial gyre lengthscale - convert to km
+σr = input_params["σr"] * 1e3 
+#Vertical gyre lengthscale [m]
+σz = input_params["σz"]
 
 #BV frequency
 N = input_params["N"]
