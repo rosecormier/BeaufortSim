@@ -58,7 +58,9 @@ w_initial(x,y,z) = 0
 u, v, w = model.velocities
 
 set!(model, 
-    u=u_initial, v=v_initial, w=w_initial, 
+    u = u_initial, 
+    v = v_initial, 
+    w = w_initial, 
     b = b_initial)
 
 # DEFINE SIMULATION; SET UP CALLBACK AND OUTPUT WRITER
