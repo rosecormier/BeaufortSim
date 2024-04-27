@@ -11,8 +11,7 @@ input_params = ReadInputFile("InputSimulation.txt")
 
 Nx, Ny, Nz = input_params["Nx"], input_params["Ny"], input_params["Nz"]
 
-#Convert horizontal extents to m
-Lx, Ly = input_params["Lx"] * 1e3, input_params["Ly"] * 1e3
+Lx, Ly = input_params["Lx"] * 1e3, input_params["Ly"] * 1e3 #Converted to m
 Lz = input_params["Lz"] #Units m
 
 grid = RectilinearGrid(size = (Nx, Ny, Nz), 
@@ -39,8 +38,8 @@ model = NonhydrostaticModel(; grid = grid,
 # SET INITIAL CONDITIONS
 
 #Physical parameters
-σr = input_params["σr"] * 1e3 #Radial lengthscale - convert to m
-σz = input_params["σz"] #Vertical lengthscale [m]
+σr = input_params["σr"] * 1e3 #Converted to m
+σz = input_params["σz"] #Units m
 N2 = input_params["N"]^2
 p̃0 = input_params["p̃0"] #Reference value for reduced pressure 
 
@@ -55,6 +54,7 @@ u_initial(x,y,z) = (2*p̃0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
 v_initial(x,y,z) = (-2*p̃0/(f*σr^2)) * x * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
 w_initial(x,y,z) = 0
 
+b = model.tracers.b
 u, v, w = model.velocities
 
 set!(model, 
@@ -72,8 +72,6 @@ simulation = Simulation(model,
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
 add_callback!(simulation, progress, IterationInterval(1))
 
-b = model.tracers.b
-u, v, w = model.velocities
 ωx = ∂y(w) - ∂z(v)
 ωy = ∂z(u) - ∂x(w)
 ωz = ∂x(v) - ∂y(u)
