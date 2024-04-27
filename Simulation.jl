@@ -44,7 +44,7 @@ model = NonhydrostaticModel(; grid = grid,
 N2 = input_params["N"]^2
 p̃0 = input_params["p̃0"] #Reference value for reduced pressure 
 
-f = 2 * 7.2921 * 1e-5 * sin(π * input_params["latitude"] / 180)
+f = model.coriolis.f
 
 #Function to compute initial buoyancy profile
 b_initial(x,y,z) = (N2*z 
