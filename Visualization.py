@@ -52,7 +52,7 @@ depth_idx = args.depth
 #SET UP DIRECTORY INFORMATION
 
 output_dir = "Output"
-vis_dir = "Visualization"
+vis_dir = "Plots"
 
 if not os.path.exists(join(vis_dir)):
     os.makedirs(join(vis_dir)) #Make vis directory if nonexistent
