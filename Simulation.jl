@@ -70,7 +70,7 @@ simulation = Simulation(model,
                 stop_time = input_params["stop_time"])
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
-add_callback!(simulation, progress, IterationInterval(1))
+add_callback!(simulation, progress, IterationInterval(100))
 
 ωx = ∂y(w) - ∂z(v)
 ωy = ∂z(u) - ∂x(w)
@@ -90,7 +90,8 @@ mkpath(dirname(output_filepath)) #Make directory if nonexistent
 simulation.output_writers[:field_writer] = NetCDFOutputWriter(model, 
                 output_fields, 
                 filename=output_filepath, 
-                schedule=IterationInterval(1))
+                schedule=TimeInterval(
+                    input_params["save_interval"]))
 
 # RUN SIMULATION
 
