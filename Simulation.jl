@@ -63,13 +63,19 @@ set!(model,
     w = w_initial, 
     b = b_initial)
 
-# DEFINE SIMULATION; SET UP CALLBACK AND OUTPUT WRITER
+# DEFINE SIMULATION; SET UP CALLBACKS AND OUTPUT WRITER
 
 simulation = Simulation(model, 
                 Δt = input_params["timestep"], 
                 stop_time = input_params["stop_time"])
 
-progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
+#Adaptive timestepping
+wizard = TimeStepWizard(cfl = 0.2, 
+                        max_Δt = 100)
+simulation.callbacks[:wizard] = Callback(wizard, 
+                                    IterationInterval(10))
+
+progress(sim) = @info string("Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
 add_callback!(simulation, progress, IterationInterval(100))
 
 ωx = ∂y(w) - ∂z(v)
@@ -117,5 +123,7 @@ open(log_filepath, "w") do file
     write(file, "N^2 = $(N2) \n")
     write(file, "Timestep, stop time = 
         $(input_params["timestep"]), 
-        $(input_params["stop_time"])")
+        $(input_params["stop_time"]) \n")
+    write(file, "Save interval = 
+        $(input_params["save_interval"])")
 end
