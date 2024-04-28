@@ -32,9 +32,10 @@ p̃0               = 100            # Reference [reduced] pressure (m^2/s^2)
 σz               = 300            # Vertical gyre lengthscale (m)
 N                = 5e-3           # BV frequency (1/s); cf. Jackson et al, 2012
 
-###########################
-### Simulation timestep ###
-###########################
+#################################
+### Simulation time intervals ###
+#################################
 
-timestep         = 10             # Timestep (s)
-stop_time        = 300            # Wall time (s; simulation time)
+timestep         = 60             # Timestep (s)
+stop_time        = 86400          # Wall time (s; simulation time)
+save_interval    = 3600           # Interval at which to save model fields (s; simulation time)
