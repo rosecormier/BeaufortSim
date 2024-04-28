@@ -71,11 +71,12 @@ simulation = Simulation(model,
 
 #Adaptive timestepping
 wizard = TimeStepWizard(cfl = 0.2, 
-                        max_Δt = 100)
+                        max_Δt = 40)
 simulation.callbacks[:wizard] = Callback(wizard, 
                                     IterationInterval(10))
 
-progress(sim) = @info string("Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
+progress(sim) = @info string(
+    "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
 add_callback!(simulation, progress, IterationInterval(100))
 
 ωx = ∂y(w) - ∂z(v)
