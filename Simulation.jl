@@ -66,7 +66,7 @@ set!(model,
 # DEFINE SIMULATION; SET UP CALLBACKS AND OUTPUT WRITER
 
 simulation = Simulation(model, 
-                Δt = input_params["timestep"], 
+                Δt = input_params["Δt_initial"], 
                 stop_time = input_params["stop_time"])
 
 #Adaptive timestepping
@@ -122,7 +122,7 @@ open(log_filepath, "w") do file
     write(file, "p̃0, σr, σz = $(p̃0), $(σr), $(σz) \n")
     write(file, "N^2 = $(N2) \n")
     write(file, "Timestep, stop time = 
-        $(input_params["timestep"]), 
+        $(input_params["Δt_initial"]), 
         $(input_params["stop_time"]) \n")
     write(file, "Save interval = 
         $(input_params["save_interval"])")
