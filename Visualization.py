@@ -11,6 +11,7 @@ import argparse
 import matplotlib
 import numpy as np
 import os
+import pandas as pd
 import xarray as xr
 
 matplotlib.use("Agg")
@@ -90,8 +91,16 @@ def load_data(filename, slice_len):
     time_iter = time_iter[::slice_len] #Slice iterable to speed up visualization
     return C_grid, time_iter
 
+def get_HHMMSS(np_timedelta_obj):
+    pd_timedelta_obj = pd.to_timedelta(np_timedelta_obj)
+    total_seconds = pd_timedelta_obj.seconds
+    hours, remaining_seconds = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remaining_seconds, 60)
+    HHMMSS = "{:02}:{:02}:{:02}".format(hours, minutes, seconds)
+    return HHMMSS
+
 def animate_zvorticity(time, C_grid, vmax, depth_str=""): 
-    time_title=C_grid.time[time].values.astype('timedelta64[m]')
+    time_title = get_HHMMSS(C_grid.time[time].values)
     fig.suptitle("z-Vorticity{}, t={}".format(depth_str, time_title))
     frame_vorticity = C_grid["zvorticity"].isel(zC=depth_idx, time=time)
     frame_vorticity.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
@@ -101,7 +110,7 @@ def animate_zvorticity(time, C_grid, vmax, depth_str=""):
     return pcm
 
 def animate_speed(time, C_grid, vmax, depth_str=""):
-    time_title=C_grid.time[time].values.astype('timedelta64[m]')
+    time_title = get_HHMMSS(C_grid.time[time].values)
     fig.suptitle("Speed{}, t={}".format(depth_str, time_title))
     frame_speed = C_grid["speed"].isel(zC=depth_idx, time=time)
     frame_speed.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
@@ -111,7 +120,7 @@ def animate_speed(time, C_grid, vmax, depth_str=""):
     return pcm
 
 def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
-    time_title=C_grid.time[time].values.astype('timedelta64[m]')
+    time_title = get_HHMMSS(C_grid.time[time].values)
     fig.suptitle("Horizontal Velocity Components{}, t={}".format(depth_str,
                                                                  time_title))
     frame_u = C_grid["u"].isel(zC=depth_idx, time=time)
@@ -128,7 +137,7 @@ def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
     return pcm1, pcm2
 
 def animate_velocity_w_comp(time, C_grid, vmax, depth_str=""):
-    time_title=C_grid.time[time].values.astype('timedelta64[m]')
+    time_title = get_HHMMSS(C_grid.time[time].values)
     fig.suptitle("Vertical Velocity Component{}, t={}".format(depth_str, 
                                                               time_title))
     frame_w = C_grid["w"].isel(zC=depth_idx, time=time)
@@ -139,7 +148,7 @@ def animate_velocity_w_comp(time, C_grid, vmax, depth_str=""):
     return pcm
 
 def animate_buoyancy(time, C_grid, vmax, depth_str=""):
-    time_title=C_grid.time[time].values.astype('timedelta64[m]')
+    time_title = get_HHMMSS(C_grid.time[time].values)
     fig.suptitle("Buoyancy{}, t={}".format(depth_str, time_title))
     frame_buoyancy = C_grid["buoyancy"].isel(zC=depth_idx, time=time)
     frame_buoyancy.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
