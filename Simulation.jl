@@ -35,9 +35,8 @@ model = NonhydrostaticModel(; grid = grid,
     tracers = (:b),
     buoyancy = BuoyancyTracer())
 
-# SET INITIAL CONDITIONS
+# READ IN PHYSICAL PARAMETERS AND SET INITIAL CONDITIONS
 
-#Physical parameters
 σr = input_params["σr"] * 1e3 #Converted to m
 σz = input_params["σz"] #Units m
 N2 = input_params["N"]^2
@@ -45,17 +44,18 @@ p̃0 = input_params["p̃0"] #Reference value for reduced pressure
 
 f = model.coriolis.f
 
+b = model.tracers.b
+u, v, w = model.velocities
+
 #Function to compute initial buoyancy profile
 b_initial(x,y,z) = (N2*z 
-    - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2))
+    - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
+    + 2e-4*rand())
 
 #Functions to compute initial velocities
 u_initial(x,y,z) = (2*p̃0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
 v_initial(x,y,z) = (-2*p̃0/(f*σr^2)) * x * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
 w_initial(x,y,z) = 0
-
-b = model.tracers.b
-u, v, w = model.velocities
 
 set!(model, 
     u = u_initial, 
