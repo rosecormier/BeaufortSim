@@ -47,10 +47,12 @@ f = model.coriolis.f
 b = model.tracers.b
 u, v, w = model.velocities
 
+#Function to compute equilibrium buoyancy profile
+b_eqm(x,y,z) = (N2*z 
+    - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2))
+
 #Function to compute initial buoyancy profile
-b_initial(x,y,z) = (N2*z 
-    - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
-    + 2e-4*rand())
+b_initial(x,y,z) = b_eqm(x,y,z) + 2e-4*rand()
 
 #Functions to compute initial velocities
 u_initial(x,y,z) = (2*p̃0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
@@ -83,10 +85,11 @@ add_callback!(simulation, progress, IterationInterval(100))
 ωy = ∂z(u) - ∂x(w)
 ωz = ∂x(v) - ∂y(u)
 s = sqrt(u^2 + v^2 + w^2)
+b_perturb = b - b_eqm
 
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "s" => s, "b" => b)
+                    "s" => s, "b" => b, "b_perturb" => b_perturb)
 
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
