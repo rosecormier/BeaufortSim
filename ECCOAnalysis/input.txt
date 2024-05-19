@@ -11,10 +11,10 @@ nu_E            = 1e-2            # Eddy viscosity (m^2/s)
 
 time_ave_type   = seasonal        # "monthly" or "seasonal"
 
-initial_month   = 12              # Month (integer)
-initial_year    = 2002            # Year (integer)
+initial_month   = 01              # Month (integer)
+initial_year    = 2009            # Year (integer)
 final_month     = 12              # Month (integer)
-final_year      = 2006            # Year (integer)
+final_year      = 2017            # Year (integer)
 
 #Day (integer); only used if "time_ave_type" is "daily"
 initial_day     = 01
@@ -23,10 +23,10 @@ initial_day     = 01
 final_day       = 28
 
 #First month of season (integer); only used if "time_ave_type" is "seasonal"
-season_start    = 12
+season_start    = 01
 
 # Last month of season (integer); only used if "time_ave_type" is "seasonal"
-season_end      = 03
+season_end      = 12
 
 # To do full-year averages, must set season_start = 01 and season_end = 12
 
@@ -43,9 +43,9 @@ plot_plane_type = depth_index_const
 #The left endpoint of the corresponding range below will be used as the constant
     #value
 
-depth_index_range  = 0, 50       # Top layer (k-value), bottom layer (k-value)
-lat_range          = 70.0, 85.0  # South bound (deg-N), north bound (deg-N)
-lon_range          = -180, -90   # West bound (deg), east bound (deg)
+depth_index_range  = 16, 17      # Top layer (k-value), bottom layer (k-value)
+lat_range          = 70.0, 80.0  # South bound (deg-N), north bound (deg-N)
+lon_range          = -155, -120  # West bound (deg), east bound (deg)
 
 # interp_type   = TBD
 
@@ -62,14 +62,17 @@ lon_range          = -180, -90   # West bound (deg), east bound (deg)
 #    shear_strain
 #    2D_div_vel
 #    ssh
-scalar_fields   = ssh
+#    potential_temp
+#    ice_thickness
+#    T_zflux
+scalar_fields   = density_anom
 
 #Comma-separated vector fields, from options 
 #    horizontal_vel
 #    geostrophic_vel
 #    Ek_vel
 #    wind_stress
-vector_fields   = wind_stress
+vector_fields   = horizontal_vel
 
 #############################
 ### Directory information ###
@@ -86,4 +89,4 @@ visualization_folder  = Visualization
 ### Flag to clear primary datafiles after use ###
 #################################################
 
-clear_data_files = True
+clear_data_files = False
