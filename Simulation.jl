@@ -52,7 +52,7 @@ b_eqm(x,y,z) = (N2*z
     - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2))
 
 #Function to compute initial buoyancy profile
-b_initial(x,y,z) = b_eqm(x,y,z) + 2e-4*rand()
+b_initial(x,y,z) = b_eqm(x,y,z) + 1e-5*rand()
 
 #Functions to compute initial velocities
 u_initial(x,y,z) = (2*p̃0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
