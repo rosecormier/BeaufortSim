@@ -18,15 +18,14 @@ import load_data_files
 from functions_ecco_download import ecco_podaac_download
 from functions_ecco_general import compute_temporal_mean, get_monthstr, \
 get_month_end
-from functions_field_variables import get_field_variable, get_vector_comps, \
-get_monthly_shortname, get_monthly_nc_string, get_seasonal_shortname, \
-get_seasonal_nc_string
+from functions_field_variables import get_field_variable, get_variable_str, \
+get_vector_comps, get_monthly_shortname, get_monthly_nc_string, \
+get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
 
 def compute_seasonal_average(monthly_fields, datdir_primary, field_name, 
                              season_start_string, season_end_string, yearstr):
-    
     """
     Compute seasonal average of field from monthly averages; save output to 
     NetCDF file.
@@ -40,18 +39,17 @@ def compute_seasonal_average(monthly_fields, datdir_primary, field_name,
         seasonal_avg = xr.merge([seasonal_avg_0, seasonal_avg_1])
     
     outdir = join(datdir_primary, 
-                  get_seasonal_shortname(get_field_variable(field_name)))
+                  get_seasonal_shortname(get_variable_str(field_name)))
     if not os.path.exists(outdir):
         os.makedirs(outdir)
     
     #File to save data to
     filename = '{}{}-{}_{}.nc'.format(get_seasonal_nc_string
-                                      (get_field_variable(field_name)), 
+                                      (get_variable_str(field_name)), 
                                       season_start_string, season_end_string, 
                                       yearstr)
                     
-    if not os.path.exists(join(outdir, filename)): 
-        #Only compute if file doesn't already exist
+    if not os.path.exists(join(outdir, filename)): #Only if nonexistent
         seasonal_avg.to_netcdf(path=join(outdir, filename), engine="scipy")
     
     seasonal_avg.close()
@@ -75,8 +73,8 @@ def main(**kwargs):
     
     if time_ave_type == "monthly":
         
-        field_shortname = get_monthly_shortname(get_field_variable(field_name))
-        field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
+        field_shortname = get_monthly_shortname(get_variable_str(field_name))
+        field_nc_string = get_monthly_nc_string(get_variable_str(field_name))
     
         while year < int(final_year):
             yearstr = str(year)
@@ -109,15 +107,14 @@ def main(**kwargs):
         
     elif time_ave_type == "seasonal":
         
-        field_shortname = get_monthly_shortname(get_field_variable(field_name))
-        field_nc_string = get_monthly_nc_string(get_field_variable(field_name))
+        field_shortname = get_monthly_shortname(get_variable_str(field_name))
+        field_nc_string = get_monthly_nc_string(get_variable_str(field_name))
             
         season_start_string, season_end_string = time_kwargs[0], time_kwargs[1]
         season_start = int(season_start_string)
         season_end = int(season_end_string)
         
-        #This list will be used to track the dates corresponding to the files we
-        #download
+        #Will be used to track the dates corresponding to files we download
         all_seasons_all_date_strings = []
             
         if season_start < season_end:
@@ -159,21 +156,19 @@ def main(**kwargs):
                                                          'time')
                     except:
                         if monthly_fields_0 is None:
-                            monthly_fields_0 = ds_month[get_field_variable
-                                                        (field_name)]
+                            monthly_fields_0 = ds_month[get_variable_str(
+                                                        field_name)]
                         elif monthly_fields_0 is not None:
                             monthly_fields_0 = xr.concat([monthly_fields_0, 
-                                                          ds_month[
-                                                            get_field_variable(
-                                                                field_name)]],
-                                                         'time')
+                                ds_month[get_variable_str(field_name)]], 'time')
                     
+                    date_string = "{}-{}_{}".format(season_start_string, 
+                                                    season_end_string, yearstr)
                     all_seasons_all_date_strings.append(date_string)
                     
                     month += 1
                         
-                #After loading data for all months in the season, compute 
-                #seasonal average
+                #Now compute seasonal average
                 compute_seasonal_average([monthly_fields_0, monthly_fields_1], 
                                          datdir_primary, field_name, 
                                          season_start_string, season_end_string,
@@ -231,13 +226,14 @@ def main(**kwargs):
                                                             get_field_variable(
                                                                 field_name)]], 
                                                          'time')
-                        
+                            
+                    date_string = "{}-{}_{}".format(season_start_string, 
+                                                    season_end_string, yearstr)    
                     all_seasons_all_date_strings.append(date_string)
                         
                 if month == season_end and monthly_fields_0 is not None:
                         
-                    #After loading data for all months in the season, compute 
-                    #seasonal average
+                    #Now compute seasonal average
                     compute_seasonal_average([monthly_fields_0, 
                                               monthly_fields_1], datdir_primary,
                                              field_name, season_start_string, 

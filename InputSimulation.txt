@@ -2,9 +2,9 @@
 ### Numbers of gridpoints and domain extents ###
 ################################################
 
-Nx               = 128
-Ny               = 128
-Nz               = 2
+Nx               = 256
+Ny               = 256
+Nz               = 16
 
 Lx               = 2000       # km 
 Ly               = 2000       # km
@@ -21,7 +21,7 @@ v_diffusivity    = 5e-5       # m^2/s
 ### f-plane latitude ###
 ########################
 
-latitude         = 73.0       # Degrees N
+latitude         = 74.0       # Degrees N
 
 ######################################################
 ### Pressure and density parameters (assuming GSB) ###
@@ -37,5 +37,5 @@ N                = 5e-3       # BV frequency (1/s); cf. Jackson et al, 2012
 #################################
 
 Δt_initial       = 60         # Initial timestep (s)
-stop_time        = 86400      # Wall time (s; simulation time)
+stop_time        = 432000     # Wall time (s; simulation time)
 save_interval    = 3600       # Interval at which to save model fields (s; simulation time)

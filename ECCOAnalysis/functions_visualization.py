@@ -1,7 +1,7 @@
 """
 Auxiliary functions for visualizing ECCO data.
 
-Rosalie Cormier, 2024
+R. Cormier, 2024
 """
 
 import os
@@ -21,8 +21,8 @@ from os.path import join
 import load_data_files
 
 from functions_ecco_general import load_grid, scalar_to_grid, vector_to_grid
-from functions_field_variables import get_field_variable, get_vector_comps, \
-field_is_primary, get_cmap_and_symmetry, get_cbar_label, get_field_title
+from functions_field_variables import get_field_variable, get_variable_str, \
+get_cmap_and_symmetry, get_cbar_label, get_field_title
 
 ##############################
 
@@ -31,40 +31,8 @@ plt.rcParams['text.usetex'] = True
 
 ##############################
 
-<<<<<<< HEAD
-def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, 
-                   spatial_bounds, ds_grid, date_string):
- 
-=======
-def cbar_label(scalar_attr):
-    
-    """
-    Returns label for plot colorbar.
-    """
-    
-    cbar_label_dict = {'PHIHYDcR': r'Hydrostatic pressure anomaly $({m}^2 /{s}^2)$', \
-                      'WVEL': 'Velocity (m/s)', \
-                      'Delta_u': r'$|\Delta \vec{u}|_n$', \
-                      'ZETA': 'Vorticity (1/s)', \
-                      'zetanorm': r'Vorticity per $f_{mean}$', \
-                      'OW': r'OW $(1/s^2)$', \
-                      's': r'Strain $(1/s^2)$', \
-                      'zeta_geos': r'Vorticity per $f_{mean}$', \
-                      'OW_geos': r'OW $(1/s^2)$', \
-                      'Ro_l': r'$Ro_{\ell}$', \
-                      'geos_metric': 'Velocity ratio', \
-                      'DIVU': 'Horizontal velocity divergence (1/s)', \
-                      'DIVUEk': 'Divergence of Ekman current (1/s)', \
-                      'SIheff': 'Area-averaged sea ice thickness (m)', \
-                      'SALT': 'Salinity (parts per thousand)'}
-    label = cbar_label_dict[scalar_attr]
-    
-    return label
-
-##############################
-
-def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_attr, resid=False):
-    
+def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, 
+                            xvec_attr, resid=False):
     """
     Returns title for contourf-quiver plot.
     """
@@ -76,7 +44,8 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
         
     scalar_dict = {'PHIHYDcR': 'Pressure anomaly', \
                   'OW': 'Okubo-Weiss parameter', \
-                  'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                  'OW_geos': \
+                       r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
                   'Ro_l': 'Local Rossby number', \
                   'ZETA': 'Vorticity', \
                   'WVEL': 'Vertical component of water velocity', \
@@ -90,14 +59,12 @@ def pcolormesh_quiver_title(ecco_ds_grid, k_plot, datestr, scalar_attr, xvec_att
     vector_str = vector_dict[xvec_attr]
     
     if resid:
-        title = scalar_str + ' and ' + vector_str + \
-            ' residuals (relative to annual mean) \n in Arctic Circle at {}, {} \n'.format(depthstr, \
-                                                                                           datestr)
-
+        title = '{} and {}'.format(scalar_str, vector_str) \
+                + ' residuals (relative to annual mean) \n' \
+                + 'in Arctic Circle at {}, {} \n'.format(depthstr, datestr)
     else:
-        title = scalar_str + ' and ' + vector_str + ' in BGR \n at {}, {} \n'.format(depthstr, \
-                                                                                               datestr)
-    
+        title = '{} and {}'.format(scalar_str, vector_str) \
+                + ' in BGR \n at {}, {} \n'.format(depthstr, datestr)
     return title
 
 ##############################
@@ -113,25 +80,27 @@ def pcolormesh_k_title(ds_grid, k_plot, variable, datestr):
                     'zetanorm': r'Vorticity, normalized by $f_{mean}$', \
                     'OW': 'Okubo-Weiss parameter', \
                     's': 'Strain', \
-                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$), normalized by $f_{mean}$', \
-                    'OW_geos': r'Okubo-Weiss parameter (computed from $\vec{u}_g$)', \
+                    'zeta_geos': r'Vorticity (computed from $\vec{u}_g$),' \
+                                + r' normalized by $f_{mean}$', \
+                    'OW_geos': r'Okubo-Weiss parameter' \
+                                + r' (computed from $\vec{u}_g$)', \
                     'Ro_l': 'Local Rossby number', \
-                    'geos_metric': r'Metric for geostrophy $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
+                    'geos_metric': r'Metric for geostrophy' \
+        + r' $\frac{||\vec{u} - \vec{u}_g||}{|\vec{u}|| + ||\vec{u}_g||}$', \
                     'PHIHYDcR': 'Hydrostatic pressure anomaly', \
                     'DIVU': 'Divergence of horizontal water velocity', \
                     'DIVUEk': 'Divergence of Ekman current', \
                     'SIheff': 'Sea ice thickness'}
     variable_name = variable_dict[variable]
     
-    title = variable_name + ' in Beaufort Gyre region, {} average\n'.format(datestr)# at {}, {} \n'.format(depthstr, datestr)
-    
+    title = variable_name + ' in Beaufort Gyre region' \ 
+                          + ' at {}, {} \n'.format(depthstr, datestr)
     return title
 
 ##############################
 
-def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax, resolution, quiv_scale):
-    
->>>>>>> main
+def get_plot_title(scalar_field_name, vector_field_name, plot_plane_type, 
+                   spatial_bounds, ds_grid, date_string):
     """
     Return main title for plot.
     """
@@ -143,19 +112,17 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
         if plot_plane_type == 'depth_index_const':
             k_val = int(spatial_bounds[0])
             depth = -ds_grid.Z[k_val].values
-            depth_string = str(depth) + ' m depth'
+            depth_string = str(round(depth)) + ' m depth'
     
         if vector_field_name is None:
             title = '{} in BGR at {}, {} \n'.format(scalar_field_title, 
                                                     depth_string, date_string)
 
         elif vector_field_name is not None:
-            
             vector_field_title, vector_multiple_depths = get_field_title(
                 vector_field_name)
-            
             if vector_multiple_depths:
-                title = '{} and {} in BGR \n at {}, {} \n'.format(
+                title = '{} and {} \n at {}, {} \n'.format(
                     scalar_field_title, vector_field_title, depth_string, 
                     date_string)
             elif not vector_multiple_depths:
@@ -166,43 +133,43 @@ def get_quiver(ax, ecco_ds_grid, u_plot, v_plot, latmin, latmax, lonmin, lonmax,
     elif not multiple_depths:
         
         if vector_field_name is None:
-            title = '{} in BGR, {} \n'.format(scalar_field_title, date_string)
+            title = '{}, {} \n'.format(scalar_field_title, date_string)
 
         elif vector_field_name is not None:
-            
             vector_field_title, vector_multiple_depths = get_field_title(
                 vector_field_name)
             
             if vector_multiple_depths:
-                
                 if plot_plane_type == 'depth_index_const':
                     k_val = int(spatial_bounds[0])
                     depth = -ds_grid.Z[k_val].values
                     depth_string = str(depth) + ' m depth'
-                    
-                title = '{} and {} at {} in BGR, \n {} \n'.format(
+                title = '{} and {} at {}, \n {} \n'.format(
                     scalar_field_title, vector_field_title, depth_string, 
                     date_string)
                 
             elif not vector_multiple_depths:
-                title = '{} and {} in BGR, \n {} \n'.format(scalar_field_title, 
-                                                            vector_field_title, 
-                                                            date_string)
+                title = '{} \n and {}, {}'.format(scalar_field_title, 
+                                                  vector_field_title, 
+                                                  date_string)
         
     return title
 
 ##############################
 
-def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lonmax=-120.0):
-    
+def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0,
+                   lonmax=-120.0):
     """
     Add land, coastlines, and grid to an ax.
     """
     
     ax.add_feature(cfeature.LAND)
     ax.coastlines()
-    lines = ax.gridlines(draw_labels=labels)
-    lines2 = ax.gridlines(draw_labels=False, xlim=(lonmin, lonmax), ylim=(latmin, latmax), color='k')
+    lines = ax.gridlines(draw_labels = labels)
+    lines2 = ax.gridlines(draw_labels = False, 
+                          xlim = (lonmin, lonmax), 
+                          ylim = (latmin, latmax), 
+                          color = 'k')
     
     if labels:
         
@@ -218,7 +185,7 @@ def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lon
         lines.xlabels_top = None
         lines.ylabels_right = None
         
-        lines2.xlocator = mticker.FixedLocator(np.arange(-155,-119.9,35))
+        lines2.xlocator = mticker.FixedLocator(np.arange(-155, -119.9, 35))
         lines2.ylocator = mticker.FixedLocator(np.arange(70.5, 80.1, 9.5))
         
         plt.draw()
@@ -228,122 +195,83 @@ def plot_geography(ax, labels=True, latmin=70.5, latmax=80.0, lonmin=-155.0, lon
 ##############################
 
 def get_scalar_bounds(scalar_field, scalar_bounds=None):
-    
     """
     Set vmin, vmax for a scalar field.
     """
     
-    if scalar_bounds == None:
-        #Default to actual bounds on data
+    if scalar_bounds == None: #Default to actual bounds on data
         vmin, vmax = np.nanmin(scalar_field), np.nanmax(scalar_field)
-    else:
-        #If scalar bounds are explicitly given
+    else: #Case where scalar bounds are explicitly given
         vmin, vmax = scalar_bounds[0], scalar_bounds[1]
-    
     return vmin, vmax
 
 ##############################
 
 def get_pcolormesh(ax, lon_centers, lat_centers, scalar, field_name, vmin, vmax,
                    logscale=False):
-    
     """
     Create pcolormesh object given an axis.
     """
-    
-<<<<<<< HEAD
-    #Get appropriate colormap and symmetry (boolean)
+
     cmap, symmetry = get_cmap_and_symmetry(field_name)
     
     if symmetry: 
-        #If variable is symmetric about zero, reset bounds on colorbar to be 
-        #symmetric
+        #Reset bounds on colorbar to be symmetric
         abs_max_value = max(abs(vmax), abs(vmin))
         vmin, vmax = -abs_max_value, abs_max_value
-=======
+        
     cmap = plt.get_cmap(cmap).copy()
     cmap.set_bad('grey')
-
-    if logscale:
-        color = ax.pcolormesh(lon_centers, lat_centers, scalar, transform=ccrs.PlateCarree(), cmap=cmap, norm=colors.LogNorm(vmin=vmin, vmax=vmax))
->>>>>>> main
         
     if logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, 
-                              transform=ccrs.PlateCarree(), cmap=cmap, 
-                              norm=colors.LogNorm(vmin=vmin, vmax=vmax))
+                              transform = ccrs.PlateCarree(), 
+                              cmap = cmap, 
+                              norm = colors.LogNorm(vmin=vmin, vmax=vmax))
     elif not logscale:
         color = ax.pcolormesh(lon_centers, lat_centers, scalar, 
-                              transform=ccrs.PlateCarree(), cmap=cmap, 
-                              vmin=vmin, vmax=vmax)
-    
+                              transform = ccrs.PlateCarree(), 
+                              cmap = cmap, 
+                              vmin = vmin, vmax = vmax)
     return ax, color
 
 ##############################
 
 def get_quiver(ax, lon_centers, lat_centers, vec_E_comp, vec_N_comp, 
-               quiv_scale=0.3):
-    
+               quiv_scale=0.35):
     """
-    Resample vector field to lat-lon grid and get quiver object; add quiver to 
-    given ax.
+    Resample vector to lat-lon grid and get quiver object; add quiver to ax.
     """
 
-    skip = (slice(0, -1, 1), slice(0, -1, 1))
-    quiv = ax.quiver(lon_centers[skip], lat_centers[skip], vec_E_comp[skip], 
-                     vec_N_comp[skip], color='k', transform=ccrs.PlateCarree(),
-                     scale=quiv_scale, scale_units='width', regrid_shape=30)
-    
+    skip = (slice(0, -1, 2), slice(0, -1, 2))
+    quiv = ax.quiver(lon_centers[skip], lat_centers[skip], 
+                     vec_E_comp[skip], vec_N_comp[skip], 
+                     color = 'k', 
+                     transform = ccrs.PlateCarree(),
+                     scale = quiv_scale, 
+                     scale_units = 'width', 
+                     regrid_shape = 30)
     return quiv
 
-<<<<<<< HEAD
-=======
-        fig = plt.figure(figsize=(10, 8))
-        ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
-        ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
-        
-        #Create pcolormesh object
-        ax, color = get_pcolormesh(ax, lon_centers, lat_centers, scalar, cmap, vmin, vmax, logscale=logscale) 
-        
-        ax = plot_geography(ax)
-        ax.set_title(pcolormesh_k_title(ecco_ds_grid, k_plot, scalar_attr, datestr))
-        
-    elif latmin != latmax and lonmin == lonmax: #If plotting along a line of constant longitude
-        
-        fig = plt.figure(figsize=(10, 8))
-        ax = plt.axes()
-        
-        color = ax.pcolormesh(lat_centers, k_centers, scalar, cmap=cmap)
-    
-    fig.colorbar((color), ax=ax, label=cbar_label(scalar_attr), extend=extend, location='right')#'bottom')
-    
-    plt.savefig(outfile)
-    plt.close()
-    
-    return ax
-    
->>>>>>> main
 ##############################
 
 def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary, 
                       datdir_secondary, time_ave_type, plot_plane_type, 
-                      spatial_bounds, resolutions, outfile, extend='neither', 
+                      spatial_bounds, resolutions, outfile, extend='both', 
                       vector_field_name=None):
-    
     """
     Create pcolormesh plot of a scalar variable in a subdomain of the Arctic.
     Optional - overlay quiver plot of a vector variable.
     """
     
-    ds_grid = load_grid(datdir_primary) #Load the ECCO grid
+    ds_grid = load_grid(datdir_primary)
 
-    #Load scalar DataSet
     scalar_ds = load_data_files.main(field_name=scalar_field_name, 
                                      date_string=date_string, 
                                      datdir_primary=datdir_primary, 
                                      datdir_secondary=datdir_secondary, 
                                      time_ave_type=time_ave_type)
-    
+
     if plot_plane_type == 'depth_index_const':
         depth = spatial_bounds[0]
         latmin, latmax = spatial_bounds[1], spatial_bounds[2] 
@@ -353,29 +281,27 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary,
         
     lons, lats, lon_edges, lat_edges, scalar_field = scalar_to_grid(ds_grid, 
                                         scalar_ds, 
-                                        get_field_variable(scalar_field_name),
-                                        depth, latmin, latmax, lonmin, lonmax, 
+                                        get_variable_str(scalar_field_name),
+                                        depth, 
+                                        latmin, latmax, lonmin, lonmax, 
                                         lat_res, lon_res)
     
     vmin, vmax = get_scalar_bounds(scalar_field) #Set scalar bounds
 
-    fig = plt.figure(figsize=(10, 8))
+    fig = plt.figure(figsize=(8, 8))
     ax = plt.axes(projection=ccrs.NorthPolarStereo(central_longitude=-135))    
     ax.set_extent([lonmin, lonmax, latmin, latmax], ccrs.PlateCarree())
     
-    #Create pcolormesh object 
-    ax, color = get_pcolormesh(ax, lons, lats, scalar_field, scalar_field_name,
+    ax, color = get_pcolormesh(ax, lons, lats, 
+                               scalar_field, scalar_field_name,
                                vmin, vmax) 
     
     if vector_field_name is not None:
-       
-        #Load vector DataSet
         vector_ds = load_data_files.main(field_name=vector_field_name, 
                                          date_string=date_string, 
                                          datdir_primary=datdir_primary, 
                                          datdir_secondary=datdir_secondary, 
                                          time_ave_type=time_ave_type)
-        
         vector_to_grid_output = vector_to_grid(ds_grid, vector_ds, 
                                                vector_field_name, depth, latmin,
                                                latmax, lonmin, lonmax, lat_res,
@@ -383,7 +309,6 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary,
         lons, lats = vector_to_grid_output[0], vector_to_grid_output[1]
         vec_E_comp = vector_to_grid_output[4]
         vec_N_comp = vector_to_grid_output[5]
-        #Create quiver object 
         quiv = get_quiver(ax, lons, lats, vec_E_comp, vec_N_comp) 
    
     ax = plot_geography(ax)
@@ -391,154 +316,208 @@ def ArcCir_pcolormesh(scalar_field_name, date_string, datdir_primary,
                                 plot_plane_type, spatial_bounds, ds_grid, 
                                 date_string))
     
-    fig.colorbar((color), ax=ax, label=get_cbar_label(scalar_field_name), 
-                 extend=extend, location='bottom')
-    
+    fig.colorbar((color), ax = ax, 
+                 label = get_cbar_label(scalar_field_name), 
+                 extend = extend, 
+                 location = 'bottom', 
+                 shrink = 0.85, 
+                 ticks = np.linspace(vmin, vmax, 5))
+    plt.tight_layout()
     plt.savefig(outfile)
-<<<<<<< HEAD
-    plt.close()
-=======
     plt.close()
     
-    return scalar_mean, vecE_mean, vecN_mean
-
 ##############################
 
-def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, scalar_bounds=[1e-4, 1e-2], monthstr=None, seas_monthstr=None, seas_yearstr=None, quiver=False, vecE=None, vecN=None, xvec_attr=None):
-
+def plot_Ro_l(Ro_l_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, 
+              k, yearstr, ds_grid, resolution, datestr, lats_lons, 
+              scalar_bounds=[1e-4, 1e-2], monthstr=None, seas_monthstr=None, 
+              seas_yearstr=None, quiver=False, vecE=None, vecN=None, 
+              xvec_attr=None):
     """
     Computes and plots local Rossby number corresponding to monthly vorticity field.
     """
 
-    Ro_l = comp_local_Ro(zeta_field, lat_centers) #Compute Ro_l
+    Ro_l = comp_local_Ro(zeta_field, lat_centers)
             
     #Define output file name
-        
     if not seasonal:
-        Ro_l_outfile = join(outdir, 'monthly', 'localRo_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+        Ro_l_outfile = join(outdir, 'monthly', 
+                            'localRo_k{}_{}{}.pdf'.format(str(k), 
+                                                          monthstr, yearstr))
     elif seasonal:
-        Ro_l_outfile = join(outdir, 'seasonal', 'localRo_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+        Ro_l_outfile = join(outdir, 'seasonal', 
+                            'localRo_k{}_{}_{}.pdf'.format(str(k), 
+                                                           seas_monthstr, 
+                                                           seas_yearstr))
 
-    #Plot Ro_l
-    
+
     if not quiver:
-        ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, lat_centers, None, datestr, 'Ro_l', scalar_bounds=scalar_bounds, k_plot=k, extend='both', logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
+        ArcCir_pcolormesh(ds_grid, [Ro_l], resolution, 'Reds', lon_centers, 
+                          lat_centers, None, datestr, 'Ro_l', 
+                          scalar_bounds=scalar_bounds, k_plot=k, extend='both',
+                          logscale=True, outfile=Ro_l_outfile, 
+                          lats_lons=lats_lons)
+        
     elif quiver:  #need to fix outfile for this case
-        ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution, 'Reds', datestr, lon_centers, lat_centers, scalar_attr='Ro_l', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, logscale=True, outfile=Ro_l_outfile, lats_lons=lats_lons)
-
-    #Save Ro_l data and return it
+        ArcCir_pcolormesh_quiver(ds_grid, k, [Ro_l], [vecE], [vecN], resolution,
+                                 'Reds', datestr, lon_centers, lat_centers, 
+                                 scalar_attr='Ro_l', xvec_attr=xvec_attr, 
+                                 scalar_bounds=scalar_bounds, logscale=True, 
+                                 outfile=Ro_l_outfile, lats_lons=lats_lons)
 
     Ro_l_list.append(Ro_l)
     return Ro_l_list
     
 ##############################
 
-def plot_OW(OW_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1e-14, 1e-14], quiver=False, vecE=None, vecN=None, xvec_attr=None):
-    
+def plot_OW(OW_list, zeta_field, lon_centers, lat_centers, seasonal, outdir, k,
+            yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, 
+            datdir=None, season_start=None, season_end=None, endyearstr=None, 
+            seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None,
+            scalar_bounds=[-1e-14, 1e-14], quiver=False, vecE=None, vecN=None, 
+            xvec_attr=None):
     """
-    Computes and plots Okubo-Weiss parameter corresponding to monthly velocity and vorticity profiles.
+    Computes and plots Okubo-Weiss parameter 
+    corresponding to monthly velocity and vorticity profiles.
     """
     
     if not seasonal:
         
         #Get monthly velocity data
-        
         vel_monthly_shortname, vel_monthly_nc_str = get_field_vars('UVELVVEL')
-        vel_file = join(datdir, vel_monthly_shortname, vel_monthly_nc_str+yearstr+"-"+monthstr+"_ECCO_V4r4_native_llc0090.nc")
+        vel_file = join(datdir, vel_monthly_shortname, 
+                        "{}{}-{}_ECCO_V4r4_native_llc0090.nc".format(
+                                        vel_monthly_nc_str, yearstr, monthstr))
         ds_vel = load_dataset(vel_file)
-        (ds_vel['UVEL']).data, (ds_vel['VVEL']).data = (ds_vel['UVEL']).values, (ds_vel['VVEL']).values
+        ds_vel.UVEL.data = ds_vel.UVEL.values
+        ds_vel.VVEL.data = ds_vel.VVEL.values
         
         #Define output file name
-        OW_outfile = join(outdir, 'monthly', 'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+        OW_outfile = join(outdir, 'monthly', 
+                          'OW_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
         
     elif seasonal:
         
         #Get seasonal velocity data
-        
-        vel_seas_file = join(seasonaldatdir, "avg_UVELVVEL_"+season_start+yearstr+"-"+season_end+endyearstr+".nc")
+        vel_seas_file = join(seasonaldatdir, 
+                             "avg_UVELVVEL_{}{}-{}{}.nc".format(
+                                 season_start, yearstr, season_end, endyearstr))
         ds_vel = xr.open_mfdataset(vel_seas_file, engine="scipy")
         ds_vel.load()
         
         #Define output file name
-        OW_outfile = join(outdir, 'seasonal', 'OW_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+        OW_outfile = join(outdir, 'seasonal', 
+                          'OW_k{}_{}_{}.pdf'.format(
+                              str(k), seas_monthstr, seas_yearstr))
  
-    OW = get_OW_field(ds_grid, ds_vel, k, lats_lons, resolution, zeta_field) #Compute OW field
-    
-    #Plot OW
-    
+    OW = get_OW_field(ds_grid, ds_vel, k, lats_lons, resolution, zeta_field)
+
     if not quiver:
-        ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, lat_centers, None, datestr, 'OW', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=OW_outfile, lats_lons=lats_lons)
+        ArcCir_pcolormesh(ds_grid, [OW], resolution, 'seismic', lon_centers, 
+                          lat_centers, None, datestr, 'OW', 
+                          scalar_bounds=scalar_bounds, k_plot=k, extend='both',
+                          outfile=OW_outfile, lats_lons=lats_lons)
+        
     elif quiver: #need to fix outfile for this case
-        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 'seismic', datestr, lon_centers, lat_centers, scalar_attr='OW', xvec_attr=xvec_attr, scalar_bounds=scalar_bounds, outfile=OW_outfile, lats_lons=lats_lons)
+        ArcCir_pcolormesh_quiver(ds_grid, k, [OW], [vecE], [vecN], resolution, 
+                                 'seismic', datestr, lon_centers, lat_centers,
+                                 scalar_attr='OW', xvec_attr=xvec_attr, 
+                                 scalar_bounds=scalar_bounds, 
+                                 outfile=OW_outfile, lats_lons=lats_lons)
 
     OW_list.append(OW)
     return OW_list
 
 ##############################
 
-def plot_Ek_vel_divergence(div_u_Ek_list, vecEs, vecNs, lon_centers, lat_centers, seasonal, outdir, k, yearstr, ds_grid, resolution, datestr, lats_lons, monthstr=None, datdir=None, season_start=None, season_end=None, endyearstr=None, seas_monthstr=None, seas_yearstr=None, seasonaldatdir=None, scalar_bounds=[-1, 1], quiver=False, vecE=None, vecN=None, xvec_attr=None):
+def plot_Ek_vel_divergence(div_u_Ek_list, vecEs, vecNs, lon_centers, 
+                           lat_centers, seasonal, outdir, k, yearstr, ds_grid, 
+                           resolution, datestr, lats_lons, monthstr=None, 
+                           datdir=None, season_start=None, season_end=None, 
+                           endyearstr=None, seas_monthstr=None, 
+                           seas_yearstr=None, seasonaldatdir=None, 
+                           scalar_bounds=[-1, 1], quiver=False, vecE=None, 
+                           vecN=None, xvec_attr=None):
     
     #Define output file name
     if not seasonal:
-        div_u_Ek_outfile = join(outdir, 'monthly', 'divuEk_uEk_k{}_{}{}.pdf'.format(str(k), monthstr, yearstr))
+        div_u_Ek_outfile = join(outdir, 'monthly', 
+                                'divuEk_uEk_k{}_{}{}.pdf'.format(
+                                    str(k), monthstr, yearstr))
     elif seasonal:
-        div_u_Ek_outfile = join(outdir, 'seasonal', 'divuEk_uEk_k{}_{}_{}.pdf'.format(str(k), seas_monthstr, seas_yearstr))
+        div_u_Ek_outfile = join(outdir, 'seasonal', 
+                                'divuEk_uEk_k{}_{}_{}.pdf'.format(
+                                    str(k), seas_monthstr, seas_yearstr))
     
-    #u_Ek, v_Ek = (ds_Ek['UEk']).isel(k=k).squeeze().values, (ds_Ek['VEk']).isel(k=k).squeeze().values
     u_Ek, v_Ek = comp_temp_mean(vecEs), comp_temp_mean(vecNs)
     xgcm_grid = ecco.get_llc_grid(ds_grid)
     
     #Compute divergence
-    lon_centers, lat_centers, lon_edges, lat_edges, div_u_Ek = comp_2d_Ek_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, ds_grid.rA, ds_grid, lats_lons, resolution)
-    
-    #Plot divergence
-    
-    if not quiver:
-        ArcCir_pcolormesh(ds_grid, [div_u_Ek], resolution, 'PuOr', lon_centers, lat_centers, None, datestr, 'DIVUEk', scalar_bounds=scalar_bounds, k_plot=k, extend='both', outfile=div_u_Ek_outfile, lats_lons=lats_lons)
-    elif quiver: 
-        ArcCir_pcolormesh_quiver(ds_grid, k, [div_u_Ek], [vecE], [vecN], resolution, 'PuOr', datestr, lon_centers, lat_centers, scalar_attr='DIVUEk', xvec_attr='UEk', scalar_bounds=scalar_bounds, outfile=div_u_Ek_outfile, lats_lons=lats_lons)
+    lon_centers, lat_centers, lon_edges, lat_edges, div_u_Ek = \
+    comp_2d_Ek_divergence(xgcm_grid, u_Ek, v_Ek, ds_grid.dxC, ds_grid.dyC, 
+                          ds_grid.rA, ds_grid, lats_lons, resolution)
 
+    if not quiver:
+        ArcCir_pcolormesh(ds_grid, [div_u_Ek], resolution, 'PuOr', lon_centers, 
+                          lat_centers, None, datestr, 'DIVUEk', 
+                          scalar_bounds=scalar_bounds, k_plot=k, extend='both',
+                          outfile=div_u_Ek_outfile, lats_lons=lats_lons)
+    elif quiver: 
+        ArcCir_pcolormesh_quiver(ds_grid, k, [div_u_Ek], [vecE], [vecN], 
+                                 resolution, 'PuOr', datestr, lon_centers, 
+                                 lat_centers, scalar_attr='DIVUEk', 
+                                 xvec_attr='UEk', scalar_bounds=scalar_bounds, 
+                                 outfile=div_u_Ek_outfile, lats_lons=lats_lons)
     div_u_Ek_list.append(div_u_Ek)
     return div_u_Ek_list
 
 ##############################
 
-def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution, cmap, datestr, vmin, vmax, outfile, lats_lons, datdir, Ro_l_list, OW_list, yearstr, year=None, outdir=None, monthstr=None, seas_monthstr=None, seas_yearstr=None, seasonal=False, multiple_seas=False, annual=False, season_start=None, season_end=None, endyearstr=None, season_years=None, years=None, startyr=None, datdirname=None, seasonaldatdir=None, data_seasons=None, lon_centers=None, lat_centers=None):
-    
+def plot_pcolormesh_k_plane(ds_grid, ds_scalar_list, k, scalar_attr, resolution,
+                            cmap, datestr, vmin, vmax, outfile, lats_lons, 
+                            datdir, Ro_l_list, OW_list, yearstr, year=None, 
+                            outdir=None, monthstr=None, seas_monthstr=None, 
+                            seas_yearstr=None, seasonal=False, 
+                            multiple_seas=False, annual=False, 
+                            season_start=None, season_end=None, endyearstr=None, 
+                            season_years=None, years=None, startyr=None, 
+                            datdirname=None, seasonaldatdir=None, 
+                            data_seasons=None, lon_centers=None, 
+                            lat_centers=None):
     """
     Creates pcolormesh plot on plane of constant k.
     """
     
-    latmin, latmax, lonmin, lonmax = lats_lons #Set spatial bounds
+    latmin, latmax, lonmin, lonmax = lats_lons
     
-    ds_scalar_mean = comp_temp_mean(ds_scalar_list) #Take temporal average, if needed
+    #Take temporal average, if needed
+    ds_scalar_mean = comp_temp_mean(ds_scalar_list)
     
     if type(ds_scalar_list[0]) == xr.Dataset: 
         
         if scalar_attr != 'DIVUEk' and scalar_attr != 'SIheff':
             ds_scalar_mean = ds_scalar_mean.isel(k=k) #Isolate k-plane
-
+            
         ds_grid[scalar_attr] = ds_scalar_mean[scalar_attr]
         
         #Convert scalar DataSet to useful field
-        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, lonmax, resolution)
+        lon_centers, lat_centers, lon_edges, lat_edges, scalar = ds_to_field(
+            ds_grid, ds_scalar_mean, scalar_attr, latmin, latmax, lonmin, 
+            lonmax, resolution)
     
     else: #Typically data are numpy arrays in this case
-        scalar = ds_scalar_mean #lat/lon_centers are to be input as kwargs in this case
+        scalar = ds_scalar_mean
     
     if seasonal:
-        
         seas_yearstr = yearstr
         datestr = '{}, {}'.format(seas_monthstr, seas_yearstr)
-        
         data_seasons.append(scalar)
     
-    #Plot scalar data
     ArcCir_pcolormesh(ds_grid, [scalar], resolution, cmap, lon_centers, lat_centers, None, datestr, scalar_attr, scalar_bounds=[vmin, vmax], k_plot=k, extend='both', outfile=outfile, lats_lons=lats_lons)    
   
     if scalar_attr == 'ZETA': #If vorticity, also compute and plot Ro_l, OW
 
-        if annual: #If plotting an annual average
+        if annual:
 
             #Plot Ro_l
             ArcCir_pcolormesh(ds_grid, Ro_l_list, resolution, 'Reds', lon_centers, lat_centers, None, yearstr, 'Ro_l', k_plot=k, extend='both', logscale=True, outfile=join(outdir, 'yearly', 'localRo_k{}_{}.pdf'.format(str(k), yearstr)), lats_lons=lats_lons)
@@ -765,4 +744,3 @@ def ArcCir_contourf_quiver_grid(ecco_ds_grid, k_plot, scalars, vecEs, vecNs, \
     plt.rcdefaults()
 """
 ##############################
->>>>>>> main
