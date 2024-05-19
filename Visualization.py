@@ -24,6 +24,8 @@ import matplotlib.animation as animation
 import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 
+####################
+
 plt.rcParams["font.size"] = 16
 plt.rcParams["axes.titlesize"] = 18
 plt.rcParams["text.usetex"] = True
