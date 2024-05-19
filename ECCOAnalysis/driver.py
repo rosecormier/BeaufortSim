@@ -35,8 +35,7 @@ datdir_secondary = param_data.data_folder_secondary
 visdir = param_data.visualization_folder
 
 #Ocean properties
-rho_ref = param_data.rho_ref
-nu_E = param_data.nu_E
+rho_ref, nu_E = param_data.rho_ref, param_data.nu_E
 
 #Temporal inputs
 time_ave_type = param_data.time_ave_type
@@ -49,32 +48,26 @@ time_kwargs = param_data.time_kwargs
 plot_plane_type = param_data.plot_plane_type
 
 if plot_plane_type == "depth_index_const":
-    
     depth = param_data.depth_index_range[0]
     lat_res, lon_res = param_data.lat_res, param_data.lon_res
     latmin, latmax = param_data.lat_range[0], param_data.lat_range[1]
     lonmin, lonmax = param_data.lon_range[0], param_data.lon_range[1]
-    
     plane_string = "k{}".format(depth) #To be used in filenames
     
 elif plot_plane_type == "latitude_const":
-    
     lat = param_data.lat_range[0]
     lon_res = param_data.lon_res
     depthmin = param_data.depth_index_range[0] 
     depthmax = param_data.depth_index_range[1]
     lonmin, lonmax = param_data.lon_range[0], param_data.lon_range[1]
-    
     plane_string = "lat{}".format(lat) #To be used in filenames
     
 elif plot_plane_type == "longitude_const":
-    
     lon = param_data.lon_range[0]
     lat_res = param_data.lat_res
     depthmin = param_data.depth_index_range[0]
     depthmax = param_data.depth_index_range[1]
     latmin, latmax = param_data.lat_range[0], param_data.lat_range[1]
-    
     plane_string = "lon{}".format(lon) #To be used in filenames
     
 #Field inputs
@@ -127,12 +120,11 @@ for field_name in primary_vector_fields:
 
 #COMPUTE SECONDARY DATA
 
-#Get date strings to iterate over
 date_strings = get_date_strings(initial_month, initial_year, final_month, 
                                 final_year, time_ave_type, time_kwargs)
 
 for field_name in secondary_scalar_fields: #Iterate over scalar fields
-    for date_string in date_strings: #Iterate over times 
+    for date_string in date_strings: 
         #Compute data if nonexistent
         comp_secondary.main(datdir_primary=datdir_primary, 
                             datdir_secondary=datdir_secondary, 
@@ -142,7 +134,7 @@ for field_name in secondary_scalar_fields: #Iterate over scalar fields
                             rho_ref=rho_ref, nu_E=nu_E, depth_index=int(depth))
         
 for field_name in secondary_vector_fields: #Iterate over vector fields
-    for date_string in date_strings: #Iterate over times
+    for date_string in date_strings:
         #Compute data if nonexistent
         comp_secondary.main(datdir_primary=datdir_primary, 
                             datdir_secondary=datdir_secondary, 
@@ -159,14 +151,13 @@ spatial_bounds = [depth, latmin, latmax, lonmin, lonmax]
 resolutions = [lat_res, lon_res]
 #Will update these lines when I modify to allow other plane types
         
-for date_string in date_strings: #Iterate over times
+for date_string in date_strings:
 
     for scalar_field_name in scalar_fields:
         
         #Set up output directory and file to save scalar plot to
-        
         outfile = join(visdir, plot_plane_type, time_ave_type, 
-                       '{}_{}_{}.pdf'.format(scalar_field_name, plane_string, 
+                       '{}_{}_{}.png'.format(scalar_field_name, plane_string, 
                                              date_string))
         if not os.path.exists(join(visdir, plot_plane_type, time_ave_type)):
             os.makedirs(join(visdir, plot_plane_type, time_ave_type))
@@ -180,7 +171,7 @@ for date_string in date_strings: #Iterate over times
 
             #Set up file to save scalar/vector plot to
             outfile = join(visdir, plot_plane_type, time_ave_type, 
-                           '{}_{}_{}_{}.pdf'.format(scalar_field_name, 
+                           '{}_{}_{}_{}.png'.format(scalar_field_name, 
                                                     vector_field_name, 
                                                     plane_string, date_string))
             
@@ -194,14 +185,16 @@ for date_string in date_strings: #Iterate over times
 
 #REMOVE PRIMARY DATAFILES, IF INDICATED
 
-if time_ave_type == 'seasonal': 
-    #In this case, data will have been downloaded for every month in each 
-    #season, so update the set of date strings to loop through
-    date_strings = ECCO_file_date_strings 
+if clear_data_files:
 
-remove_data.main(clear_data_files=clear_data_files, date_strings=date_strings, 
-                 primary_scalar_fields=primary_scalar_fields, 
-                 primary_vector_fields=primary_vector_fields, 
-                 datdir_primary=datdir_primary, 
-                 secondary_scalar_fields=secondary_scalar_fields, 
-                 secondary_vector_fields=secondary_vector_fields)
+    if time_ave_type == 'seasonal': 
+        #In this case, data will have been downloaded for every month in each 
+        #season, so update the set of date strings to loop through
+        date_strings = ECCO_file_date_strings 
+
+    remove_data.main(clear_data_files=clear_data_files, date_strings=date_strings, 
+                     primary_scalar_fields=primary_scalar_fields, 
+                     primary_vector_fields=primary_vector_fields, 
+                     datdir_primary=datdir_primary, 
+                     secondary_scalar_fields=secondary_scalar_fields, 
+                     secondary_vector_fields=secondary_vector_fields)
