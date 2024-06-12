@@ -34,7 +34,7 @@ import load_data_files
 
 from functions_ecco_general import load_grid, get_args_from_date_string, \
 get_monthstr
-from functions_field_variables import get_variable_str, get_monthly_shortname, \ 
+from functions_field_variables import get_variable_str, get_monthly_shortname, \
 get_monthly_nc_string, get_seasonal_shortname, get_seasonal_nc_string
 
 ##############################
