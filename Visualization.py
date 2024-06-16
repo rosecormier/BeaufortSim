@@ -65,8 +65,9 @@ def load_data(filename, slice_len):
     sim_ds = xr.open_dataset(filename)
     xvort_data, yvort_data = sim_ds["ωx"], sim_ds["ωy"]
     zvort_data = sim_ds["ωz"]
-    buoyancy_data, b_perturb_data = sim_ds["b"], sim_ds["b_perturb"]
+    buoyancy_data, b_p_data = sim_ds["b"], sim_ds["b_perturb"]
     u_data, v_data, w_data = sim_ds["u"], sim_ds["v"], sim_ds["w"]
+    u_p_data, v_p_data = sim_ds["u_perturb"], sim_ds["v_perturb"]
     C_grid = xr.Dataset(coords={"xC": ("xC", sim_ds["xC"].data), 
                                 "yC": ("yC", sim_ds["yC"].data), 
                                 "zC": ("zC", sim_ds["zC"].data), 
@@ -78,10 +79,12 @@ def load_data(filename, slice_len):
                         zvorticity=zvort_data.interp(xF=C_grid["xC"], 
                                             yF=C_grid["yC"]).squeeze(), 
                         buoyancy=buoyancy_data.squeeze(),
-                        b_perturb=b_perturb_data.squeeze(),
+                        b_perturb=b_p_data.squeeze(),
                         u=u_data.interp(xF=C_grid["xC"]).squeeze(), 
                         v=v_data.interp(yF=C_grid["yC"]).squeeze(), 
-                        w=w_data.interp(zF=C_grid["zC"]).squeeze())
+                        w=w_data.interp(zF=C_grid["zC"]).squeeze(),
+                        u_perturb=u_p_data.interp(xF=C_grid["xC"]).squeeze(),
+                        v_perturb=v_p_data.interp(yF=C_grid["yC"]).squeeze())
     times = C_grid["time"]
     time_iter = np.arange(len(times)-2) #Index -1 may contain NaN
     time_iter = time_iter[::slice_len] #Slice iterable to speed up visualization
