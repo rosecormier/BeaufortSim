@@ -127,6 +127,23 @@ def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
                           cmap="seismic", vmin=-vmax, vmax=vmax)
     return pcm1, pcm2
 
+def animate_velocity_uv_perturbs(time, C_grid, vmax, depth_str=""):
+    time_title = get_title_time(C_grid.time[time].values)
+    fig.suptitle("Perturbations in Horizontal Velocity Components{}; {}".format(
+                                                        depth_str, time_title))
+    frame_u_perturb = C_grid["u_perturb"].isel(zC=depth_idx, time=time)
+    frame_v_perturb = C_grid["v_perturb"].isel(zC=depth_idx, time=time)
+    frame_u_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    frame_v_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    pcm1 = ax1.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
+                          frame_u_perturb.values, 
+                          cmap="seismic",
+                          vmin=-vmax, vmax=vmax)
+    pcm2 = ax2.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
+                          frame_v_perturb.values, 
+                          cmap="seismic", vmin=-vmax, vmax=vmax)
+    return pcm1, pcm2
+
 def animate_velocity_w_comp(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Vertical Velocity Component{}; {}".format(depth_str, 
@@ -152,10 +169,10 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Perturbation in buoyancy field{}; {}".format(depth_str, 
                                                                  time_title))
-    frame_perturbation = C_grid["b_perturb"].isel(zC=depth_idx, time=time)
-    frame_perturbation.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    frame_perturb = C_grid["b_perturb"].isel(zC=depth_idx, time=time)
+    frame_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3,
-                        frame_perturbation.values,
+                        frame_perturb.values,
                         cmap="BrBG_r", vmin=-vmax, vmax=vmax)
     return pcm
 
