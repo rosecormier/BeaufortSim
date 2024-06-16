@@ -180,6 +180,7 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
 #LOAD SIMULATION DATA
 
 C_grid, time_iter = load_data(output_filepath, slice_len)
+t_f_idx = len(time_iter) - 1
 
 #For plot titles
 depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values) 
@@ -192,7 +193,7 @@ depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values)
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["zvorticity"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["zvorticity"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_zvorticity(0, C_grid, vmax), extend="both", 
              label=r"$s^{-1}$")
 anim = animation.FuncAnimation(fig, animate_zvorticity, 
@@ -206,7 +207,7 @@ plt.close()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["buoyancy"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["buoyancy"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_buoyancy(0, C_grid, vmax), extend="max", label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_buoyancy, 
                                fargs=(C_grid, vmax, depth_title_str), 
@@ -219,7 +220,7 @@ plt.close()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["b_perturb"].isel(zC=depth_idx, time=-1)))
+vmax = np.max(abs(C_grid["b_perturb"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_b_perturbation(0, C_grid, vmax), extend="both", 
              label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_b_perturbation, 
@@ -236,8 +237,8 @@ ax2.set_xlabel(r"x ($km$)")
 ax1.set_ylabel(r"y ($km$)")
 ax1.set_title(r"$u$-Component")
 ax2.set_title(r"$v$-Component")
-vmax_u = np.max(abs(C_grid["u"].isel(zC=depth_idx, time=0)))
-vmax_v = np.max(abs(C_grid["v"].isel(zC=depth_idx, time=0)))
+vmax_u = np.max(abs(C_grid["u"].isel(zC=depth_idx, time=t_f_idx)))
+vmax_v = np.max(abs(C_grid["v"].isel(zC=depth_idx, time=t_f_idx)))
 vmax = max(vmax_u, vmax_v)
 fig.colorbar(animate_velocity_uv_comps(0, C_grid, vmax)[0], ax=[ax1, ax2], 
              extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
@@ -255,8 +256,10 @@ ax2.set_xlabel(r"x ($km$)")
 ax1.set_ylabel(r"y ($km$)")
 ax1.set_title(r"$u$-Perturbation")
 ax2.set_title(r"$v$-Perturbation")
-vmax_u_perturb = np.max(abs(C_grid["u_perturb"].isel(zC=depth_idx, time=0)))
-vmax_v_perturb = np.max(abs(C_grid["v_perturb"].isel(zC=depth_idx, time=0)))
+vmax_u_perturb = np.max(abs(C_grid["u_perturb"].isel(zC=depth_idx, 
+                                                     time=t_f_idx)))
+vmax_v_perturb = np.max(abs(C_grid["v_perturb"].isel(zC=depth_idx, 
+                                                     time=t_f_idx)))
 vmax = max(vmax_u_perturb, vmax_v_perturb)
 fig.colorbar(animate_velocity_uv_perturbs(0, C_grid, vmax)[0], ax=[ax1, ax2], 
              extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
@@ -271,7 +274,7 @@ plt.close()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["w"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["w"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax, depth_title_str), 
              extend="both", label=r"$m/s$")
 anim = animation.FuncAnimation(fig, animate_velocity_w_comp, 
