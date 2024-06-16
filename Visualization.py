@@ -1,9 +1,8 @@
 """
 Visualization of fields from Beaufort-Gyre simulation:
-    -Vertical vorticity component
-    -Buoyancy
-    -Buoyancy perturbation
-    -Velocity components
+    -Vertical vorticity component;
+    -Buoyancy; buoyancy perturbation;
+    -Velocity components; horizontal-velocity perturbations
     
 R. Cormier, 2024
 """
@@ -245,7 +244,26 @@ fig.colorbar(animate_velocity_uv_comps(0, C_grid, vmax)[0], ax=[ax1, ax2],
 anim = animation.FuncAnimation(fig, animate_velocity_uv_comps, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "velocity_uv_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "uv_{}.gif".format(file_label)), 
+          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
+plt.close()
+
+#Plot perturbations to horizontal velocity components
+fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(14,8))
+ax1.set_xlabel(r"x ($km$)")
+ax2.set_xlabel(r"x ($km$)")
+ax1.set_ylabel(r"y ($km$)")
+ax1.set_title(r"$u$-Perturbation")
+ax2.set_title(r"$v$-Perturbation")
+vmax_u_perturb = np.max(abs(C_grid["u_perturb"].isel(zC=depth_idx, time=0)))
+vmax_v_perturb = np.max(abs(C_grid["v_perturb"].isel(zC=depth_idx, time=0)))
+vmax = max(vmax_u_perturb, vmax_v_perturb)
+fig.colorbar(animate_velocity_uv_perturbs(0, C_grid, vmax)[0], ax=[ax1, ax2], 
+             extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
+anim = animation.FuncAnimation(fig, animate_velocity_uv_perturbs, 
+                               fargs=(C_grid, vmax, depth_title_str), 
+                               frames=time_iter)
+anim.save(join(vis_dir, "uv_perturb_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -259,6 +277,6 @@ fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax, depth_title_str),
 anim = animation.FuncAnimation(fig, animate_velocity_w_comp, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "velocity_w_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "w_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
