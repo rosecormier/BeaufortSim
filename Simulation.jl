@@ -84,12 +84,11 @@ add_callback!(simulation, progress, IterationInterval(100))
 ωx = ∂y(w) - ∂z(v)
 ωy = ∂z(u) - ∂x(w)
 ωz = ∂x(v) - ∂y(u)
-s = sqrt(u^2 + v^2 + w^2)
 b_perturb = b - b_eqm
 
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "s" => s, "b" => b, "b_perturb" => b_perturb)
+                    "b" => b, "b_perturb" => b_perturb)
 
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
