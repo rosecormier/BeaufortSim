@@ -85,10 +85,13 @@ add_callback!(simulation, progress, IterationInterval(100))
 ωy = ∂z(u) - ∂x(w)
 ωz = ∂x(v) - ∂y(u)
 b_perturb = b - b_eqm
+u_perturb = u - u_initial
+v_perturb = v - v_initial
 
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "b" => b, "b_perturb" => b_perturb)
+                    "b" => b, "b_perturb" => b_perturb,
+                    "u_perturb" => u_perturb, "v_perturb" => v_perturb)
 
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
