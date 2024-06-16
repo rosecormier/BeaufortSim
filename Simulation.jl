@@ -73,7 +73,7 @@ simulation = Simulation(model,
 
 #Adaptive timestepping
 wizard = TimeStepWizard(cfl = 0.2, 
-                        max_Δt = 40)
+                        max_Δt = 100)
 simulation.callbacks[:wizard] = Callback(wizard, 
                                     IterationInterval(10))
 
