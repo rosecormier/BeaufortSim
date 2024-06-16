@@ -65,7 +65,6 @@ def load_data(filename, slice_len):
     sim_ds = xr.open_dataset(filename)
     xvort_data, yvort_data = sim_ds["ωx"], sim_ds["ωy"]
     zvort_data = sim_ds["ωz"]
-    speed_data = sim_ds["s"]
     buoyancy_data, b_perturb_data = sim_ds["b"], sim_ds["b_perturb"]
     u_data, v_data, w_data = sim_ds["u"], sim_ds["v"], sim_ds["w"]
     C_grid = xr.Dataset(coords={"xC": ("xC", sim_ds["xC"].data), 
@@ -77,8 +76,7 @@ def load_data(filename, slice_len):
                         yvorticity=yvort_data.interp(xF=C_grid["xC"], 
                                             zF=C_grid["zC"]).squeeze(),
                         zvorticity=zvort_data.interp(xF=C_grid["xC"], 
-                                            yF=C_grid["yC"]).squeeze(),
-                        speed=speed_data.interp(xF=C_grid["xC"]).squeeze(), 
+                                            yF=C_grid["yC"]).squeeze(), 
                         buoyancy=buoyancy_data.squeeze(),
                         b_perturb=b_perturb_data.squeeze(),
                         u=u_data.interp(xF=C_grid["xC"]).squeeze(), 
@@ -107,16 +105,6 @@ def animate_zvorticity(time, C_grid, vmax, depth_str=""):
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_vorticity.values, 
                         cmap="PuOr_r", vmin=-vmax, vmax=vmax)
-    return pcm
-
-def animate_speed(time, C_grid, vmax, depth_str=""):
-    time_title = get_title_time(C_grid.time[time].values)
-    fig.suptitle("Speed{}; {}".format(depth_str, time_title))
-    frame_speed = C_grid["speed"].isel(zC=depth_idx, time=time)
-    frame_speed.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
-    pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
-                        frame_speed.values, 
-                        cmap="Reds", vmin=0, vmax=vmax)
     return pcm
 
 def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
@@ -192,19 +180,6 @@ anim = animation.FuncAnimation(fig, animate_zvorticity,
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "zvorticity_{}.gif".format(file_label)), 
-          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
-plt.close()
-
-#Plot water speed
-fig, ax = plt.subplots(figsize=(10,8))
-ax.set_xlabel(r"x ($km$)")
-ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["speed"].isel(zC=depth_idx, time=0)))
-fig.colorbar(animate_speed(0, C_grid, vmax), extend="max", label=r"$m/s$")
-anim = animation.FuncAnimation(fig, animate_speed, 
-                               fargs=(C_grid, vmax, depth_title_str), 
-                               frames=time_iter)
-anim.save(join(vis_dir, "speed_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
