@@ -1,9 +1,8 @@
 """
 Visualization of fields from Beaufort-Gyre simulation:
-    -Vertical vorticity component
-    -Buoyancy
-    -Buoyancy perturbation
-    -Velocity components
+    -Vertical vorticity component;
+    -Buoyancy; buoyancy perturbation;
+    -Velocity components; horizontal-velocity perturbations
     
 R. Cormier, 2024
 """
@@ -65,9 +64,9 @@ def load_data(filename, slice_len):
     sim_ds = xr.open_dataset(filename)
     xvort_data, yvort_data = sim_ds["ωx"], sim_ds["ωy"]
     zvort_data = sim_ds["ωz"]
-    speed_data = sim_ds["s"]
-    buoyancy_data, b_perturb_data = sim_ds["b"], sim_ds["b_perturb"]
+    buoyancy_data, b_p_data = sim_ds["b"], sim_ds["b_perturb"]
     u_data, v_data, w_data = sim_ds["u"], sim_ds["v"], sim_ds["w"]
+    u_p_data, v_p_data = sim_ds["u_perturb"], sim_ds["v_perturb"]
     C_grid = xr.Dataset(coords={"xC": ("xC", sim_ds["xC"].data), 
                                 "yC": ("yC", sim_ds["yC"].data), 
                                 "zC": ("zC", sim_ds["zC"].data), 
@@ -77,13 +76,14 @@ def load_data(filename, slice_len):
                         yvorticity=yvort_data.interp(xF=C_grid["xC"], 
                                             zF=C_grid["zC"]).squeeze(),
                         zvorticity=zvort_data.interp(xF=C_grid["xC"], 
-                                            yF=C_grid["yC"]).squeeze(),
-                        speed=speed_data.interp(xF=C_grid["xC"]).squeeze(), 
+                                            yF=C_grid["yC"]).squeeze(), 
                         buoyancy=buoyancy_data.squeeze(),
-                        b_perturb=b_perturb_data.squeeze(),
+                        b_perturb=b_p_data.squeeze(),
                         u=u_data.interp(xF=C_grid["xC"]).squeeze(), 
                         v=v_data.interp(yF=C_grid["yC"]).squeeze(), 
-                        w=w_data.interp(zF=C_grid["zC"]).squeeze())
+                        w=w_data.interp(zF=C_grid["zC"]).squeeze(),
+                        u_perturb=u_p_data.interp(xF=C_grid["xC"]).squeeze(),
+                        v_perturb=v_p_data.interp(yF=C_grid["yC"]).squeeze())
     times = C_grid["time"]
     time_iter = np.arange(len(times)-2) #Index -1 may contain NaN
     time_iter = time_iter[::slice_len] #Slice iterable to speed up visualization
@@ -109,16 +109,6 @@ def animate_zvorticity(time, C_grid, vmax, depth_str=""):
                         cmap="PuOr_r", vmin=-vmax, vmax=vmax)
     return pcm
 
-def animate_speed(time, C_grid, vmax, depth_str=""):
-    time_title = get_title_time(C_grid.time[time].values)
-    fig.suptitle("Speed{}; {}".format(depth_str, time_title))
-    frame_speed = C_grid["speed"].isel(zC=depth_idx, time=time)
-    frame_speed.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
-    pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
-                        frame_speed.values, 
-                        cmap="Reds", vmin=0, vmax=vmax)
-    return pcm
-
 def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Horizontal Velocity Components{}; {}".format(depth_str,
@@ -133,6 +123,23 @@ def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
                           vmin=-vmax, vmax=vmax)
     pcm2 = ax2.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                           frame_v.values, 
+                          cmap="seismic", vmin=-vmax, vmax=vmax)
+    return pcm1, pcm2
+
+def animate_velocity_uv_perturbs(time, C_grid, vmax, depth_str=""):
+    time_title = get_title_time(C_grid.time[time].values)
+    fig.suptitle("Perturbations in Horizontal Velocity Components{}; {}".format(
+                                                        depth_str, time_title))
+    frame_u_perturb = C_grid["u_perturb"].isel(zC=depth_idx, time=time)
+    frame_v_perturb = C_grid["v_perturb"].isel(zC=depth_idx, time=time)
+    frame_u_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    frame_v_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    pcm1 = ax1.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
+                          frame_u_perturb.values, 
+                          cmap="seismic",
+                          vmin=-vmax, vmax=vmax)
+    pcm2 = ax2.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
+                          frame_v_perturb.values, 
                           cmap="seismic", vmin=-vmax, vmax=vmax)
     return pcm1, pcm2
 
@@ -161,10 +168,10 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Perturbation in buoyancy field{}; {}".format(depth_str, 
                                                                  time_title))
-    frame_perturbation = C_grid["b_perturb"].isel(zC=depth_idx, time=time)
-    frame_perturbation.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
+    frame_perturb = C_grid["b_perturb"].isel(zC=depth_idx, time=time)
+    frame_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3,
-                        frame_perturbation.values,
+                        frame_perturb.values,
                         cmap="BrBG_r", vmin=-vmax, vmax=vmax)
     return pcm
 
@@ -173,6 +180,7 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
 #LOAD SIMULATION DATA
 
 C_grid, time_iter = load_data(output_filepath, slice_len)
+t_f_idx = len(time_iter) - 1
 
 #For plot titles
 depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values) 
@@ -185,7 +193,7 @@ depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values)
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["zvorticity"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["zvorticity"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_zvorticity(0, C_grid, vmax), extend="both", 
              label=r"$s^{-1}$")
 anim = animation.FuncAnimation(fig, animate_zvorticity, 
@@ -195,24 +203,11 @@ anim.save(join(vis_dir, "zvorticity_{}.gif".format(file_label)),
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
-#Plot water speed
-fig, ax = plt.subplots(figsize=(10,8))
-ax.set_xlabel(r"x ($km$)")
-ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["speed"].isel(zC=depth_idx, time=0)))
-fig.colorbar(animate_speed(0, C_grid, vmax), extend="max", label=r"$m/s$")
-anim = animation.FuncAnimation(fig, animate_speed, 
-                               fargs=(C_grid, vmax, depth_title_str), 
-                               frames=time_iter)
-anim.save(join(vis_dir, "speed_{}.gif".format(file_label)), 
-          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
-plt.close()
-
 #Plot buoyancy
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["buoyancy"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["buoyancy"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_buoyancy(0, C_grid, vmax), extend="max", label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_buoyancy, 
                                fargs=(C_grid, vmax, depth_title_str), 
@@ -225,7 +220,7 @@ plt.close()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["b_perturb"].isel(zC=depth_idx, time=-1)))
+vmax = np.max(abs(C_grid["b_perturb"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_b_perturbation(0, C_grid, vmax), extend="both", 
              label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_b_perturbation, 
@@ -242,15 +237,36 @@ ax2.set_xlabel(r"x ($km$)")
 ax1.set_ylabel(r"y ($km$)")
 ax1.set_title(r"$u$-Component")
 ax2.set_title(r"$v$-Component")
-vmax_u = np.max(abs(C_grid["u"].isel(zC=depth_idx, time=0)))
-vmax_v = np.max(abs(C_grid["v"].isel(zC=depth_idx, time=0)))
+vmax_u = np.max(abs(C_grid["u"].isel(zC=depth_idx, time=t_f_idx)))
+vmax_v = np.max(abs(C_grid["v"].isel(zC=depth_idx, time=t_f_idx)))
 vmax = max(vmax_u, vmax_v)
 fig.colorbar(animate_velocity_uv_comps(0, C_grid, vmax)[0], ax=[ax1, ax2], 
              extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
 anim = animation.FuncAnimation(fig, animate_velocity_uv_comps, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "velocity_uv_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "uv_{}.gif".format(file_label)), 
+          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
+plt.close()
+
+#Plot perturbations to horizontal velocity components
+fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(14,8))
+ax1.set_xlabel(r"x ($km$)")
+ax2.set_xlabel(r"x ($km$)")
+ax1.set_ylabel(r"y ($km$)")
+ax1.set_title(r"$u$-Perturbation")
+ax2.set_title(r"$v$-Perturbation")
+vmax_u_perturb = np.max(abs(C_grid["u_perturb"].isel(zC=depth_idx, 
+                                                     time=t_f_idx)))
+vmax_v_perturb = np.max(abs(C_grid["v_perturb"].isel(zC=depth_idx, 
+                                                     time=t_f_idx)))
+vmax = max(vmax_u_perturb, vmax_v_perturb)
+fig.colorbar(animate_velocity_uv_perturbs(0, C_grid, vmax)[0], ax=[ax1, ax2], 
+             extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
+anim = animation.FuncAnimation(fig, animate_velocity_uv_perturbs, 
+                               fargs=(C_grid, vmax, depth_title_str), 
+                               frames=time_iter)
+anim.save(join(vis_dir, "uv_perturb_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -258,12 +274,12 @@ plt.close()
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
 ax.set_ylabel(r"y ($km$)")
-vmax = np.max(abs(C_grid["w"].isel(zC=depth_idx, time=0)))
+vmax = np.max(abs(C_grid["w"].isel(zC=depth_idx, time=t_f_idx)))
 fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax, depth_title_str), 
              extend="both", label=r"$m/s$")
 anim = animation.FuncAnimation(fig, animate_velocity_w_comp, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "velocity_w_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "w_{}.gif".format(file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
