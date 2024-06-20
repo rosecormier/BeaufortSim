@@ -36,6 +36,6 @@ N                = 5e-3       # BV frequency (1/s); cf. Jackson et al, 2012
 ### Simulation time intervals ###
 #################################
 
-Δt_initial       = 60         # Initial timestep (s)
+Δt_initial       = 10         # Initial timestep (s)
 stop_time        = 432000     # Wall time (s; simulation time)
 save_interval    = 3600       # Interval at which to save model fields (s; simulation time)

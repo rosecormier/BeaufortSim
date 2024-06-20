@@ -73,7 +73,7 @@ simulation = Simulation(model,
 
 #Adaptive timestepping
 wizard = TimeStepWizard(cfl = 0.2, 
-                        max_Δt = 40)
+                        max_Δt = 100)
 simulation.callbacks[:wizard] = Callback(wizard, 
                                     IterationInterval(10))
 
@@ -84,12 +84,14 @@ add_callback!(simulation, progress, IterationInterval(100))
 ωx = ∂y(w) - ∂z(v)
 ωy = ∂z(u) - ∂x(w)
 ωz = ∂x(v) - ∂y(u)
-s = sqrt(u^2 + v^2 + w^2)
 b_perturb = b - b_eqm
+u_perturb = u - u_initial
+v_perturb = v - v_initial
 
 output_fields = Dict("u" => u, "v" => v, "w" => w, 
                     "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "s" => s, "b" => b, "b_perturb" => b_perturb)
+                    "b" => b, "b_perturb" => b_perturb,
+                    "u_perturb" => u_perturb, "v_perturb" => v_perturb)
 
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
