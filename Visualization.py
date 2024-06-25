@@ -161,7 +161,7 @@ def animate_buoyancy(time, C_grid, vmax, depth_str=""):
     frame_buoyancy.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_buoyancy.values, 
-                        cmap="Oranges", vmin=0, vmax=vmax)
+                        cmap="BrBG_r", vmin=-vmax, vmax=vmax)
     return pcm
 
 def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
