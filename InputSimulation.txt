@@ -2,9 +2,9 @@
 ### Numbers of gridpoints and domain extents ###
 ################################################
 
-Nx               = 256
-Ny               = 256
-Nz               = 16
+Nx               = 512
+Ny               = 512
+Nz               = 32
 
 Lx               = 2000       # km 
 Ly               = 2000       # km
