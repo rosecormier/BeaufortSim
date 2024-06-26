@@ -183,7 +183,7 @@ C_grid, time_iter = load_data(output_filepath, slice_len)
 t_f_idx = len(time_iter) - 1
 
 #For plot filenames and titles
-depth_round = -np.round(C_grid.zC[depth_idx].values)
+depth_round = -np.round(C_grid.zC[depth_idx].values).astype(int)
 depth_title_str = " at {}m depth".format(depth_round) 
 
 ####################
