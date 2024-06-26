@@ -161,7 +161,7 @@ def animate_buoyancy(time, C_grid, vmax, depth_str=""):
     frame_buoyancy.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
     pcm = ax.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
                         frame_buoyancy.values, 
-                        cmap="BrBG_r", vmin=-vmax, vmax=vmax)
+                        cmap="Oranges", vmin=0, vmax=vmax)
     return pcm
 
 def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
@@ -183,7 +183,7 @@ C_grid, time_iter = load_data(output_filepath, slice_len)
 t_f_idx = len(time_iter) - 1
 
 #For plot filenames and titles
-depth_round = -round(C_grid.zC[depth_idx].values)
+depth_round = -np.round(C_grid.zC[depth_idx].values)
 depth_title_str = " at {}m depth".format(depth_round) 
 
 ####################
