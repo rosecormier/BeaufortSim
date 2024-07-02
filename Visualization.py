@@ -182,8 +182,9 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
 C_grid, time_iter = load_data(output_filepath, slice_len)
 t_f_idx = len(time_iter) - 1
 
-#For plot titles
-depth_title_str = " at {}m depth".format(-C_grid.zC[depth_idx].values) 
+#For plot filenames and titles
+depth_round = -np.round(C_grid.zC[depth_idx].values).astype(int)
+depth_title_str = " at {}m depth".format(depth_round) 
 
 ####################
 
@@ -199,7 +200,7 @@ fig.colorbar(animate_zvorticity(0, C_grid, vmax), extend="both",
 anim = animation.FuncAnimation(fig, animate_zvorticity, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "zvorticity_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "zvorticity_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -212,7 +213,7 @@ fig.colorbar(animate_buoyancy(0, C_grid, vmax), extend="max", label=r"$m/s^2$")
 anim = animation.FuncAnimation(fig, animate_buoyancy, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "buoyancy_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "buoyancy_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -226,7 +227,7 @@ fig.colorbar(animate_b_perturbation(0, C_grid, vmax), extend="both",
 anim = animation.FuncAnimation(fig, animate_b_perturbation, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "b_perturb_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "b_perturb_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -245,7 +246,7 @@ fig.colorbar(animate_velocity_uv_comps(0, C_grid, vmax)[0], ax=[ax1, ax2],
 anim = animation.FuncAnimation(fig, animate_velocity_uv_comps, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "uv_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "uv_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -266,7 +267,7 @@ fig.colorbar(animate_velocity_uv_perturbs(0, C_grid, vmax)[0], ax=[ax1, ax2],
 anim = animation.FuncAnimation(fig, animate_velocity_uv_perturbs, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "uv_perturb_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "uv_perturb_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
@@ -280,6 +281,7 @@ fig.colorbar(animate_velocity_w_comp(0, C_grid, vmax, depth_title_str),
 anim = animation.FuncAnimation(fig, animate_velocity_w_comp, 
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
-anim.save(join(vis_dir, "w_{}.gif".format(file_label)), 
+anim.save(join(vis_dir, "w_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
+
