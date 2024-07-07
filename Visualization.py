@@ -62,28 +62,21 @@ output_filepath = join(output_dir, "output_{}.nc".format(file_label))
 
 def load_data(filename, slice_len):
     sim_ds = xr.open_dataset(filename)
-    xvort_data, yvort_data = sim_ds["ωx"], sim_ds["ωy"]
-    zvort_data = sim_ds["ωz"]
-    buoyancy_data, b_p_data = sim_ds["b"], sim_ds["b_perturb"]
+    zvort_data = sim_ds["ζz"]
+    buoyancy_data = sim_ds["b"]
+    #b_p_data = sim_ds["b_perturb"]
     u_data, v_data, w_data = sim_ds["u"], sim_ds["v"], sim_ds["w"]
-    u_p_data, v_p_data = sim_ds["u_perturb"], sim_ds["v_perturb"]
     C_grid = xr.Dataset(coords={"xC": ("xC", sim_ds["xC"].data), 
                                 "yC": ("yC", sim_ds["yC"].data), 
                                 "zC": ("zC", sim_ds["zC"].data), 
                                 "time": ("time", sim_ds["time"].data)})
-    C_grid = C_grid.assign(xvorticity=xvort_data.interp(yF=C_grid["yC"], 
-                                            zF=C_grid["zC"]).squeeze(), 
-                        yvorticity=yvort_data.interp(xF=C_grid["xC"], 
-                                            zF=C_grid["zC"]).squeeze(),
-                        zvorticity=zvort_data.interp(xF=C_grid["xC"], 
+    C_grid = C_grid.assign(zvorticity=zvort_data.interp(xF=C_grid["xC"], 
                                             yF=C_grid["yC"]).squeeze(), 
                         buoyancy=buoyancy_data.squeeze(),
-                        b_perturb=b_p_data.squeeze(),
                         u=u_data.interp(xF=C_grid["xC"]).squeeze(), 
                         v=v_data.interp(yF=C_grid["yC"]).squeeze(), 
-                        w=w_data.interp(zF=C_grid["zC"]).squeeze(),
-                        u_perturb=u_p_data.interp(xF=C_grid["xC"]).squeeze(),
-                        v_perturb=v_p_data.interp(yF=C_grid["yC"]).squeeze())
+                        w=w_data.interp(zF=C_grid["zC"]).squeeze())
+    #                    b_perturb=b_p_data.squeeze())
     times = C_grid["time"]
     time_iter = np.arange(len(times)-2) #Index -1 may contain NaN
     time_iter = time_iter[::slice_len] #Slice iterable to speed up visualization
@@ -126,23 +119,6 @@ def animate_velocity_uv_comps(time, C_grid, vmax, depth_str=""):
                           cmap="seismic", vmin=-vmax, vmax=vmax)
     return pcm1, pcm2
 
-def animate_velocity_uv_perturbs(time, C_grid, vmax, depth_str=""):
-    time_title = get_title_time(C_grid.time[time].values)
-    fig.suptitle("Perturbations in Horizontal Velocity Components{}; {}".format(
-                                                        depth_str, time_title))
-    frame_u_perturb = C_grid["u_perturb"].isel(zC=depth_idx, time=time)
-    frame_v_perturb = C_grid["v_perturb"].isel(zC=depth_idx, time=time)
-    frame_u_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
-    frame_v_perturb.drop_sel(xC=C_grid.xC[-1], yC=C_grid.yC[-1]) #Remove NaNs
-    pcm1 = ax1.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
-                          frame_u_perturb.values, 
-                          cmap="seismic",
-                          vmin=-vmax, vmax=vmax)
-    pcm2 = ax2.pcolormesh(C_grid["xC"]*1e-3, C_grid["yC"]*1e-3, 
-                          frame_v_perturb.values, 
-                          cmap="seismic", vmin=-vmax, vmax=vmax)
-    return pcm1, pcm2
-
 def animate_velocity_w_comp(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Vertical Velocity Component{}; {}".format(depth_str, 
@@ -163,7 +139,7 @@ def animate_buoyancy(time, C_grid, vmax, depth_str=""):
                         frame_buoyancy.values, 
                         cmap="Oranges", vmin=0, vmax=vmax)
     return pcm
-
+"""
 def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
     time_title = get_title_time(C_grid.time[time].values)
     fig.suptitle("Perturbation in buoyancy field{}; {}".format(depth_str, 
@@ -174,7 +150,7 @@ def animate_b_perturbation(time, C_grid, vmax, depth_str=""):
                         frame_perturb.values,
                         cmap="BrBG_r", vmin=-vmax, vmax=vmax)
     return pcm
-
+"""
 ####################
 
 #LOAD SIMULATION DATA
@@ -216,7 +192,7 @@ anim = animation.FuncAnimation(fig, animate_buoyancy,
 anim.save(join(vis_dir, "buoyancy_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
-
+"""
 #Plot buoyancy perturbation
 fig, ax = plt.subplots(figsize=(10,8))
 ax.set_xlabel(r"x ($km$)")
@@ -230,7 +206,7 @@ anim = animation.FuncAnimation(fig, animate_b_perturbation,
 anim.save(join(vis_dir, "b_perturb_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
-
+"""
 #Plot horizontal velocity components
 fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(14,8))
 ax1.set_xlabel(r"x ($km$)")
@@ -247,27 +223,6 @@ anim = animation.FuncAnimation(fig, animate_velocity_uv_comps,
                                fargs=(C_grid, vmax, depth_title_str), 
                                frames=time_iter)
 anim.save(join(vis_dir, "uv_z{}_{}.gif".format(depth_round, file_label)), 
-          progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
-plt.close()
-
-#Plot perturbations to horizontal velocity components
-fig, (ax1, ax2) = plt.subplots(1, 2, sharey=True, figsize=(14,8))
-ax1.set_xlabel(r"x ($km$)")
-ax2.set_xlabel(r"x ($km$)")
-ax1.set_ylabel(r"y ($km$)")
-ax1.set_title(r"$u$-Perturbation")
-ax2.set_title(r"$v$-Perturbation")
-vmax_u_perturb = np.max(abs(C_grid["u_perturb"].isel(zC=depth_idx, 
-                                                     time=t_f_idx)))
-vmax_v_perturb = np.max(abs(C_grid["v_perturb"].isel(zC=depth_idx, 
-                                                     time=t_f_idx)))
-vmax = max(vmax_u_perturb, vmax_v_perturb)
-fig.colorbar(animate_velocity_uv_perturbs(0, C_grid, vmax)[0], ax=[ax1, ax2], 
-             extend="both", label=r"$m/s$", location="bottom", shrink=0.5)
-anim = animation.FuncAnimation(fig, animate_velocity_uv_perturbs, 
-                               fargs=(C_grid, vmax, depth_title_str), 
-                               frames=time_iter)
-anim.save(join(vis_dir, "uv_perturb_z{}_{}.gif".format(depth_round, file_label)), 
           progress_callback=lambda i, n: print(f'saving frame {i} of {n}'))
 plt.close()
 
