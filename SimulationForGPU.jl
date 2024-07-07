@@ -1,7 +1,11 @@
 include("Library.jl")
 
 using Dates
-using Oceananigans, Oceananigans.Coriolis, Oceananigans.TurbulenceClosures
+using Oceananigans
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Coriolis
+using Oceananigans.Operators: ζ₃ᶠᶠᶜ
+using Oceananigans.TurbulenceClosures
 #using Oceananigans.Units
 
 # GET INPUTS
@@ -78,15 +82,15 @@ progress(sim) = @info string(
     "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
 add_callback!(simulation, progress, IterationInterval(100))
 
-#ωz(model) = ∂x(model.velocities.v) - ∂y(model.velocities.u)
+ζz_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
+ζz = Field(ζz_op)
 #b_perturb = b - b̄
 
 outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
 	       "w" => model.velocities.w,
-	       "b" => model.tracers.b) #,
-#	       "ωz" => ωz)  #(; u, v, w, b, ωz)#, b_perturb)
-#dims = Dict("ωz" => ("xC", "yC", "zC"))
+	       "b" => model.tracers.b,
+	       "ζz" => ζz)
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
 output_filename = "output_$(timenow).nc"
