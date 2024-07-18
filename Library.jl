@@ -49,7 +49,7 @@ using Printf
 #using FileIO, JLD2
 module VisualizationFunctions
     export buoyancy_C, buoyancy_L, buoyancy_R, u_background, density_from_buoyancy, ωt, ω_b
-    export ζ,ζ_2D, ∇b, ∇b_2D, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
+    export ζ, ζ_2D, ∇b, ∇b_2D, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
 end
 
 function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
@@ -114,10 +114,11 @@ function ζ(u, v, w, Δx, Δy, Δz)
     return ζz #, ζx, ζy, ζz
 end
 
-function ζ_2D(u, v, w, Δy, Δz)
+function ζ_2D(u, v, w, Δx, Δy, Δz)
 #    ζx = (w[1,2:end,3:end]-w[1,1:end-1,3:end])./Δy .- (v[1,3:end,2:end]-v[1,3:end,1:end-1])./Δz
 #    ζy = (u[1,2:end,2:end]-u[1,2:end,1:end-1])./Δz
-    ζz = - (u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
+    #ζz = - (u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
+    ζz = (v[1,2:end,2:end]-v[1,1:end-1,2:end])./Δx -(u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
     return ζz #, ζx, ζy, ζz
 end
 
