@@ -51,9 +51,9 @@ u    = @lift ds["u"][:, :, :, $n]
 v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
 
-ωtotal = @lift ζ_2D($u, $v, $w, Δy, Δz)
-∇_b    = @lift ∇b_2D($bt, Δy, Δz)
-fq     = @lift @. f*($ωtotal + f) .* $∇_b
+ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz)
+#∇_b    = @lift ∇b_2D($btot, Δy, Δz)
+#fq     = @lift @. f*($ωtotal + f) .* $∇_b
 
 #y  =   y[jp_ini: jp_end]
 #z  =   z[z_jet_ini : z_jet_end]
