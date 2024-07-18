@@ -21,47 +21,42 @@ const datetime = ARGS[1]
 output_filename = joinpath("./Output", "output_$datetime.nc")
 ds = NCDataset(output_filename, "r")
 
+const depth_idx = parse(Int, ARGS[2])
+
 x  =   ds["xC"][:]
 y  =   ds["yC"][:]
-z  =   ds["zC"][:]
+z  =   ds["zC"][depth_idx]
 
 Nx = length(ds["xC"][:])
 Ny = length(ds["yC"][:])
 Nz = length(ds["zC"][:])
 
-times = ds["time"][:]
-
 Δx = Lx / Nx
 Δy = Ly / Ny
 Δz = Lz / Nz
 
-# pinpoint jet position
-#jp_c = (y0 + Ly) ./ Δy
-#jp_ini = floor(Int,  jp_c - Lⱼ ./ Δy) - 1125
-#jp_end = floor(Int, jp_c + Lⱼ ./ Δy) -125
-#z_jet = -z0 ./ Δz
-#z_jet_ini = floor(Int, z_jet - D/ Δz)
-#z_jet_end = floor(Int, z_jet + D/ Δz)
+times = ds["time"][:]
 
 n = Observable(1)
 
-bb = ds["b"][1 , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
-ub = ds["u"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
-vb = ds["v"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
-wb = ds["w"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
+#Use initial frame to define background fields
+bb = ds["b"][:, :, :, 1]
+ub = ds["u"][:, :, :, 1]
+vb = ds["v"][:, :, :, 1]
+wb = ds["w"][:, :, :, 1]
 
-b = @lift ds["b"][1 , jp_ini : jp_end, z_jet_ini : z_jet_end, $n] .- bb
-bt = @lift ds["b"][1 , jp_ini : jp_end, z_jet_ini : z_jet_end, $n]
-u = @lift ds["u"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, $n]
-v = @lift ds["v"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, $n]
-w = @lift ds["w"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, $n]
+b    = @lift ds["b"][:, :, :, $n] .- bb
+btot = @lift ds["b"][:, :, :, $n]
+u    = @lift ds["u"][:, :, :, $n]
+v    = @lift ds["v"][:, :, :, $n]
+w    = @lift ds["w"][:, :, :, $n]
 
 ωtotal = @lift ζ_2D($u, $v, $w, Δy, Δz)
-∇_b= @lift ∇b_2D($bt, Δy, Δz)
-fq = @lift @. f*($ωtotal + f) .* $∇_b
+∇_b    = @lift ∇b_2D($bt, Δy, Δz)
+fq     = @lift @. f*($ωtotal + f) .* $∇_b
 
-y  =   y[jp_ini: jp_end]
-z  =   z[z_jet_ini : z_jet_end]
+#y  =   y[jp_ini: jp_end]
+#z  =   z[z_jet_ini : z_jet_end]
 
 u_yz = @lift $u[1 , :, :]
 v_yz = @lift $v[1 , :, :]
