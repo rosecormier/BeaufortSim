@@ -1,6 +1,5 @@
-# Zoom plots for b, v, w
-
 include("Library.jl")
+
 using Oceananigans
 using NCDatasets, Printf, CairoMakie
 using .VisualizationFunctions
@@ -18,7 +17,9 @@ const D     = 200
 const z0    = -Lz/2
 const y0    = 0 # center of the jet in y
 
-ds = NCDataset("NH_BC_jet_fields.nc", "r")
+const datetime = ARGS[1]
+print(datetime)
+ds = NCDataset("output_$datetime.nc", "r")
 x  =   ds["xC"][:]
 y  =   ds["yC"][:]
 z  =   ds["zC"][:]
