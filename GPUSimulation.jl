@@ -26,8 +26,8 @@ const νv = params["v_diffusivity"]
 const latitude = params["latitude"]
 
 const p̃0 = params["p̃0"]
-const σr = params["σr"]
-const σz = params["σz"]
+const σr = params["σr"] * 1e3
+const σz = params["σz"] #Units m
 const N2 = params["N"]^2
 
 const Δti         = params["Δt_initial"]
