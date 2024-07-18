@@ -1,50 +1,49 @@
 include("Library.jl")
 
 using Oceananigans
-using NCDatasets, Printf, CairoMakie
+using CairoMakie, NCDatasets, Printf
 using .VisualizationFunctions
 
-const f     = 0.864e-4
-const fₕ    = 0.0
-const N²    = (3.7e-3)^2
-const ν     = 0.36*1.5/2.2e4
-const Umax  = 0.36*1.5
-const Lx     = 20000
-const Ly     = 30000
-const Lⱼ    = 3000    #1.5x to compensate for Umax.
-const Lz    = 1000
-const D     = 200
-const z0    = -Lz/2
-const y0    = 0 # center of the jet in y
+#const f     = 0.864e-4
+#const fₕ    = 0.0
+#const N²    = (3.7e-3)^2
+#const ν     = 0.36*1.5/2.2e4
+#const Umax  = 0.36*1.5
+const Lx     = 2000 * 1e3
+const Ly     = 2000 * 1e3
+#const Lⱼ    = 3000    #1.5x to compensate for Umax.
+const Lz     = 1000
+#const D     = 200
+#const z0    = -Lz/2
+#const y0    = 0 # center of the jet in y
 
 const datetime = ARGS[1]
-print(datetime)
-ds = NCDataset("output_$datetime.nc", "r")
+output_filename = joinpath("./Output", "output_$datetime.nc")
+ds = NCDataset(output_filename, "r")
+
 x  =   ds["xC"][:]
 y  =   ds["yC"][:]
 z  =   ds["zC"][:]
+
 Nx = length(ds["xC"][:])
 Ny = length(ds["yC"][:])
 Nz = length(ds["zC"][:])
+
 times = ds["time"][:]
 
-# imports the parameters directly from the model if running inside the model,
-# assigns a value to them if this script is running by itself.
+Δx = Lx / Nx
+Δy = Ly / Ny
+Δz = Lz / Nz
 
-   Δx = 2*Lx/Nx
-   Δy = 2*Ly/Ny
-   Δz = Lz/Nz
 # pinpoint jet position
-jp_c = (y0 + Ly) ./ Δy
-jp_ini = floor(Int,  jp_c - Lⱼ ./ Δy) - 1125
-jp_end = floor(Int, jp_c + Lⱼ ./ Δy) -125
+#jp_c = (y0 + Ly) ./ Δy
+#jp_ini = floor(Int,  jp_c - Lⱼ ./ Δy) - 1125
+#jp_end = floor(Int, jp_c + Lⱼ ./ Δy) -125
+#z_jet = -z0 ./ Δz
+#z_jet_ini = floor(Int, z_jet - D/ Δz)
+#z_jet_end = floor(Int, z_jet + D/ Δz)
 
-z_jet = -z0 ./ Δz
-z_jet_ini = floor(Int, z_jet - D/ Δz)
-z_jet_end = floor(Int, z_jet + D/ Δz)
-
-n=Observable(1)
-# get variables
+n = Observable(1)
 
 bb = ds["b"][1 , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
 ub = ds["u"][: , jp_ini : jp_end, z_jet_ini : z_jet_end, 1]
