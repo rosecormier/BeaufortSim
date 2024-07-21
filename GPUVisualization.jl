@@ -40,13 +40,13 @@ times = ds["time"][:]
 n = Observable(1)
 
 #Use initial frame to define background fields
-bb = ds["b"][:, :, 1, 1]#:, 1]
-ub = ds["u"][:, :, 1, 1]#:, 1]
-vb = ds["v"][:, :, 1, 1]#:, 1]
-wb = ds["w"][:, :, 1, 1]#:, 1]
+bb = ds["b"][:, :, depth_idx, 1]
+ub = ds["u"][:, :, depth_idx, 1]
+vb = ds["v"][:, :, depth_idx, 1]
+wb = ds["w"][:, :, depth_idx, 1]
 
-b    = @lift ds["b"][:, :, 1, $n] .- bb # :, $n] .- bb
-btot = @lift ds["b"][:, :, 1, $n] #:, $n]
+b    = @lift ds["b"][:, :, depth_idx, $n] .- bb
+btot = @lift ds["b"][:, :, depth_idx, $n]
 u    = @lift ds["u"][:, :, :, $n]
 v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
@@ -55,51 +55,35 @@ w    = @lift ds["w"][:, :, :, $n]
 #∇_b    = @lift ∇b_2D($btot, Δy, Δz)
 #fq     = @lift @. f*($ωtotal + f) .* $∇_b
 
-#y  =   y[jp_ini: jp_end]
-#z  =   z[z_jet_ini : z_jet_end]
-
-#u_yz = @lift $u[1 , :, :]
-#v_yz = @lift $v[1 , :, :]
-#w_yz = @lift $w[1 , :, :]
-u_xy = @lift $u[:, :, 1]
-v_xy = @lift $v[:, :, 1]
-w_xy = @lift $w[:, :, 1]
-
-# plot data
+u_xy = @lift $u[:, :, depth_idx]
+v_xy = @lift $v[:, :, depth_idx]
+w_xy = @lift $w[:, :, depth_idx]
 
 max_b  =  @lift max(maximum($b), 5e-9)
 lim_b  =  @lift 3/4* [-$max_b,$max_b]
-#max_v  =  @lift max(maximum($v_yz), 1e-10)
-max_v = @lift max(maximum($v_xy), 1e-10)
+max_v  = @lift max(maximum($v_xy), 1e-10)
 lim_v  =  @lift 3/4* [-$max_v,$max_v]
-#max_w  =  @lift 1/4* max(maximum($w_yz), 1e-10)
-max_w = @lift 1/4* max(maximum($w_xy), 1e-10)
+max_w  = @lift 1/4* max(maximum($w_xy), 1e-10)
 lim_w  =  @lift 3/4* [-$max_w,$max_w]
 lim_fq = 1 .* [-0.6e-13, 1e-13/5]
 
 cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.0); Makie.to_colormap(Reverse(:roma))[214:254]]
 cm = cm[:,1];
 
-fig1=Figure(size = (1200, 1200)) #resolution = (1200, 1200))
-#axis_kwargs_yz = (xlabel = "y", ylabel = "z")
+fig1=Figure(size = (1200, 1200))
 axis_kwargs_xy = (xlabel = "x", ylabel = "y")
-ax_b    = Axis(fig1[2, 1]; title = "b'", axis_kwargs_xy...) #yz...)
+ax_b    = Axis(fig1[2, 1]; title = "b'", axis_kwargs_xy...)
 ax_u    = Axis(fig1[2, 3]; title = "u", axis_kwargs_xy...)
-ax_v    = Axis(fig1[3, 1]; title = "v", axis_kwargs_xy...) #2, 3]; title = "v", axis_kwargs_xy...) #yz...)
-ax_w    = Axis(fig1[3, 3]; title = "w", axis_kwargs_xy...) #1]; title = "w", axis_kwargs_xy...) #yz...)
-#ax_fq   = Axis(fig1[3, 3]; title = "fq", axis_kwargs_xy...) #yz...)
+ax_v    = Axis(fig1[3, 1]; title = "v", axis_kwargs_xy...)
+ax_w    = Axis(fig1[3, 3]; title = "w", axis_kwargs_xy...)
+#ax_fq   = Axis(fig1[3, 3]; title = "fq", axis_kwargs_xy...)
 
-#print(typeof(y), ",",  typeof(z), ",", typeof(b))
-
-#hm_b = heatmap!(ax_b, y, z, b, colorrange=lim_b ,colormap = :balance)
 hm_b = heatmap!(ax_b, x, y, b, colorrange=lim_b, colormap = :balance)
 Colorbar(fig1[2, 2], hm_b, tickformat= "{:.1e}")
 hm_u = heatmap!(ax_u, x, y, u_xy, colorrange=lim_v, colormap = :balance)
 Colorbar(fig1[2, 4], hm_u, tickformat= "{:.1e}")
-#hm_v = heatmap!(ax_v, y, z, v_yz, colorrange=lim_v ,colormap = :balance)
 hm_v = heatmap!(ax_v, x, y, v_xy, colorrange=lim_v, colormap = :balance)
-Colorbar(fig1[3, 2], hm_v, tickformat= "{:.1e}") #2, 4], hm_v, tickformat= "{:.1e}")
-#hm_w = heatmap!(ax_w, y, z, w_yz, colorrange=lim_w ,colormap = :balance)
+Colorbar(fig1[3, 2], hm_v, tickformat= "{:.1e}")
 hm_w = heatmap!(ax_w, x, y, w_xy, colorrange=lim_w, colormap = :balance)
 Colorbar(fig1[3, 4], hm_w, tickformat= "{:.1e}") #2], hm_w, tickformat= "{:.1e}")
 #hm_fq = heatmap!(ax_fq, y, z, fq, colorrange=lim_fq ,colormap = cm)
