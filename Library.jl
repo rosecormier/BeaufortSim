@@ -106,7 +106,7 @@ function ζ_2D(u, v, w, Δx, Δy, Δz)
 #    ζx = (w[1,2:end,3:end]-w[1,1:end-1,3:end])./Δy .- (v[1,3:end,2:end]-v[1,3:end,1:end-1])./Δz
 #    ζy = (u[1,2:end,2:end]-u[1,2:end,1:end-1])./Δz
     #ζz = - (u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
-    ζz = (v[1,2:end,2:end]-v[1,1:end-1,2:end])./Δx -(u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
+    ζz = (v[2:end,2:end,1]-v[1:end-1,2:end,1])./Δx -(u[2:end,2:end,1]-u[2:end,1:end-1,1])./Δy
     return ζz #, ζx, ζy, ζz
 end
 
@@ -119,10 +119,10 @@ function ∇b(b, Δx, Δy, Δz)
     return ∂z_b
 end
 
-function ∇b_2D(b, Δy, Δz)
-    ∂x_b =  0.0
-    ∂y_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δy
-    ∂z_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δz
+function ∇b_2D(b, Δx, Δy, Δz)
+    ∂x_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δx #0.0
+    ∂y_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δy
+    ∂z_b =  0.0 #(b[2:end,2:end]-b[2:end,1:end-1])/Δz
     db_dX = @. ∂x_b + ∂y_b + ∂z_b
     return db_dX#, ∂x_b, ∂y_b, ∂z_b
 end
