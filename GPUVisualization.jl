@@ -4,7 +4,7 @@ using Oceananigans
 using CairoMakie, NCDatasets, Printf
 using .VisualizationFunctions
 
-#const f     = 0.864e-4
+const f     = 0.864e-4
 #const fₕ    = 0.0
 #const N²    = (3.7e-3)^2
 #const ν     = 0.36*1.5/2.2e4
@@ -53,8 +53,8 @@ v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
 
 ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz)
-#∇_b    = @lift ∇b_2D($btot, Δy, Δz)
-#fq     = @lift @. f*($ωtotal + f) .* $∇_b
+∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz) #_2D($btot, Δy, Δz)
+fq     = @lift @. f*($ωtotal + f) * $∇_b
 
 u_xy = @lift $u[:, :, depth_idx]
 v_xy = @lift $v[:, :, depth_idx]
