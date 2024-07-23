@@ -5,17 +5,10 @@ using CairoMakie, NCDatasets, Printf
 using .VisualizationFunctions
 
 const f      = 2*(7.2921e-5)*sin(74*pi/180)
-#const fₕ    = 0.0
-#const N²    = (3.7e-3)^2
-#const ν     = 0.36*1.5/2.2e4
-#const Umax  = 0.36*1.5
+
 const Lx     = 2000 * 1e3
 const Ly     = 2000 * 1e3
-#const Lⱼ    = 3000    #1.5x to compensate for Umax.
 const Lz     = 1000
-#const D     = 200
-#const z0    = -Lz/2
-#const y0    = 0 # center of the jet in y
 
 const datetime = ARGS[1]
 output_filename = joinpath("./Output", "output_$datetime.nc")
@@ -53,7 +46,7 @@ v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
 
 ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, depth_idx)
-∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz) #_2D($btot, Δy, Δz)
+∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz)
 fq     = @lift @. f*($ωtotal + f) * $∇_b
 
 u_xy = @lift $u[:, :, depth_idx]
@@ -61,11 +54,11 @@ v_xy = @lift $v[:, :, depth_idx]
 w_xy = @lift $w[:, :, depth_idx]
 
 max_b  =  @lift max(maximum($b), 5e-9)
-lim_b  =  @lift 3/4* [-$max_b,$max_b]
+lim_b  =  @lift (3/4) * [-$max_b,$max_b]
 max_v  =  @lift max(maximum($v_xy), 1e-10)
-lim_v  =  @lift 3/4* [-$max_v,$max_v]
-max_w  =  @lift 1/4* max(maximum($w_xy), 1e-10)
-lim_w  =  @lift 3/4* [-$max_w,$max_w]
+lim_v  =  @lift (3/4) * [-$max_v,$max_v]
+max_w  =  @lift (1/4) * max(maximum($w_xy), 1e-10)
+lim_w  =  @lift (3/4) * [-$max_w,$max_w]
 
 lim_fq = 1 .* [-0.6e-13, 1e-13/5]
 
@@ -78,7 +71,6 @@ ax_b    = Axis(fig1[2, 1]; title = "b'", axis_kwargs_xy...)
 ax_w    = Axis(fig1[2, 3]; title = "w", axis_kwargs_xy...)
 ax_u    = Axis(fig1[3, 1]; title = "u", axis_kwargs_xy...)
 ax_v    = Axis(fig1[3, 3]; title = "v", axis_kwargs_xy...)
-#ax_fq   = Axis(fig1[3, 3]; title = "fq", axis_kwargs_xy...)
 
 hm_b = heatmap!(ax_b, x, y, b, colorrange = lim_b, colormap = :balance)
 Colorbar(fig1[2, 2], hm_b, tickformat = "{:.1e}")
@@ -88,24 +80,21 @@ hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_v, colormap = :balance)
 Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}")
 hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_v, colormap = :balance)
 Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}")
-#hm_fq = heatmap!(ax_fq, y, z, fq, colorrange=lim_fq ,colormap = cm)
-#Colorbar(fig1[3, 4], hm_fq, tickformat= "{:.1e}")
 
 fig2 = Figure(size = (300, 300))
 ax_fq = Axis(fig2[2, 1]; title = "fq", axis_kwargs_xy...)
-
-hm_fq = heatmap!(ax_fq, x, y, fq, colorrange=lim_fq, colormap = :balance) #cm)
+hm_fq = heatmap!(ax_fq, x, y, fq, colorrange=lim_fq, colormap = cm)
 Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}")
 
 title1 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
-fig1[1, 1:4] = Label(fig1, title1, fontsize=24, tellwidth=false)
+fig1[1, 1:4] = Label(fig1, title1, fontsize = 24, tellwidth = false)
 
 title2 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
-fig2[1, 1:2] = Label(fig2, title2, fontsize=24, tellwidth=false)
+fig2[1, 1:2] = Label(fig2, title2, fontsize = 24, tellwidth = false)
 
 frames = 1:length(times)
 
-video1 = VideoStream(fig1,format="mp4", framerate=12)
+video1 = VideoStream(fig1,format = "mp4", framerate = 6)
 for i=1:frames[end]
     recordframe!(video1)
     msg = string("Plotting frame ", i, " of ", frames[end])
@@ -114,7 +103,7 @@ for i=1:frames[end]
 end
 save("bwuv_z$(depth_nearest_m)_$(datetime).mp4", video1)
 
-video2 = VideoStream(fig2, format="mp4", framerate=6)
+video2 = VideoStream(fig2, format = "mp4", framerate = 6)
 for i=1:frames[end]
     recordframe!(video2)
     msg = string("Plotting frame ", i, " of ", frames[end])
