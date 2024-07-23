@@ -4,7 +4,7 @@ using Oceananigans
 using CairoMakie, NCDatasets, Printf
 using .VisualizationFunctions
 
-const f     = 0.864e-4
+const f      = 2*(7.2921e-5)*sin(74*pi/180)
 #const fₕ    = 0.0
 #const N²    = (3.7e-3)^2
 #const ν     = 0.36*1.5/2.2e4
