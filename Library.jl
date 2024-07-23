@@ -102,11 +102,11 @@ function ζ(u, v, w, Δx, Δy, Δz)
     return ζz #, ζx, ζy, ζz
 end
 
-function ζ_2D(u, v, w, Δx, Δy, Δz)
+function ζ_2D(u, v, w, Δx, Δy, Δz, idx)
 #    ζx = (w[1,2:end,3:end]-w[1,1:end-1,3:end])./Δy .- (v[1,3:end,2:end]-v[1,3:end,1:end-1])./Δz
 #    ζy = (u[1,2:end,2:end]-u[1,2:end,1:end-1])./Δz
     #ζz = - (u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
-    ζz = (v[2:end,2:end,1]-v[1:end-1,2:end,1])./Δx -(u[2:end,2:end,1]-u[2:end,1:end-1,1])./Δy
+    ζz = (v[2:end,2:end,idx]-v[1:end-1,2:end,idx])./Δx -(u[2:end,2:end,idx]-u[2:end,1:end-1,idx])./Δy
     return ζz #, ζx, ζy, ζz
 end
 

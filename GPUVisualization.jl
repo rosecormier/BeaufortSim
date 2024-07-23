@@ -52,7 +52,7 @@ u    = @lift ds["u"][:, :, :, $n]
 v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
 
-ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz)
+ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, depth_idx)
 ∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz) #_2D($btot, Δy, Δz)
 fq     = @lift @. f*($ωtotal + f) * $∇_b
 
@@ -62,9 +62,9 @@ w_xy = @lift $w[:, :, depth_idx]
 
 max_b  =  @lift max(maximum($b), 5e-9)
 lim_b  =  @lift 3/4* [-$max_b,$max_b]
-max_v  = @lift max(maximum($v_xy), 1e-10)
+max_v  =  @lift max(maximum($v_xy), 1e-10)
 lim_v  =  @lift 3/4* [-$max_v,$max_v]
-max_w  = @lift 1/4* max(maximum($w_xy), 1e-10)
+max_w  =  @lift 1/4* max(maximum($w_xy), 1e-10)
 lim_w  =  @lift 3/4* [-$max_w,$max_w]
 
 lim_fq = 1 .* [-0.6e-13, 1e-13/5]
@@ -72,7 +72,7 @@ lim_fq = 1 .* [-0.6e-13, 1e-13/5]
 cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.0); Makie.to_colormap(Reverse(:roma))[214:254]]
 cm = cm[:,1];
 
-fig1=Figure(size = (1200, 1200))
+fig1 = Figure(size = (1200, 1200))
 axis_kwargs_xy = (xlabel = "x", ylabel = "y")
 ax_b    = Axis(fig1[2, 1]; title = "b'", axis_kwargs_xy...)
 ax_w    = Axis(fig1[2, 3]; title = "w", axis_kwargs_xy...)
@@ -87,20 +87,40 @@ Colorbar(fig1[2, 4], hm_w, tickformat = "{:.1e}")
 hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_v, colormap = :balance)
 Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}")
 hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_v, colormap = :balance)
-Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}") #2], hm_w, tickformat= "{:.1e}")
+Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}")
 #hm_fq = heatmap!(ax_fq, y, z, fq, colorrange=lim_fq ,colormap = cm)
 #Colorbar(fig1[3, 4], hm_fq, tickformat= "{:.1e}")
 
-title = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
-fig1[1, 1:4] = Label(fig1, title, fontsize=24, tellwidth=false)
+fig2 = Figure(size = (300, 300))
+ax_fq = Axis(fig2[2, 1]; title = "fq", axis_kwargs_xy...)
+
+hm_fq = heatmap!(ax_fq, x, y, fq, colorrange=lim_fq, colormap = :balance) #cm)
+Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}")
+
+title1 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
+fig1[1, 1:4] = Label(fig1, title1, fontsize=24, tellwidth=false)
+
+title2 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
+fig2[1, 1:2] = Label(fig2, title2, fontsize=24, tellwidth=false)
+
 frames = 1:length(times)
-video1=VideoStream(fig1,format="mp4", framerate=12)
+
+video1 = VideoStream(fig1,format="mp4", framerate=12)
 for i=1:frames[end]
     recordframe!(video1)
     msg = string("Plotting frame ", i, " of ", frames[end])
         print(msg * " \r")
         n[]=i
 end
-
 save("bwuv_z$(depth_nearest_m)_$(datetime).mp4", video1)
+
+video2 = VideoStream(fig2, format="mp4", framerate=6)
+for i=1:frames[end]
+    recordframe!(video2)
+    msg = string("Plotting frame ", i, " of ", frames[end])
+        print(msg * " \r")
+        n[]=i
+end
+save("fq_z$(depth_nearest_m)_$(datetime).mp4", video2)
+
 close(ds)
