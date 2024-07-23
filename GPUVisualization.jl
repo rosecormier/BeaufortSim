@@ -53,13 +53,17 @@ u_xy = @lift $u[:, :, depth_idx]
 v_xy = @lift $v[:, :, depth_idx]
 w_xy = @lift $w[:, :, depth_idx]
 
-max_b  =  @lift max(maximum($b), 5e-9)
-lim_b  =  @lift (3/4) * [-$max_b,$max_b]
-max_v  =  @lift max(maximum($v_xy), 1e-10)
-lim_v  =  @lift (3/4) * [-$max_v,$max_v]
-max_w  =  @lift (1/4) * max(maximum($w_xy), 1e-10)
-lim_w  =  @lift (3/4) * [-$max_w,$max_w]
+#Use final frames to define maximum values
+bf    = ds["b"][:, :, depth_idx, length(times)]
+uf_xy = ds["u"][:, :, depth_idx, length(times)]
+wf_xy = ds["w"][:, :, depth_idx, length(times)]
 
+max_b  =  max(maximum(bf), 5e-9)
+lim_b  =  (3/4) * [-max_b, max_b] #@lift (3/4) * [-$max_b,$max_b]
+max_u  =  max(maximum(uf_xy), 1e-10) #@lift max(maximum($v_xy), 1e-10)
+lim_u  =  (3/4) * [-max_u, max_u] #@lift (3/4) * [-$max_v,$max_v]
+max_w  =  (1/4) * max(maximum(wf_xy), 1e-10)#@lift (1/4) * max(maximum($w_xy), 1e-10)
+lim_w  =  (3/4) * [-max_w, max_w] #@lift (3/4) * [-$max_w,$max_w]
 lim_fq = 1 .* [-0.6e-13, 1e-13/5]
 
 cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.0); Makie.to_colormap(Reverse(:roma))[214:254]]
@@ -76,12 +80,12 @@ hm_b = heatmap!(ax_b, x, y, b, colorrange = lim_b, colormap = :balance)
 Colorbar(fig1[2, 2], hm_b, tickformat = "{:.1e}")
 hm_w = heatmap!(ax_w, x, y, w_xy, colorrange = lim_w, colormap = :balance)
 Colorbar(fig1[2, 4], hm_w, tickformat = "{:.1e}")
-hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_v, colormap = :balance)
+hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_u, colormap = :balance)
 Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}")
-hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_v, colormap = :balance)
+hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_u, colormap = :balance)
 Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}")
 
-fig2 = Figure(size = (300, 300))
+fig2 = Figure(size = (600, 600))
 ax_fq = Axis(fig2[2, 1]; title = "fq", axis_kwargs_xy...)
 hm_fq = heatmap!(ax_fq, x, y, fq, colorrange=lim_fq, colormap = cm)
 Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}")
