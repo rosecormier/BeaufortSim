@@ -59,12 +59,12 @@ uf_xy = ds["u"][:, :, depth_idx, length(times)]
 wf_xy = ds["w"][:, :, depth_idx, length(times)]
 
 max_b  =  max(maximum(bf), 5e-9)
-lim_b  =  (3/4) * [-max_b, max_b] #@lift (3/4) * [-$max_b,$max_b]
-max_u  =  max(maximum(uf_xy), 1e-10) #@lift max(maximum($v_xy), 1e-10)
-lim_u  =  (3/4) * [-max_u, max_u] #@lift (3/4) * [-$max_v,$max_v]
-max_w  =  (1/4) * max(maximum(wf_xy), 1e-10)#@lift (1/4) * max(maximum($w_xy), 1e-10)
-lim_w  =  (3/4) * [-max_w, max_w] #@lift (3/4) * [-$max_w,$max_w]
-lim_fq = 1 .* [-0.6e-13, 1e-13/5]
+lim_b  =  (3/4) * [-max_b, max_b]
+max_u  =  max(maximum(uf_xy), 1e-10)
+lim_u  =  (3/4) * [-max_u, max_u]
+max_w  =  (1/4) * max(maximum(wf_xy), 1e-10)
+lim_w  =  (3/4) * [-max_w, max_w] 
+lim_fq =  1 .* [-0.6e-13, 1e-13/5]
 
 cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.0); Makie.to_colormap(Reverse(:roma))[214:254]]
 cm = cm[:,1];
@@ -98,22 +98,17 @@ fig2[1, 1:2] = Label(fig2, title2, fontsize = 24, tellwidth = false)
 
 frames = 1:length(times)
 
-video1 = VideoStream(fig1,format = "mp4", framerate = 6)
+video1 = VideoStream(fig1, format = "mp4", framerate = 6)
+video2 = VideoStream(fig2, format = "mp4", framerate = 6)
+
 for i=1:frames[end]
     recordframe!(video1)
-    msg = string("Plotting frame ", i, " of ", frames[end])
+    recordframe!(video2)
+    msg = string("Plotting frame(s) ", i, " of ", frames[end])
         print(msg * " \r")
         n[]=i
 end
 save("bwuv_z$(depth_nearest_m)_$(datetime).mp4", video1)
-
-video2 = VideoStream(fig2, format = "mp4", framerate = 6)
-for i=1:frames[end]
-    recordframe!(video2)
-    msg = string("Plotting frame ", i, " of ", frames[end])
-        print(msg * " \r")
-        n[]=i
-end
 save("fq_z$(depth_nearest_m)_$(datetime).mp4", video2)
 
 close(ds)
