@@ -4,11 +4,11 @@ using Oceananigans
 using CairoMakie, NCDatasets, Printf
 using .VisualizationFunctions
 
-const f      = 2*(7.2921e-5)*sin(74*pi/180)
+const f = 2 * (7.2921 * 1e-5) * sin(74 * pi/180) #s^-1
 
-const Lx     = 2000 * 1e3
-const Ly     = 2000 * 1e3
-const Lz     = 1000
+const Lx = 2000 * 1e3 #m
+const Ly = 2000 * 1e3 #m
+const Lz = 1000       #m
 
 const datetime = ARGS[1]
 output_filename = joinpath("./Output", "output_$datetime.nc")
@@ -70,30 +70,30 @@ cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.
 cm = cm[:,1];
 
 fig1 = Figure(size = (1200, 1200))
-axis_kwargs_xy = (xlabel = "x", ylabel = "y")
-ax_b    = Axis(fig1[2, 1]; title = "b'", axis_kwargs_xy...)
+axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
+ax_b    = Axis(fig1[2, 1]; title = "Buoyancy perturbation", axis_kwargs_xy...)
 ax_w    = Axis(fig1[2, 3]; title = "w", axis_kwargs_xy...)
 ax_u    = Axis(fig1[3, 1]; title = "u", axis_kwargs_xy...)
 ax_v    = Axis(fig1[3, 3]; title = "v", axis_kwargs_xy...)
 
 hm_b = heatmap!(ax_b, x, y, b, colorrange = lim_b, colormap = :balance)
-Colorbar(fig1[2, 2], hm_b, tickformat = "{:.1e}")
+Colorbar(fig1[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
 hm_w = heatmap!(ax_w, x, y, w_xy, colorrange = lim_w, colormap = :balance)
-Colorbar(fig1[2, 4], hm_w, tickformat = "{:.1e}")
+Colorbar(fig1[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
 hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_u, colormap = :balance)
-Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}")
+Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
 hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_u, colormap = :balance)
-Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}")
+Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
 
 fig2 = Figure(size = (600, 600))
 ax_fq = Axis(fig2[2, 1]; title = "fq", axis_kwargs_xy...)
-hm_fq = heatmap!(ax_fq, x, y, fq, colorrange=lim_fq, colormap = cm)
-Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}")
+hm_fq = heatmap!(ax_fq, x, y, fq, colorrange = lim_fq, colormap = cm)
+Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}", label = "1/s³kg")
 
-title1 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
+title1 = @lift @sprintf("Fields at depth %i m; t = %.2f days", depth_nearest_m, times[$n]/(3600*24))
 fig1[1, 1:4] = Label(fig1, title1, fontsize = 24, tellwidth = false)
 
-title2 = @lift @sprintf("t = %.2f days", times[$n]/(3600*24))
+title2 = @lift @sprintf("Potential vorticity at depth %i m; t = %.2f days", depth_nearest_m, times[$n]/(3600*24))
 fig2[1, 1:2] = Label(fig2, title2, fontsize = 24, tellwidth = false)
 
 frames = 1:length(times)
