@@ -108,7 +108,13 @@ for i=1:frames[end]
         print(msg * " \r")
         n[]=i
 end
-save("bwuv_z$(depth_nearest_m)_$(datetime).mp4", video1)
-save("fq_z$(depth_nearest_m)_$(datetime).mp4", video2)
+
+mkpath("./Plots") #Make visualization directory if nonexistent
+save(joinpath("./Plots",
+	      "bwuv_z$(depth_nearest_m)_$(datetime).mp4"),
+     video1)
+save(joinpath("./Plots",
+	      "fq_z$(depth_nearest_m)_$(datetime).mp4"),
+     video2)
 
 close(ds)
