@@ -88,7 +88,7 @@ Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
 fig2 = Figure(size = (600, 600))
 ax_fq = Axis(fig2[2, 1]; title = "fq", axis_kwargs_xy...)
 hm_fq = heatmap!(ax_fq, x, y, fq, colorrange = lim_fq, colormap = cm)
-Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}", label = "1/s³kg")
+Colorbar(fig2[2, 2], hm_fq, tickformat = "{:.1e}", label = "1/s³")
 
 title1 = @lift @sprintf("Fields at depth %i m; t = %.2f days", depth_nearest_m, times[$n]/(3600*24))
 fig1[1, 1:4] = Label(fig1, title1, fontsize = 24, tellwidth = false)
