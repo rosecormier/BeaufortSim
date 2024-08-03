@@ -15,6 +15,9 @@ output_filename = joinpath("./Output", "output_$datetime.nc")
 ds = NCDataset(output_filename, "r")
 
 const depth_idx = parse(Int, ARGS[2])
+const x_idx = parse(Int, ARGS[3])
+
+## First, plot at constant depth
 
 x  =   ds["xC"][:]
 y  =   ds["yC"][:]
@@ -45,8 +48,8 @@ u    = @lift ds["u"][:, :, :, $n]
 v    = @lift ds["v"][:, :, :, $n]
 w    = @lift ds["w"][:, :, :, $n]
 
-ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, depth_idx)
-∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz)
+ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, depth_idx)
+∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz, 'z')
 fq     = @lift @. f*($ωtotal + f) * $∇_b
 
 u_xy = @lift $u[:, :, depth_idx]
@@ -68,7 +71,7 @@ lim_fq =  1 .* [-0.6e-13, 1e-13/5]
 
 cm = [Makie.to_colormap(Reverse(:roma))[1:1:128];ones(2,1).*RGBAf(1.0,1.0,1.0,1.0); Makie.to_colormap(Reverse(:roma))[214:254]]
 cm = cm[:,1];
-
+#=
 fig1 = Figure(size = (1200, 1200))
 axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
 ax_b    = Axis(fig1[2, 1]; title = "Buoyancy perturbation", axis_kwargs_xy...)
@@ -108,13 +111,97 @@ for i=1:frames[end]
         print(msg * " \r")
         n[]=i
 end
-
+=#
 mkpath("./Plots") #Make visualization directory if nonexistent
+#=
 save(joinpath("./Plots",
 	      "bwuv_z$(depth_nearest_m)_$(datetime).mp4"),
      video1)
 save(joinpath("./Plots",
 	      "fq_z$(depth_nearest_m)_$(datetime).mp4"),
      video2)
+=#
+## Next, plot at constant x
+
+x  =   ds["xC"][x_idx]
+z  =   ds["zC"][4:end-2]
+
+#Use initial frame to define background fields
+bb = ds["b"][x_idx, :, 4:end-2, 1]
+ub = ds["u"][x_idx, :, :, 1]
+vb = ds["v"][x_idx, :, :, 1]
+wb = ds["w"][x_idx, :, :, 1]
+
+n = Observable(1)
+
+b    = @lift ds["b"][x_idx, :, 4:end-2, $n] .- bb
+btot = @lift ds["b"][x_idx, :, 4:end-2, $n]
+u    = @lift ds["u"][:, :, 4:end-2, $n]
+v    = @lift ds["v"][:, :, 4:end-2, $n]
+w    = @lift ds["w"][:, :, 4:end-3, $n]
+
+ωtotal = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, x_idx, nothing, nothing)
+∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz, 'x')
+fq     = @lift @. f*($ωtotal + f) * $∇_b
+
+u_yz = @lift $u[x_idx, :, :]
+v_yz = @lift $v[x_idx, :, :]
+w_yz = @lift $w[x_idx, :, :]
+
+#Use final frames to define maximum values
+bf    = ds["b"][x_idx, :, :, length(times)]
+uf_yz = ds["u"][x_idx, :, :, length(times)]
+wf_yz = ds["w"][x_idx, :, :, length(times)]
+
+max_b  =  max(maximum(bf), 5e-9)
+lim_b  =  (3/4) * [-max_b, max_b]
+max_u  =  max(maximum(uf_yz), 1e-10)
+lim_u  =  (3/4) * [-max_u, max_u]
+max_w  =  (1/4) * max(maximum(wf_yz), 1e-10)
+lim_w  =  (3/4) * [-max_w, max_w]
+lim_fq =  1 .* [-0.6e-13, 1e-13/5]
+
+fig3 = Figure(size = (1200, 1200))
+axis_kwargs_yz = (xlabel = "y [m]", ylabel = "z [m]")
+ax_b    = Axis(fig3[2, 1]; title = "Buoyancy perturbation", axis_kwargs_yz...)
+ax_w    = Axis(fig3[2, 3]; title = "w", axis_kwargs_yz...)
+ax_u    = Axis(fig3[3, 1]; title = "u", axis_kwargs_yz...)
+ax_v    = Axis(fig3[3, 3]; title = "v", axis_kwargs_yz...)
+
+hm_b = heatmap!(ax_b, y, z, b, colorrange = lim_b, colormap = :balance)
+Colorbar(fig3[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
+hm_w = heatmap!(ax_w, y, z, w_yz, colorrange = lim_w, colormap = :balance)
+Colorbar(fig3[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
+hm_u = heatmap!(ax_u, y, z, u_yz, colorrange = lim_u, colormap = :balance)
+Colorbar(fig3[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
+hm_v = heatmap!(ax_v, y, z, v_yz, colorrange = lim_u, colormap = :balance)
+Colorbar(fig3[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
+
+fig4 = Figure(size = (600, 600))
+ax_fq = Axis(fig4[2, 1]; title = "fq", axis_kwargs_yz...)
+hm_fq = heatmap!(ax_fq, y, z, fq, colorrange = lim_fq, colormap = cm)
+Colorbar(fig4[2, 2], hm_fq, tickformat = "{:.1e}", label = "1/s³")
+
+title3 = @lift @sprintf("Fields at x = 0; t = %.2f days", times[$n]/(3600*24))
+fig3[1, 1:4] = Label(fig3, title3, fontsize = 24, tellwidth = false)
+
+title4 = @lift @sprintf("Potential vorticity at x = 0; t = %.2f days", times[$n]/(3600*24))
+fig4[1, 1:2] = Label(fig4, title4, fontsize = 24, tellwidth = false)
+
+frames = 1:length(times)
+
+video3 = VideoStream(fig3, format = "mp4", framerate = 6)
+video4 = VideoStream(fig4, format = "mp4", framerate = 6)
+
+for i=1:frames[end]
+    recordframe!(video3)
+    recordframe!(video4)
+    msg = string("Plotting frame(s) ", i, " of ", frames[end])
+        print(msg * " \r")
+        n[]=i
+end
+
+save(joinpath("./Plots", "bwuv_x0_$(datetime).mp4"), video3)
+save(joinpath("./Plots", "fq_x0_$(datetime).mp4"), video4)
 
 close(ds)

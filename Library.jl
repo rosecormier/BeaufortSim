@@ -34,7 +34,6 @@ end
 #= For visualization =#
     
 using Printf
-#using FileIO, JLD2
 module VisualizationFunctions
     export buoyancy_C, buoyancy_L, buoyancy_R, u_background, density_from_buoyancy, ωt, ω_b
     export ζ, ζ_2D, ∇b, ∇b_2D, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
@@ -102,12 +101,17 @@ function ζ(u, v, w, Δx, Δy, Δz)
     return ζz #, ζx, ζy, ζz
 end
 
-function ζ_2D(u, v, w, Δx, Δy, Δz, idx)
-#    ζx = (w[1,2:end,3:end]-w[1,1:end-1,3:end])./Δy .- (v[1,3:end,2:end]-v[1,3:end,1:end-1])./Δz
-#    ζy = (u[1,2:end,2:end]-u[1,2:end,1:end-1])./Δz
-    #ζz = - (u[1,2:end,2:end]-u[1,1:end-1,2:end])./Δy
-    ζz = (v[2:end,2:end,idx]-v[1:end-1,2:end,idx])./Δx -(u[2:end,2:end,idx]-u[2:end,1:end-1,idx])./Δy
-    return ζz #, ζx, ζy, ζz
+function ζ_2D(u, v, w, Δx, Δy, Δz, x_idx, y_idx, z_idx)
+    if !isnothing(x_idx)
+        ζx = (w[x_idx,2:end,2:end]-w[x_idx,1:end-1,2:end])./Δy -(v[x_idx,2:end,2:end]-v[x_idx,2:end,1:end-1])./Δz
+        return ζx
+    elseif !isnothing(y_idx)
+        ζy = (u[2:end,y_idx,2:end]-u[2:end,y_idx,1:end-1])./Δz -(w[2:end,y_idx,2:end]-w[1:end-1,y_idx,2:end])./Δx
+	return ζy
+    elseif !isnothing(z_idx)
+        ζz = (v[2:end,2:end,z_idx]-v[1:end-1,2:end,z_idx])./Δx -(u[2:end,2:end,z_idx]-u[2:end,1:end-1,z_idx])./Δy
+        return ζz
+    end
 end
 
 
@@ -119,12 +123,22 @@ function ∇b(b, Δx, Δy, Δz)
     return ∂z_b
 end
 
-function ∇b_2D(b, Δx, Δy, Δz)
-    ∂x_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δx #0.0
-    ∂y_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δy
-    ∂z_b =  0.0 #(b[2:end,2:end]-b[2:end,1:end-1])/Δz
+function ∇b_2D(b, Δx, Δy, Δz, excluded_dim)
+    if excluded_dim == 'x'
+        ∂x_b =  0.0
+        ∂y_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δy
+        ∂z_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δz
+    elseif excluded_dim == 'y'
+        ∂x_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δx
+        ∂y_b =  0.0
+        ∂z_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δz
+    elseif excluded_dim == 'z'
+        ∂x_b =  (b[2:end,2:end]-b[1:end-1,2:end])/Δx
+        ∂y_b =  (b[2:end,2:end]-b[2:end,1:end-1])/Δy
+        ∂z_b =  0.0
+    end
     db_dX = @. ∂x_b + ∂y_b + ∂z_b
-    return db_dX#, ∂x_b, ∂y_b, ∂z_b
+    return db_dX
 end
 
 function ertel_q(u, v, w, b, Δx, Δy, Δz)
