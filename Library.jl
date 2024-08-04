@@ -36,7 +36,7 @@ end
 using Printf
 module VisualizationFunctions
     #export buoyancy_C, buoyancy_L, buoyancy_R, u_background, density_from_buoyancy, ωt, ω_b
-    export ζ, ζ_2D, ∇b, ∇b_2D #, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
+    export ζ, ζ_2D, ∇b, ∇b_2D, ∂r_fq #, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
