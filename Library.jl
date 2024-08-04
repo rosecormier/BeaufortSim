@@ -36,7 +36,7 @@ end
 using Printf
 module VisualizationFunctions
     #export buoyancy_C, buoyancy_L, buoyancy_R, u_background, density_from_buoyancy, ωt, ω_b
-    export ζ, ζ_2D, ∇b, ∇b_2D, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
+    export ζ, ζ_2D, ∇b, ∇b_2D #, ertel_q, ertel_q_2D, BestFit, randomSine,randomSineGPU 
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
@@ -114,7 +114,6 @@ function ζ_2D(u, v, w, Δx, Δy, Δz, x_idx, y_idx, z_idx)
     end
 end
 
-
 function ∇b(b, Δx, Δy, Δz)
     ∂x_b =  (b[2:end,2:end,2:end]-b[1:end-1,2:end,2:end])/Δx
     ∂y_b =  (b[2:end,2:end,2:end]-b[2:end,1:end-1,2:end])/Δy
@@ -141,6 +140,15 @@ function ∇b_2D(b, Δx, Δy, Δz, excluded_dim)
     return db_dX
 end
 
+function ∂r_fq(fq, Δx, Δy, xC, yC)
+    ∂x_fq = (fq[2:end,2:end,:].-fq[1:end-1,2:end,:])./Δx
+    ∂y_fq = (fq[2:end,2:end,:].-fq[2:end,1:end-1,:])./Δy
+    r     = (xC.^2 .+ yC.^2).^0.5
+    ∂r_fq = (xC.*∂x_fq .+ yC.*∂y_fq)./r
+    return ∂r_fq
+end
+
+#=
 function ertel_q(u, v, w, b, Δx, Δy, Δz)
     ζt,ζx,ζy,ζz = ζ(u, v, w, Δx, Δy, Δz)
     ∇b, ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
@@ -166,6 +174,7 @@ function BestFit(degree,interval, abscissa,ordenate)
     @sprintf "The growth rate is approximately %5.1e" slope
     return best_fit, constant, slope
 end
+=#
 #=
 function randomSine(x,y,z, Nx,Ny,Nz)
 #Random coefficients (gaussian-distributed) for phase (ϕ) and amplitude (A)
