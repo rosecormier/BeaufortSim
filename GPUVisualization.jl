@@ -123,8 +123,9 @@ save(joinpath("./Plots",
 =#
 ## Next, plot at constant x
 
-x  =   ds["xC"][x_idx]
-z  =   ds["zC"][4:end-2]
+x     = ds["xC"][x_idx]
+z     = ds["zC"][4:end-2]
+const z_plt = div(length(z[:]),2) #z-index to start plot at
 
 #Use initial frame to define background fields
 bb = ds["b"][x_idx, :, 4:end-2, 1]
@@ -144,14 +145,17 @@ w    = @lift ds["w"][:, :, 4:end-3, $n]
 ∇_b    = @lift ∇b_2D($btot, Δx, Δy, Δz, 'x')
 fq     = @lift @. f*($ωtotal + f) * $∇_b
 
-u_yz = @lift $u[x_idx, :, :]
-v_yz = @lift $v[x_idx, :, :]
-w_yz = @lift $w[x_idx, :, :]
+#Restrict fields to plotting domain
+u_yz  = @lift $u[x_idx, :, z_plt:length(z[:])-1]
+v_yz  = @lift $v[x_idx, :, z_plt:length(z[:])-1]
+w_yz  = @lift $w[x_idx, :, z_plt:length(z[:])-1]
+b_yz  = @lift $b[:, z_plt:length(z[:])-1]
+fq_yz = @lift $fq[:, z_plt:length(z[:])-1]
 
 #Use final frames to define maximum values
-bf    = ds["b"][x_idx, :, :, length(times)]
-uf_yz = ds["u"][x_idx, :, :, length(times)]
-wf_yz = ds["w"][x_idx, :, :, length(times)]
+bf    = ds["b"][x_idx, :, z_plt:length(z[:])-1, length(times)]
+uf_yz = ds["u"][x_idx, :, z_plt:length(z[:])-1, length(times)]
+wf_yz = ds["w"][x_idx, :, z_plt:length(z[:])-1, length(times)]
 
 max_b  =  max(maximum(bf), 5e-9)
 lim_b  =  (3/4) * [-max_b, max_b]
@@ -159,27 +163,27 @@ max_u  =  max(maximum(uf_yz), 1e-10)
 lim_u  =  (3/4) * [-max_u, max_u]
 max_w  =  (1/4) * max(maximum(wf_yz), 1e-10)
 lim_w  =  (3/4) * [-max_w, max_w]
-lim_fq =  1 .* [-0.6e-13, 1e-13/5]
+lim_fq =  1 .* [-0.6e-11, 1e-11/5]
 
-fig3 = Figure(size = (1200, 1200))
+fig3 = Figure(size = (1200, 800))
 axis_kwargs_yz = (xlabel = "y [m]", ylabel = "z [m]")
 ax_b    = Axis(fig3[2, 1]; title = "Buoyancy perturbation", axis_kwargs_yz...)
 ax_w    = Axis(fig3[2, 3]; title = "w", axis_kwargs_yz...)
 ax_u    = Axis(fig3[3, 1]; title = "u", axis_kwargs_yz...)
 ax_v    = Axis(fig3[3, 3]; title = "v", axis_kwargs_yz...)
 
-hm_b = heatmap!(ax_b, y, z, b, colorrange = lim_b, colormap = :balance)
+hm_b = heatmap!(ax_b, y, z[z_plt:length(z[:])-1], b_yz, colorrange = lim_b, colormap = :balance)
 Colorbar(fig3[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
-hm_w = heatmap!(ax_w, y, z, w_yz, colorrange = lim_w, colormap = :balance)
+hm_w = heatmap!(ax_w, y, z[z_plt:length(z[:])-1], w_yz, colorrange = lim_w, colormap = :balance)
 Colorbar(fig3[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
-hm_u = heatmap!(ax_u, y, z, u_yz, colorrange = lim_u, colormap = :balance)
+hm_u = heatmap!(ax_u, y, z[z_plt:length(z[:])-1], u_yz, colorrange = lim_u, colormap = :balance)
 Colorbar(fig3[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
-hm_v = heatmap!(ax_v, y, z, v_yz, colorrange = lim_u, colormap = :balance)
+hm_v = heatmap!(ax_v, y, z[z_plt:length(z[:])-1], v_yz, colorrange = lim_u, colormap = :balance)
 Colorbar(fig3[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
 
-fig4 = Figure(size = (600, 600))
+fig4 = Figure(size = (800, 500))
 ax_fq = Axis(fig4[2, 1]; title = "fq", axis_kwargs_yz...)
-hm_fq = heatmap!(ax_fq, y, z, fq, colorrange = lim_fq, colormap = cm)
+hm_fq = heatmap!(ax_fq, y, z[z_plt:length(z[:])-1], fq_yz, colorrange = lim_fq, colormap = cm)
 Colorbar(fig4[2, 2], hm_fq, tickformat = "{:.1e}", label = "1/s³")
 
 title3 = @lift @sprintf("Fields at x = 0; t = %.2f days", times[$n]/(3600*24))
