@@ -4,7 +4,7 @@
 
 Nx               = 512
 Ny               = 512
-Nz               = 64
+Nz               = 128 #64
 
 Lx               = 2000       # km 
 Ly               = 2000       # km
@@ -15,7 +15,7 @@ Lz               = 1000       # m
 #####################
 
 h_diffusivity    = 5e-1       # m^2/s
-v_diffusivity    = 5e-5       # m^2/s
+v_diffusivity    = 5e-2 #-5       # m^2/s
 
 ########################
 ### f-plane latitude ###
@@ -27,7 +27,7 @@ latitude         = 74.0       # Degrees N
 ### Pressure and density parameters (assuming GSB) ###
 ######################################################
 
-p̃0               = 100        # Reference [reduced] pressure (m^2/s^2)
+p̃0               = 10        # Reference [reduced] pressure (m^2/s^2)
 σr               = 250        # Radial gyre lengthscale (km)
 σz               = 300        # Vertical gyre lengthscale (m)
 N                = 5e-3       # BV frequency (1/s); cf. Jackson et al, 2012
