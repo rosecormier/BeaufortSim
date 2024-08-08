@@ -57,7 +57,7 @@ v_xy = @lift $v[:, :, depth_idx]
 w_xy = @lift $w[:, :, depth_idx]
 
 #Use final frames to define maximum values
-bf    = ds["b"][:, :, depth_idx, length(times)]
+bf    = ds["b"][:, :, depth_idx, length(times)] .- bb
 uf_xy = ds["u"][:, :, depth_idx, length(times)]
 wf_xy = ds["w"][:, :, depth_idx, length(times)]
 
@@ -154,7 +154,7 @@ fq_yz = @lift $fq[:, z_plt:length(z[:])-1]
 fqr_yz = @lift $fq_r[:, z_plt:length(z[:])-2]
 
 #Use final frames to define maximum values
-bf    = ds["b"][x_idx, :, z_plt:length(z[:])-1, length(times)]
+bf    = ds["b"][x_idx, :, z_plt:length(z[:])-1, length(times)] .- ds["b"][x_idx, :, z_plt:length(z[:])-1, 1]
 uf_yz = ds["u"][x_idx, :, z_plt:length(z[:])-1, length(times)]
 wf_yz = ds["w"][x_idx, :, z_plt:length(z[:])-1, length(times)]
 
