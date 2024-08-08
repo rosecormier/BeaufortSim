@@ -28,7 +28,7 @@ const latitude = params["latitude"]
 const p̃0 = params["p̃0"]
 const σr = params["σr"] * 1e3
 const σz = params["σz"] #Units m
-const N2 = params["N"]^2
+const N2 = params["N2"] #^2
 
 const Δti         = params["Δt_initial"]
 const stop_time   = params["stop_time"]
@@ -68,7 +68,7 @@ ū(x,y,z) = 2 * y * p̃(x,y,z) / (f*σr^2)
 v̄(x,y,z) = -2 * x * p̃(x,y,z) / (f*σr^2)
 b̄(x,y,z) = N2*z - (2 * z * p̃(x,y,z) / σz^2)
 
-bi(x,y,z) = b̄(x,y,z) + (1e-5)*rand()
+bi(x,y,z) = b̄(x,y,z) + (1e-2)*rand() #(1e-3)*rand()
 
 set!(model, u = ū, v = v̄, b = bi)
 
