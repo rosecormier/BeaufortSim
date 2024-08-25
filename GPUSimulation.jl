@@ -28,7 +28,7 @@ const latitude = params["latitude"]
 const p̃0 = params["p̃0"]
 const σr = params["σr"] * 1e3
 const σz = params["σz"] #Units m
-const N2 = params["N2"] #^2
+const N2 = params["N2"]
 
 const Δti         = params["Δt_initial"]
 const stop_time   = params["stop_time"]
@@ -59,18 +59,25 @@ model = NonhydrostaticModel(;
 # SET INITIAL CONDITIONS
 
 f = model.coriolis.f
-
 b = model.tracers.b
 u, v, w = model.velocities
 
+#=
 p̃(x,y,z) = p̃0 * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
 ū(x,y,z) = 2 * y * p̃(x,y,z) / (f*σr^2)
 v̄(x,y,z) = -2 * x * p̃(x,y,z) / (f*σr^2)
 b̄(x,y,z) = N2*z - (2 * z * p̃(x,y,z) / σz^2)
 
-bi(x,y,z) = b̄(x,y,z) + (1e-2)*rand() #(1e-3)*rand()
+bi(x,y,z) = b̄(x,y,z) + (1e-4)*rand()
+=#
+u(x,y,z)         = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+v(x,y,z)         = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+b_perturb(x,y,z) = (1e-4) * rand()
+b(x,y,z)         = (N2*z 
+		    - (σr*f*U*z/(σr^2)) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+		    + b_perturb(x,y,z))
 
-set!(model, u = ū, v = v̄, b = bi)
+set!(model, u = u, v = v, b = b)
 
 simulation = Simulation(model, Δt = Δti, stop_time = stop_time)
 
@@ -82,15 +89,10 @@ progress(sim) = @info string(
     "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
 add_callback!(simulation, progress, IterationInterval(100))
 
-ζz_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
-ζz = Field(ζz_op)
-#b_perturb = b - b̄
-
 outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
 	       "w" => model.velocities.w,
-	       "b" => model.tracers.b,
-	       "ζz" => ζz)
+	       "b" => model.tracers.b)
 timenow = Dates.format(now(), "yymmdd-HHMMSS")
 
 output_filename = "output_$(timenow).nc"
