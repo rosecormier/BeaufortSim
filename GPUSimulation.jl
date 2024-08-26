@@ -4,7 +4,6 @@ using Dates: format, now
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Coriolis
-using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 
@@ -103,19 +102,19 @@ outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
 	       "w" => model.velocities.w,
 	       "b" => model.tracers.b)
-timenow = format(now(), "yymmdd-HHMMSS")
 
-output_filename = "output_$(timenow).nc"
-output_filepath = joinpath("./Output", output_filename)
-mkpath(dirname(output_filepath)) #Make path if nonexistent
+datetimenow = format(now(), "yymmdd-HHMMSS")
+outfilename = "output_$(datetimenow).nc"
+outfilepath = joinpath("./Output", outfilename)
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
                                   with_halos = true,
-		                  filename = output_filepath, 
+		                  filename = outfilepath, 
                                   schedule = TimeInterval(Δt_save))
 
 simulation.output_writers[:field_writer] = outputwriter
 
 run!(simulation)
-print(timenow, "\n")
+print("Date-time label: $(datetimenow)", "\n")
