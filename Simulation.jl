@@ -6,6 +6,7 @@ using Oceananigans.Architectures
 using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
+using Printf
 
 ######################
 # SPECIFY PARAMETERS #
@@ -94,9 +95,18 @@ simulation = Simulation(model, Δt = Δti, stop_time = tf)
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
-progress(sim) = @info string(
-    "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
-add_callback!(simulation, progress, IterationInterval(100))
+function progress(sim)
+   umax = maximum(abs, sim.model.velocities.u)
+   wmax = maximum(abs, sim.model.velocities.w)
+   bmax = maximum(abs, sim.model.tracers.b)
+   @info @sprintf("Iter: %d; time: %.2e; Δt: %s",
+		  iteration(sim), time(sim), prettytime(sim.Δt))
+   @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
+		  umax, wmax, bmax)
+   return nothing
+end
+
+add_callback!(simulation, progress, TimeInterval(Δt_save))
 
 outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
