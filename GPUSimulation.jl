@@ -36,7 +36,7 @@ const N2  = (3e-4) * (1/second^2)
 const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.2
-const tf      = 20 * day
+const tf      = 1 * day
 const Δt_save = 1 * hour
 
 #Architecture
@@ -85,9 +85,9 @@ b̄(x,y,z)  = (N2*z
 
 set!(model, u = ū, v = v̄, b = b̄)
 
-#####################
-# SET UP SIMULATION #
-#####################
+#############################
+# SET UP AND RUN SIMULATION #
+#############################
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
@@ -118,3 +118,24 @@ simulation.output_writers[:field_writer] = outputwriter
 
 run!(simulation)
 print("Date-time label: $(datetimenow)", "\n")
+
+###############################
+# SAVE PARAMETERS TO LOG FILE #
+###############################
+
+logfilename = "log_$(datetimenow).txt"
+logfilepath = joinpath("./Logs", logfilename)
+mkpath(dirname(logfilepath)) #Make path if nonexistent
+
+open(logfilepath, "w") do file
+   write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
+   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
+   write(file, "νh, νv = $(νh), $(νv) \n")
+   write(file, "lat = $(lat) \n")
+   write(file, "U = $(U) \n")
+   write(file, "σr, σz = $(σr), $(σz) \n")
+   write(file, "N2 = $(N2) \n")
+   write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
+   write(file, "CFL = $(CFL) \n")
+   write(file, "tf = $(tf)")
+end
