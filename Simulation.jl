@@ -1,135 +1,141 @@
 include("Library.jl")
 
-using Dates
-using Oceananigans, Oceananigans.Coriolis, Oceananigans.TurbulenceClosures
+using Dates: format, now
+using Oceananigans
+using Oceananigans.Architectures
+using Oceananigans.Coriolis
+using Oceananigans.TurbulenceClosures
+using Oceananigans.Units
 
-# GET INPUTS
+######################
+# SPECIFY PARAMETERS #
+######################
 
-input_params = ReadInputFile("InputSimulation.txt")
+#Numbers of gridpoints
+const Nx = 512
+const Ny = 512
+const Nz = 128
 
-# SIMULATION PARAMETERS AND GEOMETRY
+#Lengths of axes
+const Lx = 2000 * kilometer
+const Ly = 2000 * kilometer
+const Lz = 1000 * meter
 
-Nx, Ny, Nz = input_params["Nx"], input_params["Ny"], input_params["Nz"]
+#Eddy viscosities
+const νh = (5e-2) * (meter^2/second)
+const νv = (5e-5) * (meter^2/second)
 
-Lx, Ly = input_params["Lx"] * 1e3, input_params["Ly"] * 1e3 #Converted to m
-Lz = input_params["Lz"] #Units m
+#Gyre scales
+const lat = 74.0  #Degrees N
+const U   = 1.0 * meter/second
+const σr  = 250 * kilometer
+const σz  = 300 * meter
+const N2  = (3e-4) * (1/second^2)
 
-grid = RectilinearGrid(size = (Nx, Ny, Nz), 
-                        x = (-Lx/2, Lx/2), 
-                        y = (-Ly/2, Ly/2), 
-                        z = (-Lz, 0),
-                        topology = (Periodic, Periodic, Bounded),
-                        halo = (3,3,3))
+#Time increments
+const Δti     = 1 * second
+const Δt_max  = 100 * second 
+const CFL     = 0.2
+const tf      = 1 * day
+const Δt_save = 1 * hour
 
-# INSTANTIATE THE MODEL WITH ROTATION AND CONSTANT ANISOTROPIC DIFFUSIVITIES
+#Architecture
+const use_GPU = true
 
-model = NonhydrostaticModel(; grid = grid, 
-    timestepper = :QuasiAdamsBashforth2, 
-    advection = UpwindBiasedFifthOrder(),
-    closure = (
-        HorizontalScalarDiffusivity(
-            ν = input_params["h_diffusivity"]), 
-        VerticalScalarDiffusivity(
-            ν = input_params["v_diffusivity"])), 
-    coriolis = FPlane(latitude = input_params["latitude"]),
-    tracers = (:b),
-    buoyancy = BuoyancyTracer())
+##############################
+# INSTANTIATE GRID AND MODEL #
+##############################
 
-# READ IN PHYSICAL PARAMETERS AND SET INITIAL CONDITIONS
+use_GPU ? architecture = GPU() : architecture = CPU()
 
-σr = input_params["σr"] * 1e3 #Converted to m
-σz = input_params["σz"] #Units m
-N2 = input_params["N"]^2
-p̃0 = input_params["p̃0"] #Reference value for reduced pressure 
+grid = RectilinearGrid(architecture,
+		       topology = (Periodic, Periodic, Bounded),
+                       size = (Nx, Ny, Nz), 
+                       x = (-Lx/2, Lx/2), 
+                       y = (-Ly/2, Ly/2), 
+                       z = (-Lz, 0),
+                       halo = (3,3,3))
 
-f = model.coriolis.f
+closure = (HorizontalScalarDiffusivity(ν = νh), 
+	   VerticalScalarDiffusivity(ν = νv))
 
-b = model.tracers.b
+model = NonhydrostaticModel(; 
+                            grid = grid, 
+                            timestepper = :QuasiAdamsBashforth2, 
+                            advection = UpwindBiasedFifthOrder(),
+                            closure = closure, 
+                            coriolis = FPlane(latitude = lat),
+                            tracers = (:b),
+                            buoyancy = BuoyancyTracer())
+
+##########################
+# SET INITIAL CONDITIONS #
+##########################
+
+f       = model.coriolis.f
+b       = model.tracers.b
 u, v, w = model.velocities
 
-#Function to compute equilibrium buoyancy profile
-b_eqm(x,y,z) = (N2*z 
-    - (2*p̃0/σz^2) * z * exp(-(x^2+y^2)/σr^2 - (z/σz)^2))
+ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+v̄(x,y,z)  = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+bʹ(x,y,z) = (1e-4) * rand()
+b̄(x,y,z)  = (N2*z 
+	     - (σr*f*U*z/(σr^2)) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+	     + bʹ(x,y,z))
 
-#Function to compute initial buoyancy profile
-b_initial(x,y,z) = b_eqm(x,y,z) + 1e-5*rand()
+set!(model, u = ū, v = v̄, b = b̄)
 
-#Functions to compute initial velocities
-u_initial(x,y,z) = (2*p̃0/(f*σr^2)) * y * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
-v_initial(x,y,z) = (-2*p̃0/(f*σr^2)) * x * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
-w_initial(x,y,z) = 0
+#############################
+# SET UP AND RUN SIMULATION #
+#############################
 
-set!(model, 
-    u = u_initial, 
-    v = v_initial, 
-    w = w_initial, 
-    b = b_initial)
+simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
-# DEFINE SIMULATION; SET UP CALLBACKS AND OUTPUT WRITER
-
-simulation = Simulation(model, 
-                Δt = input_params["Δt_initial"], 
-                stop_time = input_params["stop_time"])
-
-#Adaptive timestepping
-wizard = TimeStepWizard(cfl = 0.2, 
-                        max_Δt = 100)
-simulation.callbacks[:wizard] = Callback(wizard, 
-                                    IterationInterval(10))
+wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
 progress(sim) = @info string(
     "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
 add_callback!(simulation, progress, IterationInterval(100))
 
-ωx = ∂y(w) - ∂z(v)
-ωy = ∂z(u) - ∂x(w)
-ωz = ∂x(v) - ∂y(u)
-b_perturb = b - b_eqm
-u_perturb = u - u_initial
-v_perturb = v - v_initial
+outputs = Dict("u" => model.velocities.u,
+	       "v" => model.velocities.v,
+	       "w" => model.velocities.w,
+	       "b" => model.tracers.b)
 
-output_fields = Dict("u" => u, "v" => v, "w" => w, 
-                    "ωx" => ωx, "ωy" => ωy, "ωz" => ωz,
-                    "b" => b, "b_perturb" => b_perturb,
-                    "u_perturb" => u_perturb, "v_perturb" => v_perturb)
+datetimenow = format(now(), "yymmdd-HHMMSS")
+outfilename = "output_$(datetimenow).nc"
+outfilepath = joinpath("./Output", outfilename)
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
-timenow = Dates.format(now(), "yymmdd-HHMMSS")
+outputwriter = NetCDFOutputWriter(model, 
+				  outputs, 
+                                  with_halos = true,
+		                  filename = outfilepath, 
+                                  schedule = TimeInterval(Δt_save))
 
-output_filename = "output_$(timenow).nc"
-output_filepath = joinpath("./Output", output_filename)
-mkpath(dirname(output_filepath)) #Make directory if nonexistent
-
-simulation.output_writers[:field_writer] = NetCDFOutputWriter(model, 
-                output_fields, 
-                filename=output_filepath, 
-                schedule=TimeInterval(
-                    input_params["save_interval"]))
-
-# RUN SIMULATION
+simulation.output_writers[:field_writer] = outputwriter
 
 run!(simulation)
-print(timenow, "\n")
+print("Date-time label: $(datetimenow)", "\n")
 
-# SAVE PARAMETERS TO LOG FILE
+###############################
+# SAVE PARAMETERS TO LOG FILE #
+###############################
 
-log_filename = "log_$(timenow).txt"
-log_filepath = joinpath("./Logs", log_filename)
-mkpath(dirname(log_filepath)) #Make directory if nonexistent
+logfilename = "log_$(datetimenow).txt"
+logfilepath = joinpath("./Logs", logfilename)
+mkpath(dirname(logfilepath)) #Make path if nonexistent
 
-open(log_filepath, "w") do file
-    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
-    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
-    write(file, "Horizontal diffusivity = 
-        $(input_params["h_diffusivity"]) \n")
-    write(file, "Vertical diffusivity = 
-        $(input_params["v_diffusivity"]) \n")
-    write(file, "f-Plane latitude = 
-        $(input_params["latitude"]) degrees N \n")
-    write(file, "p̃0, σr, σz = $(p̃0), $(σr), $(σz) \n")
-    write(file, "N^2 = $(N2) \n")
-    write(file, "Timestep, stop time = 
-        $(input_params["Δt_initial"]), 
-        $(input_params["stop_time"]) \n")
-    write(file, "Save interval = 
-        $(input_params["save_interval"])")
+open(logfilepath, "w") do file
+   write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
+   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
+   write(file, "νh, νv = $(νh), $(νv) \n")
+   write(file, "lat = $(lat) \n")
+   write(file, "U = $(U) \n")
+   write(file, "σr, σz = $(σr), $(σz) \n")
+   write(file, "N2 = $(N2) \n")
+   write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
+   write(file, "CFL = $(CFL) \n")
+   write(file, "tf = $(tf)")
 end

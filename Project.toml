@@ -1,5 +1,8 @@
 [deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
