@@ -1,89 +1,99 @@
 include("Library.jl")
 
-using Dates
+using Dates: format, now
 using Oceananigans
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Architectures
 using Oceananigans.Coriolis
 using Oceananigans.Operators: ζ₃ᶠᶠᶜ
 using Oceananigans.TurbulenceClosures
-#using Oceananigans.Units
+using Oceananigans.Units
 
-# GET INPUTS
+######################
+# SPECIFY PARAMETERS #
+######################
 
-params = ReadInputFile("InputSimulation.txt")
+#Numbers of gridpoints
+const Nx = 512
+const Ny = 512
+const Nz = 128
 
-const Nx = params["Nx"]
-const Ny = params["Ny"]
-const Nz = params["Nz"]
+#Lengths of axes
+const Lx = 2000 * kilometer
+const Ly = 2000 * kilometer
+const Lz = 1000 * meter
 
-const Lx = params["Lx"] * 1e3
-const Ly = params["Ly"] * 1e3
-const Lz = params["Lz"] #Units m
+#Eddy viscosities
+const νh = (5e-2) * (meter^2/second)
+const νv = (5e-5) * (meter^2/second)
 
-const νh = params["h_diffusivity"]
-const νv = params["v_diffusivity"]
+#Gyre scales
+const lat = 74.0  #Degrees N
+const U   = 1.0 * meter/second
+const σr  = 250 * kilometer
+const σz  = 300 * meter
+const N2  = (3e-4) * (1/second^2)
 
-const latitude = params["latitude"]
+#Time increments
+const Δti     = 1 * second
+const Δt_max  = 100 * second 
+const CFL     = 0.2
+const tf      = 20 * day
+const Δt_save = 1 * hour
 
-const p̃0 = params["p̃0"]
-const σr = params["σr"] * 1e3
-const σz = params["σz"] #Units m
-const N2 = params["N2"]
+#Architecture
+const use_GPU = true
 
-const Δti         = params["Δt_initial"]
-const stop_time   = params["stop_time"]
-const save_interv = params["save_interval"] 
+##############################
+# INSTANTIATE GRID AND MODEL #
+##############################
 
-# SIMULATION GEOMETRY
+use_GPU ? architecture = GPU() : architecture = CPU()
 
-grid = RectilinearGrid(GPU(), 
-                  size = (Nx, Ny, Nz), 
-                  x = (-Lx/2, Lx/2), 
-                  y = (-Ly/2, Ly/2), 
-                  z = (-Lz, 0),
-                  topology = (Periodic, Periodic, Bounded),
-                  halo = (3,3,3))
+grid = RectilinearGrid(architecture,
+		       topology = (Periodic, Periodic, Bounded),
+                       size = (Nx, Ny, Nz), 
+                       x = (-Lx/2, Lx/2), 
+                       y = (-Ly/2, Ly/2), 
+                       z = (-Lz, 0),
+                       halo = (3,3,3))
 
-# INSTANTIATE MODEL WITH ROTATION
+closure = (HorizontalScalarDiffusivity(ν = νh), 
+	   VerticalScalarDiffusivity(ν = νv))
 
 model = NonhydrostaticModel(; 
-           grid = grid, 
-           timestepper = :QuasiAdamsBashforth2, 
-           advection = UpwindBiasedFifthOrder(),
-           closure = (HorizontalScalarDiffusivity(ν = νh), 
-              VerticalScalarDiffusivity(ν = νv)), 
-           coriolis = FPlane(latitude = latitude),
-           tracers = (:b),
-           buoyancy = BuoyancyTracer())
+                            grid = grid, 
+                            timestepper = :QuasiAdamsBashforth2, 
+                            advection = UpwindBiasedFifthOrder(),
+                            closure = closure, 
+                            coriolis = FPlane(latitude = lat),
+                            tracers = (:b),
+                            buoyancy = BuoyancyTracer())
 
-# SET INITIAL CONDITIONS
+##########################
+# SET INITIAL CONDITIONS #
+##########################
 
-f = model.coriolis.f
-b = model.tracers.b
+f       = model.coriolis.f
+b       = model.tracers.b
 u, v, w = model.velocities
 
-#=
-p̃(x,y,z) = p̃0 * exp(-(x^2+y^2)/σr^2 - (z/σz)^2)
-ū(x,y,z) = 2 * y * p̃(x,y,z) / (f*σr^2)
-v̄(x,y,z) = -2 * x * p̃(x,y,z) / (f*σr^2)
-b̄(x,y,z) = N2*z - (2 * z * p̃(x,y,z) / σz^2)
+ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+v̄(x,y,z)  = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+bʹ(x,y,z) = (1e-4) * rand()
+b̄(x,y,z)  = (N2*z 
+	     - (σr*f*U*z/(σr^2)) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+	     + bʹ(x,y,z))
 
-bi(x,y,z) = b̄(x,y,z) + (1e-4)*rand()
-=#
-u(x,y,z)         = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
-v(x,y,z)         = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
-b_perturb(x,y,z) = (1e-4) * rand()
-b(x,y,z)         = (N2*z 
-		    - (σr*f*U*z/(σr^2)) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
-		    + b_perturb(x,y,z))
+set!(model, u = ū, v = v̄, b = b̄)
 
-set!(model, u = u, v = v, b = b)
+#####################
+# SET UP SIMULATION #
+#####################
 
-simulation = Simulation(model, Δt = Δti, stop_time = stop_time)
+simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
-wizard = TimeStepWizard(cfl = 0.2, max_Δt = 100)
-simulation.callbacks[:wizard] = Callback(wizard, 
-				         IterationInterval(100))
+wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
 progress(sim) = @info string(
     "Iteration: $(iteration(sim)), time: $(time(sim)), Δt: $(sim.Δt)")
@@ -93,18 +103,19 @@ outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
 	       "w" => model.velocities.w,
 	       "b" => model.tracers.b)
-timenow = Dates.format(now(), "yymmdd-HHMMSS")
+timenow = format(now(), "yymmdd-HHMMSS")
 
 output_filename = "output_$(timenow).nc"
 output_filepath = joinpath("./Output", output_filename)
-mkpath(dirname(output_filepath)) #Make directory if nonexistent
+mkpath(dirname(output_filepath)) #Make path if nonexistent
 
-simulation.output_writers[:field_writer] = NetCDFOutputWriter(
-                model, 
-		outputs, 
-                with_halos = true,
-		filename = output_filepath, 
-                schedule = TimeInterval(save_interv))
+outputwriter = NetCDFOutputWriter(model, 
+				  outputs, 
+                                  with_halos = true,
+		                  filename = output_filepath, 
+                                  schedule = TimeInterval(Δt_save))
+
+simulation.output_writers[:field_writer] = outputwriter
 
 run!(simulation)
 print(timenow, "\n")
