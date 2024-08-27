@@ -1,4 +1,5 @@
-include("Library.jl")
+#include("Library.jl")
+include("Visualization.jl")
 
 using Dates: format, now
 using Oceananigans
@@ -42,6 +43,11 @@ const Δt_save = 1 * hour
 
 #Architecture
 const use_GPU = true
+
+#Whether to run visualization functions
+const do_vis_const_x = true
+const do_vis_const_y = true
+const do_vis_const_z = true
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -148,4 +154,18 @@ open(logfilepath, "w") do file
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
+end
+
+###################################
+# RUN VISUALIZATION, IF INDICATED #
+###################################
+
+if do_vis_const_z
+
+   Δx = Lx / Nx
+   Δy = Ly / Ny
+   Δz = Lz / Nz
+
+   visualize_const_z(outfilepath, 20, Δx, Δy, Δz, f, datetimenow)
+
 end
