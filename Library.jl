@@ -5,11 +5,11 @@ module ComputeSecondaries
 end
 
 function ζ(u, v, w, Δx, Δy, Δz)
-    ζx = @. ((w[2:end,2:end,3:end] - w[2:end,1:end-1,3:end]) / Δy 
-	     - (v[2:end,3:end,2:end] - v[2:end,3:end,1:end-1]) / Δz)
+    ζx = @. ((w[2:end,2:end,2:end] - w[2:end,1:end-1,2:end]) / Δy 
+	     - (v[2:end,2:end,2:end] - v[2:end,2:end,1:end-1]) / Δz)
     ζy = @. ((u[2:end,2:end,2:end] - u[2:end,2:end,1:end-1]) / Δz 
-	     - (w[2:end,2:end,3:end] - w[1:end-1,2:end,3:end]) / Δx)
-    ζz = @. ((v[2:end,3:end,2:end] - v[1:end-1,3:end,2:end]) / Δx 
+	     - (w[2:end,2:end,2:end] - w[1:end-1,2:end,2:end]) / Δx)
+    ζz = @. ((v[2:end,2:end,2:end] - v[1:end-1,2:end,2:end]) / Δx 
 	     - (u[2:end,2:end,2:end] - u[2:end,1:end-1,2:end]) / Δy)
     return ζx, ζy, ζz
 end
@@ -35,16 +35,16 @@ function ∇b(b, Δx, Δy, Δz)
     return ∂x_b, ∂y_b, ∂z_b
 end
 
-function ∇b_2D(b, Δx, Δy, Δz, excluded_dim)
-    if excluded_dim == 'x'
-        ∇b_2D = @. ((b[2:end,2:end] - b[1:end-1,2:end]) / Δy 
-		    + (b[2:end,2:end] - b[2:end,1:end-1]) / Δz)
-    elseif excluded_dim == 'y'
-        ∇b_2D = @. ((b[2:end,2:end] - b[1:end-1,2:end]) / Δx 
-		    + (b[2:end,2:end] - b[2:end,1:end-1]) / Δz)
-    elseif excluded_dim == 'z'
-        ∇b_2D = @. ((b[2:end,2:end] - b[1:end-1,2:end]) / Δx 
-		    + (b[2:end,2:end] - b[2:end,1:end-1]) / Δy)
+function ∇b_2D(b, Δx, Δy, Δz, x_idx, y_idx, z_idx)
+    if !isnothing(x_idx)
+        ∇b_2D = @. ((b[x_idx,2:end,2:end] - b[x_idx,1:end-1,2:end]) / Δy 
+		    + (b[x_idx,2:end,2:end] - b[x_idx,2:end,1:end-1]) / Δz)
+    elseif !isnothing(y_idx)
+        ∇b_2D = @. ((b[2:end,y_idx,2:end] - b[1:end-1,y_idx,2:end]) / Δx 
+		    + (b[2:end,y_idx,2:end] - b[2:end,y_idx,1:end-1]) / Δz)
+    elseif !isnothing(z_idx)
+        ∇b_2D = @. ((b[2:end,2:end,z_idx] - b[1:end-1,2:end,z_idx]) / Δx 
+		    + (b[2:end,2:end,z_idx] - b[2:end,1:end-1,z_idx]) / Δy)
     end
     return ∇b_2D
 end
@@ -52,6 +52,7 @@ end
 function ertelQ(f, u, v, w, b, Δx, Δy, Δz)
     ζx, ζy, ζz = ζ(u, v, w, Δx, Δy, Δz)
     ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
+    print(size(ζx), size(ζy), size(ζz), size(∂x_b), size(∂y_b), size(∂z_b))
     Q = @. (ζx * ∂x_b) + (ζy * ∂y_b) + ((f + ζz) * ∂z_b)
     return Q
 end
