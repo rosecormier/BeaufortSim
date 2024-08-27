@@ -52,7 +52,6 @@ end
 function ertelQ(f, u, v, w, b, Δx, Δy, Δz)
     ζx, ζy, ζz = ζ(u, v, w, Δx, Δy, Δz)
     ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
-    print(size(ζx), size(ζy), size(ζz), size(∂x_b), size(∂y_b), size(∂z_b))
     Q = @. (ζx * ∂x_b) + (ζy * ∂y_b) + ((f + ζz) * ∂z_b)
     return Q
 end

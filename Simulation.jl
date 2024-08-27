@@ -1,4 +1,3 @@
-#include("Library.jl")
 include("Visualization.jl")
 
 using Dates: format, now
@@ -80,7 +79,7 @@ model = NonhydrostaticModel(;
 ##########################
 
 f       = model.coriolis.f
-#=b       = model.tracers.b
+b       = model.tracers.b
 u, v, w = model.velocities
 
 ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
@@ -118,11 +117,11 @@ outputs = Dict("u" => model.velocities.u,
 	       "v" => model.velocities.v,
 	       "w" => model.velocities.w,
 	       "b" => model.tracers.b)
-=#
-datetimenow = "240827-111656" #format(now(), "yymmdd-HHMMSS")
+
+datetimenow = format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
 outfilepath = joinpath("./Output", outfilename)
-#=mkpath(dirname(outfilepath)) #Make path if nonexistent
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -155,7 +154,7 @@ open(logfilepath, "w") do file
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################

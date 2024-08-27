@@ -33,7 +33,7 @@ function visualize_const_z(outfilepath, z_idx, Δx, Δy, Δz, f, datetime)
 
    ωtot = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, z_idx)
    ∇_b  = @lift ∇b_2D($btot, Δx, Δy, Δz, nothing, nothing, z_idx)
-   q    = @lift ertelQ(f, $u, $v, $w, $btot, Δx, Δy, Δz) #f*($ωtot + f) * $∇_b
+   q    = @lift ertelQ(f, $u, $v, $w, $btot, Δx, Δy, Δz)
 
    b_xy = @lift $b[:, :, z_idx]
    u_xy = @lift $u[:, :, z_idx]
