@@ -113,10 +113,10 @@ end
 
 add_callback!(simulation, progress, TimeInterval(Δt_save))
 
-outputs = Dict("u" => model.velocities.u,
-	       "v" => model.velocities.v,
-	       "w" => model.velocities.w,
-	       "b" => model.tracers.b)
+outputs = (u = model.velocities.u,
+	   v = model.velocities.v,
+	   w = model.velocities.w,
+	   b = model.tracers.b)
 
 datetimenow = format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
