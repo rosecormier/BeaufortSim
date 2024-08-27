@@ -160,11 +160,5 @@ end
 ###################################
 
 if do_vis_const_z
-
-   Δx = Lx / Nx
-   Δy = Ly / Ny
-   Δz = Lz / Nz
-
-   visualize_const_z(outfilepath, 20, Δx, Δy, Δz, f, datetimenow)
-
+   visualize_const_z(outfilepath, 20, Lx/Nx, Ly/Ny, Lz/Nz, f, datetimenow)
 end
