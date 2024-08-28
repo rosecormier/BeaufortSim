@@ -33,18 +33,19 @@ function visualize_const_z(outfilepath, z_idx, Δx, Δy, Δz, f, datetime)
 
    ωtot = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, z_idx)
    ∇_b  = @lift ∇b_2D($btot, Δx, Δy, Δz, nothing, nothing, z_idx)
-   q    = @lift ertelQ(f, $u, $v, $w, $btot, Δx, Δy, Δz)
+   q    = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz, nothing, nothing, z_idx)
 
    b_xy = @lift $b[:, :, z_idx]
    u_xy = @lift $u[:, :, z_idx]
    v_xy = @lift $v[:, :, z_idx]
    w_xy = @lift $w[:, :, z_idx]
-   q_xy = @lift $q[:, :, z_idx]
 
    #Use final frames to estimate maximum values
    bf    = ds["b"][:, :, z_idx, Nt] .- bb[:, :, z_idx]
    uf_xy = ds["u"][:, :, z_idx, Nt]
    wf_xy = ds["w"][:, :, z_idx, Nt]
+   qf    = ertelQ_2D(ds["u"][:,:,:,Nt], ds["v"][:,:,:,Nt], ds["w"][:,:,:,Nt], ds["b"][:,:,:,Nt],
+		     f, Δx, Δy, Δz, nothing, nothing, z_idx)
 
    max_b =  max(maximum(bf), 5e-9)
    lim_b =  (3/4) * [-max_b, max_b]
@@ -52,7 +53,8 @@ function visualize_const_z(outfilepath, z_idx, Δx, Δy, Δz, f, datetime)
    lim_u =  (3/4) * [-max_u, max_u]
    max_w =  max(maximum(wf_xy), 1e-10)
    lim_w =  (3/4) * [-max_w, max_w] 
-   lim_q =  1 .* [-1e-15, 1e-15]
+   max_q =  max(maximum(qf), 1e-15)
+   lim_q =  (3/4) * [-max_q, max_q]
 
    fig1 = Figure(size = (1200, 800))
    axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
@@ -80,8 +82,8 @@ function visualize_const_z(outfilepath, z_idx, Δx, Δy, Δz, f, datetime)
 
    fig2 = Figure(size = (600, 600))
    ax_q = Axis(fig2[2, 1]; axis_kwargs_xy...)
-   
-   hm_q = heatmap!(ax_q, x, y, q_xy, colorrange = lim_q, colormap = :balance)
+    
+   hm_q = heatmap!(ax_q, x, y, q, colorrange = lim_q, colormap = :balance)
    Colorbar(fig2[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
 
    title2 = @lift @sprintf("Potential vorticity at depth %i m; t = %.2f days",

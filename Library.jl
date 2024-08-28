@@ -6,7 +6,7 @@ end
 
 function ζ(u, v, w, Δx, Δy, Δz)
     ζx = @. ((w[2:end,2:end,2:end] - w[2:end,1:end-1,2:end]) / Δy 
-	     - (v[2:end,2:end,2:end] - v[2:end,2:end,1:end-1]) / Δz)
+             - (v[2:end,2:end,2:end] - v[2:end,2:end,1:end-1]) / Δz)
     ζy = @. ((u[2:end,2:end,2:end] - u[2:end,2:end,1:end-1]) / Δz 
 	     - (w[2:end,2:end,2:end] - w[1:end-1,2:end,2:end]) / Δx)
     ζz = @. ((v[2:end,2:end,2:end] - v[1:end-1,2:end,2:end]) / Δx 
@@ -16,13 +16,13 @@ end
 
 function ζ_2D(u, v, w, Δx, Δy, Δz, x_idx, y_idx, z_idx)
     if !isnothing(x_idx)
-        ζ_2D = @. ((w[x_idx,2:end,2:end] - w[x_idx,1:end-1,2:end]) / Δy 
+	ζ_2D = @. ((w[x_idx,2:end,2:end] - w[x_idx,1:end-1,2:end]) / Δy 
 		   - (v[x_idx,2:end,2:end] - v[x_idx,2:end,1:end-1]) / Δz)
     elseif !isnothing(y_idx)
-        ζ_2D = @. ((u[2:end,y_idx,2:end] - u[2:end,y_idx,1:end-1]) / Δz 
+	ζ_2D = @. ((u[2:end,y_idx,2:end] - u[2:end,y_idx,1:end-1]) / Δz 
 		   - (w[2:end,y_idx,2:end] - w[1:end-1,y_idx,2:end]) / Δx)
     elseif !isnothing(z_idx)
-        ζ_2D = @. ((v[2:end,2:end,z_idx] - v[1:end-1,2:end,z_idx]) / Δx 
+	ζ_2D = @. ((v[2:end,2:end,z_idx] - v[1:end-1,2:end,z_idx]) / Δx 
 		   - (u[2:end,2:end,z_idx] - u[2:end,1:end-1,z_idx]) / Δy)
     end
     return ζ_2D
@@ -37,13 +37,13 @@ end
 
 function ∇b_2D(b, Δx, Δy, Δz, x_idx, y_idx, z_idx)
     if !isnothing(x_idx)
-        ∇b_2D = @. ((b[x_idx,2:end,2:end] - b[x_idx,1:end-1,2:end]) / Δy 
+	∇b_2D = @. ((b[x_idx,2:end,2:end] - b[x_idx,1:end-1,2:end]) / Δy 
 		    + (b[x_idx,2:end,2:end] - b[x_idx,2:end,1:end-1]) / Δz)
     elseif !isnothing(y_idx)
-        ∇b_2D = @. ((b[2:end,y_idx,2:end] - b[1:end-1,y_idx,2:end]) / Δx 
-		    + (b[2:end,y_idx,2:end] - b[2:end,y_idx,1:end-1]) / Δz)
+	∇b_2D = @. ((b[2:end,y_idx,2:end] - b[1:end-1,y_idx,2:end]) / Δx 
+	            + (b[2:end,y_idx,2:end] - b[2:end,y_idx,1:end-1]) / Δz)
     elseif !isnothing(z_idx)
-        ∇b_2D = @. ((b[2:end,2:end,z_idx] - b[1:end-1,2:end,z_idx]) / Δx 
+	∇b_2D = @. ((b[2:end,2:end,z_idx] - b[1:end-1,2:end,z_idx]) / Δx 
 		    + (b[2:end,2:end,z_idx] - b[2:end,1:end-1,z_idx]) / Δy)
     end
     return ∇b_2D
@@ -56,14 +56,15 @@ function ertelQ(f, u, v, w, b, Δx, Δy, Δz)
     return Q
 end
 
-#=function ertelQ_2D(u, v, w, b, Δy, Δz)
-    ζx, ζy, ζz = ζ(u, v, w, Δx, Δy, Δz)
-    ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
-    qvert = (f .+ ζz).*∂z_b
-    q_bc = @. ζx * ∂x_b + ζy * ∂y_b
-    qt = @. q_bc .+ qvert
-    return qt, qvert, q_bc
-end=#
+function ertelQ_2D(u, v, w, b, f, Δx, Δy, Δz, x_idx, y_idx, z_idx)
+    if !isnothing(z_idx)
+        ζx, ζy, ζz = ζ(u[:,:,z_idx-1:z_idx+1], v[:,:,z_idx-1:z_idx+1], w[:,:,z_idx-1:z_idx+1], Δx, Δy, Δz)
+	∂x_b, ∂y_b, ∂z_b = ∇b(b[:,:,z_idx-1:z_idx+1], Δx, Δy, Δz)
+        Q_2D = @. (ζx * ∂x_b) + (ζy * ∂y_b)
+    end
+    avg_Q_2D = @. (Q_2D[:,:,1] + Q_2D[:,:,2]) / 2
+    return avg_Q_2D
+end
 
 function ∂r_ertelQ(Q, Δx, Δy, xC, yC)
     ∂x_Q = @. (Q[2:end,2:end,:] - Q[1:end-1,2:end,:]) / Δx

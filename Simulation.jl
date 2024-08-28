@@ -81,7 +81,7 @@ model = NonhydrostaticModel(;
 f       = model.coriolis.f
 b       = model.tracers.b
 u, v, w = model.velocities
-
+#=
 ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-4) * rand()
@@ -117,11 +117,11 @@ outputs = (u = model.velocities.u,
 	   v = model.velocities.v,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
-
-datetimenow = format(now(), "yymmdd-HHMMSS")
+=#
+datetimenow = "240828-152125" #format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
 outfilepath = joinpath("./Output", outfilename)
-mkpath(dirname(outfilepath)) #Make path if nonexistent
+#=mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -158,7 +158,7 @@ end
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
-
+=#
 if do_vis_const_z
-   visualize_const_z(outfilepath, 20, Lx/Nx, Ly/Ny, Lz/Nz, f, datetimenow)
+    visualize_const_z(outfilepath, 20, Lx/Nx, Ly/Ny, Lz/Nz, f, datetimenow)
 end
