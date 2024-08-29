@@ -4,83 +4,113 @@ using Oceananigans
 using CairoMakie, NCDatasets, Printf
 using .ComputeSecondaries
 
-function visualize_const_z(datetime, z_idx, Δx, Δy, Δz, f)
-   
+function open_dataset(datetime)
+
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
-   ds = NCDataset(outfilepath, "r")
+   ds          = NCDataset(outfilepath, "r")
 
    x = ds["xC"][:]
    y = ds["yC"][:]
    z = ds["zC"][:]
 
-   depth_nearest_m = round(Int, -(ds["zC"][z_idx]))
-
    times = ds["time"][:]
    Nt    = length(times)
 
-   n     = Observable(1)
+   return ds, x, y, z, times, Nt
+end
 
-   #Use initial frame to define background fields
+function get_background_fields(ds)
    bb = ds["b"][:, :, :, 1]
-   #ub = ds["u"][:, :, z_idx, 1]
-   #vb = ds["v"][:, :, z_idx, 1]
-   #wb = ds["w"][:, :, z_idx, 1]
+   ub = ds["u"][:, :, :, 1]
+   vb = ds["v"][:, :, :, 1]
+   wb = ds["w"][:, :, 1:end-1, 1]
+   return bb, ub, vb, wb
+end
 
-   b    = @lift ds["b"][:, :, :, $n] .- bb
-   btot = @lift ds["b"][:, :, :, $n]
-   u    = @lift ds["u"][:, :, :, $n]
-   v    = @lift ds["v"][:, :, :, $n]
-   w    = @lift ds["w"][:, :, 1:end-1, $n]
+function get_range_lims(final_field; prescribed_max = 0)
+   field_max = max(maximum(abs.(final_field)), prescribed_max)
+   field_lims = (3/4) * [-field_max, field_max]
+end
 
-   ωtot = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, z_idx)
-   ∇_b  = @lift ∇b_2D($btot, Δx, Δy, Δz, nothing, nothing, z_idx)
-   q    = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz, nothing, nothing, z_idx)
+function visualize_perturbs_const_z(datetime, z_idx)
+   
+   ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   b_xy = @lift $b[:, :, z_idx]
-   u_xy = @lift $u[:, :, z_idx]
-   v_xy = @lift $v[:, :, z_idx]
-   w_xy = @lift $w[:, :, z_idx]
+   n = Observable(1)
+
+   bb, ub, vb, wb = get_background_fields(ds)
+
+   b_xy = @lift ds["b"][:, :, z_idx, $n] .- bb[:, :, z_idx]
+   u_xy = @lift ds["u"][:, :, z_idx, $n] .- ub[:, :, z_idx]
+   v_xy = @lift ds["v"][:, :, z_idx, $n] .- vb[:, :, z_idx]
+   w_xy = @lift ds["w"][:, :, z_idx, $n] .- wb[:, :, z_idx]
+
+   bf_xy = ds["b"][:, :, z_idx, Nt] .- bb[:, :, z_idx]
+   uf_xy = ds["u"][:, :, z_idx, Nt] .- ub[:, :, z_idx]
+   wf_xy = ds["w"][:, :, z_idx, Nt] .- wb[:, :, z_idx]
+
+   lims_b  = get_range_lims(bf_xy)
+   lims_uv = get_range_lims(uf_xy)
+   lims_w  = get_range_lims(wf_xy)
+
+   depth_nearest_m = round(Int, -z[z_idx])
+   axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
+
+   fig  = Figure(size = (1200, 800))
+   ax_b = Axis(fig[2, 1];
+               title = "Buoyancy perturbation (b')", axis_kwargs_xy...)
+   ax_w = Axis(fig[2, 3];
+               title = "Vertical velocity perturbation (w')", axis_kwargs_xy...)
+   ax_u = Axis(fig[3, 1];
+               title = "Zonal velocity perturbation (u')", axis_kwargs_xy...)
+   ax_v = Axis(fig[3, 3];
+               title = "Meridional velocity perturbation (v')", 
+	       axis_kwargs_xy...)
+
+   hm_b = heatmap!(ax_b, x, y, b_xy, colorrange = lims_b, colormap = :balance)
+   hm_w = heatmap!(ax_w, x, y, w_xy, colorrange = lims_w, colormap = :balance)
+   hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lims_uv, colormap = :balance)
+   hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lims_uv, colormap = :balance)
+
+   Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
+
+   title = @lift @sprintf("Perturbation fields at depth %i m; t = %.2f days",
+                           depth_nearest_m, times[$n]/(3600*24))
+
+   fig[1, 1:4] = Label(fig, title, fontsize = 24, tellwidth = false)
+
+   frames = 1:Nt
+   video  = VideoStream(fig, format = "mp4", framerate = 6)
+
+   for i = 1:frames[end]
+      recordframe!(video)
+      msg = string("Plotting frame(s) ", i, " of ", frames[end])
+         print(msg * " \r")
+         n[]=i
+   end
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "bwuv_z$(depth_nearest_m)_$(datetime).mp4"), video)
+   close(ds)
+end
+
+#function visualize_q_const_z(datetime, z_idx, Δx, Δy, Δz, f)
+
+
+   #ωtot = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, z_idx)
+   #∇_b  = @lift ∇b_2D($btot, Δx, Δy, Δz, nothing, nothing, z_idx)
+   #q    = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz, nothing, nothing, z_idx)
 
    #Use final frames to estimate maximum values
-   bf    = ds["b"][:, :, z_idx, Nt] .- bb[:, :, z_idx]
-   uf_xy = ds["u"][:, :, z_idx, Nt]
-   wf_xy = ds["w"][:, :, z_idx, Nt]
-   qf    = ertelQ_2D(ds["u"][:,:,:,Nt], ds["v"][:,:,:,Nt], ds["w"][:,:,:,Nt], ds["b"][:,:,:,Nt],
-		     f, Δx, Δy, Δz, nothing, nothing, z_idx)
+   #qf    = ertelQ_2D(ds["u"][:,:,:,Nt], ds["v"][:,:,:,Nt], ds["w"][:,:,:,Nt], ds["b"][:,:,:,Nt],
+   #		     f, Δx, Δy, Δz, nothing, nothing, z_idx)
 
-   max_b =  max(maximum(bf), 5e-9)
-   lim_b =  (3/4) * [-max_b, max_b]
-   max_u =  max(maximum(uf_xy), 1e-10)
-   lim_u =  (3/4) * [-max_u, max_u]
-   max_w =  max(maximum(wf_xy), 1e-10)
-   lim_w =  (3/4) * [-max_w, max_w] 
-   max_q =  max(maximum(qf), 1e-15)
-   lim_q =  (3/4) * [-max_q, max_q]
-
-   fig1 = Figure(size = (1200, 800))
-   axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
-   ax_b = Axis(fig1[2, 1]; 
-	       title = "Buoyancy perturbation (b')", axis_kwargs_xy...)
-   ax_w = Axis(fig1[2, 3]; 
-	       title = "Vertical velocity (w)", axis_kwargs_xy...)
-   ax_u = Axis(fig1[3, 1]; 
-	       title = "Zonal velocity (u)", axis_kwargs_xy...)
-   ax_v = Axis(fig1[3, 3]; 
-	       title = "Meridional velocity (v)", axis_kwargs_xy...)
-
-   hm_b = heatmap!(ax_b, x, y, b_xy, colorrange = lim_b, colormap = :balance)
-   Colorbar(fig1[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
-   hm_w = heatmap!(ax_w, x, y, w_xy, colorrange = lim_w, colormap = :balance)
-   Colorbar(fig1[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
-   hm_u = heatmap!(ax_u, x, y, u_xy, colorrange = lim_u, colormap = :balance)
-   Colorbar(fig1[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
-   hm_v = heatmap!(ax_v, x, y, v_xy, colorrange = lim_u, colormap = :balance)
-   Colorbar(fig1[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
-
-   title1 = @lift @sprintf("Fields at depth %i m; t = %.2f days", 
-			   depth_nearest_m, times[$n]/(3600*24))
-   fig1[1, 1:4] = Label(fig1, title1, fontsize = 24, tellwidth = false)
-
+   #max_q =  max(maximum(qf), 1e-15)
+   #lim_q =  (3/4) * [-max_q, max_q]
+#=
    fig2 = Figure(size = (600, 600))
    ax_q = Axis(fig2[2, 1]; axis_kwargs_xy...)
     
@@ -109,9 +139,9 @@ function visualize_const_z(datetime, z_idx, Δx, Δy, Δz, f)
 	video1)
    save(joinpath("./Plots", "q_z$(depth_nearest_m)_$(datetime).mp4"),
         video2)
-
+  
 end
-#=
+
 ## Next, plot at constant x
 
 x     = ds["xC"][x_idx]

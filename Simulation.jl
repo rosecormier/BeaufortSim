@@ -160,5 +160,6 @@ end
 ###################################
 =#
 if do_vis_const_z
-    visualize_const_z(datetimenow, 20, Lx/Nx, Ly/Ny, Lz/Nz, f)
+    visualize_perturbs_const_z(datetimenow, 20)
+    #	visualize_const_z(datetimenow, 20, Lx/Nx, Ly/Ny, Lz/Nz, f)
 end
