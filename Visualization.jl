@@ -4,8 +4,9 @@ using Oceananigans
 using CairoMakie, NCDatasets, Printf
 using .ComputeSecondaries
 
-function visualize_const_z(outfilepath, z_idx, Δx, Δy, Δz, f, datetime)
+function visualize_const_z(datetime, z_idx, Δx, Δy, Δz, f)
    
+   outfilepath = joinpath("./Output", "output_$(datetime).nc")
    ds = NCDataset(outfilepath, "r")
 
    x = ds["xC"][:]
