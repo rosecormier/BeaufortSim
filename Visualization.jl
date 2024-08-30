@@ -17,6 +17,7 @@ function open_dataset(datetime)
    Nt    = length(times)
 
    return ds, x, y, z, times, Nt
+
 end
 
 function get_background_fields(ds)
@@ -30,6 +31,15 @@ end
 function get_range_lims(final_field; prescribed_max = 0)
    field_max = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = (3/4) * [-field_max, field_max]
+end
+
+function get_axis_kwargs(x, y, z; 
+		x_idx = nothing, y_idx = nothing, z_idx = nothing)
+   if !isnothing(z_idx)
+      nearest_m   = round(Int, -z[z_idx])
+      axis_kwargs = (xlabel = "x [m]", ylabel = "y [m]")
+   end
+   return nearest_m, axis_kwargs
 end
 
 function visualize_perturbs_const_z(datetime, z_idx)
@@ -53,10 +63,10 @@ function visualize_perturbs_const_z(datetime, z_idx)
    lims_uv = get_range_lims(uf_xy)
    lims_w  = get_range_lims(wf_xy)
 
-   depth_nearest_m = round(Int, -z[z_idx])
-   axis_kwargs_xy = (xlabel = "x [m]", ylabel = "y [m]")
+   depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
 
    fig  = Figure(size = (1200, 800))
+   
    ax_b = Axis(fig[2, 1];
                title = "Buoyancy perturbation (b')", axis_kwargs_xy...)
    ax_w = Axis(fig[2, 3];
@@ -78,7 +88,7 @@ function visualize_perturbs_const_z(datetime, z_idx)
    Colorbar(fig[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
 
    title = @lift @sprintf("Perturbation fields at depth %i m; t = %.2f days",
-                           depth_nearest_m, times[$n]/(3600*24))
+                          depth_nearest_m, times[$n]/(3600*24))
 
    fig[1, 1:4] = Label(fig, title, fontsize = 24, tellwidth = false)
 
@@ -95,53 +105,56 @@ function visualize_perturbs_const_z(datetime, z_idx)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "bwuv_z$(depth_nearest_m)_$(datetime).mp4"), video)
    close(ds)
+
 end
 
-#function visualize_q_const_z(datetime, z_idx, Δx, Δy, Δz, f)
+function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
+   ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   #ωtot = @lift ζ_2D($u, $v, $w, Δx, Δy, Δz, nothing, nothing, z_idx)
-   #∇_b  = @lift ∇b_2D($btot, Δx, Δy, Δz, nothing, nothing, z_idx)
-   #q    = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz, nothing, nothing, z_idx)
+   n = Observable(1)
 
-   #Use final frames to estimate maximum values
-   #qf    = ertelQ_2D(ds["u"][:,:,:,Nt], ds["v"][:,:,:,Nt], ds["w"][:,:,:,Nt], ds["b"][:,:,:,Nt],
-   #		     f, Δx, Δy, Δz, nothing, nothing, z_idx)
+   b    = @lift ds["b"][:, :, :, $n]
+   u    = @lift ds["u"][:, :, :, $n]
+   v    = @lift ds["v"][:, :, :, $n]
+   w    = @lift ds["w"][:, :, :, $n]
+   q_xy = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz; z_idx = z_idx)
 
-   #max_q =  max(maximum(qf), 1e-15)
-   #lim_q =  (3/4) * [-max_q, max_q]
-#=
-   fig2 = Figure(size = (600, 600))
-   ax_q = Axis(fig2[2, 1]; axis_kwargs_xy...)
-    
-   hm_q = heatmap!(ax_q, x, y, q, colorrange = lim_q, colormap = :balance)
-   Colorbar(fig2[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
+   qf_xy = ertelQ_2D(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
+		     ds["w"][:, :, :, Nt], ds["b"][:, :, :, Nt],
+   		     f, Δx, Δy, Δz; z_idx = z_idx)
 
-   title2 = @lift @sprintf("Potential vorticity at depth %i m; t = %.2f days",
-			   depth_nearest_m, times[$n]/(3600*24))
-   fig2[1, 1:2] = Label(fig2, title2, fontsize = 24, tellwidth = false)
+   lims_q = get_range_lims(qf_xy)
+
+   depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+
+   fig  = Figure(size = (600, 600))
+   ax_q = Axis(fig[2, 1]; axis_kwargs_xy...)
+   hm_q = heatmap!(ax_q, x, y, q_xy, colorrange = lims_q, colormap = :balance)
+
+   Colorbar(fig[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
+
+   title = @lift @sprintf("Potential vorticity at depth %i m; t = %.2f days",
+			  depth_nearest_m, times[$n]/(3600*24))
+   
+   fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
 
    frames = 1:Nt
-
-   video1 = VideoStream(fig1, format = "mp4", framerate = 6)
-   video2 = VideoStream(fig2, format = "mp4", framerate = 6)
+   video  = VideoStream(fig, format = "mp4", framerate = 6)
 
    for i=1:frames[end]
-      recordframe!(video1)
-      recordframe!(video2)
+      recordframe!(video)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
          n[]=i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "bwuv_z$(depth_nearest_m)_$(datetime).mp4"), 
-	video1)
-   save(joinpath("./Plots", "q_z$(depth_nearest_m)_$(datetime).mp4"),
-        video2)
-  
-end
+   save(joinpath("./Plots", "q_z$(depth_nearest_m)_$(datetime).mp4"), video)
+   close(ds)
 
+end
+#=
 ## Next, plot at constant x
 
 x     = ds["xC"][x_idx]
