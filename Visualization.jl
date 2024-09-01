@@ -7,16 +7,15 @@ using .ComputeSecondaries
 function open_dataset(datetime)
 
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
-   ds          = NCDataset(outfilepath, "r")
+   
+   ds = NCDataset(outfilepath, "r")
+   x  = ds["xC"][:]
+   y  = ds["yC"][:]
+   z  = ds["zC"][:]
+   t  = ds["time"][:]
+   Nt = length(t)
 
-   x = ds["xC"][:]
-   y = ds["yC"][:]
-   z = ds["zC"][:]
-
-   times = ds["time"][:]
-   Nt    = length(times)
-
-   return ds, x, y, z, times, Nt
+   return ds, x, y, z, t, Nt
 
 end
 
@@ -35,11 +34,91 @@ end
 
 function get_axis_kwargs(x, y, z; 
 		x_idx = nothing, y_idx = nothing, z_idx = nothing)
-   if !isnothing(z_idx)
+   if !isnothing(x_idx)
+      nearest_m   = round(Int, x[x_idx])
+      axis_kwargs = (xlabel = "y [m]", ylabel = "z [m]")
+   elseif !isnothing(y_idx)
+      nearest_m   = round(Int, y[y_idx])
+      axis_kwargs = (xlabel = "x [m]", ylabel = "z [m]")
+   elseif !isnothing(z_idx)
       nearest_m   = round(Int, -z[z_idx])
       axis_kwargs = (xlabel = "x [m]", ylabel = "y [m]")
    end
    return nearest_m, axis_kwargs
+end
+
+function visualize_perturbs_const_x(datetime, x_idx)
+   
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   z_plt = div(length(z[:]), 2) #z-index to start plot at
+
+   n = Observable(1)
+
+   bb, ub, vb, wb = get_background_fields(ds)
+
+   b_yz = @lift ds["b"][x_idx, :, z_plt:end, $n] .- bb[x_idx, :, z_plt:end]
+   u_yz = @lift ds["u"][x_idx, :, z_plt:end, $n] .- ub[x_idx, :, z_plt:end]
+   v_yz = @lift ds["v"][x_idx, :, z_plt:end, $n] .- vb[x_idx, :, z_plt:end]
+   w_yz = @lift ds["w"][x_idx, :, z_plt:end, $n] .- wb[x_idx, :, z_plt:end]
+
+   bf_yz = ds["b"][x_idx, :, :, Nt] .- bb[x_idx, :, :]
+   uf_yz = ds["u"][x_idx, :, :, Nt] .- ub[x_idx, :, :]
+   vf_yz = ds["v"][x_idx, :, :, Nt] .- vb[x_idx, :, :]
+   wf_yz = ds["w"][x_idx, :, :, Nt] .- wb[x_idx, :, :]
+
+   lims_b = get_range_lims(bf_yz)
+   lims_u = get_range_lims(uf_yz)
+   lims_v = get_range_lims(vf_yz)
+   lims_w = get_range_lims(wf_yz)
+
+   x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+
+   fig  = Figure(size = (1200, 800))
+   
+   ax_b = Axis(fig[2, 1];
+               title = "Buoyancy perturbation (b')", axis_kwargs_yz...)
+   ax_w = Axis(fig[2, 3];
+               title = "Vertical velocity perturbation (w')", axis_kwargs_yz...)
+   ax_u = Axis(fig[3, 1];
+               title = "Zonal velocity perturbation (u')", axis_kwargs_yz...)
+   ax_v = Axis(fig[3, 3];
+               title = "Meridional velocity perturbation (v')", 
+	       axis_kwargs_yz...)
+
+   hm_b = heatmap!(ax_b, y, z[z_plt:end], b_yz, 
+		   colorrange = lims_b, colormap = :balance)
+   hm_w = heatmap!(ax_w, y, z[z_plt:end], w_yz, 
+                   colorrange = lims_w, colormap = :balance)
+   hm_u = heatmap!(ax_u, y, z[z_plt:end], u_yz, 
+                   colorrange = lims_u, colormap = :balance)
+   hm_v = heatmap!(ax_v, y, z[z_plt:end], v_yz, 
+                   colorrange = lims_uv, colormap = :balance)
+
+   Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 2], hm_u, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 4], hm_v, tickformat = "{:.1e}", label = "m/s")
+
+   title = @lift @sprintf("Perturbation fields at x = %i m; t = %.2f days",
+                          x_nearest_m, times[$n]/(3600*24))
+
+   fig[1, 1:4] = Label(fig, title, fontsize = 24, tellwidth = false)
+
+   frames = 1:Nt
+   video  = VideoStream(fig, format = "mp4", framerate = 6)
+
+   for i = 1:frames[end]
+      recordframe!(video)
+      msg = string("Plotting frame(s) ", i, " of ", frames[end])
+         print(msg * " \r")
+         n[]=i
+   end
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "bwuv_x$(x_nearest_m)_$(datetime).mp4"), video)
+   close(ds)
+
 end
 
 function visualize_perturbs_const_z(datetime, z_idx)
