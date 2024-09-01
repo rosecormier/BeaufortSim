@@ -60,12 +60,12 @@ function visualize_perturbs_const_x(datetime, x_idx)
    b_yz = @lift ds["b"][x_idx, :, z_plt:end, $n] .- bb[x_idx, :, z_plt:end]
    u_yz = @lift ds["u"][x_idx, :, z_plt:end, $n] .- ub[x_idx, :, z_plt:end]
    v_yz = @lift ds["v"][x_idx, :, z_plt:end, $n] .- vb[x_idx, :, z_plt:end]
-   w_yz = @lift ds["w"][x_idx, :, z_plt:end, $n] .- wb[x_idx, :, z_plt:end]
+   w_yz = @lift ds["w"][x_idx, :, z_plt:end-1, $n] .- wb[x_idx, :, z_plt:end]
 
-   bf_yz = ds["b"][x_idx, :, :, Nt] .- bb[x_idx, :, :]
-   uf_yz = ds["u"][x_idx, :, :, Nt] .- ub[x_idx, :, :]
-   vf_yz = ds["v"][x_idx, :, :, Nt] .- vb[x_idx, :, :]
-   wf_yz = ds["w"][x_idx, :, :, Nt] .- wb[x_idx, :, :]
+   bf_yz = ds["b"][x_idx, :, z_plt:end, Nt] .- bb[x_idx, :, z_plt:end]
+   uf_yz = ds["u"][x_idx, :, z_plt:end, Nt] .- ub[x_idx, :, z_plt:end]
+   vf_yz = ds["v"][x_idx, :, z_plt:end, Nt] .- vb[x_idx, :, z_plt:end]
+   wf_yz = ds["w"][x_idx, :, z_plt:end-1, Nt] .- wb[x_idx, :, z_plt:end]
 
    lims_b = get_range_lims(bf_yz)
    lims_u = get_range_lims(uf_yz)
@@ -93,7 +93,7 @@ function visualize_perturbs_const_x(datetime, x_idx)
    hm_u = heatmap!(ax_u, y, z[z_plt:end], u_yz, 
                    colorrange = lims_u, colormap = :balance)
    hm_v = heatmap!(ax_v, y, z[z_plt:end], v_yz, 
-                   colorrange = lims_uv, colormap = :balance)
+                   colorrange = lims_v, colormap = :balance)
 
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_w, tickformat = "{:.1e}", label = "m/s")
@@ -183,6 +183,59 @@ function visualize_perturbs_const_z(datetime, z_idx)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "bwuv_z$(depth_nearest_m)_$(datetime).mp4"), video)
+   close(ds)
+
+end
+
+function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   z_plt = div(length(z[:]), 2) #z-index to start plot at
+
+   n = Observable(1)
+
+   b    = @lift ds["b"][:, :, z_plt:end, $n]
+   u    = @lift ds["u"][:, :, z_plt:end, $n]
+   v    = @lift ds["v"][:, :, z_plt:end, $n]
+   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q_yz = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz; 
+			  x_idx = x_idx)
+
+   qf_yz = ertelQ_2D(ds["u"][:, :, z_plt:end, Nt], 
+		     ds["v"][:, :, z_plt:end, Nt],
+		     ds["w"][:, :, z_plt:end-1, Nt], 
+		     ds["b"][:, :, z_plt:end, Nt],
+   		     f, Δx, Δy, Δz; x_idx = x_idx)
+
+   lims_q = get_range_lims(qf_yz)
+
+   x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+
+   fig  = Figure(size = (600, 600))
+   ax_q = Axis(fig[2, 1]; axis_kwargs_yz...)
+   hm_q = heatmap!(ax_q, y, z[z_plt:end], q_yz, 
+		   colorrange = lims_q, colormap = :balance)
+
+   Colorbar(fig[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
+
+   title = @lift @sprintf("Potential vorticity at x = %i m; t = %.2f days",
+			  x_nearest_m, times[$n]/(3600*24))
+
+   fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
+
+   frames = 1:Nt
+   video  = VideoStream(fig, format = "mp4", framerate = 6)
+
+   for i=1:frames[end]
+      recordframe!(video)
+      msg = string("Plotting frame(s) ", i, " of ", frames[end])
+         print(msg * " \r")
+         n[]=i
+   end
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "q_x$(x_nearest_m)_$(datetime).mp4"), video)
    close(ds)
 
 end
