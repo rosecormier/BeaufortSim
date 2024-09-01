@@ -59,7 +59,19 @@ end
 
 function ertelQ_2D(u, v, w, b, f, Δx, Δy, Δz; 
 		x_idx = nothing, y_idx = nothing, z_idx = nothing)
-    if !isnothing(z_idx)
+    if !isnothing(x_idx)
+        ζx, ζy, ζz = ζ(u[x_idx-1:x_idx+1,:,:], v[x_idx-1:x_idx+1,:,:],
+		       w[x_idx-1:x_idx+1,:,:], Δx, Δy, Δz)
+        ∂x_b, ∂y_b, ∂z_b = ∇b(b[x_idx-1:x_idx+1,:,:], Δx, Δy, Δz)
+        Q_2D = @. (ζy * ∂y_b) + ((f + ζz) * ∂z_b)
+        avg_Q_2D = @. (Q_2D[1,:,:] + Q_2D[2,:,:]) / 2
+    elseif !isnothing(y_idx)
+        ζx, ζy, ζz = ζ(u[:,y_idx-1:y_idx+1,:], v[:,y_idx-1:y_idx+1,:],
+                       w[:,y_idx-1:y_idx+1,:], Δx, Δy, Δz)
+        ∂x_b, ∂y_b, ∂z_b = ∇b(b[:,y_idx-1:y_idx+1,:], Δx, Δy, Δz)
+        Q_2D = @. (ζx * ∂x_b) + ((f + ζz) * ∂z_b)
+        avg_Q_2D = @. (Q_2D[:,1,:] + Q_2D[:,2,:]) / 2
+    elseif !isnothing(z_idx)
         ζx, ζy, ζz = ζ(u[:,:,z_idx-1:z_idx+1], v[:,:,z_idx-1:z_idx+1], 
 		       w[:,:,z_idx-1:z_idx+1], Δx, Δy, Δz)
 	∂x_b, ∂y_b, ∂z_b = ∇b(b[:,:,z_idx-1:z_idx+1], Δx, Δy, Δz)
