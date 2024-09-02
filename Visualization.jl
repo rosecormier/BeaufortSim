@@ -195,47 +195,69 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    n = Observable(1)
 
-   b    = @lift ds["b"][:, :, z_plt:end, $n]
-   u    = @lift ds["u"][:, :, z_plt:end, $n]
-   v    = @lift ds["v"][:, :, z_plt:end, $n]
-   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_yz = @lift ertelQ_2D($u, $v, $w, $b, f, Δx, Δy, Δz; 
-			  x_idx = x_idx)
+   b     = @lift ds["b"][:, :, z_plt:end, $n]
+   u     = @lift ds["u"][:, :, z_plt:end, $n]
+   v     = @lift ds["v"][:, :, z_plt:end, $n]
+   w     = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q     = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
+   qr    = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
+   q_yz  = @lift $q[x_idx, :, z_plt:end]
+   qr_yz = @lift $qr[x_idx, :, z_plt:end]
 
-   qf_yz = ertelQ_2D(ds["u"][:, :, z_plt:end, Nt], 
+   q_yz_f  = ertelQ_2D(ds["u"][:, :, z_plt:end, Nt], 
 		     ds["v"][:, :, z_plt:end, Nt],
 		     ds["w"][:, :, z_plt:end-1, Nt], 
 		     ds["b"][:, :, z_plt:end, Nt],
    		     f, Δx, Δy, Δz; x_idx = x_idx)
+   qr_yz_f = ∂r_ertelQ(ertelQ(ds["u"][:, :, z_plt:end, Nt],
+			      ds["v"][:, :, z_plt:end, Nt],
+			      ds["w"][:, :, z_plt:end-1, Nt],
+			      ds["b"][:, :, z_plt:end, Nt],
+			      f, Δx, Δy, Δz), 
+		       Δx, Δy, x[2:end-1], y[2:end-1])[x_idx, :, :]
 
-   lims_q = get_range_lims(qf_yz)
+   lims_q  = get_range_lims(q_yz_f)
+   lims_qr = get_range_lims(qr_yz_f)
 
    x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
-   fig  = Figure(size = (600, 600))
-   ax_q = Axis(fig[2, 1]; axis_kwargs_yz...)
-   hm_q = heatmap!(ax_q, y, z[z_plt:end], q_yz, 
-		   colorrange = lims_q, colormap = :balance)
+   fig_q  = Figure(size = (600, 600))
+   fig_qr = Figure(size = (600, 600))
 
-   Colorbar(fig[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
+   ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
+   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_yz...)
 
-   title = @lift @sprintf("Potential vorticity at x = %i m; t = %.2f days",
+   hm_q  = heatmap!(ax_q, y, z[z_plt:end], q_yz, colorrange = lims_q, 
+		    colormap = :balance)
+   hm_qr = heatmap!(ax_qr, y, z[z_plt:end], qr_yz, colorrange = lims_qr,
+		    colormap = :balance)
+
+   Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
+   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
+
+   title_q  = @lift @sprintf("q at x = %i m; t = %.2f days",
+			  x_nearest_m, times[$n]/(3600*24))
+   title_qr = @lift @sprintf("∂q/∂r at x = %i m; t = %.2f days",
 			  x_nearest_m, times[$n]/(3600*24))
 
-   fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
+   fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
+   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false)
 
-   frames = 1:Nt
-   video  = VideoStream(fig, format = "mp4", framerate = 6)
+   frames   = 1:Nt
+   video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
+   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
    for i=1:frames[end]
-      recordframe!(video)
+      recordframe!(video_q)
+      recordframe!(video_qr)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
          n[]=i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "q_x$(x_nearest_m)_$(datetime).mp4"), video)
+   save(joinpath("./Plots", "q_x$(x_nearest_m)_$(datetime).mp4"), video_q)
+   save(joinpath("./Plots", "qr_x$(x_nearest_m)_$(datetime).mp4"), video_qr)
    close(ds)
 
 end
@@ -266,7 +288,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    Colorbar(fig[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
 
-   title = @lift @sprintf("Potential vorticity at depth %i m; t = %.2f days",
+   title_q = @lift @sprintf("q at depth %i m; t = %.2f days",
 			  depth_nearest_m, times[$n]/(3600*24))
    
    fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
@@ -286,6 +308,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    close(ds)
 
 end
+
 #=
 ## Next, plot at constant x
 
