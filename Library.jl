@@ -1,7 +1,7 @@
 using Printf
 
 module ComputeSecondaries
-    export ζ, ζ_2D, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
+   export ζ, ζ_2D, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
 end
 
 function ζ(u, v, w, Δx, Δy, Δz)
