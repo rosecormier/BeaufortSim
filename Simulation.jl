@@ -48,6 +48,11 @@ const do_vis_const_x = true
 const do_vis_const_y = true
 const do_vis_const_z = true
 
+#Indices at which to plot fields
+const x_idx = 256
+const y_idx = 256
+const z_idx = 20
+
 ##############################
 # INSTANTIATE GRID AND MODEL #
 ##############################
@@ -81,7 +86,7 @@ model = NonhydrostaticModel(;
 f       = model.coriolis.f
 b       = model.tracers.b
 u, v, w = model.velocities
-#=
+
 ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-4) * rand()
@@ -117,11 +122,11 @@ outputs = (u = model.velocities.u,
 	   v = model.velocities.v,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
-=#
-datetimenow = "240828-152125" #format(now(), "yymmdd-HHMMSS")
+
+datetimenow = format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
 outfilepath = joinpath("./Output", outfilename)
-#=mkpath(dirname(outfilepath)) #Make path if nonexistent
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -158,8 +163,18 @@ end
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
-=#
+
+if do_vis_const_x
+   visualize_perturbs_const_x(datetimenow, x_idx)
+   visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
+end
+
+if do_vis_const_y
+   visualize_perturbs_const_y(datetimenow, y_idx)
+   visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
+end
+
 if do_vis_const_z
-   visualize_perturbs_const_x(datetimenow, 20)
-   visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, 20)
+   visualize_perturbs_const_z(datetimenow, z_idx)
+   visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
