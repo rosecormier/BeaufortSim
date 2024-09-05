@@ -28,7 +28,7 @@ const νv = (5e-5) * (meter^2/second)
 
 #Gyre scales
 const lat = 74.0  #Degrees N
-const U   = 1.0 * meter/second
+const U   = 0.1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
 const N2  = (3e-4) * (1/second^2)
@@ -51,7 +51,7 @@ const do_vis_const_z = true
 #Indices at which to plot fields
 const x_idx = 256
 const y_idx = 256
-const z_idx = 20
+const z_idx = 123
 
 ##############################
 # INSTANTIATE GRID AND MODEL #

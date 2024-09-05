@@ -1,7 +1,7 @@
 include("Library.jl")
 
 using Oceananigans
-using CairoMakie, NCDatasets, Printf
+using CairoMakie, DataStructures, NCDatasets, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -111,7 +111,7 @@ function visualize_perturbs_const_x(datetime, x_idx)
       recordframe!(video)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -184,7 +184,7 @@ function visualize_perturbs_const_y(datetime, y_idx)
       recordframe!(video)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -249,7 +249,7 @@ function visualize_perturbs_const_z(datetime, z_idx)
       recordframe!(video)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -257,9 +257,66 @@ function visualize_perturbs_const_z(datetime, z_idx)
    close(ds)
 end
 
+function open_computed_dataset(datetime, Δx, Δy, Δz, f)
+
+   computed_file = joinpath("./Output", "computed_$(datetime).nc")
+
+   #Only do computations if file does not already exist
+   if !isfile(computed_file)
+
+      ds, x, y, z, times, Nt = open_dataset(datetime)
+
+      n = Observable(1)
+
+      b  = @lift ds["b"][:, :, :, $n]
+      u  = @lift ds["u"][:, :, :, $n]
+      v  = @lift ds["v"][:, :, :, $n]
+      w  = @lift ds["w"][:, :, 1:end-1, $n]
+      q  = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
+      qr = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
+
+      comp_ds = NCDataset(computed_file, "c")
+      defVar(comp_ds, "xG", x[1:end-1], ("xG",))
+      defVar(comp_ds, "yG", y[1:end-1], ("yG",))
+      defVar(comp_ds, "zG", z[1:end-1], ("zG",))
+      defVar(comp_ds, "xCC", x[2:end-1], ("xCC",))
+      defVar(comp_ds, "yCC", y[2:end-1], ("yCC",))
+      defVar(comp_ds, "time", times[:], ("time",))
+
+      q_data  = defVar(comp_ds, "q", Float64, 
+		       ("xG", "yG", "zG", "time"))
+      qr_data = defVar(comp_ds, "qr", Float64, 
+		       ("xCC", "yCC", "zG", "time"))
+
+      frames = 1:Nt
+
+      for i = 1:frames[end]
+	 q_data[:, :, :, i]  = to_value(q)
+	 qr_data[:, :, :, i] = to_value(qr)
+         msg = string("Computing frame(s) ", i, " of ", frames[end])
+            print(msg * " \r")
+            n[] = i
+      end
+
+      close(ds)
+      close(comp_ds)
+   end
+
+   comp_ds = NCDataset(computed_file, "r")
+   xG  = comp_ds["xG"][:]
+   yG  = comp_ds["yG"][:]
+   zG  = comp_ds["zG"][:]
+   xCC = comp_ds["xCC"][:]
+   yCC = comp_ds["yCC"][:]
+
+   return comp_ds, xG, yG, zG, xCC, yCC
+end
+
 function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
+   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime, 
+							 Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
@@ -269,22 +326,11 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
    u     = @lift ds["u"][:, :, z_plt:end, $n]
    v     = @lift ds["v"][:, :, z_plt:end, $n]
    w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q     = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
-   qr    = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
-   q_yz  = @lift $q[x_idx, :, z_plt:end]
-   qr_yz = @lift $qr[x_idx, :, z_plt:end]
-
-   q_yz_f  = ertelQ_2D(ds["u"][:, :, z_plt:end, Nt], 
-		       ds["v"][:, :, z_plt:end, Nt],
-		       ds["w"][:, :, z_plt:end-1, Nt], 
-		       ds["b"][:, :, z_plt:end, Nt],
-   		       f, Δx, Δy, Δz; x_idx = x_idx)
-   qr_yz_f = ∂r_ertelQ(ertelQ(ds["u"][:, :, z_plt:end, Nt],
-			      ds["v"][:, :, z_plt:end, Nt],
-			      ds["w"][:, :, z_plt:end-1, Nt],
-			      ds["b"][:, :, z_plt:end, Nt],
-			      f, Δx, Δy, Δz), 
-		       Δx, Δy, x[2:end-1], y[2:end-1])[x_idx, :, :]
+   q_yz  = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
+   qr_yz = @lift comp_ds["qr"][x_idx, :, z_plt:end, $n]
+   
+   q_yz_f  = comp_ds["q"][x_idx, :, z_plt:end, Nt]
+   qr_yz_f = comp_ds["qr"][x_idx, :, z_plt:end, Nt]
 
    lims_q  = get_range_lims(q_yz_f)
    lims_qr = get_range_lims(qr_yz_f)
@@ -297,9 +343,9 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
    ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_yz...)
 
-   hm_q  = heatmap!(ax_q, y, z[z_plt:end], q_yz, colorrange = lims_q, 
+   hm_q  = heatmap!(ax_q, yG, zG[z_plt:end], q_yz, colorrange = lims_q,
 		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, y, z[z_plt:end], qr_yz, colorrange = lims_qr,
+   hm_qr = heatmap!(ax_qr, yCC, zG[z_plt:end], qr_yz, colorrange = lims_qr,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
@@ -317,12 +363,12 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
    video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
    video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
-   for i=1:frames[end]
+   for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -334,6 +380,8 @@ end
 function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
+   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
+                                                         Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
@@ -343,22 +391,11 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    u     = @lift ds["u"][:, :, z_plt:end, $n]
    v     = @lift ds["v"][:, :, z_plt:end, $n]
    w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q     = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
-   qr    = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
-   q_xz  = @lift $q[:, y_idx, z_plt:end]
-   qr_xz = @lift $qr[:, y_idx, z_plt:end]
+   q_xz  = @lift comp_ds["q"][:, y_idx, z_plt:end, $n]
+   qr_xz = @lift comp_ds["qr"][:, y_idx, z_plt:end, $n]
 
-   q_xz_f  = ertelQ_2D(ds["u"][:, :, z_plt:end, Nt], 
-		       ds["v"][:, :, z_plt:end, Nt],
-		       ds["w"][:, :, z_plt:end-1, Nt], 
-		       ds["b"][:, :, z_plt:end, Nt],
-   		       f, Δx, Δy, Δz; y_idx = y_idx)
-   qr_xz_f = ∂r_ertelQ(ertelQ(ds["u"][:, :, z_plt:end, Nt],
-			      ds["v"][:, :, z_plt:end, Nt],
-			      ds["w"][:, :, z_plt:end-1, Nt],
-			      ds["b"][:, :, z_plt:end, Nt],
-			      f, Δx, Δy, Δz), 
-		       Δx, Δy, x[2:end-1], y[2:end-1])[:, y_idx, :]
+   q_xz_f  = comp_ds["q"][:, y_idx, z_plt:end, Nt]
+   qr_xz_f = comp_ds["qr"][:, y_idx, z_plt:end, Nt]
 
    lims_q  = get_range_lims(q_xz_f)
    lims_qr = get_range_lims(qr_xz_f)
@@ -371,9 +408,9 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xz...)
    ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xz...)
 
-   hm_q  = heatmap!(ax_q, x, z[z_plt:end], q_xz, colorrange = lims_q, 
+   hm_q  = heatmap!(ax_q, xG, zG[z_plt:end], q_xz, colorrange = lims_q, 
 		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, x, z[z_plt:end], qr_xz, colorrange = lims_qr,
+   hm_qr = heatmap!(ax_qr, xCC, zG[z_plt:end], qr_xz, colorrange = lims_qr,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
@@ -391,12 +428,12 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
    video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
-   for i=1:frames[end]
+   for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -408,6 +445,8 @@ end
 function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
+   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
+                                                         Δx, Δy, Δz, f)
 
    n = Observable(1)
 
@@ -415,20 +454,11 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    u     = @lift ds["u"][:, :, :, $n]
    v     = @lift ds["v"][:, :, :, $n]
    w     = @lift ds["w"][:, :, 1:end-1, $n]
-   q     = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
-   qr    = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
-   q_xy  = @lift $q[:, :, z_idx]
-   qr_xy = @lift $qr[:, :, z_idx]
+   q_xy  = @lift comp_ds["q"][:, :, z_idx, $n]
+   qr_xy = @lift comp_ds["qr"][:, :, z_idx, $n]
 
-   q_xy_f  = ertelQ_2D(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
-		       ds["w"][:, :, :, Nt], ds["b"][:, :, :, Nt],
-   		       f, Δx, Δy, Δz; z_idx = z_idx)
-   qr_xy_f = ∂r_ertelQ(ertelQ(ds["u"][:, :, :, Nt],
-                              ds["v"][:, :, :, Nt],
-                              ds["w"][:, :, 1:end-1, Nt],
-                              ds["b"][:, :, :, Nt],
-                              f, Δx, Δy, Δz),
-                              Δx, Δy, x[2:end-1], y[2:end-1])[:, :, z_idx]
+   q_xy_f  = comp_ds["q"][:, :, z_idx, Nt]
+   qr_xy_f = comp_ds["qr"][:, :, z_idx, Nt]
 
    lims_q = get_range_lims(q_xy_f)
    lims_qr = get_range_lims(qr_xy_f)
@@ -441,9 +471,9 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xy...)
    ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xy...)
    
-   hm_q  = heatmap!(ax_q, x, y, q_xy, colorrange = lims_q, 
+   hm_q  = heatmap!(ax_q, xG, yG, q_xy, colorrange = lims_q, 
 		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, x, y, qr_xy, colorrange = lims_qr, 
+   hm_qr = heatmap!(ax_qr, xCC, yCC, qr_xy, colorrange = lims_qr, 
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
@@ -461,12 +491,12 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
    video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
-   for i=1:frames[end]
+   for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
-         n[]=i
+         n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
