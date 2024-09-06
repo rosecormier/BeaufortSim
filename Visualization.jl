@@ -420,7 +420,7 @@ function visualize_fields_const_z(datetime, z_idx)
 
    for i = 1:frames[end]
       recordframe!(video_total)
-      recordframe!(video_total)
+      recordframe!(video_perturb)
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
          print(msg * " \r")
          n[] = i
