@@ -37,8 +37,8 @@ const N2  = (3e-4) * (1/second^2)
 const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.2
-const tf      = 1 * day
-const Δt_save = 1 * hour
+const tf      = 15 * day
+const Δt_save = 2 * hour #1 * hour
 
 #Architecture
 const use_GPU = true
@@ -165,16 +165,16 @@ end
 ###################################
 
 if do_vis_const_x
-   visualize_perturbs_const_x(datetimenow, x_idx)
+   visualize_fields_const_x(datetimenow, x_idx)
    visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
 end
 
 if do_vis_const_y
-   visualize_perturbs_const_y(datetimenow, y_idx)
+   visualize_fields_const_y(datetimenow, y_idx)
    visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
 end
 
 if do_vis_const_z
-   visualize_perturbs_const_z(datetimenow, z_idx)
+   visualize_fields_const_z(datetimenow, z_idx)
    visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
