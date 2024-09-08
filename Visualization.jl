@@ -163,9 +163,10 @@ function visualize_fields_const_x(datetime, x_idx)
    for i = 1:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -293,9 +294,10 @@ function visualize_fields_const_y(datetime, y_idx)
    for i = 1:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -421,9 +423,10 @@ function visualize_fields_const_z(datetime, z_idx)
    for i = 1:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -470,9 +473,9 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
       for i = 1:frames[end]
 	 q_data[:, :, :, i]  = to_value(q)
 	 qr_data[:, :, :, i] = to_value(qr)
-         msg = string("Computing frame(s) ", i, " of ", frames[end])
-            print(msg * " \r")
-            n[] = i
+	 msg = string("Computing frame(s) ", i, " of ", frames[end])
+         print(msg * " \r")
+         n[] = i
       end
 
       close(ds)
@@ -543,9 +546,10 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
    for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -608,9 +612,10 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -671,9 +676,10 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    for i = 1:frames[end]
       recordframe!(video_q)
       recordframe!(video_qr)
+      yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      print(msg * " \r")
+      n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
