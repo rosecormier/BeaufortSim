@@ -96,9 +96,10 @@ u, v, w = model.velocities
 
 ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+N2(x,y,z) = N2_LB + (N2_max - N2_LB) * exp(-(z+d_ML)^2 / (2*(σ^2)))
 bʹ(x,y,z) = (1e-4) * rand()
-b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
-						  -(z/σz)^2)
+b̄(x,y,z)  = (N2(x,y,z) * z 
+	     - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) -(z/σz)^2)
 	     + bʹ(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
