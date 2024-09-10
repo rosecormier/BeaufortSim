@@ -26,12 +26,19 @@ const Lz = 1000 * meter
 const νh = (5e-2) * (meter^2/second)
 const νv = (5e-5) * (meter^2/second)
 
+#Latitude (deg. N)
+const lat = 74.0
+
 #Gyre scales
-const lat = 74.0  #Degrees N
-const U   = (1e-2) * meter/second
-const σr  = 250 * kilometer
-const σz  = 300 * meter
-const N2  = (1.8e-3) * (1/second^2)
+const U  = (1e-2) * meter/second
+const σr = 250 * kilometer
+const σz = 300 * meter
+
+#Stratification scales
+const N2_LB  = (1.8e-3) * (1/second^2)
+const N2_max = 1.25 * N2_LB
+const d_ML   = 40 * meter
+const σ      = 10 * meter
 
 #Time increments
 const Δti     = 1 * second
@@ -152,9 +159,9 @@ open(logfilepath, "w") do file
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
    write(file, "νh, νv = $(νh), $(νv) \n")
    write(file, "lat = $(lat) \n")
-   write(file, "U = $(U) \n")
-   write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "N2 = $(N2) \n")
+   write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
+   write(file, "N2_LB, N2_max = $(N2_LB), $(N2_max) \n")
+   write(file, "d_ML, σ = $(d_ML), $(σ) \n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
