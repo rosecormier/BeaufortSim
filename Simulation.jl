@@ -7,7 +7,6 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
-#using SpecialFunctions
 
 ######################
 # SPECIFY PARAMETERS #
@@ -38,7 +37,7 @@ const N2  = (1.8e-3) * (1/second^2)
 const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.2
-const tf      = 15 * day
+const tf      = 10 * day
 const Δt_save = 1 * hour
 
 #Architecture
@@ -90,7 +89,7 @@ u, v, w = model.velocities
 
 ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-bʹ(x,y,z) = (1e-6) * rand()
+bʹ(x,y,z) = (1e-4) * rand()
 b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
 						  -(z/σz)^2)
 	     + bʹ(x,y,z))
