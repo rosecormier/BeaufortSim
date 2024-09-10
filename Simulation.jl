@@ -7,6 +7,7 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
+#using SpecialFunctions
 
 ######################
 # SPECIFY PARAMETERS #
@@ -28,30 +29,30 @@ const νv = (5e-5) * (meter^2/second)
 
 #Gyre scales
 const lat = 74.0  #Degrees N
-const U   = 0.1 * meter/second
+const U   = (1e-2) * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
-const N2  = (3e-4) * (1/second^2)
+const N2  = (1.8e-3) * (1/second^2)
 
 #Time increments
 const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.2
 const tf      = 15 * day
-const Δt_save = 2 * hour #1 * hour
+const Δt_save = 1 * hour
 
 #Architecture
 const use_GPU = true
 
 #Whether to run visualization functions
 const do_vis_const_x = true
-const do_vis_const_y = true
+const do_vis_const_y = false #true
 const do_vis_const_z = true
 
 #Indices at which to plot fields
 const x_idx = 256
 const y_idx = 256
-const z_idx = 123
+const z_idx = 126
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -87,11 +88,11 @@ f       = model.coriolis.f
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x,y,z)  = (U*y/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
-v̄(x,y,z)  = (-U*x/σr) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
-bʹ(x,y,z) = (1e-4) * rand()
-b̄(x,y,z)  = (N2*z 
-	     - (σr*f*U*z/(σr^2)) * exp(-(x^2 + y^2)/(σr^2) - (z/σz)^2)
+ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+bʹ(x,y,z) = (1e-6) * rand()
+b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
+						  -(z/σz)^2)
 	     + bʹ(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
@@ -103,7 +104,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -166,15 +167,15 @@ end
 
 if do_vis_const_x
    visualize_fields_const_x(datetimenow, x_idx)
-   visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
+   #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
 end
 
 if do_vis_const_y
    visualize_fields_const_y(datetimenow, y_idx)
-   visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
+   #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
 end
 
 if do_vis_const_z
    visualize_fields_const_z(datetimenow, z_idx)
-   visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
+   #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
