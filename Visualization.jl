@@ -12,7 +12,7 @@ function open_dataset(datetime)
    x  = ds["xC"][:]
    y  = ds["yC"][:]
    z  = ds["zC"][:]
-   t  = ds["time"][:]
+   t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
    Nt = length(t)
 
    return ds, x, y, z, t, Nt
