@@ -26,6 +26,9 @@ const Lz = 1000 * meter
 const νh = (5e-2) * (meter^2/second)
 const νv = (5e-5) * (meter^2/second)
 
+#Latitude (deg. N)
+const lat = 74.0
+
 #Gyre scales
 const lat = 74.0  #Degrees N
 const U   = 1 * meter/second
@@ -91,8 +94,7 @@ ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-6) * rand()
 b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
-						  -(z/σz)^2)
-	     + bʹ(x,y,z))
+						  -(z/σz)^2) + bʹ(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -152,9 +154,9 @@ open(logfilepath, "w") do file
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
    write(file, "νh, νv = $(νh), $(νv) \n")
    write(file, "lat = $(lat) \n")
-   write(file, "U = $(U) \n")
-   write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "N2 = $(N2) \n")
+   write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
+   write(file, "N2_LB, N2_max = $(N2_LB), $(N2_max) \n")
+   write(file, "d_ML, σ = $(d_ML), $(σ) \n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
