@@ -1,13 +1,7 @@
 using Printf
 
 module ComputeSecondaries
-   export ζa_b, ω, ω_2D, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
-end
-
-function ζa_b(U, f, σr, σz, x, y, z)
-   ζa_b = @. (f + (2*U/σr) * ((x^2 + y^2)/(σr^2) - 1) 
-	    * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-   return ζa_b
+   export ω, ω_2D, ζa_b, ζa, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
 end
 
 function ω(u, v, w, Δx, Δy, Δz)
@@ -33,6 +27,17 @@ function ω_2D(u, v, w, Δx, Δy, Δz;
 		- (u[2:end,2:end,z_idx] - u[2:end,1:end-1,z_idx]) / Δy)
    end
    return ω_2D
+end
+
+function ζa_b(U, f, σr, σz, x, y, z)
+   ζa_b = @. (f + (2*U/σr) * ((x^2 + y^2)/(σr^2) - 1)
+            * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+   return ζa_b
+end
+
+function ζa(f, u, v, w, Δx, Δy, Δz)
+   ωx, ωy, ωz = ω(u, v, w, Δx, Δy, Δz)
+   ζa         = f + ωz
 end
 
 function ∇b(b, Δx, Δy, Δz)
