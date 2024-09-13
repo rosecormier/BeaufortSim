@@ -31,21 +31,21 @@ const lat = 74.0  #Degrees N
 const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
-const N2  = (1.8e-3) * (1/second^2) #(1.8e-1) * (1/second^2)
+const N2  = (1.8e-3) * (1/second^2)
 
 #Time increments
-const Δti     = 1 * second #(1e-1) * second
+const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.1
 const tf      = 10 * day
-const Δt_save = 10 * minute # * hour #use 1 minute for rerun with CFL=0.2
+const Δt_save = 10 * minute # * hour
 
 #Architecture
 const use_GPU = true
 
 #Whether to run visualization functions
 const do_vis_const_x = true
-const do_vis_const_y = false #true
+const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
