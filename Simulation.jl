@@ -28,17 +28,17 @@ const νv = (5e-5) * (meter^2/second)
 
 #Gyre scales
 const lat = 74.0  #Degrees N
-const U   = (1e-2) * meter/second
+const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
-const N2  = (1.8e-3) * (1/second^2)
+const N2  = (1.8e-3) * (1/second^2) #(1.8e-1) * (1/second^2)
 
 #Time increments
-const Δti     = 1 * second
+const Δti     = 1 * second #(1e-1) * second
 const Δt_max  = 100 * second 
-const CFL     = 0.2
+const CFL     = 0.1
 const tf      = 10 * day
-const Δt_save = 1 * hour
+const Δt_save = 10 * minute # * hour #use 1 minute for rerun with CFL=0.2
 
 #Architecture
 const use_GPU = true
@@ -86,10 +86,10 @@ model = NonhydrostaticModel(;
 f       = model.coriolis.f
 b       = model.tracers.b
 u, v, w = model.velocities
-
+#=
 ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-bʹ(x,y,z) = (1e-4) * rand()
+bʹ(x,y,z) = (1e-6) * rand()
 b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
 						  -(z/σz)^2)
 	     + bʹ(x,y,z))
@@ -122,11 +122,11 @@ outputs = (u = model.velocities.u,
 	   v = model.velocities.v,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
-
-datetimenow = format(now(), "yymmdd-HHMMSS")
+=#
+datetimenow = "240913-103906" #format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
 outfilepath = joinpath("./Output", outfilename)
-mkpath(dirname(outfilepath)) #Make path if nonexistent
+#=mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -163,7 +163,7 @@ end
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
-
+=#
 if do_vis_const_x
    visualize_fields_const_x(datetimenow, x_idx)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
