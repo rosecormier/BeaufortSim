@@ -695,3 +695,41 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    save(joinpath("./Plots", "qr_z$(depth_nearest_m)_$(datetime).mp4"), video_qr)
    close(ds)
 end
+
+function plot_background_ζa(datetime, U, f, σr, σz; 
+		            x_idx = nothing, y_idx = nothing)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   nearest_m, axis_kwargs = get_axis_kwargs(x, y, z; 
+					    x_idx = x_idx, y_idx = y_idx)
+
+   fig = Figure(size = (400, 400))
+   ax  = Axis(fig[2, 1]; axis_kwargs...)
+
+   if !isnothing(x_idx)
+      ζa_b_yz = ζa_b(U, f, σr, σz, x[x_idx], y, z) 
+      lims_ζa = get_range_lims(ζa_b_yz)
+      hm      = heatmap!(ax, y, z, ζa_b_yz, colorrange = lims_ζa, 
+			 colormap = :balance)
+      title   = ("Absolute vorticity of background state at x = %i m", 
+		 nearest_m)
+      fname   = "bkgd_zeta_abs_x$(nearest_m)_$(datetime).png"
+   elseif !isnothing(y_idx)
+      ζa_b_xz = ζa_b(U, f, σr, σz, x, y[y_idx], z)
+      lims_ζa = get_range_lims(ζa_b_xz)
+      hm      = heatmap!(ax, x, z, ζa_b_xz, colorrange = lims_ζa,
+                         colormap = :balance)
+      title   = ("Absolute vorticity of background state at y = %i m",
+                 nearest_m)
+      fname   = "bkgd_zeta_abs_y$(nearest_m)_$(datetime).png"
+   end
+
+   Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
+
+   fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", fname), fig)
+   close(ds)
+end
