@@ -4,8 +4,6 @@ module ComputeSecondaries
    export ω, ω_2D, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
 end
 
-#ζ
-
 function ω(u, v, w, Δx, Δy, Δz)
    ωx = @. ((w[2:end,2:end,2:end] - w[2:end,1:end-1,2:end]) / Δy 
            - (v[2:end,2:end,2:end] - v[2:end,2:end,1:end-1]) / Δz)
