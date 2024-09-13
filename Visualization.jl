@@ -50,7 +50,7 @@ function visualize_fields_const_x(datetime, x_idx)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   z_plt = div(length(z[:]), 2) #z-index to start plot at
+   z_plt = 1 #div(length(z[:]), 2) #z-index to start plot at
 
    n = Observable(1)
 
@@ -112,14 +112,14 @@ function visualize_fields_const_x(datetime, x_idx)
                        title = "Meridional velocity perturbation (v')", 
 	               axis_kwargs_yz...)
 
-   hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_yz, 
-		         colorrange = lims_b_total, colormap = :balance)
-   hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_yz, 
-                         colorrange = lims_w_total, colormap = :balance)
-   hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_yz, 
-                         colorrange = lims_u_total, colormap = :balance)
-   hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_yz, 
-                         colorrange = lims_v_total, colormap = :balance)
+   hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_yz, colormap = :balance)
+#		         colorrange = lims_b_total, colormap = :balance)
+   hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_yz, colormap = :balance)
+#                         colorrange = lims_w_total, colormap = :balance)
+   hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_yz, colormap = :balance)
+#                         colorrange = lims_u_total, colormap = :balance)
+   hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_yz, colormap = :balance)
+#                         colorrange = lims_v_total, colormap = :balance)
 
    hm_b_perturb = heatmap!(ax_b_perturb, y, z[z_plt:end], Δb_yz,
                            colorrange = lims_Δb, colormap = :balance)
@@ -155,6 +155,14 @@ function visualize_fields_const_x(datetime, x_idx)
    fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24, 
 			       tellwidth = false)
 
+   max_u_bottom = @lift maximum(abs.(ds["u"][:, :, 4, $n]))
+   max_v_bottom = @lift maximum(abs.(ds["v"][:, :, 4, $n]))
+   max_w_bottom = @lift maximum(abs.(ds["w"][:, :, 4, $n]))
+   @lift print("t = ", times[$n], "\n")
+   @lift print("Max. |u| in bottom layer = ", $max_u_bottom, "\n")
+   @lift print("Max. |v| in bottom layer = ", $max_v_bottom, "\n")
+   @lift print("Max. |w| in bottom layer = ", $max_w_bottom, "\n")
+
    frames = 1:Nt
    
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
@@ -165,7 +173,7 @@ function visualize_fields_const_x(datetime, x_idx)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      #print(msg * " \r")
       n[] = i
    end
 
@@ -425,7 +433,7 @@ function visualize_fields_const_z(datetime, z_idx)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      #print(msg * " \r")
       n[] = i
    end
 
