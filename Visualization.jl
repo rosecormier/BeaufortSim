@@ -704,7 +704,7 @@ function plot_background_ζa(datetime, U, f, σr, σz;
    nearest_m, axis_kwargs = get_axis_kwargs(x, y, z; 
 					    x_idx = x_idx, y_idx = y_idx)
 
-   fig = Figure(size = (400, 400))
+   fig = Figure(size = (800, 400))
    ax  = Axis(fig[2, 1]; axis_kwargs...)
 
    if !isnothing(x_idx)
