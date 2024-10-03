@@ -32,7 +32,6 @@ const νv = (5e-5) * (meter^2/second)
 const lat = 74.0
 
 #Gyre scales
-const lat = 74.0  #Degrees N
 const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
