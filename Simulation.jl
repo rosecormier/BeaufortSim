@@ -1,3 +1,4 @@
+include("LibraryStratification.jl")
 include("Visualization.jl")
 
 using Dates: format, now
@@ -7,6 +8,7 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
+using .Stratification
 
 ######################
 # SPECIFY PARAMETERS #
@@ -34,13 +36,12 @@ const lat = 74.0  #Degrees N
 const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
-const N2  = (1.8e-3) * (1/second^2)
 
 #Time increments
 const Δti     = 1 * second
 const Δt_max  = 100 * second 
 const CFL     = 0.1
-const tf      = 10 * day
+const tf      = 1 * day
 const Δt_save = 10 * minute # * hour
 
 #Architecture
@@ -86,10 +87,14 @@ model = NonhydrostaticModel(;
 # SET INITIAL CONDITIONS #
 ##########################
 
-f       = model.coriolis.f
+f  = model.coriolis.f
+N2 = 1.1 * N2_lower_bound(σr, σz, f, U) #1/second^2
+
+grav_stable(σr, σz, f, U, N2) #Prints a warning if system is grav. unstable
+
 b       = model.tracers.b
 u, v, w = model.velocities
-#=
+
 ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-6) * rand()
@@ -124,11 +129,11 @@ outputs = (u = model.velocities.u,
 	   v = model.velocities.v,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
-=#
-datetimenow = "240913-103906" #format(now(), "yymmdd-HHMMSS")
+
+datetimenow = format(now(), "yymmdd-HHMMSS")
 outfilename = "output_$(datetimenow).nc"
 outfilepath = joinpath("./Output", outfilename)
-#=mkpath(dirname(outfilepath)) #Make path if nonexistent
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -155,8 +160,8 @@ open(logfilepath, "w") do file
    write(file, "νh, νv = $(νh), $(νv) \n")
    write(file, "lat = $(lat) \n")
    write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
-   write(file, "N2_LB, N2_max = $(N2_LB), $(N2_max) \n")
-   write(file, "d_ML, σ = $(d_ML), $(σ) \n")
+   write(file, "N2 = $(N2) \n")
+   #write(file, "d_ML, σ = $(d_ML), $(σ) \n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
@@ -165,7 +170,7 @@ end
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
-=#
+
 if do_vis_const_x
    visualize_fields_const_x(datetimenow, x_idx)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
