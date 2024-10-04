@@ -15,8 +15,8 @@ using .Stratification
 ######################
 
 #Numbers of gridpoints
-const Nx = 512
-const Ny = 512
+const Nx = 256 #512
+const Ny = 256 #512
 const Nz = 128
 
 #Lengths of axes
@@ -37,11 +37,11 @@ const σr  = 250 * kilometer
 const σz  = 300 * meter
 
 #Time increments
-const Δti     = 1 * second
-const Δt_max  = 100 * second 
+const Δti     = 0.5 * second
+const Δt_max  = 200 * second 
 const CFL     = 0.1
-const tf      = 1 * day
-const Δt_save = 10 * minute # * hour
+const tf      = 5 * day
+const Δt_save = 1 * hour
 
 #Architecture
 const use_GPU = true
@@ -52,8 +52,8 @@ const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx = 256
-const y_idx = 256
+const x_idx = 128 #256
+const y_idx = 128 #256
 const z_idx = 126
 
 ##############################
@@ -115,8 +115,8 @@ function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
    wmax = maximum(abs, sim.model.velocities.w)
    bmax = maximum(abs, sim.model.tracers.b)
-   @info @sprintf("Iter: %d; time: %.2e; Δt: %s",
-		  iteration(sim), time(sim), prettytime(sim.Δt))
+   @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
+		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
    return nothing
