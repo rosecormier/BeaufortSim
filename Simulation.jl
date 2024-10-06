@@ -1,4 +1,4 @@
-include("LibraryStratification.jl")
+include("LibraryStability.jl")
 include("Visualization.jl")
 
 using Dates: format, now
