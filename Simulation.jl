@@ -32,7 +32,6 @@ const νv = (5e-5) * (meter^2/second)
 const lat = 74.0
 
 #Gyre scales
-#const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
 
@@ -166,7 +165,6 @@ open(logfilepath, "w") do file
    write(file, "lat = $(lat) \n")
    write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
    write(file, "N2 = $(N2) \n")
-   #write(file, "d_ML, σ = $(d_ML), $(σ) \n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf)")
