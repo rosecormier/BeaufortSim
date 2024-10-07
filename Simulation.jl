@@ -8,7 +8,7 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
-using .Stratification
+using .Stability
 
 ######################
 # SPECIFY PARAMETERS #
@@ -32,7 +32,7 @@ const νv = (5e-5) * (meter^2/second)
 const lat = 74.0
 
 #Gyre scales
-const U   = 1 * meter/second
+#const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
 
@@ -87,9 +87,15 @@ model = NonhydrostaticModel(;
 ##########################
 
 f  = model.coriolis.f
-N2 = 1.1 * N2_lower_bound(σr, σz, f, U) #1/second^2
+U  = 0.9 * U_upper_bound(σr, f) * (meter/second)
+N2 = 1.1 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
-grav_stable(σr, σz, f, U, N2) #Prints a warning if system is grav. unstable
+#Prints warnings if the respective instabilities are present
+check_inert_stability(σr, σz, f, U, 
+		      xnodes(model.grid, Face(), Face(), Face()), 
+		      ynodes(model.grid, Face(), Face(), Face()), 
+		      znodes(model.grid, Face(), Face(), Face()))
+check_grav_stability(σr, σz, f, U, N2)
 
 b       = model.tracers.b
 u, v, w = model.velocities
