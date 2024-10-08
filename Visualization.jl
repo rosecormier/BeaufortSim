@@ -173,7 +173,7 @@ function visualize_fields_const_x(datetime, x_idx)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      #print(msg * " \r")
+      print(msg * " \r")
       n[] = i
    end
 
@@ -304,7 +304,7 @@ function visualize_fields_const_y(datetime, y_idx)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      #print(msg * " \r")
+      print(msg * " \r")
       n[] = i
    end
 
@@ -433,7 +433,7 @@ function visualize_fields_const_z(datetime, z_idx)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      #print(msg * " \r")
+      print(msg * " \r")
       n[] = i
    end
 
