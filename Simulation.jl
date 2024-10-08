@@ -1,7 +1,7 @@
 include("LibraryStability.jl")
 include("Visualization.jl")
 
-using Dates: format, now
+using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Coriolis
@@ -15,14 +15,14 @@ using .Stability
 ######################
 
 #Numbers of gridpoints
-const Nx = 256 #512
-const Ny = 256 #512
-const Nz = 128
+const Nx = 512
+const Ny = 512
+const Nz = 512 #256
 
 #Lengths of axes
 const Lx = 2000 * kilometer
 const Ly = 2000 * kilometer
-const Lz = 1000 * meter
+const Lz = 2000 * meter
 
 #Eddy viscosities
 const νh = (5e-2) * (meter^2/second)
@@ -36,11 +36,11 @@ const σr  = 250 * kilometer
 const σz  = 300 * meter
 
 #Time increments
-const Δti     = 0.5 * second
+const Δti     = 0.05 * second # 0.5 * second
 const Δt_max  = 200 * second 
 const CFL     = 0.1
-const tf      = 5 * day
-const Δt_save = 1 * hour
+const tf      = 1 * hour #5 * day
+const Δt_save = 0.5 * hour #1 * hour
 
 #Architecture
 const use_GPU = true
@@ -51,9 +51,9 @@ const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx = 128 #256
+const x_idx = 256
 const y_idx = 128 #256
-const z_idx = 126
+const z_idx = 500
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -103,7 +103,7 @@ ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-6) * rand()
 b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
-						  -(z/σz)^2) + bʹ(x,y,z))
+					      -(z/σz)^2)) #+ bʹ(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -114,7 +114,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -134,9 +134,10 @@ outputs = (u = model.velocities.u,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
 
-datetimenow = format(now(), "yymmdd-HHMMSS")
-outfilename = "output_$(datetimenow).nc"
-outfilepath = joinpath("./Output", outfilename)
+datetimestart = now()
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+outfilename   = "output_$(datetimenow).nc"
+outfilepath   = joinpath("./Output", outfilename)
 mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
@@ -150,6 +151,8 @@ simulation.output_writers[:field_writer] = outputwriter
 run!(simulation)
 print("Date-time label: $(datetimenow)", "\n")
 
+duration = canonicalize(now() - datetimestart)
+
 ###############################
 # SAVE PARAMETERS TO LOG FILE #
 ###############################
@@ -160,14 +163,18 @@ mkpath(dirname(logfilepath)) #Make path if nonexistent
 
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
-   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
-   write(file, "νh, νv = $(νh), $(νv) \n")
+   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
+   write(file, "νh, νv = $(νh), $(νv) \n\n")
    write(file, "lat = $(lat) \n")
-   write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
-   write(file, "N2 = $(N2) \n")
+   write(file, "σr, σz = $(σr), $(σz) \n")
+   write(file, "U, N2 = $(U), $(N2) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
-   write(file, "tf = $(tf)")
+   write(file, "tf = $(tf) \n\n")
+   write(file, "Total number of iterations = $(iteration(simulation)) \n")
+   write(file, "Δtf = $(prettytime(simulation.Δt)) \n\n")
+   write(file, "Simulation runtime = $(duration) \n")
+   write(file, "Output filesize = $(filesize(outfilepath)) bytes")
 end
 
 ###################################
