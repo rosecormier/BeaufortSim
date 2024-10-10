@@ -77,14 +77,14 @@ function visualize_fields_const_x(datetime, x_idx)
    Δw_f_yz = w_total_f_yz .- wb[x_idx, :, z_plt:end]
 
    lims_b_total = get_range_lims(b_total_f_yz)
-   lims_u_total = get_range_lims(u_total_f_yz)
-   lims_v_total = get_range_lims(v_total_f_yz)
-   lims_w_total = get_range_lims(w_total_f_yz)
+   lims_u_total = get_range_lims(u_total_f_yz; prescribed_max = 1e-3)
+   lims_v_total = get_range_lims(v_total_f_yz; prescribed_max = 1e-3)
+   lims_w_total = get_range_lims(w_total_f_yz; prescribed_max = 1e-3)
 
-   lims_Δb = get_range_lims(Δb_f_yz)
-   lims_Δu = get_range_lims(Δu_f_yz)
-   lims_Δv = get_range_lims(Δv_f_yz)
-   lims_Δw = get_range_lims(Δw_f_yz)
+   lims_Δb = get_range_lims(Δb_f_yz; prescribed_max = 1e-3)
+   lims_Δu = get_range_lims(Δu_f_yz; prescribed_max = 1e-3)
+   lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-3)
+   lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-3)
 
    x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
@@ -130,19 +130,19 @@ function visualize_fields_const_x(datetime, x_idx)
    hm_v_perturb = heatmap!(ax_v_perturb, y, z[z_plt:end], Δv_yz,
                            colorrange = lims_Δv, colormap = :balance)
 
-   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[2, 2], hm_b_total)#, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_w_total)#, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 2], hm_u_total)#, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 4], hm_v_total)#, tickformat = "{:.1e}", label = "m/s")
 
-   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}", 
-	    label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}", 
-	    label = "m/s")
-   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}", 
-	    label = "m/s")
-   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
-	    label = "m/s")
+   Colorbar(fig_perturb[2, 2], hm_b_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_w_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s")
+   Colorbar(fig_perturb[3, 2], hm_u_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s")
+   Colorbar(fig_perturb[3, 4], hm_v_perturb)#, tickformat = "{:.1e}",
+#	    label = "m/s")
 
    title_total = @lift @sprintf("Fields at x = %i m; t = %.2f days",
                           x_nearest_m, times[$n]/(3600*24))
@@ -345,14 +345,14 @@ function visualize_fields_const_z(datetime, z_idx)
    Δw_f_xy = w_total_f_xy .- wb[:, :, z_idx]
 
    lims_b_total = get_range_lims(b_total_f_xy)
-   lims_u_total = get_range_lims(u_total_f_xy)
-   lims_v_total = get_range_lims(v_total_f_xy)
-   lims_w_total = get_range_lims(w_total_f_xy)
+   lims_u_total = get_range_lims(u_total_f_xy; prescribed_max = 1e-3)
+   lims_v_total = get_range_lims(v_total_f_xy; prescribed_max = 1e-3)
+   lims_w_total = get_range_lims(w_total_f_xy; prescribed_max = 1e-3)
 
-   lims_Δb = get_range_lims(Δb_f_xy)
-   lims_Δu = get_range_lims(Δu_f_xy)
-   lims_Δv = get_range_lims(Δv_f_xy)
-   lims_Δw = get_range_lims(Δw_f_xy)
+   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-3)
+   lims_Δu = get_range_lims(Δu_f_xy; prescribed_max = 1e-3)
+   lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-3)
+   lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-3)
    
    depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
    

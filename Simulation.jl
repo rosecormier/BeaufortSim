@@ -4,6 +4,7 @@ include("Visualization.jl")
 using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
+using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
@@ -15,13 +16,13 @@ using .Stability
 ######################
 
 #Numbers of gridpoints
-const Nx = 512
-const Ny = 512
-const Nz = 512 #256
+const Nx = 1024
+const Ny = 1024
+const Nz = 512
 
 #Lengths of axes
-const Lx = 2000 * kilometer
-const Ly = 2000 * kilometer
+const Lx = 4000 * kilometer
+const Ly = 4000 * kilometer
 const Lz = 2000 * meter
 
 #Eddy viscosities
@@ -31,16 +32,24 @@ const νv = (5e-5) * (meter^2/second)
 #Latitude (deg. N)
 const lat = 74.0
 
+#f-plane and Coriolis frequency
+fPlane  = FPlane(latitude = lat)
+const f = fPlane.f
+
 #Gyre scales
 const σr  = 250 * kilometer
 const σz  = 300 * meter
 
+#Gyre speed and buoyancy frequency
+const U  = 0.75 * U_upper_bound(σr, f) * (meter/second)
+const N2 = 1.1 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
+
 #Time increments
-const Δti     = 0.05 * second # 0.5 * second
+const Δti     = 0.005 * second
 const Δt_max  = 200 * second 
 const CFL     = 0.1
-const tf      = 1 * hour #5 * day
-const Δt_save = 0.5 * hour #1 * hour
+const tf      = 5 * day
+const Δt_save = 30 * minute
 
 #Architecture
 const use_GPU = true
@@ -51,8 +60,8 @@ const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx = 256
-const y_idx = 128 #256
+const x_idx = 512
+const y_idx = 256
 const z_idx = 500
 
 ##############################
@@ -72,22 +81,28 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh), 
 	   VerticalScalarDiffusivity(ν = νv))
 
+b_BCs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(N2))
+
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :QuasiAdamsBashforth2, 
                             advection = UpwindBiasedFifthOrder(),
                             closure = closure, 
-                            coriolis = FPlane(latitude = lat),
+                            coriolis = fPlane,
                             tracers = (:b),
-                            buoyancy = BuoyancyTracer())
+                            buoyancy = BuoyancyTracer(),
+			    boundary_conditions = (b = b_BCs,))
+
+#Prints warnings if the respective instabilities are present
+check_inert_stability(σr, σz, f, U,
+                      xnodes(model.grid, Face(), Face(), Face()),
+                      ynodes(model.grid, Face(), Face(), Face()),
+                      znodes(model.grid, Face(), Face(), Face()))
+check_grav_stability(σr, σz, f, U, N2)
 
 ##########################
 # SET INITIAL CONDITIONS #
 ##########################
-
-f  = model.coriolis.f
-U  = 0.9 * U_upper_bound(σr, f) * (meter/second)
-N2 = 1.1 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(σr, σz, f, U, 
@@ -184,13 +199,13 @@ end
 if do_vis_const_x
    visualize_fields_const_x(datetimenow, x_idx)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
-   plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
+   #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
    visualize_fields_const_y(datetimenow, y_idx)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
-   plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
+   #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
