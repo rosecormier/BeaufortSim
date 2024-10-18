@@ -46,7 +46,7 @@ function get_axis_kwargs(x, y, z;
    return nearest_m, axis_kwargs
 end
 
-function visualize_fields_const_x(datetime, x_idx)
+function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -163,12 +163,13 @@ function visualize_fields_const_x(datetime, x_idx)
    @lift print("Max. |v| in bottom layer = ", $max_v_bottom, "\n")
    @lift print("Max. |w| in bottom layer = ", $max_w_bottom, "\n")
    =#
+
    frames = 1:Nt
    
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
@@ -185,7 +186,7 @@ function visualize_fields_const_x(datetime, x_idx)
    close(ds)
 end
 
-function visualize_fields_const_y(datetime, y_idx)
+function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -299,7 +300,7 @@ function visualize_fields_const_y(datetime, y_idx)
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
@@ -316,7 +317,7 @@ function visualize_fields_const_y(datetime, y_idx)
    close(ds)
 end
 
-function visualize_fields_const_z(datetime, z_idx)
+function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -428,7 +429,7 @@ function visualize_fields_const_z(datetime, z_idx)
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
