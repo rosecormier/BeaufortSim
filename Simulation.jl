@@ -1,12 +1,15 @@
+include("LibraryStability.jl")
 include("Visualization.jl")
 
-using Dates: format, now
+using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
+using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
+using .Stability
 
 ######################
 # SPECIFY PARAMETERS #
@@ -15,7 +18,7 @@ using Printf
 #Numbers of gridpoints
 const Nx = 512
 const Ny = 512
-const Nz = 128
+const Nz = 256
 
 #Lengths of axes
 const Lx = 2000 * kilometer
@@ -23,25 +26,30 @@ const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
 #Eddy viscosities
-const νh = (5e-2) * (meter^2/second)
-const νv = (5e-5) * (meter^2/second)
+const νh = 0 * (meter^2/second) #(5e-2) * (meter^2/second)
+const νv = 0 * (meter^2/second) #(5e-5) * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
 
+#f-plane and Coriolis frequency
+fPlane  = FPlane(latitude = lat)
+const f = fPlane.f
+
 #Gyre scales
-const lat = 74.0  #Degrees N
-const U   = 1 * meter/second
 const σr  = 250 * kilometer
 const σz  = 300 * meter
-const N2  = (1.8e-3) * (1/second^2)
+
+#Gyre speed and buoyancy frequency
+const U  = 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
+const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
 #Time increments
-const Δti     = 1 * second
-const Δt_max  = 100 * second 
+const Δti     = 0.5 * second
+const Δt_max  = 30 * second 
 const CFL     = 0.1
 const tf      = 10 * day
-const Δt_save = 10 * minute # * hour
+const Δt_save = 2 * hour
 
 #Architecture
 const use_GPU = true
@@ -52,9 +60,10 @@ const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx = 256
-const y_idx = 256
-const z_idx = 126
+const x_idx      = 256
+const y_idx      = 256
+const z_idx      = 252
+const t_idx_skip = 1
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -63,7 +72,7 @@ const z_idx = 126
 use_GPU ? architecture = GPU() : architecture = CPU()
 
 grid = RectilinearGrid(architecture,
-		       topology = (Periodic, Periodic, Bounded),
+		       topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lx/2, Lx/2), 
                        y = (-Ly/2, Ly/2), 
@@ -73,28 +82,46 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh), 
 	   VerticalScalarDiffusivity(ν = νv))
 
+db_dz_top(x, y, t) = N2 + (sqrt(2)*f*U*σr/(σz^2)
+			   * exp(1/2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
+db_dz_bottom(x, y, t) = N2 + (sqrt(2)*f*U*σr/(σz^2)
+			     * exp((1/2) - (Lz/σz)^2) 
+			     * (1 - exp(-(x^2 + y^2)/(σr^2))) 
+			     * (1 - 2*(Lz/σz)^2))
+
+b_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(db_dz_top),
+				bottom = GradientBoundaryCondition(db_dz_bottom))
+
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :QuasiAdamsBashforth2, 
                             advection = UpwindBiasedFifthOrder(),
                             closure = closure, 
-                            coriolis = FPlane(latitude = lat),
+                            coriolis = fPlane,
                             tracers = (:b),
-                            buoyancy = BuoyancyTracer())
+                            buoyancy = BuoyancyTracer(),
+			    boundary_conditions = (b = b_BCs,))
+
+#Prints warnings if the respective instabilities are present
+check_inert_stability(σr, σz, f, U,
+                      xnodes(model.grid, Face(), Face(), Face()),
+                      ynodes(model.grid, Face(), Face(), Face()),
+                      znodes(model.grid, Face(), Face(), Face()))
+check_grav_stability(σr, σz, f, U, N2)
 
 ##########################
 # SET INITIAL CONDITIONS #
 ##########################
 
-f       = model.coriolis.f
 b       = model.tracers.b
 u, v, w = model.velocities
-#=
-ū(x,y,z)  = (U*y/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-v̄(x,y,z)  = -(U*x/σr) * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+
+ū(x,y,z)  = (sqrt(2)*U*y/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+v̄(x,y,z)  = -(sqrt(2)*U*x/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 bʹ(x,y,z) = (1e-6) * rand()
-b̄(x,y,z)  = (N2*z - (U*f*σr/(σz^2)) * z * exp(1 - (x^2 + y^2)/(σr^2) 
-						  -(z/σz)^2) + bʹ(x,y,z))
+b̄(x,y,z)  = N2*z + (sqrt(2)*f*U*σr*z/(σz^2) 
+		    * exp((1/2) - (z/σz)^2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
+#+ bʹ(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -105,14 +132,14 @@ set!(model, u = ū, v = v̄, b = b̄)
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
    wmax = maximum(abs, sim.model.velocities.w)
    bmax = maximum(abs, sim.model.tracers.b)
-   @info @sprintf("Iter: %d; time: %.2e; Δt: %s",
-		  iteration(sim), time(sim), prettytime(sim.Δt))
+   @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
+		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
    return nothing
@@ -124,11 +151,12 @@ outputs = (u = model.velocities.u,
 	   v = model.velocities.v,
 	   w = model.velocities.w,
 	   b = model.tracers.b)
-=#
-datetimenow = "240913-103906" #format(now(), "yymmdd-HHMMSS")
-outfilename = "output_$(datetimenow).nc"
-outfilepath = joinpath("./Output", outfilename)
-#=mkpath(dirname(outfilepath)) #Make path if nonexistent
+
+datetimestart = now()
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+outfilename   = "output_$(datetimenow).nc"
+outfilepath   = joinpath("./Output", outfilename)
+mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -141,6 +169,8 @@ simulation.output_writers[:field_writer] = outputwriter
 run!(simulation)
 print("Date-time label: $(datetimenow)", "\n")
 
+duration = canonicalize(now() - datetimestart)
+
 ###############################
 # SAVE PARAMETERS TO LOG FILE #
 ###############################
@@ -151,32 +181,37 @@ mkpath(dirname(logfilepath)) #Make path if nonexistent
 
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
-   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n")
-   write(file, "νh, νv = $(νh), $(νv) \n")
+   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
+   write(file, "νh, νv = $(νh), $(νv) \n\n")
    write(file, "lat = $(lat) \n")
-   write(file, "U, σr, σz = $(U), $(σr), $(σz) \n")
-   write(file, "N2_LB, N2_max = $(N2_LB), $(N2_max) \n")
-   write(file, "d_ML, σ = $(d_ML), $(σ) \n")
+   write(file, "σr, σz = $(σr), $(σz) \n")
+   write(file, "U, N2 = $(U), $(N2) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
-   write(file, "tf = $(tf)")
+   write(file, "tf = $(tf) \n\n")
+   write(file, "Total number of iterations = $(iteration(simulation)) \n")
+   write(file, "Δtf = $(prettytime(simulation.Δt)) \n\n")
+   write(file, "Simulation runtime = $(duration) \n")
+   write(file, "Output filesize = $(filesize(outfilepath)) bytes")
 end
 
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
-=#
+
 if do_vis_const_x
-   visualize_fields_const_x(datetimenow, x_idx)
+   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
+   #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
-   visualize_fields_const_y(datetimenow, y_idx)
+   visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
+   #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx)
+   visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
