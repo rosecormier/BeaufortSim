@@ -30,8 +30,10 @@ function ω_2D(u, v, w, Δx, Δy, Δz;
 end
 
 function ζa_b(U, f, σr, σz, x, y, z)
-   ζa_b = @. (f + (2*U/σr) * ((x^2 + y^2)/(σr^2) - 1)
-            * exp(1 - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+   r2_arr = @. x^2 + y^2
+   z2_arr = transpose(z.^2 .* ones(Float64, (1, length(r2_arr))))
+   ζa_b = @. (f + (2*U/σr) * (r2_arr/(σr^2) - 1)
+	      * exp(1 - r2_arr/(σr^2) - z2_arr/(σz^2)))
    return ζa_b
 end
 
@@ -161,69 +163,5 @@ function BestFit(degree,interval, abscissa,ordenate)
     best_fit = @. exp(constant + slope * abscissa)
     @sprintf "The growth rate is approximately %5.1e" slope
     return best_fit, constant, slope
-end
-=#
-#=
-function randomSine(x,y,z, Nx,Ny,Nz)
-#Random coefficients (gaussian-distributed) for phase (ϕ) and amplitude (A)
-
-amplitude = FileIO.load("cosineVariables.jld2","amplitude")
-phase = FileIO.load("cosineVariables.jld2","phase")
-
-ϕx = phase[:,1]
-Ax = amplitude[:,1]
-ϕy = phase[:,2]
-Ay = amplitude[:,2]
-ϕz = phase[:,3]
-Az = amplitude[:,3]
-
-rs = 0
-    for k = 1:400
-        rs = rs *(Ax[k].*sin.(2*π .* x .* (k) / Nx .+ ϕx[k]) .* Ay[k].*sin.(2*π.*y .* (k) / Ny .+ ϕy[k]) .* 
-        Az[k].*sin.(2*π.*z .* (k) / Nz .+ ϕz[k]))
-    end
-    return rs
-end
-
-function randomSineGPU(x,y,z, Nx,Ny,Nz)
-#Random coefficients (gaussian-distributed) for phase (ϕ) and amplitude (A)
-
-amplitude = FileIO.load("cosineVariables.jld2","amplitude")
-phase = FileIO.load("cosineVariables.jld2","phase")
-
-ϕx = phase[:,1]
-Ax = amplitude[:,1]
-ϕy = phase[:,2]
-Ay = amplitude[:,2]
-ϕz = phase[:,3]
-Az = amplitude[:,3]
-
-rs = 0
-Threads.@threads for k = 1:400
-        rs = rs + (Ax[k].*sin.(2*π .* x .* (k) / Nx .+ ϕx[k]) .* Ay[k].*sin.(2*π.*y .* (k) / Ny .+ ϕy[k]) .*
-        Az[k].*sin.(2*π.*z .* (k) / Nz .+ ϕz[k]))
-    end
-    return rs
-end
-
-function randomSineGPU_2D(y,z, Ny,Nz)
-#Random coefficients (gaussian-distributed) for phase (ϕ) and amplitude (A)
-
-amplitude = FileIO.load("cosineVariables.jld2","amplitude")
-phase = FileIO.load("cosineVariables.jld2","phase")
-
-#ϕx = phase[:,1]
-#Ax = amplitude[:,1]
-ϕy = phase[:,2]
-Ay = amplitude[:,2]
-ϕz = phase[:,3]
-Az = amplitude[:,3]
-
-rs = 0
-Threads.@threads for k = 1:400
-        rs = rs + 1/400 .*(Ay[k].*sin.(2*π.*y .* (k) / Ny .+ ϕy[k]) .*
-        Az[k].*sin.(2*π.*z .* (k) / Nz .+ ϕz[k]))
-    end
-    return rs
 end
 =#

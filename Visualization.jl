@@ -1,4 +1,4 @@
-include("Library.jl")
+include("LibraryVisualization.jl")
 
 using Oceananigans
 using CairoMakie, DataStructures, NCDatasets, Printf
@@ -46,7 +46,7 @@ function get_axis_kwargs(x, y, z;
    return nearest_m, axis_kwargs
 end
 
-function visualize_fields_const_x(datetime, x_idx)
+function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -77,14 +77,14 @@ function visualize_fields_const_x(datetime, x_idx)
    Δw_f_yz = w_total_f_yz .- wb[x_idx, :, z_plt:end]
 
    lims_b_total = get_range_lims(b_total_f_yz)
-   lims_u_total = get_range_lims(u_total_f_yz)
-   lims_v_total = get_range_lims(v_total_f_yz)
-   lims_w_total = get_range_lims(w_total_f_yz)
+   lims_u_total = get_range_lims(u_total_f_yz; prescribed_max = 1e-3)
+   lims_v_total = get_range_lims(v_total_f_yz; prescribed_max = 1e-3)
+   lims_w_total = get_range_lims(w_total_f_yz; prescribed_max = 1e-3)
 
-   lims_Δb = get_range_lims(Δb_f_yz)
-   lims_Δu = get_range_lims(Δu_f_yz)
-   lims_Δv = get_range_lims(Δv_f_yz)
-   lims_Δw = get_range_lims(Δw_f_yz)
+   lims_Δb = get_range_lims(Δb_f_yz; prescribed_max = 1e-3)
+   lims_Δu = get_range_lims(Δu_f_yz; prescribed_max = 1e-3)
+   lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-3)
+   lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-3)
 
    x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
@@ -112,14 +112,14 @@ function visualize_fields_const_x(datetime, x_idx)
                        title = "Meridional velocity perturbation (v')", 
 	               axis_kwargs_yz...)
 
-   hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_yz, colormap = :balance)
-#		         colorrange = lims_b_total, colormap = :balance)
-   hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_yz, colormap = :balance)
-#                         colorrange = lims_w_total, colormap = :balance)
-   hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_yz, colormap = :balance)
-#                         colorrange = lims_u_total, colormap = :balance)
-   hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_yz, colormap = :balance)
-#                         colorrange = lims_v_total, colormap = :balance)
+   hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_yz, 
+			 colorrange = lims_b_total, colormap = :balance)
+   hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_yz,
+                         colorrange = lims_w_total, colormap = :balance)
+   hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_yz,
+                         colorrange = lims_u_total, colormap = :balance)
+   hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_yz,
+                         colorrange = lims_v_total, colormap = :balance)
 
    hm_b_perturb = heatmap!(ax_b_perturb, y, z[z_plt:end], Δb_yz,
                            colorrange = lims_Δb, colormap = :balance)
@@ -130,19 +130,19 @@ function visualize_fields_const_x(datetime, x_idx)
    hm_v_perturb = heatmap!(ax_v_perturb, y, z[z_plt:end], Δv_yz,
                            colorrange = lims_Δv, colormap = :balance)
 
-   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[2, 2], hm_b_total)#, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_w_total)#, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 2], hm_u_total)#, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 4], hm_v_total)#, tickformat = "{:.1e}", label = "m/s")
 
-   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}", 
-	    label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}", 
-	    label = "m/s")
-   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}", 
-	    label = "m/s")
-   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
-	    label = "m/s")
+   Colorbar(fig_perturb[2, 2], hm_b_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_w_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s")
+   Colorbar(fig_perturb[3, 2], hm_u_perturb)#, tickformat = "{:.1e}", 
+#	    label = "m/s")
+   Colorbar(fig_perturb[3, 4], hm_v_perturb)#, tickformat = "{:.1e}",
+#	    label = "m/s")
 
    title_total = @lift @sprintf("Fields at x = %i m; t = %.2f days",
                           x_nearest_m, times[$n]/(3600*24))
@@ -154,7 +154,7 @@ function visualize_fields_const_x(datetime, x_idx)
 			       tellwidth = false)
    fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24, 
 			       tellwidth = false)
-
+   #=
    max_u_bottom = @lift maximum(abs.(ds["u"][:, :, 4, $n]))
    max_v_bottom = @lift maximum(abs.(ds["v"][:, :, 4, $n]))
    max_w_bottom = @lift maximum(abs.(ds["w"][:, :, 4, $n]))
@@ -162,18 +162,19 @@ function visualize_fields_const_x(datetime, x_idx)
    @lift print("Max. |u| in bottom layer = ", $max_u_bottom, "\n")
    @lift print("Max. |v| in bottom layer = ", $max_v_bottom, "\n")
    @lift print("Max. |w| in bottom layer = ", $max_w_bottom, "\n")
+   =#
 
    frames = 1:Nt
    
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      #print(msg * " \r")
+      print(msg * " \r")
       n[] = i
    end
 
@@ -185,7 +186,7 @@ function visualize_fields_const_x(datetime, x_idx)
    close(ds)
 end
 
-function visualize_fields_const_y(datetime, y_idx)
+function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -299,7 +300,7 @@ function visualize_fields_const_y(datetime, y_idx)
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
@@ -316,7 +317,7 @@ function visualize_fields_const_y(datetime, y_idx)
    close(ds)
 end
 
-function visualize_fields_const_z(datetime, z_idx)
+function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -345,14 +346,14 @@ function visualize_fields_const_z(datetime, z_idx)
    Δw_f_xy = w_total_f_xy .- wb[:, :, z_idx]
 
    lims_b_total = get_range_lims(b_total_f_xy)
-   lims_u_total = get_range_lims(u_total_f_xy)
-   lims_v_total = get_range_lims(v_total_f_xy)
-   lims_w_total = get_range_lims(w_total_f_xy)
+   lims_u_total = get_range_lims(u_total_f_xy; prescribed_max = 1e-3)
+   lims_v_total = get_range_lims(v_total_f_xy; prescribed_max = 1e-3)
+   lims_w_total = get_range_lims(w_total_f_xy; prescribed_max = 1e-3)
 
-   lims_Δb = get_range_lims(Δb_f_xy)
-   lims_Δu = get_range_lims(Δu_f_xy)
-   lims_Δv = get_range_lims(Δv_f_xy)
-   lims_Δw = get_range_lims(Δw_f_xy)
+   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-3)
+   lims_Δu = get_range_lims(Δu_f_xy; prescribed_max = 1e-3)
+   lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-3)
+   lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-3)
    
    depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
    
@@ -428,12 +429,12 @@ function visualize_fields_const_z(datetime, z_idx)
    video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
    video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
 
-   for i = 1:frames[end]
+   for i = 1:t_idx_skip:frames[end]
       recordframe!(video_total)
       recordframe!(video_perturb)
       yield()
       msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      #print(msg * " \r")
+      print(msg * " \r")
       n[] = i
    end
 
@@ -693,5 +694,41 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_z$(depth_nearest_m)_$(datetime).mp4"), video_q)
    save(joinpath("./Plots", "qr_z$(depth_nearest_m)_$(datetime).mp4"), video_qr)
+   close(ds)
+end
+
+function plot_background_ζa(datetime, U, f, σr, σz; 
+		            x_idx = nothing, y_idx = nothing)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   nearest_m, axis_kwargs = get_axis_kwargs(x, y, z; 
+					    x_idx = x_idx, y_idx = y_idx)
+
+   fig = Figure(size = (800, 400))
+   ax  = Axis(fig[2, 1]; axis_kwargs...)
+
+   if !isnothing(x_idx)
+      ζa_b_yz = ζa_b(U, f, σr, σz, x[x_idx], y, z) 
+      lims_ζa = get_range_lims(ζa_b_yz)
+      hm      = heatmap!(ax, y, z, ζa_b_yz, colorrange = lims_ζa, 
+			 colormap = :balance)
+      title   = ("Absolute vorticity of background state at x = $(nearest_m) m")
+      fname   = "bkgd_zeta_abs_x$(nearest_m)_$(datetime).png"
+   elseif !isnothing(y_idx)
+      ζa_b_xz = ζa_b(U, f, σr, σz, x, y[y_idx], z)
+      lims_ζa = get_range_lims(ζa_b_xz)
+      hm      = heatmap!(ax, x, z, ζa_b_xz, colorrange = lims_ζa,
+                         colormap = :balance)
+      title   = ("Absolute vorticity of background state at y = $(nearest_m) m")
+      fname   = "bkgd_zeta_abs_y$(nearest_m)_$(datetime).png"
+   end
+
+   Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
+
+   fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", fname), fig)
    close(ds)
 end
