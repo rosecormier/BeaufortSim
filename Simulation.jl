@@ -16,8 +16,8 @@ using .Stability
 ######################
 
 #Numbers of gridpoints
-const Nx = 256
-const Ny = 256
+const Nx = 512
+const Ny = 512
 const Nz = 256
 
 #Lengths of axes
@@ -46,10 +46,10 @@ const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
 #Time increments
 const Δti     = 0.5 * second
-const Δt_max  = 15 * second 
+const Δt_max  = 30 * second 
 const CFL     = 0.1
-const tf      = 5 * day
-const Δt_save = 1 * hour
+const tf      = 10 * day
+const Δt_save = 2 * hour
 
 #Architecture
 const use_GPU = true
@@ -60,7 +60,7 @@ const do_vis_const_y = false
 const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx      = 128
+const x_idx      = 256
 const y_idx      = 256
 const z_idx      = 252
 const t_idx_skip = 1
