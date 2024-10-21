@@ -54,6 +54,9 @@ const Δt_save = 2 * hour
 #Architecture
 const use_GPU = true
 
+#Max. magnitude of initial b-perturbations (0 for no perturbation)
+const max_b′ = 1e-6
+
 #Whether to run visualization functions
 const do_vis_const_x = true
 const do_vis_const_y = false
@@ -116,12 +119,14 @@ check_grav_stability(σr, σz, f, U, N2)
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x,y,z)  = (sqrt(2)*U*y/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-v̄(x,y,z)  = -(sqrt(2)*U*x/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-bʹ(x,y,z) = (1e-6) * rand()
-b̄(x,y,z)  = N2*z + (sqrt(2)*f*U*σr*z/(σz^2) 
-		    * exp((1/2) - (z/σz)^2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
-#+ bʹ(x,y,z))
+ū(x,y,z) = (sqrt(2)*U*y/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+v̄(x,y,z) = -(sqrt(2)*U*x/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+
+b′(x,y,z) = max_b′ * rand()
+b̄(x,y,z)  = (N2*z 
+	     + (sqrt(2)*f*U*σr*z/(σz^2) 
+	        * exp((1/2) - (z/σz)^2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
+	     + b′(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -186,6 +191,7 @@ open(logfilepath, "w") do file
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N2 = $(U), $(N2) \n\n")
+   write(file, "Max. b' = $(max_b′) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
