@@ -9,8 +9,8 @@ function open_dataset(datetime)
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
    
    ds = NCDataset(outfilepath, "r")
-   x  = ds["xC"][:]
-   y  = ds["yC"][:]
+   x  = ds["xC"][:] ./ 1000 #Convert to km for readability
+   y  = ds["yC"][:] ./ 1000 #Convert to km for readability
    z  = ds["zC"][:]
    t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
    Nt = length(t)
@@ -34,16 +34,16 @@ end
 function get_axis_kwargs(x, y, z; 
 		         x_idx = nothing, y_idx = nothing, z_idx = nothing)
    if !isnothing(x_idx)
-      nearest_m   = round(Int, x[x_idx])
-      axis_kwargs = (xlabel = "y [m]", ylabel = "z [m]")
+      nearest     = round(Int, x[x_idx])
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
    elseif !isnothing(y_idx)
-      nearest_m   = round(Int, y[y_idx])
-      axis_kwargs = (xlabel = "x [m]", ylabel = "z [m]")
+      nearest     = round(Int, y[y_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
    elseif !isnothing(z_idx)
-      nearest_m   = round(Int, -z[z_idx])
-      axis_kwargs = (xlabel = "x [m]", ylabel = "y [m]")
+      nearest     = round(Int, -z[z_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
-   return nearest_m, axis_kwargs
+   return nearest, axis_kwargs
 end
 
 function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
@@ -86,7 +86,7 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-3)
    lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-3)
 
-   x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+   x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -144,11 +144,11 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    Colorbar(fig_perturb[3, 4], hm_v_perturb)#, tickformat = "{:.1e}",
 #	    label = "m/s")
 
-   title_total = @lift @sprintf("Fields at x = %i m; t = %.2f days",
-                          x_nearest_m, times[$n]/(3600*24))
+   title_total = @lift @sprintf("Fields at x = %i km; t = %.2f days",
+                          x_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
-			  "Perturbation fields at x = %i m; t = %.2f days",
-                          x_nearest_m, times[$n]/(3600*24))
+			  "Perturbation fields at x = %i km; t = %.2f days",
+                          x_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24, 
 			       tellwidth = false)
@@ -179,9 +179,9 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_x$(x_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_x$(x_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_x$(x_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_x$(x_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
@@ -226,7 +226,7 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_xz)
    lims_Δw = get_range_lims(Δw_f_xz)
    
-   y_nearest_m, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
+   y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
    
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -284,11 +284,11 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
             label = "m/s")
 
-   title_total = @lift @sprintf("Fields at y = %i m; t = %.2f days",
-                          y_nearest_m, times[$n]/(3600*24))
+   title_total = @lift @sprintf("Fields at y = %i km; t = %.2f days",
+                          y_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
-                          "Perturbation fields at y = %i m; t = %.2f days",
-                          y_nearest_m, times[$n]/(3600*24))
+                          "Perturbation fields at y = %i km; t = %.2f days",
+                          y_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
@@ -310,9 +310,9 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_y$(y_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_y$(y_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_y$(y_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_y$(y_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
@@ -355,7 +355,7 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-3)
    lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-3)
    
-   depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+   depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
    
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -414,10 +414,10 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
             label = "m/s")
 
    title_total = @lift @sprintf("Fields at depth %i m; t = %.2f days",
-                          depth_nearest_m, times[$n]/(3600*24))
+                          depth_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
                           "Perturbation fields at depth %i m; t = %.2f days",
-                          depth_nearest_m, times[$n]/(3600*24))
+                          depth_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
@@ -439,9 +439,9 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_z-$(depth_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_z-$(depth_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_z-$(depth_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
