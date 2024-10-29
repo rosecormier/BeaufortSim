@@ -26,8 +26,8 @@ const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
 #Eddy viscosities
-const νh = 0 * (meter^2/second) #(5e-2) * (meter^2/second)
-const νv = 0 * (meter^2/second) #(5e-5) * (meter^2/second)
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
 const κh = (5e-2) * (meter^2/second)
 const κv = (5e-5) * (meter^2/second)
 
@@ -43,26 +43,26 @@ const σr  = 250 * kilometer
 const σz  = 300 * meter
 
 #Gyre speed and buoyancy frequency
-const U  = 0# 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
-const N2 = 1000 #1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
+const U  = 0 * (meter/second)
+const N2 = 1000 * (second^(-2))
 
 #Time increments
 const Δti     = 0.5 * second
 const Δt_max  = 30 * second 
 const CFL     = 0.1
-const tf      = 0.1 * day #1 * day
-const Δt_save = 20 * second #2 * hour
+const tf      = 0.1 * day
+const Δt_save = 40 * second
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 0 #1e-6
+const max_b′ = 0
 
 #Whether to run visualization functions
 const do_vis_const_x = true
 const do_vis_const_y = false
-const do_vis_const_z = true
+const do_vis_const_z = false
 
 #Indices at which to plot fields
 const x_idx      = 256
@@ -87,17 +87,18 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
 	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-@inline dbdz_top(x, y, t) = N2 + (sqrt(2) * f * U * σr / (σz^2)
-			      * exp(1/2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
-@inline dbdz_bottom(x, y, t) = N2 + (sqrt(2) * f * U * σr / (σz^2)
-			      * exp((1/2) - (Lz/σz)^2) 
-			      * (1 - exp(-(x^2 + y^2)/(σr^2))) 
-			      * (1 - 2 * (Lz/σz)^2))
+@inline dbdz_top(x, y, t)    = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp(1/2) 
+				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
+@inline dbdz_bottom(x, y, t) = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp((1/2) - (Lz/σz)^2) 
+			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
+			           * (1 - 2 * (Lz/σz)^2)))
 
-b_top_BC = FluxBoundaryCondition(dbdz_top)
+b_top_BC    = FluxBoundaryCondition(dbdz_top)
 b_bottom_BC = FluxBoundaryCondition(dbdz_bottom)
-#b_top_BC = GradientBoundaryCondition(0) #N2)
-#b_bottom_BC = GradientBoundaryCondition(0) #N2)
 
 b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
@@ -139,7 +140,6 @@ b̄(x,y,z)  = (N2 * z
 
 set!(model, u = ū, v = v̄, b = b̄)
 #print(model.tracers.b[256, 256, :])
-#print(typeof(model.tracers.b))
 #fill_halo_regions!((model.tracers.b,))
 #print(model.tracers.b[256, 256, :])
 
