@@ -43,8 +43,8 @@ const σr  = 250 * kilometer
 const σz  = 300 * meter
 
 #Gyre speed and buoyancy frequency
-const U  = 0 * (meter/second)
-const N2 = 1000 * (second^(-2))
+const U  = 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
+const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
 #Time increments
 const Δti     = 0.5 * second
@@ -97,8 +97,8 @@ closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh),
 			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
 			           * (1 - 2 * (Lz/σz)^2)))
 
-b_top_BC    = FluxBoundaryCondition(dbdz_top)
-b_bottom_BC = FluxBoundaryCondition(dbdz_bottom)
+b_top_BC    = GradientBoundaryCondition(dbdz_top)
+b_bottom_BC = GradientBoundaryCondition(dbdz_bottom)
 
 b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
@@ -139,9 +139,6 @@ b̄(x,y,z)  = (N2 * z
 	     + b′(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
-#print(model.tracers.b[256, 256, :])
-#fill_halo_regions!((model.tracers.b,))
-#print(model.tracers.b[256, 256, :])
 
 #############################
 # SET UP AND RUN SIMULATION #
