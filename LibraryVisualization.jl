@@ -44,8 +44,8 @@ end
 
 function ∇b(b, i, j, k, Δx, Δy, Δz)
    ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / (2*Δx) #(b[2:end,2:end,2:end] - b[1:end-1,2:end,2:end]) / Δx
-   ∂y_b = (b[2:end,2:end,2:end] - b[2:end,1:end-1,2:end]) / Δy
-   ∂z_b = (b[2:end,2:end,2:end] - b[2:end,2:end,1:end-1]) / Δz
+   ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / (2*Δy) # (b[2:end,2:end,2:end] - b[2:end,1:end-1,2:end]) / Δy
+   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / (2*Δz) #(b[2:end,2:end,2:end] - b[2:end,2:end,1:end-1]) / Δz
    return ∂x_b, ∂y_b, ∂z_b
 end
 
@@ -64,9 +64,9 @@ function ∇b_2D(b, Δx, Δy, Δz;
    return ∇b_2D
 end
 
-function ertelQ(u, v, w, b, f, x, y, z, Δx, Δy, Δz)
-   ωx, ωy, ωz = ω(u, v, w, x, y, z, Δx, Δy, Δz)
-   ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
+function ertelQ(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
+   ωx, ωy, ωz = ω(u, v, w, x_idx, y_idx, z_idx, Δx, Δy, Δz)
+   ∂x_b, ∂y_b, ∂z_b = ∇b(b, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    Q = @. (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
 end
 

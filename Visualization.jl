@@ -465,39 +465,41 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
       q  = @lift ertelQ($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
       qr = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
 
-      comp_ds = NCDataset(computed_file, "c")
-      defVar(comp_ds, "xG", x[1:end-1], ("xG",))
-      defVar(comp_ds, "yG", y[1:end-1], ("yG",))
-      defVar(comp_ds, "zG", z[1:end-1], ("zG",))
-      defVar(comp_ds, "xCC", x[2:end-1], ("xCC",))
-      defVar(comp_ds, "yCC", y[2:end-1], ("yCC",))
-      defVar(comp_ds, "time", times[:], ("time",))
+      NCDataset(computed_file, "c") do comp_ds
+         
+	 defDim(comp_ds, "xG", length(x)-2) #x[2:end-1]) #, ("xG",))
+	 defDim(comp_ds, "yG", y[2:end-1]) #, ("yG",))
+         defDim(comp_ds, "zG", z[2:end-1]) #, ("zG",))
+	 defDim(comp_ds, "xCC", x[2:end-1]) #, ("xCC",))
+	 defDim(comp_ds, "yCC", y[2:end-1]) #, ("yCC",))
+	 defDim(comp_ds, "time", times[:]) #, ("time",))
 
-      q_data  = defVar(comp_ds, "q", Float64, 
+         defVar(comp_ds, "q", Float64, 
 		       ("xG", "yG", "zG", "time"))
-      qr_data = defVar(comp_ds, "qr", Float64, 
+         defVar(comp_ds, "qr", Float64, 
 		       ("xCC", "yCC", "zG", "time"))
 
-      frames = 1:Nt
-      x_idcs = 1:length(x)
-      y_idcs = 1:length(y)
-      z_idcs = 1:length(z)
+         frames = 1:Nt
+         x_idcs = 2:length(x)-1
+         y_idcs = 2:length(y)-1
+         z_idcs = 2:length(z)-1
 
-      for t = 1:frames[end]
-	 for x_idx = 2:x_idcs[end]-1
-       	    for y_idx = 2:y_idcs[end]-1
-               for z_idx = 2:z_idcs[end]-1
-	          q_data[x_idx, y_idx, z_idx, t]  = to_value(q)
-	          #qr_data[x_idx, y_idx, z_idx, t] = to_value(qr)
-		  k[] = z_idx
-	       end
-	       j[] = y_idx
-            end
-	    i[] = x_idx
+         for t = 1:frames[end]
+	    for x_idx = 2:x_idcs[end]-1
+       	       for y_idx = 2:y_idcs[end]-1
+                  for z_idx = 2:z_idcs[end]-1
+	             comp_ds.q[x_idx, y_idx, z_idx, t]  = to_value(q)
+	             #qr_data[x_idx, y_idx, z_idx, t] = to_value(qr)
+		     k[] = z_idx
+	          end
+	          j[] = y_idx
+               end
+	       i[] = x_idx
+	    end
+	    msg = string("Computing q for time ", t, " of ", frames[end])
+            print(msg * " \r")
+            n[] = t
 	 end
-	 msg = string("Computing q for time ", t, " of ", frames[end])
-         print(msg * " \r")
-         n[] = t
       end
 
       close(ds)
