@@ -4,13 +4,13 @@ module ComputeSecondaries
    export ω, ω_2D, ζa_b, ζa, ∇b, ∇b_2D, ertelQ, ertelQ_2D, ∂r_ertelQ
 end
 
-function ω(u, v, w, Δx, Δy, Δz)
-   ωx = @. ((w[2:end,2:end,2:end] - w[2:end,1:end-1,2:end]) / Δy 
-           - (v[2:end,2:end,2:end] - v[2:end,2:end,1:end-1]) / Δz)
-   ωy = @. ((u[2:end,2:end,2:end] - u[2:end,2:end,1:end-1]) / Δz 
-	   - (w[2:end,2:end,2:end] - w[1:end-1,2:end,2:end]) / Δx)
-   ωz = @. ((v[2:end,2:end,2:end] - v[1:end-1,2:end,2:end]) / Δx 
-	   - (u[2:end,2:end,2:end] - u[2:end,1:end-1,2:end]) / Δy)
+function ω(u, v, w, i, j, k, Δx, Δy, Δz)
+   ωx = @. ((w[i, j:j+1, k] - w[i, j-1:j, k]) / Δy 
+            - (v[i, j, k:k+1] - v[i, j, k-1:k]) / Δz)
+   ωy = @. ((u[i, j, k:k+1]- u[i, j, k-1:k]) / Δz
+	    - (w[i:i+1, j, k] - w[i-1:i, j, k]) / Δx)
+   ωz = @. ((v[i:i+1, j, k] - v[i-1:i, j, k]) / Δx
+	    - (u[i, j:j+1, k] - u[i, j-1:j, k]) / Δy)
    return ωx, ωy, ωz
 end
 
@@ -42,8 +42,8 @@ function ζa(f, u, v, w, Δx, Δy, Δz)
    ζa         = f + ωz
 end
 
-function ∇b(b, Δx, Δy, Δz)
-   ∂x_b = (b[2:end,2:end,2:end] - b[1:end-1,2:end,2:end]) / Δx
+function ∇b(b, i, j, k, Δx, Δy, Δz)
+   ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / (2*Δx) #(b[2:end,2:end,2:end] - b[1:end-1,2:end,2:end]) / Δx
    ∂y_b = (b[2:end,2:end,2:end] - b[2:end,1:end-1,2:end]) / Δy
    ∂z_b = (b[2:end,2:end,2:end] - b[2:end,2:end,1:end-1]) / Δz
    return ∂x_b, ∂y_b, ∂z_b
@@ -64,8 +64,8 @@ function ∇b_2D(b, Δx, Δy, Δz;
    return ∇b_2D
 end
 
-function ertelQ(u, v, w, b, f, Δx, Δy, Δz)
-   ωx, ωy, ωz = ω(u, v, w, Δx, Δy, Δz)
+function ertelQ(u, v, w, b, f, x, y, z, Δx, Δy, Δz)
+   ωx, ωy, ωz = ω(u, v, w, x, y, z, Δx, Δy, Δz)
    ∂x_b, ∂y_b, ∂z_b = ∇b(b, Δx, Δy, Δz)
    Q = @. (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
 end
