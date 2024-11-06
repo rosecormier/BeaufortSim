@@ -518,8 +518,7 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
-   n = Observable(1)
-
+   n    = Observable(1)
    b    = @lift ds["b"][:, :, z_plt:end, $n]
    u    = @lift ds["u"][:, :, z_plt:end, $n]
    v    = @lift ds["v"][:, :, z_plt:end, $n]
@@ -561,130 +560,92 @@ end
 function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
-                                                         Δx, Δy, Δz, f)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
-   n = Observable(1)
+   n    = Observable(1)
+   b    = @lift ds["b"][:, :, z_plt:end, $n]
+   u    = @lift ds["u"][:, :, z_plt:end, $n]
+   v    = @lift ds["v"][:, :, z_plt:end, $n]
+   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q_xz = @lift comp_ds["q"][:, y_idx, z_plt:end, $n]
 
-   b     = @lift ds["b"][:, :, z_plt:end, $n]
-   u     = @lift ds["u"][:, :, z_plt:end, $n]
-   v     = @lift ds["v"][:, :, z_plt:end, $n]
-   w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_xz  = @lift comp_ds["q"][:, y_idx, z_plt:end, $n]
-   qr_xz = @lift comp_ds["qr"][:, y_idx, z_plt:end, $n]
+   q_xz_f = comp_ds["q"][:, y_idx, z_plt:end, Nt]
 
-   q_xz_f  = comp_ds["q"][:, y_idx, z_plt:end, Nt]
-   qr_xz_f = comp_ds["qr"][:, y_idx, z_plt:end, Nt]
-
-   lims_q  = get_range_lims(q_xz_f)
-   lims_qr = get_range_lims(qr_xz_f)
+   lims_q = get_range_lims(q_xz_f)
 
    y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
 
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xz...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xz...)
-
-   hm_q  = heatmap!(ax_q, xG, zG[z_plt:end], q_xz, colorrange = lims_q, 
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, xCC, zG[z_plt:end], qr_xz, colorrange = lims_qr,
+   hm_q  = heatmap!(ax_q, x[2:end-1], z[z_plt:end], q_xz, colorrange = lims_q, 
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at y = %i km; t = %.2f days",
-			     y_nearest, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at y = %i km; t = %.2f days",
-			     y_nearest, times[$n]/(3600*24))
-
+   title_q        = @lift @sprintf("q at y = %i km; t = %.2f days",
+			            y_nearest, times[$n]/(3600*24))
    fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false)
 
-   frames   = 1:Nt
-   video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
+   frames  = 1:Nt
+   video_q = VideoStream(fig_q, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_y$(y_nearest)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_y$(y_nearest)_$(datetime).mp4"), video_qr)
    close(ds)
 end
 
 function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
-                                                         Δx, Δy, Δz, f)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
-   n = Observable(1)
+   n    = Observable(1)
+   b    = @lift ds["b"][:, :, :, $n]
+   u    = @lift ds["u"][:, :, :, $n]
+   v    = @lift ds["v"][:, :, :, $n]
+   w    = @lift ds["w"][:, :, 1:end-1, $n]
+   q_xy = @lift comp_ds["q"][:, :, z_idx, $n]
 
-   b     = @lift ds["b"][:, :, :, $n]
-   u     = @lift ds["u"][:, :, :, $n]
-   v     = @lift ds["v"][:, :, :, $n]
-   w     = @lift ds["w"][:, :, 1:end-1, $n]
-   q_xy  = @lift comp_ds["q"][:, :, z_idx, $n]
-   qr_xy = @lift comp_ds["qr"][:, :, z_idx, $n]
-
-   q_xy_f  = comp_ds["q"][:, :, z_idx, Nt]
-   qr_xy_f = comp_ds["qr"][:, :, z_idx, Nt]
+   q_xy_f = comp_ds["q"][:, :, z_idx, Nt]
 
    lims_q = get_range_lims(q_xy_f)
-   lims_qr = get_range_lims(qr_xy_f)
 
    depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
 
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xy...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xy...)
-   
    hm_q  = heatmap!(ax_q, xG, yG, q_xy, colorrange = lims_q, 
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, xCC, yCC, qr_xy, colorrange = lims_qr, 
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at depth %i m; t = %.2f days",
+   title_q       = @lift @sprintf("q at depth %i m; t = %.2f days",
 			     depth_nearest, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at depth %i m; t = %.2f days",
-                             depth_nearest, times[$n]/(3600*24))
-
-   fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false) 
+   fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
    frames   = 1:Nt
    video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_z$(depth_nearest)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_z$(depth_nearest)_$(datetime).mp4"), video_qr)
    close(ds)
 end
 

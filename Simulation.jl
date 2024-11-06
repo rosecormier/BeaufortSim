@@ -61,8 +61,8 @@ const max_b′ = 0
 
 #Whether to run visualization functions
 const do_vis_const_x = true
-const do_vis_const_y = false
-const do_vis_const_z = false
+const do_vis_const_y = true
+const do_vis_const_z = true
 
 #Indices at which to plot fields
 const x_idx      = 256
@@ -216,7 +216,7 @@ end
 ###################################
 
 if do_vis_const_x
-   #visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
    visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
@@ -224,7 +224,7 @@ end
 if do_vis_const_y
    visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
    visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
-   plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
+   #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
