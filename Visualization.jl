@@ -455,69 +455,57 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
       ds, x, y, z, times, Nt = open_dataset(datetime)
 
-      i, j, k = Observable(2), Observable(2), Observable(2)
-      n       = Observable(1)
+      frames = 1:Nt
+      x_idcs = 2:length(x)-2
+      y_idcs = 2:length(y)-2
+      z_idcs = 2:length(z)-2
 
-      b  = @lift ds["b"][:, :, :, $n]
-      u  = @lift ds["u"][1:end-1, :, :, $n]
-      v  = @lift ds["v"][:, 1:end-1, :, $n]
-      w  = @lift ds["w"][:, :, 1:end-1, $n]
-      q  = @lift ertelQ($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
-      qr = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
-
+      function update_data_array!(data_array, i, j, k, n, value)
+         data_array[i, j, k, n] = value
+         return data_array
+      end
+      
       NCDataset(computed_file, "c") do comp_ds
          
+         i, j, k = Observable(2), Observable(2), Observable(2)
+         n       = Observable(1)
+
+         b = @lift ds["b"][:, :, :, $n]
+         u = @lift ds["u"][1:end-1, :, :, $n]
+         v = @lift ds["v"][:, 1:end-1, :, $n]
+         w = @lift ds["w"][:, :, 1:end-1, $n]
+         q = @lift ertelQ($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
+
 	 defDim(comp_ds, "x", length(x)-2)
 	 defDim(comp_ds, "y", length(y)-2)
 	 defDim(comp_ds, "z", length(z)-2)
 	 defDim(comp_ds, "time", length(times))
-
-         #defVar(comp_ds, "ertelQ", Float64, 
-	 #	       ("xG", "yG", "zG", "time"))
-         #defVar(comp_ds, "qr", Float64, 
-	 #	       ("xCC", "yCC", "zG", "time"))
 
 	 q_data  = Array{Float64, 4}(undef, 
 				     length(x)-2, 
 				     length(y)-2, 
 				     length(z)-2, 
 				     Nt)
-	 qr_data = Array{Float64, 4}(undef,
-				     length(x)-2,
-				     length(y)-2,
-				     length(z)-2,
-				     Nt)
-
-         function update_data_array!(data_array, i, j, k, n, value)
-            data_array[i, j, k, n] = value
-	    return data_array
-         end
-
-         frames = 1:Nt
-         x_idcs = 2:length(x)-2
-         y_idcs = 2:length(y)-2
-         z_idcs = 2:length(z)-2
 
          for t = 1:frames[end]
-	    for x_idx = 2:x_idcs[end]
-       	       for y_idx = 2:y_idcs[end]
-                  for z_idx = 2:z_idcs[end]
-	             update_data_array!(q_data, x_idx, y_idx, z_idx, t, to_value(q))
+	    for z_idx = 2:z_idcs[end]
+       	       for x_idx = 2:x_idcs[end]
+                  for y_idx = 2:y_idcs[end]
+	             update_data_array!(q_data, 
+					x_idx, y_idx, z_idx, t, 
+					to_value(q))
 		     yield()
-	             #qr_data[x_idx, y_idx, z_idx, t] = to_value(qr)
-		     k[] = z_idx
+		     j[] = y_idx
 	          end
-	          j[] = y_idx
+	          i[] = x_idx
                end
-	       i[] = x_idx
+	       k[] = z_idx
 	    end
-	    msg = "Computing q for time $(t) of $(Nt)"
-            print(msg * " \r")
+	    print("Computing q for time $(t) of $(Nt)" * " \r")
             n[] = t
 	 end
-	 defVar(comp_ds, "q", q_data, ("x", "y", "z", "time")) #"xG", "yG", "zG", "time"))
+	 defVar(comp_ds, "q", q_data, ("x", "y", "z", "time"))
       end #comp_ds gets closed automatically
-      close(ds)
    end
    return NCDataset(computed_file, "r")
 end
@@ -525,65 +513,48 @@ end
 function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
+   
    comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
    n = Observable(1)
 
-   b     = @lift ds["b"][:, :, z_plt:end, $n]
-   u     = @lift ds["u"][:, :, z_plt:end, $n]
-   v     = @lift ds["v"][:, :, z_plt:end, $n]
-   w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_yz  = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
-   qr_yz = @lift comp_ds["qr"][x_idx, :, z_plt:end, $n]
+   b    = @lift ds["b"][:, :, z_plt:end, $n]
+   u    = @lift ds["u"][:, :, z_plt:end, $n]
+   v    = @lift ds["v"][:, :, z_plt:end, $n]
+   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q_yz = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
    
-   q_yz_f  = comp_ds["q"][x_idx, :, z_plt:end, Nt]
-   qr_yz_f = comp_ds["qr"][x_idx, :, z_plt:end, Nt]
+   q_yz_f = comp_ds["q"][x_idx, :, z_plt:end, Nt]
 
-   lims_q  = get_range_lims(q_yz_f)
-   lims_qr = get_range_lims(qr_yz_f)
+   lims_q = get_range_lims(q_yz_f)
 
    x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_yz...)
-
-   hm_q  = heatmap!(ax_q, yG, zG[z_plt:end], q_yz, colorrange = lims_q,
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, yCC, zG[z_plt:end], qr_yz, colorrange = lims_qr,
+   hm_q  = heatmap!(ax_q, y[2:end-1], z[z_plt:end], q_yz, colorrange = lims_q,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at x = %i km; t = %.2f days",
-			     x_nearest, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at x = %i km; t = %.2f days",
-			     x_nearest, times[$n]/(3600*24))
+   title_q       = @lift @sprintf("q at x = %i km; t = %.2f days",
+			           x_nearest, times[$n]/(3600*24))
+   fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
-   fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false)
-
-   frames   = 1:Nt
-   video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
+   frames  = 1:Nt
+   video_q = VideoStream(fig_q, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_x$(x_nearest)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_x$(x_nearest)_$(datetime).mp4"), video_qr)
    close(ds)
 end
 
