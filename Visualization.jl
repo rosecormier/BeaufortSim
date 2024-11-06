@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
 using Oceananigans
-using CairoMakie, DataStructures, NCDatasets, Printf
+using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -467,28 +467,43 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
       NCDataset(computed_file, "c") do comp_ds
          
-	 defDim(comp_ds, "xG", length(x)-2) #x[2:end-1]) #, ("xG",))
-	 defDim(comp_ds, "yG", y[2:end-1]) #, ("yG",))
-         defDim(comp_ds, "zG", z[2:end-1]) #, ("zG",))
-	 defDim(comp_ds, "xCC", x[2:end-1]) #, ("xCC",))
-	 defDim(comp_ds, "yCC", y[2:end-1]) #, ("yCC",))
-	 defDim(comp_ds, "time", times[:]) #, ("time",))
+	 defDim(comp_ds, "x", length(x)-2)
+	 defDim(comp_ds, "y", length(y)-2)
+	 defDim(comp_ds, "z", length(z)-2)
+	 defDim(comp_ds, "time", length(times))
 
-         defVar(comp_ds, "q", Float64, 
-		       ("xG", "yG", "zG", "time"))
-         defVar(comp_ds, "qr", Float64, 
-		       ("xCC", "yCC", "zG", "time"))
+         #defVar(comp_ds, "ertelQ", Float64, 
+	 #	       ("xG", "yG", "zG", "time"))
+         #defVar(comp_ds, "qr", Float64, 
+	 #	       ("xCC", "yCC", "zG", "time"))
+
+	 q_data  = Array{Float64, 4}(undef, 
+				     length(x)-2, 
+				     length(y)-2, 
+				     length(z)-2, 
+				     Nt)
+	 qr_data = Array{Float64, 4}(undef,
+				     length(x)-2,
+				     length(y)-2,
+				     length(z)-2,
+				     Nt)
+
+         function update_data_array!(data_array, i, j, k, n, value)
+            data_array[i, j, k, n] = value
+	    return data_array
+         end
 
          frames = 1:Nt
-         x_idcs = 2:length(x)-1
-         y_idcs = 2:length(y)-1
-         z_idcs = 2:length(z)-1
+         x_idcs = 2:length(x)-2
+         y_idcs = 2:length(y)-2
+         z_idcs = 2:length(z)-2
 
          for t = 1:frames[end]
-	    for x_idx = 2:x_idcs[end]-1
-       	       for y_idx = 2:y_idcs[end]-1
-                  for z_idx = 2:z_idcs[end]-1
-	             comp_ds.q[x_idx, y_idx, z_idx, t]  = to_value(q)
+	    for x_idx = 2:x_idcs[end]
+       	       for y_idx = 2:y_idcs[end]
+                  for z_idx = 2:z_idcs[end]
+	             update_data_array!(q_data, x_idx, y_idx, z_idx, t, to_value(q))
+		     yield()
 	             #qr_data[x_idx, y_idx, z_idx, t] = to_value(qr)
 		     k[] = z_idx
 	          end
@@ -496,31 +511,21 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
                end
 	       i[] = x_idx
 	    end
-	    msg = string("Computing q for time ", t, " of ", frames[end])
+	    msg = "Computing q for time $(t) of $(Nt)"
             print(msg * " \r")
             n[] = t
 	 end
-      end
-
+	 defVar(comp_ds, "q", q_data, ("x", "y", "z", "time")) #"xG", "yG", "zG", "time"))
+      end #comp_ds gets closed automatically
       close(ds)
-      close(comp_ds)
    end
-
-   comp_ds = NCDataset(computed_file, "r")
-   xG  = comp_ds["xG"][:] ./ 1000 #Convert to km for readability
-   yG  = comp_ds["yG"][:] ./ 1000 #Convert to km for readability
-   zG  = comp_ds["zG"][:]
-   xCC = comp_ds["xCC"][:]
-   yCC = comp_ds["yCC"][:]
-
-   return comp_ds, xG, yG, zG, xCC, yCC
+   return NCDataset(computed_file, "r")
 end
 
 function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime, 
-							 Δx, Δy, Δz, f)
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 

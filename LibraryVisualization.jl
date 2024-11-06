@@ -6,12 +6,12 @@ end
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
    ωx = @. ((w[i, j:j+1, k] - w[i, j-1:j, k]) / Δy 
-            - (v[i, j, k:k+1] - v[i, j, k-1:k]) / Δz)
-   ωy = @. ((u[i, j, k:k+1]- u[i, j, k-1:k]) / Δz
+	    - (v[i, j, k:k+1] - v[i, j, k-1:k]) / Δz)
+   ωy = @. ((u[i, j, k:k+1] - u[i, j, k-1:k]) / Δz
 	    - (w[i:i+1, j, k] - w[i-1:i, j, k]) / Δx)
    ωz = @. ((v[i:i+1, j, k] - v[i-1:i, j, k]) / Δx
 	    - (u[i, j:j+1, k] - u[i, j-1:j, k]) / Δy)
-   return ωx, ωy, ωz
+   return (ωx[1] + ωx[2]) / 2, (ωy[1] + ωy[2]) / 2, (ωz[1] + ωz[2]) / 2
 end
 
 function ω_2D(u, v, w, Δx, Δy, Δz; 
@@ -43,10 +43,10 @@ function ζa(f, u, v, w, Δx, Δy, Δz)
 end
 
 function ∇b(b, i, j, k, Δx, Δy, Δz)
-   ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / (2*Δx) #(b[2:end,2:end,2:end] - b[1:end-1,2:end,2:end]) / Δx
-   ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / (2*Δy) # (b[2:end,2:end,2:end] - b[2:end,1:end-1,2:end]) / Δy
-   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / (2*Δz) #(b[2:end,2:end,2:end] - b[2:end,2:end,1:end-1]) / Δz
-   return ∂x_b, ∂y_b, ∂z_b
+   ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / Δx
+   ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / Δy
+   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz
+   return (∂x_b[1]+∂x_b[2])/2, (∂y_b[1]+∂y_b[2])/2, (∂z_b[1]+∂z_b[2])/2
 end
 
 function ∇b_2D(b, Δx, Δy, Δz; 
@@ -67,7 +67,7 @@ end
 function ertelQ(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    ωx, ωy, ωz = ω(u, v, w, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    ∂x_b, ∂y_b, ∂z_b = ∇b(b, x_idx, y_idx, z_idx, Δx, Δy, Δz)
-   Q = @. (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
+   Q = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
 end
 
 function ertelQ_2D(u, v, w, b, f, Δx, Δy, Δz; 
