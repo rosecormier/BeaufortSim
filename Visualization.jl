@@ -625,7 +625,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xy...)
-   hm_q  = heatmap!(ax_q, xG, yG, q_xy, colorrange = lims_q, 
+   hm_q  = heatmap!(ax_q, x[2:end-1], y[2:end-1], q_xy, colorrange = lims_q,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
