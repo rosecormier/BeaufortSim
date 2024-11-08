@@ -48,10 +48,10 @@ const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 
 #Time increments
 const Δti     = 0.5 * second
-const Δt_max  = 0.5 * second #30 * second 
+const Δt_max  = 30 * second 
 const CFL     = 0.1
-const tf      = 3 * second #0.1 * day
-const Δt_save = 0.5 * second #40 * second
+const tf      = 0.1 * day
+const Δt_save = 40 * second
 
 #Architecture
 const use_GPU = true
