@@ -26,8 +26,10 @@ const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
 #Eddy viscosities
-const νh = 0 * (meter^2/second) #(5e-2) * (meter^2/second)
-const νv = 0 * (meter^2/second) #(5e-5) * (meter^2/second)
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
+const κh = (5e-2) * (meter^2/second)
+const κv = (5e-5) * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -48,14 +50,14 @@ const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
 const Δti     = 0.5 * second
 const Δt_max  = 30 * second 
 const CFL     = 0.1
-const tf      = 10 * day
-const Δt_save = 2 * hour
+const tf      = 0.1 * day
+const Δt_save = 40 * second
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 0 #1e-6
+const max_b′ = 0
 
 #Whether to run visualization functions
 const do_vis_const_x = true
@@ -82,18 +84,23 @@ grid = RectilinearGrid(architecture,
                        z = (-Lz, 0),
                        halo = (3, 3, 3))
 
-closure = (HorizontalScalarDiffusivity(ν = νh), 
-	   VerticalScalarDiffusivity(ν = νv))
+closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
+	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-dbdz_top(x, y, t)    = N2 + (sqrt(2) * f * U * σr / (σz^2)
-			      * exp(1/2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
-dbdz_bottom(x, y, t) = N2 + (sqrt(2) * f * U * σr / (σz^2)
-			      * exp((1/2) - (Lz/σz)^2) 
-			      * (1 - exp(-(x^2 + y^2)/(σr^2))) 
-			      * (1 - 2 * (Lz/σz)^2))
+@inline dbdz_top(x, y, t)    = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp(1/2) 
+				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
+@inline dbdz_bottom(x, y, t) = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp((1/2) - (Lz/σz)^2) 
+			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
+			           * (1 - 2 * (Lz/σz)^2)))
 
-b_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(dbdz_top),
-				bottom = GradientBoundaryCondition(dbdz_bottom))
+b_top_BC    = GradientBoundaryCondition(dbdz_top)
+b_bottom_BC = GradientBoundaryCondition(dbdz_bottom)
+
+b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -103,7 +110,7 @@ model = NonhydrostaticModel(;
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
-			    boundary_conditions = (b = b_BCs,))
+			    boundary_conditions = (; b = b_BCs,))
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(σr, σz, f, U,
@@ -140,7 +147,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1)) #(8))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -190,7 +197,7 @@ mkpath(dirname(logfilepath)) #Make path if nonexistent
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
-   write(file, "νh, νv = $(νh), $(νv) \n\n")
+   write(file, "νh, νv, κh, κv = $(νh), $(νv), $(κh), $(κv) \n\n")
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N2 = $(U), $(N2) \n\n")

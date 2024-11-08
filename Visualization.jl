@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
 using Oceananigans
-using CairoMakie, DataStructures, NCDatasets, Printf
+using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -9,8 +9,8 @@ function open_dataset(datetime)
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
    
    ds = NCDataset(outfilepath, "r")
-   x  = ds["xC"][:]
-   y  = ds["yC"][:]
+   x  = ds["xC"][:] ./ 1000 #Convert to km for readability
+   y  = ds["yC"][:] ./ 1000 #Convert to km for readability
    z  = ds["zC"][:]
    t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
    Nt = length(t)
@@ -34,16 +34,16 @@ end
 function get_axis_kwargs(x, y, z; 
 		         x_idx = nothing, y_idx = nothing, z_idx = nothing)
    if !isnothing(x_idx)
-      nearest_m   = round(Int, x[x_idx])
-      axis_kwargs = (xlabel = "y [m]", ylabel = "z [m]")
+      nearest     = round(Int, x[x_idx])
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
    elseif !isnothing(y_idx)
-      nearest_m   = round(Int, y[y_idx])
-      axis_kwargs = (xlabel = "x [m]", ylabel = "z [m]")
+      nearest     = round(Int, y[y_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
    elseif !isnothing(z_idx)
-      nearest_m   = round(Int, -z[z_idx])
-      axis_kwargs = (xlabel = "x [m]", ylabel = "y [m]")
+      nearest     = round(Int, -z[z_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
-   return nearest_m, axis_kwargs
+   return nearest, axis_kwargs
 end
 
 function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
@@ -86,7 +86,7 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-3)
    lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-3)
 
-   x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+   x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -144,11 +144,11 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    Colorbar(fig_perturb[3, 4], hm_v_perturb)#, tickformat = "{:.1e}",
 #	    label = "m/s")
 
-   title_total = @lift @sprintf("Fields at x = %i m; t = %.2f days",
-                          x_nearest_m, times[$n]/(3600*24))
+   title_total = @lift @sprintf("Fields at x = %i km; t = %.2f days",
+                          x_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
-			  "Perturbation fields at x = %i m; t = %.2f days",
-                          x_nearest_m, times[$n]/(3600*24))
+			  "Perturbation fields at x = %i km; t = %.2f days",
+                          x_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24, 
 			       tellwidth = false)
@@ -179,9 +179,9 @@ function visualize_fields_const_x(datetime, x_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_x$(x_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_x$(x_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_x$(x_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_x$(x_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
@@ -226,7 +226,7 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_xz)
    lims_Δw = get_range_lims(Δw_f_xz)
    
-   y_nearest_m, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
+   y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
    
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -284,11 +284,11 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
             label = "m/s")
 
-   title_total = @lift @sprintf("Fields at y = %i m; t = %.2f days",
-                          y_nearest_m, times[$n]/(3600*24))
+   title_total = @lift @sprintf("Fields at y = %i km; t = %.2f days",
+                          y_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
-                          "Perturbation fields at y = %i m; t = %.2f days",
-                          y_nearest_m, times[$n]/(3600*24))
+                          "Perturbation fields at y = %i km; t = %.2f days",
+                          y_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
@@ -310,9 +310,9 @@ function visualize_fields_const_y(datetime, y_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_y$(y_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_y$(y_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_y$(y_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_y$(y_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
@@ -355,7 +355,7 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-3)
    lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-3)
    
-   depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+   depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
    
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -414,10 +414,10 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
             label = "m/s")
 
    title_total = @lift @sprintf("Fields at depth %i m; t = %.2f days",
-                          depth_nearest_m, times[$n]/(3600*24))
+                          depth_nearest, times[$n]/(3600*24))
    title_perturb = @lift @sprintf(
                           "Perturbation fields at depth %i m; t = %.2f days",
-                          depth_nearest_m, times[$n]/(3600*24))
+                          depth_nearest, times[$n]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
@@ -439,9 +439,9 @@ function visualize_fields_const_z(datetime, z_idx; t_idx_skip = 1)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "fields_z-$(depth_nearest_m)_$(datetime).mp4"), 
+   save(joinpath("./Plots", "fields_z-$(depth_nearest)_$(datetime).mp4"), 
 	video_total)
-   save(joinpath("./Plots", "perturbs_z-$(depth_nearest_m)_$(datetime).mp4"),
+   save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_$(datetime).mp4"),
 	video_perturb)
    close(ds)
 end
@@ -455,245 +455,197 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
       ds, x, y, z, times, Nt = open_dataset(datetime)
 
-      n = Observable(1)
-
-      b  = @lift ds["b"][:, :, :, $n]
-      u  = @lift ds["u"][:, :, :, $n]
-      v  = @lift ds["v"][:, :, :, $n]
-      w  = @lift ds["w"][:, :, 1:end-1, $n]
-      q  = @lift ertelQ($u, $v, $w, $b, f, Δx, Δy, Δz)
-      qr = @lift ∂r_ertelQ($q, Δx, Δy, x[2:end-1], y[2:end-1])
-
-      comp_ds = NCDataset(computed_file, "c")
-      defVar(comp_ds, "xG", x[1:end-1], ("xG",))
-      defVar(comp_ds, "yG", y[1:end-1], ("yG",))
-      defVar(comp_ds, "zG", z[1:end-1], ("zG",))
-      defVar(comp_ds, "xCC", x[2:end-1], ("xCC",))
-      defVar(comp_ds, "yCC", y[2:end-1], ("yCC",))
-      defVar(comp_ds, "time", times[:], ("time",))
-
-      q_data  = defVar(comp_ds, "q", Float64, 
-		       ("xG", "yG", "zG", "time"))
-      qr_data = defVar(comp_ds, "qr", Float64, 
-		       ("xCC", "yCC", "zG", "time"))
-
       frames = 1:Nt
+      x_idcs = 2:length(x)-2
+      y_idcs = 2:length(y)-2
+      z_idcs = 2:length(z)-2
 
-      for i = 1:frames[end]
-	 q_data[:, :, :, i]  = to_value(q)
-	 qr_data[:, :, :, i] = to_value(qr)
-	 msg = string("Computing frame(s) ", i, " of ", frames[end])
-         print(msg * " \r")
-         n[] = i
+      function update_data_array!(data_array, i, j, k, n, value)
+         data_array[i, j, k, n] = value
+         return data_array
       end
+      
+      NCDataset(computed_file, "c") do comp_ds
+         
+         i, j, k = Observable(2), Observable(2), Observable(2)
+         n       = Observable(1)
 
-      close(ds)
-      close(comp_ds)
+         b = @lift ds["b"][:, :, :, $n]
+         u = @lift ds["u"][1:end-1, :, :, $n]
+         v = @lift ds["v"][:, 1:end-1, :, $n]
+         w = @lift ds["w"][:, :, 1:end-1, $n]
+         q = @lift ertelQ($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
+
+	 defDim(comp_ds, "x", length(x)-2)
+	 defDim(comp_ds, "y", length(y)-2)
+	 defDim(comp_ds, "z", length(z)-2)
+	 defDim(comp_ds, "time", length(times))
+
+	 q_data  = Array{Float64, 4}(undef, 
+				     length(x)-2, 
+				     length(y)-2, 
+				     length(z)-2, 
+				     Nt)
+
+         for t = 1:frames[end]
+	    for z_idx = 2:z_idcs[end]
+       	       for x_idx = 2:x_idcs[end]
+                  for y_idx = 2:y_idcs[end]
+	             update_data_array!(q_data, 
+					x_idx, y_idx, z_idx, t, 
+					to_value(q))
+		     yield()
+		     j[] = y_idx
+	          end
+	          i[] = x_idx
+               end
+	       k[] = z_idx
+	    end
+	    print("Computing q for time $(t) of $(Nt)" * " \r")
+            n[] = t
+	 end
+	 defVar(comp_ds, "q", q_data, ("x", "y", "z", "time"))
+      end #comp_ds gets closed automatically
    end
-
-   comp_ds = NCDataset(computed_file, "r")
-   xG  = comp_ds["xG"][:]
-   yG  = comp_ds["yG"][:]
-   zG  = comp_ds["zG"][:]
-   xCC = comp_ds["xCC"][:]
-   yCC = comp_ds["yCC"][:]
-
-   return comp_ds, xG, yG, zG, xCC, yCC
+   return NCDataset(computed_file, "r")
 end
 
 function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime, 
-							 Δx, Δy, Δz, f)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
-   n = Observable(1)
-
-   b     = @lift ds["b"][:, :, z_plt:end, $n]
-   u     = @lift ds["u"][:, :, z_plt:end, $n]
-   v     = @lift ds["v"][:, :, z_plt:end, $n]
-   w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_yz  = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
-   qr_yz = @lift comp_ds["qr"][x_idx, :, z_plt:end, $n]
+   n    = Observable(1)
+   b    = @lift ds["b"][:, :, z_plt:end, $n]
+   u    = @lift ds["u"][:, :, z_plt:end, $n]
+   v    = @lift ds["v"][:, :, z_plt:end, $n]
+   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q_yz = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
    
-   q_yz_f  = comp_ds["q"][x_idx, :, z_plt:end, Nt]
-   qr_yz_f = comp_ds["qr"][x_idx, :, z_plt:end, Nt]
+   q_yz_f = comp_ds["q"][x_idx, :, z_plt:end, Nt]
 
-   lims_q  = get_range_lims(q_yz_f)
-   lims_qr = get_range_lims(qr_yz_f)
+   lims_q = get_range_lims(q_yz_f)
 
-   x_nearest_m, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+   x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
 
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_yz...)
-
-   hm_q  = heatmap!(ax_q, yG, zG[z_plt:end], q_yz, colorrange = lims_q,
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, yCC, zG[z_plt:end], qr_yz, colorrange = lims_qr,
+   hm_q  = heatmap!(ax_q, y[2:end-1], z[z_plt:end], q_yz, colorrange = lims_q,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at x = %i m; t = %.2f days",
-			     x_nearest_m, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at x = %i m; t = %.2f days",
-			     x_nearest_m, times[$n]/(3600*24))
+   title_q       = @lift @sprintf("q at x = %i km; t = %.2f days",
+			           x_nearest, times[$n]/(3600*24))
+   fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
-   fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false)
-
-   frames   = 1:Nt
-   video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
+   frames  = 1:Nt
+   video_q = VideoStream(fig_q, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "q_x$(x_nearest_m)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_x$(x_nearest_m)_$(datetime).mp4"), video_qr)
+   save(joinpath("./Plots", "q_x$(x_nearest)_$(datetime).mp4"), video_q)
    close(ds)
 end
 
 function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
-                                                         Δx, Δy, Δz, f)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    z_plt = div(length(z[:]), 2) #z-index to start plot at
 
-   n = Observable(1)
+   n    = Observable(1)
+   b    = @lift ds["b"][:, :, z_plt:end, $n]
+   u    = @lift ds["u"][:, :, z_plt:end, $n]
+   v    = @lift ds["v"][:, :, z_plt:end, $n]
+   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
+   q_xz = @lift comp_ds["q"][:, y_idx, z_plt:end, $n]
 
-   b     = @lift ds["b"][:, :, z_plt:end, $n]
-   u     = @lift ds["u"][:, :, z_plt:end, $n]
-   v     = @lift ds["v"][:, :, z_plt:end, $n]
-   w     = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_xz  = @lift comp_ds["q"][:, y_idx, z_plt:end, $n]
-   qr_xz = @lift comp_ds["qr"][:, y_idx, z_plt:end, $n]
+   q_xz_f = comp_ds["q"][:, y_idx, z_plt:end, Nt]
 
-   q_xz_f  = comp_ds["q"][:, y_idx, z_plt:end, Nt]
-   qr_xz_f = comp_ds["qr"][:, y_idx, z_plt:end, Nt]
+   lims_q = get_range_lims(q_xz_f)
 
-   lims_q  = get_range_lims(q_xz_f)
-   lims_qr = get_range_lims(qr_xz_f)
+   y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
 
-   y_nearest_m, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
-
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xz...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xz...)
-
-   hm_q  = heatmap!(ax_q, xG, zG[z_plt:end], q_xz, colorrange = lims_q, 
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, xCC, zG[z_plt:end], qr_xz, colorrange = lims_qr,
+   hm_q  = heatmap!(ax_q, x[2:end-1], z[z_plt:end], q_xz, colorrange = lims_q, 
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at y = %i m; t = %.2f days",
-			     y_nearest_m, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at y = %i m; t = %.2f days",
-			     y_nearest_m, times[$n]/(3600*24))
-
+   title_q        = @lift @sprintf("q at y = %i km; t = %.2f days",
+			            y_nearest, times[$n]/(3600*24))
    fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false)
 
-   frames   = 1:Nt
-   video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
+   frames  = 1:Nt
+   video_q = VideoStream(fig_q, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "q_y$(y_nearest_m)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_y$(y_nearest_m)_$(datetime).mp4"), video_qr)
+   save(joinpath("./Plots", "q_y$(y_nearest)_$(datetime).mp4"), video_q)
    close(ds)
 end
 
 function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
-   comp_ds, xG, yG, zG, xCC, yCC = open_computed_dataset(datetime,
-                                                         Δx, Δy, Δz, f)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
-   n = Observable(1)
+   n    = Observable(1)
+   b    = @lift ds["b"][:, :, :, $n]
+   u    = @lift ds["u"][:, :, :, $n]
+   v    = @lift ds["v"][:, :, :, $n]
+   w    = @lift ds["w"][:, :, 1:end-1, $n]
+   q_xy = @lift comp_ds["q"][:, :, z_idx, $n]
 
-   b     = @lift ds["b"][:, :, :, $n]
-   u     = @lift ds["u"][:, :, :, $n]
-   v     = @lift ds["v"][:, :, :, $n]
-   w     = @lift ds["w"][:, :, 1:end-1, $n]
-   q_xy  = @lift comp_ds["q"][:, :, z_idx, $n]
-   qr_xy = @lift comp_ds["qr"][:, :, z_idx, $n]
-
-   q_xy_f  = comp_ds["q"][:, :, z_idx, Nt]
-   qr_xy_f = comp_ds["qr"][:, :, z_idx, Nt]
+   q_xy_f = comp_ds["q"][:, :, z_idx, Nt]
 
    lims_q = get_range_lims(q_xy_f)
-   lims_qr = get_range_lims(qr_xy_f)
 
-   depth_nearest_m, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+   depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
 
-   fig_q  = Figure(size = (600, 600))
-   fig_qr = Figure(size = (600, 600))
-
+   fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xy...)
-   ax_qr = Axis(fig_qr[2, 1]; axis_kwargs_xy...)
-   
-   hm_q  = heatmap!(ax_q, xG, yG, q_xy, colorrange = lims_q, 
-		    colormap = :balance)
-   hm_qr = heatmap!(ax_qr, xCC, yCC, qr_xy, colorrange = lims_qr, 
+   hm_q  = heatmap!(ax_q, x[2:end-1], y[2:end-1], q_xy, colorrange = lims_q,
 		    colormap = :balance)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-   Colorbar(fig_qr[2, 2], hm_qr, tickformat = "{:.1e}", label = "1/s³m")
 
-   title_q  = @lift @sprintf("q at depth %i m; t = %.2f days",
-			     depth_nearest_m, times[$n]/(3600*24))
-   title_qr = @lift @sprintf("∂q/∂r at depth %i m; t = %.2f days",
-                             depth_nearest_m, times[$n]/(3600*24))
-
-   fig_q[1, 1:2]  = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
-   fig_qr[1, 1:2] = Label(fig_qr, title_qr, fontsize = 24, tellwidth = false) 
+   title_q       = @lift @sprintf("q at depth %i m; t = %.2f days",
+			     depth_nearest, times[$n]/(3600*24))
+   fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
    frames   = 1:Nt
    video_q  = VideoStream(fig_q, format = "mp4", framerate = 6)
-   video_qr = VideoStream(fig_qr, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
       recordframe!(video_q)
-      recordframe!(video_qr)
       yield()
-      msg = string("Plotting frame(s) ", i, " of ", frames[end])
-      print(msg * " \r")
+      print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "q_z$(depth_nearest_m)_$(datetime).mp4"), video_q)
-   save(joinpath("./Plots", "qr_z$(depth_nearest_m)_$(datetime).mp4"), video_qr)
+   save(joinpath("./Plots", "q_z$(depth_nearest)_$(datetime).mp4"), video_q)
    close(ds)
 end
 
@@ -702,8 +654,8 @@ function plot_background_ζa(datetime, U, f, σr, σz;
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   nearest_m, axis_kwargs = get_axis_kwargs(x, y, z; 
-					    x_idx = x_idx, y_idx = y_idx)
+   nearest, axis_kwargs = get_axis_kwargs(x, y, z; 
+					  x_idx = x_idx, y_idx = y_idx)
 
    fig = Figure(size = (800, 400))
    ax  = Axis(fig[2, 1]; axis_kwargs...)
@@ -713,15 +665,15 @@ function plot_background_ζa(datetime, U, f, σr, σz;
       lims_ζa = get_range_lims(ζa_b_yz)
       hm      = heatmap!(ax, y, z, ζa_b_yz, colorrange = lims_ζa, 
 			 colormap = :balance)
-      title   = ("Absolute vorticity of background state at x = $(nearest_m) m")
-      fname   = "bkgd_zeta_abs_x$(nearest_m)_$(datetime).png"
+      title   = ("Absolute vorticity of background state at x = $(nearest) km")
+      fname   = "bkgd_zeta_abs_x$(nearest)_$(datetime).png"
    elseif !isnothing(y_idx)
       ζa_b_xz = ζa_b(U, f, σr, σz, x, y[y_idx], z)
       lims_ζa = get_range_lims(ζa_b_xz)
       hm      = heatmap!(ax, x, z, ζa_b_xz, colorrange = lims_ζa,
                          colormap = :balance)
-      title   = ("Absolute vorticity of background state at y = $(nearest_m) m")
-      fname   = "bkgd_zeta_abs_y$(nearest_m)_$(datetime).png"
+      title   = ("Absolute vorticity of background state at y = $(nearest) km")
+      fname   = "bkgd_zeta_abs_y$(nearest)_$(datetime).png"
    end
 
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
