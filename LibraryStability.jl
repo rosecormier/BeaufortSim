@@ -1,6 +1,7 @@
 module Stability
    export U_upper_bound, check_inert_stability, 
-          N2_lower_bound, check_grav_stability
+          N2_lower_bound, check_grav_stability,
+	  compute_Bu
 end
 
 function U_upper_bound(σr, f)
@@ -27,4 +28,8 @@ function check_grav_stability(σr, σz, f, U, N2)
    if N2 <= lower_bound
       print("Warning: system is gravitationally unstable.")
    end
+end
+
+function compute_Bu(σr, σz, f, N2)
+   Bu = N2 * (σz / (f * σr))^2
 end
