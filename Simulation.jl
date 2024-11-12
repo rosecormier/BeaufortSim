@@ -28,8 +28,8 @@ const Lz = 1000 * meter
 #Eddy viscosities
 const νh = 0 * (meter^2/second)
 const νv = 0 * (meter^2/second)
-const κh = (5e-2) * (meter^2/second)
-const κv = (5e-5) * (meter^2/second)
+const κh = 0 * (meter^2/second)
+const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -37,14 +37,17 @@ const lat = 74.0
 #f-plane and Coriolis frequency
 fPlane  = FPlane(latitude = lat)
 const f = fPlane.f
+@printf("f = %.2e Hz \n", f)
 
 #Gyre scales
-const σr  = 250 * kilometer
-const σz  = 300 * meter
+const σr = 250 * kilometer
+const σz = 300 * meter
 
 #Gyre speed and buoyancy frequency
 const U  = 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
 const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
+@printf("U = %.2e m/s, N^2 = %.2e 1/s^2 \n", U, N2)
+@printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N2))
 
 #Time increments
 const Δti     = 0.5 * second
@@ -62,13 +65,13 @@ const max_b′ = 0
 #Whether to run visualization functions
 const do_vis_const_x = true
 const do_vis_const_y = false
-const do_vis_const_z = true
+const do_vis_const_z = false
 
 #Indices at which to plot fields
-const x_idx      = 256
-const y_idx      = 256
+const x_idx      = 259
+const y_idx      = 259
 const z_idx      = 252
-const t_idx_skip = 1
+const t_idx_skip = 10
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -200,7 +203,8 @@ open(logfilepath, "w") do file
    write(file, "νh, νv, κh, κv = $(νh), $(νv), $(κh), $(κv) \n\n")
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "U, N2 = $(U), $(N2) \n\n")
+   write(file, "U, N2 = $(U), $(N2) \n")
+   write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N2)) \n\n")
    write(file, "Max. b' = $(max_b′) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
@@ -216,18 +220,21 @@ end
 ###################################
 
 if do_vis_const_x
-   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
-   visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx;
+                            plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
