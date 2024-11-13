@@ -175,7 +175,6 @@ function visualize_fields_const_x(datetime, x_idx;
          recordframe!(video_total)
          recordframe!(video_perturb)
          yield()
-	 print("Plotting frame(s) $(i) of $(frames[end]) \r")
          n[] = i
       end
 
@@ -397,7 +396,6 @@ function visualize_fields_const_y(datetime, y_idx;
          recordframe!(video_total)
          recordframe!(video_perturb)
          yield()
-         print("Plotting frame(s) $(i) of $(frames[end]) \r")
          n[] = i
       end
 
@@ -617,7 +615,6 @@ function visualize_fields_const_z(datetime, z_idx;
          recordframe!(video_total)
          recordframe!(video_perturb)
          yield()
-         print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
          n[] = i
       end
    
