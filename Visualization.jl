@@ -595,10 +595,10 @@ function visualize_fields_const_z(datetime, z_idx;
       Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
                label = "m/s")
 
-      title_total = @lift @sprintf("Fields at depth %i m; t = %.2f days",
+      title_total = @lift @sprintf("Fields at %i-m depth; t = %.2f days",
                                    depth_nearest, times[$n]/(3600*24))
       title_perturb = @lift @sprintf(
-                            "Perturbation fields at depth %i m; t = %.2f days",
+                            "Perturbation fields at %i-m depth; t = %.2f days",
                             depth_nearest, times[$n]/(3600*24))
 
       fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
@@ -688,10 +688,10 @@ function visualize_fields_const_z(datetime, z_idx;
       Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
                label = "m/s")
 
-      title_total   = @sprintf("Fields at z = %i m; t = %.2f days",
+      title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
                           depth_nearest, times[Nt]/(3600*24))
       title_perturb = @sprintf(
-                          "Perturbation fields at z = %i m; t = %.2f days",
+                          "Perturbation fields at %i-m depth; t = %.2f days",
                           depth_nearest, times[Nt]/(3600*24))
 
       fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
@@ -699,9 +699,9 @@ function visualize_fields_const_z(datetime, z_idx;
       fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                   tellwidth = false)
 
-      save(joinpath("./Plots", "fields_z$(depth_nearest)_tf_$(datetime).png"),
+      save(joinpath("./Plots", "fields_z-$(depth_nearest)_tf_$(datetime).png"),
            fig_total)
-      save(joinpath("./Plots", "perturbs_z$(depth_nearest)_tf_$(datetime).png"),
+      save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_tf_$(datetime).png"),
            fig_perturb)
    end
    close(ds)
@@ -891,7 +891,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
 
-   title_q       = @lift @sprintf("q at depth %i m; t = %.2f days",
+   title_q       = @lift @sprintf("q at %i-m depth; t = %.2f days",
 			     depth_nearest, times[$n]/(3600*24))
    fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
@@ -906,7 +906,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "q_z$(depth_nearest)_$(datetime).mp4"), video_q)
+   save(joinpath("./Plots", "q_z-$(depth_nearest)_$(datetime).mp4"), video_q)
    close(ds)
 end
 
