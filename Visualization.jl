@@ -65,14 +65,14 @@ function visualize_fields_const_x(datetime, x_idx;
    Δw_f_yz = w_total_f_yz .- wb[x_idx, :, z_plt:end]
 
    lims_b_total = get_range_lims(b_total_f_yz)
-   lims_u_total = get_range_lims(u_total_f_yz; prescribed_max = 1e-3)
-   lims_v_total = get_range_lims(v_total_f_yz; prescribed_max = 1e-3)
-   lims_w_total = get_range_lims(w_total_f_yz; prescribed_max = 1e-3)
+   lims_u_total = get_range_lims(u_total_f_yz; prescribed_max = 1e-16)
+   lims_v_total = get_range_lims(v_total_f_yz; prescribed_max = 1e-16)
+   lims_w_total = get_range_lims(w_total_f_yz; prescribed_max = 1e-16)
 
-   lims_Δb = get_range_lims(Δb_f_yz; prescribed_max = 1e-3)
-   lims_Δu = get_range_lims(Δu_f_yz; prescribed_max = 1e-3)
-   lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-3)
-   lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-3)
+   lims_Δb = get_range_lims(Δb_f_yz; prescribed_max = 1e-16)
+   lims_Δu = get_range_lims(Δu_f_yz; prescribed_max = 1e-16)
+   lims_Δv = get_range_lims(Δv_f_yz; prescribed_max = 1e-16)
+   lims_Δw = get_range_lims(Δw_f_yz; prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
@@ -286,14 +286,14 @@ function visualize_fields_const_y(datetime, y_idx;
    Δw_f_xz = w_total_f_xz .- wb[:, y_idx, z_plt:end]
 
    lims_b_total = get_range_lims(b_total_f_xz)
-   lims_u_total = get_range_lims(u_total_f_xz)
-   lims_v_total = get_range_lims(v_total_f_xz)
-   lims_w_total = get_range_lims(w_total_f_xz)
+   lims_u_total = get_range_lims(u_total_f_xz; prescribed_max = 1e-16)
+   lims_v_total = get_range_lims(v_total_f_xz; prescribed_max = 1e-16)
+   lims_w_total = get_range_lims(w_total_f_xz; prescribed_max = 1e-16)
 
-   lims_Δb = get_range_lims(Δb_f_xz)
-   lims_Δu = get_range_lims(Δu_f_xz)
-   lims_Δv = get_range_lims(Δv_f_xz)
-   lims_Δw = get_range_lims(Δw_f_xz)
+   lims_Δb = get_range_lims(Δb_f_xz; prescribed_max = 1e-16)
+   lims_Δu = get_range_lims(Δu_f_xz; prescribed_max = 1e-16)
+   lims_Δv = get_range_lims(Δv_f_xz; prescribed_max = 1e-16)
+   lims_Δw = get_range_lims(Δw_f_xz; prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
@@ -505,14 +505,14 @@ function visualize_fields_const_z(datetime, z_idx;
    Δw_f_xy = w_total_f_xy .- wb[:, :, z_idx]
 
    lims_b_total = get_range_lims(b_total_f_xy)
-   lims_u_total = get_range_lims(u_total_f_xy; prescribed_max = 1e-3)
-   lims_v_total = get_range_lims(v_total_f_xy; prescribed_max = 1e-3)
-   lims_w_total = get_range_lims(w_total_f_xy; prescribed_max = 1e-3)
+   lims_u_total = get_range_lims(u_total_f_xy; prescribed_max = 1e-16)
+   lims_v_total = get_range_lims(v_total_f_xy; prescribed_max = 1e-16)
+   lims_w_total = get_range_lims(w_total_f_xy; prescribed_max = 1e-16)
 
-   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-3)
-   lims_Δu = get_range_lims(Δu_f_xy; prescribed_max = 1e-3)
-   lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-3)
-   lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-3)
+   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-16)
+   lims_Δu = get_range_lims(Δu_f_xy; prescribed_max = 1e-16)
+   lims_Δv = get_range_lims(Δv_f_xy; prescribed_max = 1e-16)
+   lims_Δw = get_range_lims(Δw_f_xy; prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
