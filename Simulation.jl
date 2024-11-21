@@ -16,8 +16,8 @@ using .Stability
 ######################
 
 #Numbers of gridpoints
-const Nx = 512
-const Ny = 512
+const Nx = 256
+const Ny = 256
 const Nz = 256
 
 #Lengths of axes
@@ -26,10 +26,10 @@ const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
 #Eddy viscosities
-const νh = 0 * (meter^2/second)
-const νv = 0 * (meter^2/second)
-const κh = 0 * (meter^2/second)
-const κv = 0 * (meter^2/second)
+const νh = 5e-2 * (meter^2/second)
+const νv = 5e-5 * (meter^2/second)
+const κh = 5e-2 * (meter^2/second)
+const κv = 5e-5 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -44,34 +44,33 @@ const σr = 250 * kilometer
 const σz = 300 * meter
 
 #Gyre speed and buoyancy frequency
-const U  = 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
-const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
-@printf("U = %.2e m/s, N^2 = %.2e 1/s^2 \n", U, N2)
+const U  = 0.1 * (meter/second)
+const N2 = 1e-3 * (second^(-2))
 @printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N2))
 
-#Time increments
-const Δti     = 0.5 * second
-const Δt_max  = 30 * second 
+#Time-stepping parameters
+const Δti     = 1 * second
+const Δt_max  = 120 * second 
 const CFL     = 0.1
-const tf      = 0.1 * day
-const Δt_save = 40 * second
+const tf      = 5 * day
+const Δt_save = 1 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 0
+const max_b′ = 0 # 1e-3
 
 #Whether to run visualization functions
 const do_vis_const_x = true
 const do_vis_const_y = false
-const do_vis_const_z = false
+const do_vis_const_z = true
 
 #Indices at which to plot fields
-const x_idx      = 259
+const x_idx      = 131
 const y_idx      = 259
 const z_idx      = 252
-const t_idx_skip = 10
+const t_idx_skip = 1
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -107,7 +106,7 @@ b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
-                            timestepper = :QuasiAdamsBashforth2, 
+                            timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             closure = closure, 
                             coriolis = fPlane,
@@ -120,7 +119,10 @@ check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
-check_grav_stability(σr, σz, f, U, N2)
+check_grav_stability(σr, σz, f, U, N2,
+		     xnodes(model.grid, Face(), Face(), Face()),
+                     ynodes(model.grid, Face(), Face(), Face()),
+                     znodes(model.grid, Face(), Face(), Face()))
 
 ##########################
 # SET INITIAL CONDITIONS #
@@ -134,7 +136,7 @@ ū(x,y,z) = ((sqrt(2) * U * y / σr)
 v̄(x,y,z) = -((sqrt(2) * U * x / σr) 
 	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 
-b′(x,y,z) = max_b′ * rand()
+b′(x,y,z) = max_b′ * rand() * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
 b̄(x,y,z)  = (N2 * z 
 	     + (sqrt(2) * f * U * σr * z / (σz^2) 
 	        * exp((1/2) - (z/σz)^2) 
@@ -220,21 +222,21 @@ end
 ###################################
 
 if do_vis_const_x
-   visualize_fields_const_x(datetimenow, x_idx; 
-			    plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; plot_animation = false)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
-   visualize_fields_const_y(datetimenow, y_idx;
-                            plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx; plot_animation = false)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx; 
-			    plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx; plot_animation = false)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
