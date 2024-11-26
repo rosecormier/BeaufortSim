@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
 using Oceananigans
-using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Printf
+using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Plots, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -910,12 +910,25 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    close(ds)
 end
 
-function visualize_growth_rate(datetime, Δx, Δy, Δz, f)
+function visualize_growth_rate(datetime, Δx, Δy, Δz, f, Nx, Ny, Nz)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
    
    comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
-	
+
+   NV = Nx * Ny * Nz
+
+   fig = Figure(size = (600, 600))
+   ax  = Axis(fig[2, 1]; ) #axis_kwargs_xy...)
+
+   for n = 1:Nt
+      avg_q_n = sum(comp_ds["q"][:, :, :, n]) / NV
+      scatter_q = scatter!(ax, times[n], avg_q_n)
+   end
+
+   save(joinpath("./Plots", "growth_rate_$(datetime).png"), fig)
+
+   close(ds)
 end
 
 function plot_background_ζa(datetime, U, f, σr, σz; 
