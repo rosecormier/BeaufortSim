@@ -59,9 +59,10 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    return (∂r_q[1] + ∂r_q[2]) / 2
 end
 
-function growth_rate(q, Δt)
-   magnitude_q = .abs(q[:,:,:])
-   order1_rate = (magnitude_q[2:end] .- magnitude_q[1:end-1]) / Δt #1st order fwd diff.
+function growth_rate(q, n, Δt)
+   initial_q     = q[:, :, :, 1]
+   abs_q_perturb = .abs(q[:, :, :, n] .- initial_q[:, :, :])
+   order1_rate   = (abs_q_perturb[:, :, :, 2:end] .- abs_q_perturb[:, :, :, 1:end-1]) / Δt #1st order fwd diff.
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
