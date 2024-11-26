@@ -62,9 +62,10 @@ const use_GPU = true
 const max_b′ = 0 # 1e-3
 
 #Whether to run visualization functions
-const do_vis_const_x = true
-const do_vis_const_y = false
-const do_vis_const_z = true
+const do_vis_const_x     = true
+const do_vis_const_y     = false
+const do_vis_const_z     = true
+const do_vis_growth_rate = true
 
 #Indices at which to plot fields
 const x_idx      = 131
@@ -239,4 +240,8 @@ if do_vis_const_z
    visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
    visualize_fields_const_z(datetimenow, z_idx; plot_animation = false)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
+end
+
+if do_vis_growth_rate
+   visualize_growth_rate(datetimenow)
 end
