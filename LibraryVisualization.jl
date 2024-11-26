@@ -60,7 +60,8 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
 end
 
 function growth_rate(q, Δt)
-   order1_rate = (q[2:end] .- q[1:end-1]) / Δt #1st order fwd diff.
+   magnitude_q = .abs(q[:,:,:])
+   order1_rate = (magnitude_q[2:end] .- magnitude_q[1:end-1]) / Δt #1st order fwd diff.
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
