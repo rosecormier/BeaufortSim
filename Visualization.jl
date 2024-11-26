@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
 using Oceananigans
-using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Plots, Printf
+using CairoMakie, CommonDataModel, DataStructures, NCDatasets, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -731,11 +731,11 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
          i, j, k = Observable(2), Observable(2), Observable(2)
          n       = Observable(1)
 
-         b = @lift ds["b"][:, :, :, $n]
-         u = @lift ds["u"][1:end-1, :, :, $n]
-         v = @lift ds["v"][:, 1:end-1, :, $n]
-         w = @lift ds["w"][:, :, 1:end-1, $n]
-         q = @lift q($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
+         b  = @lift ds["b"][:, :, :, $n]
+         u  = @lift ds["u"][1:end-1, :, :, $n]
+         v  = @lift ds["v"][:, 1:end-1, :, $n]
+         w  = @lift ds["w"][:, :, 1:end-1, $n]
+         qn = @lift q($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
 
 	 defDim(comp_ds, "x", length(x)-2)
 	 defDim(comp_ds, "y", length(y)-2)
@@ -754,7 +754,7 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
                   for y_idx = 2:y_idcs[end]
 	             update_data_array!(q_data, 
 					x_idx, y_idx, z_idx, t, 
-					to_value(q))
+					to_value(qn))
 		     yield()
 		     j[] = y_idx
 	          end
@@ -921,11 +921,19 @@ function visualize_growth_rate(datetime, Δx, Δy, Δz, f, Nx, Ny, Nz)
    fig = Figure(size = (600, 600))
    ax  = Axis(fig[2, 1]; ) #axis_kwargs_xy...)
 
-   for n = 1:Nt
-      avg_q_n = sum(comp_ds["q"][:, :, :, n]) / NV
-      scatter_q = scatter!(ax, times[n], avg_q_n)
+   n = Observable(1)
+   rate = @lift growth_rate(comp_ds["q"], $n, times)
+   avg_rate = @lift sum($rate) / NV
+   scatter_q = @lift scatter!(ax, times[$n], $avg_rate)
+
+   for i = 1:Nt-1
+      #avg_rate = sum(rate) / NV
+      #scatter_q = scatter!(ax, times[n], $avg_rate)
+      yield()
+      n[] = i
    end
 
+   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "growth_rate_$(datetime).png"), fig)
 
    close(ds)
