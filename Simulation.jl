@@ -243,5 +243,5 @@ if do_vis_const_z
 end
 
 if do_vis_growth_rate
-   visualize_growth_rate(datetimenow)
+   visualize_growth_rate(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f)
 end
