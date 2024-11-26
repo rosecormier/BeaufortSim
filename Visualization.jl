@@ -711,9 +711,9 @@ function visualize_growth_rate(datetime)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   gr_axis_kwargs = (xlabel = "t [s]", ylabel = "Avg. growth rate [s^-4]")
+   gr_axis_kwargs = (xlabel = "t [s]", ylabel = "Avg. growth rate [s^-1]")
 
-   fig = Figure(size = (600, 400))
+   fig = Figure(size = (1200, 800))
    ax_b = Axis(fig[2, 1]; title = "Growth rate of b", gr_axis_kwargs...)
    ax_w = Axis(fig[2, 2]; title = "Growth rate of w", gr_axis_kwargs...)
    ax_u = Axis(fig[3, 1]; title = "Growth rate of u", gr_axis_kwargs...)
