@@ -1,7 +1,7 @@
 using Printf
 
 module ComputeSecondaries
-   export ω, ζa_b, ζa, ∇b, ertelQ, ∂r_ertelQ
+   export ω, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
 end
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
@@ -41,22 +41,26 @@ function ∇b(b, i, j, k, Δx, Δy, Δz)
 	   (∂z_b[1] + ∂z_b[2]) / 2)
 end
 
-function ertelQ(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
+function q(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    ωx, ωy, ωz       = ω(u, v, w, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    ∂x_b, ∂y_b, ∂z_b = ∇b(b, x_idx, y_idx, z_idx, Δx, Δy, Δz)
-   Q                = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
+   q                = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
 end
 
-function ∂r_ertelQ(Q, x, y, i, j, k, Δx, Δy)
+function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    
-   ∂x_Q = @. (Q[i:i+1, j, k] - Q[i-1:i, j, k]) / Δx
-   ∂y_Q = @. (Q[i, j:j+1, k] - Q[i, j-1:j, k]) / Δy
+   ∂x_q = @. (q[i:i+1, j, k] - q[i-1:i, j, k]) / Δx
+   ∂y_q = @. (q[i, j:j+1, k] - q[i, j-1:j, k]) / Δy
    
    r = sqrt(x^2 + y^2)
    
-   ∂r_Q = @. (x*∂x_Q + y*∂y_Q) / r
+   ∂r_q = @. (x*∂x_q + y*∂y_q) / r
    
-   return (∂r_Q[1] + ∂r_Q[2]) / 2
+   return (∂r_q[1] + ∂r_q[2]) / 2
+end
+
+function growth_rate(q, Δt)
+   order1_rate = (q[2:end] .- q[1:end-1]) / Δt #1st order fwd diff.
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
