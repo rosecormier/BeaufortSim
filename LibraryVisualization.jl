@@ -1,4 +1,4 @@
-using Printf
+using LinearAlgebra, Printf
 
 module ComputeSecondaries
    export ω, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
@@ -59,11 +59,10 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    return (∂r_q[1] + ∂r_q[2]) / 2
 end
 
-function growth_rate(q, n, times)
-   Δt = times[n+1]-times[n]
-   initial_q     = q[:, :, :, 1]
-   abs_q_perturb = abs.(q[:, :, :, n] .- initial_q[:, :, :])
-   order1_rate   = abs_q_perturb ./ Δt #1st order fwd diff.
+function growth_rate(φ, n, times)
+   Δt          = times[n+1] - times[n]
+   φ_perturb   = φ[:, :, :, n] .- φ[:, :, :, 1]
+   order1_rate = norm(φ_perturb) / Δt #1st order fwd diff.
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)

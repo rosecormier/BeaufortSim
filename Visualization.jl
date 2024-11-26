@@ -707,6 +707,42 @@ function visualize_fields_const_z(datetime, z_idx;
    close(ds)
 end
 
+function visualize_growth_rate(datetime)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   gr_axis_kwargs = (xlabel = "t [s]", ylabel = "Avg. growth rate [s^-4]")
+
+   fig = Figure(size = (600, 400))
+   ax_b = Axis(fig[2, 1]; title = "Growth rate of b", gr_axis_kwargs...)
+   ax_w = Axis(fig[2, 2]; title = "Growth rate of w", gr_axis_kwargs...)
+   ax_u = Axis(fig[3, 1]; title = "Growth rate of u", gr_axis_kwargs...)
+   ax_v = Axis(fig[3, 2]; title = "Growth rate of v", gr_axis_kwargs...)
+
+   n         = Observable(1)
+   b_rate      = @lift growth_rate(ds["b"], $n, times)
+   w_rate = @lift growth_rate(ds["w"], $n, times)
+   u_rate = @lift growth_rate(ds["u"], $n, times)
+   v_rate = @lift growth_rate(ds["v"], $n, times)
+
+   scatter_b = @lift scatter!(ax_b, times[$n], $b_rate, color = :black)
+   scatter_w = @lift scatter!(ax_w, times[$n], $w_rate, color = :black)
+   scatter_u = @lift scatter!(ax_u, times[$n], $u_rate, color = :black)
+   scatter_v = @lift scatter!(ax_v, times[$n], $v_rate, color = :black)
+
+   for i = 1:Nt-1
+      yield()
+      n[] = i
+   end
+
+   #fig[1, 1] = Label(fig, "Growth rate of q'", fontsize = 24, tellwidth = false)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig)
+
+   close(ds)
+end
+
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    computed_file = joinpath("./Output", "computed_$(datetime).nc")
@@ -907,38 +943,6 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_z-$(depth_nearest)_$(datetime).mp4"), video_q)
-   close(ds)
-end
-
-function visualize_growth_rate(datetime, Δx, Δy, Δz, f, Nx, Ny, Nz)
-
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-   
-   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
-
-   NV = Nx * Ny * Nz
-
-   axis_kwargs = (xlabel = "t [s]", ylabel = "Avg. growth rate [s^-4]")
-
-   fig = Figure(size = (600, 200))
-   ax  = Axis(fig[2, 1]; axis_kwargs...)
-
-   n         = Observable(1)
-   rate      = @lift growth_rate(comp_ds["q"], $n, times)
-   avg_rate  = @lift sum($rate) / NV
-   scatter_q = @lift scatter!(ax, times[$n], $avg_rate, color = :black)
-
-   for i = 1:Nt-1
-      yield()
-      n[] = i
-   end
-
-   fig[1, 1] = Label(fig, "Growth rate of q'", fontsize = 24, 
-		     tellwidth = false)
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "growth_rate_$(datetime).png"), fig)
-
    close(ds)
 end
 
