@@ -735,7 +735,7 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
          u = @lift ds["u"][1:end-1, :, :, $n]
          v = @lift ds["v"][:, 1:end-1, :, $n]
          w = @lift ds["w"][:, :, 1:end-1, $n]
-         q = @lift ertelQ($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
+         q = @lift q($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
 
 	 defDim(comp_ds, "x", length(x)-2)
 	 defDim(comp_ds, "y", length(y)-2)
