@@ -910,6 +910,14 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
    close(ds)
 end
 
+function visualize_growth_rate(datetime, Δx, Δy, Δz, f)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+   
+   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
+	
+end
+
 function plot_background_ζa(datetime, U, f, σr, σz; 
 		            x_idx = nothing, y_idx = nothing)
 
