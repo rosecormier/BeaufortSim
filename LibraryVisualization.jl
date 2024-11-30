@@ -60,9 +60,11 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
 end
 
 function growth_rate(φ, n, times)
-   Δt          = times[n+1] - times[n]
-   φ_perturb   = φ[:, :, :, n] .- φ[:, :, :, 1]
-   order1_rate = norm(φ_perturb) / Δt #1st order fwd diff.
+   Δt           = times[n+1] - times[n]
+   φ_perturb_n  = φ[:, :, :, n] .- φ[:, :, :, 1]
+   φ_perturb_nn = φ[:, :, :, n+1] .- φ[:, :, :, 1]
+   order1_rate  = (norm(φ_perturb_nn) - norm(φ_perturb_n)) / Δt #1st order fwd diff.
+   return order1_rate, norm(φ_perturb_nn)
 end
 
 #=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
