@@ -16,8 +16,8 @@ using .Stability
 ######################
 
 #Numbers of gridpoints
-const Nx = 512 #256
-const Ny = 512 #256
+const Nx = 512
+const Ny = 512
 const Nz = 256
 
 #Lengths of axes
@@ -25,11 +25,11 @@ const Lx = 2000 * kilometer
 const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
-#Eddy viscosities
-const νh = 5e-4 * (meter^2/second)
-const νv = 5e-7 * (meter^2/second)
-const κh = 5e-4 * (meter^2/second)
-const κv = 5e-7 * (meter^2/second)
+#Eddy viscosities and diffusivities
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
+const κh = 0 * (meter^2/second)
+const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -49,28 +49,29 @@ const N2 = 5e-4 * (second^(-2))
 @printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N2))
 
 #Time-stepping parameters
-const Δti     = 1e-1 * second
-const Δt_max  = 0.5 * hour 
+const Δti     = 1 * second
+const Δt_max  = 1200 * second 
 const CFL     = 0.1
-const tf      = 30 * day
+const tf      = 40 * day
 const Δt_save = 6 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 5e-3
+const max_b′ = 5e-2
 
 #Whether to run visualization functions
-const do_vis_const_x = true
-const do_vis_const_y = false
-const do_vis_const_z = true
+const do_vis_const_x     = true
+const do_vis_const_y     = false
+const do_vis_const_z     = false
+const do_vis_growth_rate = true
 
 #Indices at which to plot fields
-const x_idx      = 259 #131
+const x_idx      = 259
 const y_idx      = 259
 const z_idx      = 252
-const t_idx_skip = 1
+const t_idx_skip = 2
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -177,7 +178,6 @@ datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 outfilename   = "output_$(datetimenow).nc"
 outfilepath   = joinpath("./Output", outfilename)
 mkpath(dirname(outfilepath)) #Make path if nonexistent
-
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
                                   with_halos = true,
@@ -239,4 +239,8 @@ if do_vis_const_z
    visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
    visualize_fields_const_z(datetimenow, z_idx; plot_animation = false)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
+end
+
+if do_vis_growth_rate
+   visualize_growth_rate(datetimenow, f)
 end
