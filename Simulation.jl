@@ -25,7 +25,7 @@ const Lx = 2000 * kilometer
 const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
-#Eddy viscosities
+#Eddy viscosities and diffusivities
 const νh = 0 * (meter^2/second)
 const νv = 0 * (meter^2/second)
 const κh = 0 * (meter^2/second)
@@ -52,7 +52,7 @@ const N2 = 5e-4 * (second^(-2))
 const Δti     = 1 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.1
-const tf      = 20 * day
+const tf      = 40 * day
 const Δt_save = 6 * hour
 
 #Architecture
