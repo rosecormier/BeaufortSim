@@ -732,7 +732,7 @@ function visualize_growth_rate(datetime, f)
    ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
                     xlabel = L"$t$ [s]", ylabel = L"$||v'||$ [m/s]")
 
-   n      = Observable(1)
+   n      = Observable(2)
    b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
    b_norm = @lift growth_rate(ds["b"], $n, times)[2]
    w_gr   = @lift growth_rate(ds["w"], $n, times)[1]
@@ -752,7 +752,7 @@ function visualize_growth_rate(datetime, f)
    @lift scatter!(ax_u_norm, times[$n], $u_norm, color = :black)
    @lift scatter!(ax_v_norm, times[$n], $v_norm, color = :black)
 
-   for i = 1:Nt-1
+   for i = 2:Nt-1
       yield()
       n[] = i
    end
