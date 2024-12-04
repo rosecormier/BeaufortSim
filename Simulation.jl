@@ -52,8 +52,8 @@ const N2 = 5e-4 * (second^(-2))
 const Δti     = 1 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.1
-const tf      = 80 * day
-const Δt_save = 12 * hour
+const tf      = 0.25 * day  #80 * day
+const Δt_save = 2 * hour #12 * hour
 
 #Architecture
 const use_GPU = true
@@ -62,7 +62,7 @@ const use_GPU = true
 const max_b′ = 5e-2
 
 #Whether to run visualization functions
-const do_vis_const_x     = true
+const do_vis_const_x     = false
 const do_vis_const_y     = false
 const do_vis_const_z     = true
 const do_vis_growth_rate = true
@@ -222,25 +222,25 @@ end
 ###################################
 
 if do_vis_const_x
-   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
-   visualize_fields_const_x(datetimenow, x_idx; plot_animation = false)
+   visualize_fields_const_x(datetimenow, x_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
-   visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
-   visualize_fields_const_y(datetimenow, y_idx; plot_animation = false)
+   visualize_fields_const_y(datetimenow, y_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx; plot_animation = false)
+   visualize_fields_const_z(datetimenow, z_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
 
 if do_vis_growth_rate
-   visualize_growth_rate(datetimenow, f)
+   visualize_growth_rate(datetimenow)
 end

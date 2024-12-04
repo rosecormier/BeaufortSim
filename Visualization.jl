@@ -31,7 +31,8 @@ function get_range_lims(final_field; prescribed_max = 0)
 end
 
 function get_2D_spatial_axis_kwargs(x, y, z; 
-		                    x_idx = nothing, y_idx = nothing, z_idx = nothing)
+		                    x_idx = nothing, y_idx = nothing, 
+				    z_idx = nothing)
    if !isnothing(x_idx)
       nearest     = round(Int, x[x_idx])
       axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
@@ -45,7 +46,7 @@ function get_2D_spatial_axis_kwargs(x, y, z;
    return nearest, axis_kwargs
 end
 
-function visualize_growth_rate(datetime, f)
+function visualize_growth_rate(datetime)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
@@ -53,13 +54,17 @@ function visualize_growth_rate(datetime, f)
    fig_norms = Figure(size = (1200, 700))
 
    ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-		  xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||b'||$ [1/s]")
+		  xlabel = L"$t$ [days]", 
+		  ylabel = L"Growth rate of $||b'||$ [1/s]")
    ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||w'||$ [1/s]")
+	          xlabel = L"$t$ [days]", 
+		  ylabel = L"Growth rate of $||w'||$ [1/s]")
    ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||u'||$ [1/s]")
+	          xlabel = L"$t$ [days]", 
+		  ylabel = L"Growth rate of $||u'||$ [1/s]")
    ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||v'||$ [1/s]")
+	          xlabel = L"$t$ [days]", 
+		  ylabel = L"Growth rate of $||v'||$ [1/s]")
 
    ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
                     xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]")
@@ -108,12 +113,11 @@ function visualize_growth_rate(datetime, f)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
-
    close(ds)
 end
 
 function visualize_fields_const_x(datetime, x_idx; 
-		                  plot_animation = true, t_idx_skip = 1)
+		                  plot_animation = false, t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
    bb, ub, vb, wb         = get_background_fields(ds)
@@ -143,7 +147,7 @@ function visualize_fields_const_x(datetime, x_idx;
    mkpath("./Plots") #Make visualization directory if nonexistent
 
    x_nearest, axis_kwargs_yz = get_2D_spatial_axis_kwargs(x, y, z; x_idx = x_idx)
-
+   
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
       n = Observable(1)
@@ -248,93 +252,86 @@ function visualize_fields_const_x(datetime, x_idx;
                     video_total)
       save(joinpath("./Plots", "perturbs_x$(x_nearest)_$(datetime).mp4"),
                     video_perturb)
-
-   elseif !plot_animation #Plot static images (final frame, by default)
-   
-      fig_total   = Figure(size = (1200, 800))
-      fig_perturb = Figure(size = (1200, 800))
-
-      ax_b_total = Axis(fig_total[2, 1];
-                        title = "Total buoyancy (b)", axis_kwargs_yz...)
-      ax_w_total = Axis(fig_total[2, 3];
-                        title = "Total vertical velocity (w)", 
-			axis_kwargs_yz...)
-      ax_u_total = Axis(fig_total[3, 1];
-                        title = "Total zonal velocity (u)", axis_kwargs_yz...)
-      ax_v_total = Axis(fig_total[3, 3];
-                        title = "Total meridional velocity (v)", 
-			axis_kwargs_yz...)
-
-      ax_b_perturb = Axis(fig_perturb[2, 1];
-                          title = "Buoyancy perturbation (b')", 
-			  axis_kwargs_yz...)
-      ax_w_perturb = Axis(fig_perturb[2, 3];
-                          title = "Vertical velocity perturbation (w')",
-                          axis_kwargs_yz...)
-      ax_u_perturb = Axis(fig_perturb[3, 1];
-                          title = "Zonal velocity perturbation (u')",
-                          axis_kwargs_yz...)
-      ax_v_perturb = Axis(fig_perturb[3, 3];
-                          title = "Meridional velocity perturbation (v')",
-                          axis_kwargs_yz...)
-
-      hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_f_yz,
-                            colorrange = lims_b_total, colormap = :balance)
-      hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_f_yz,
-                            colorrange = lims_w_total, colormap = :balance)
-      hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_f_yz,
-                            colorrange = lims_u_total, colormap = :balance)
-      hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_f_yz,
-                            colorrange = lims_v_total, colormap = :balance)
-
-      hm_b_perturb = heatmap!(ax_b_perturb, y, z[z_plt:end], Δb_f_yz,
-                              colorrange = lims_Δb, colormap = :balance)
-      hm_w_perturb = heatmap!(ax_w_perturb, y, z[z_plt:end], Δw_f_yz,
-                              colorrange = lims_Δw, colormap = :balance)
-      hm_u_perturb = heatmap!(ax_u_perturb, y, z[z_plt:end], Δu_f_yz,
-                              colorrange = lims_Δu, colormap = :balance)
-      hm_v_perturb = heatmap!(ax_v_perturb, y, z[z_plt:end], Δv_f_yz,
-                              colorrange = lims_Δv, colormap = :balance)
-
-      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", 
-	       label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", 
-	       label = "m/s")
-      Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", 
-	       label = "m/s")
-      Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", 
-	       label = "m/s")
-
-      Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
-               label = "m/s²")
-      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
-               label = "m/s")
-      Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
-               label = "m/s")
-      Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
-               label = "m/s")
-
-      title_total   = @sprintf("Fields at x = %i km; t = %.2f days",
-                               x_nearest, times[Nt]/(3600*24))
-      title_perturb = @sprintf(
-                          "Perturbation fields at x = %i km; t = %.2f days",
-                          x_nearest, times[Nt]/(3600*24))
-
-      fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
-                                  tellwidth = false)
-      fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
-                                  tellwidth = false)
-
-      save(joinpath("./Plots", "fields_x$(x_nearest)_tf_$(datetime).png"),
-                    fig_total)
-      save(joinpath("./Plots", "perturbs_x$(x_nearest)_tf_$(datetime).png"),
-                    fig_perturb)
    end
+
+   #Plot static images (final frame, by default)
+   
+   fig_total   = Figure(size = (1200, 800))
+   fig_perturb = Figure(size = (1200, 800))
+
+   ax_b_total = Axis(fig_total[2, 1];
+                     title = "Total buoyancy (b)", axis_kwargs_yz...)
+   ax_w_total = Axis(fig_total[2, 3];
+                     title = "Total vertical velocity (w)", axis_kwargs_yz...)
+   ax_u_total = Axis(fig_total[3, 1];
+                     title = "Total zonal velocity (u)", axis_kwargs_yz...)
+   ax_v_total = Axis(fig_total[3, 3];
+                     title = "Total meridional velocity (v)", axis_kwargs_yz...)
+
+   ax_b_perturb = Axis(fig_perturb[2, 1]; 
+		       title = "Buoyancy perturbation (b')", axis_kwargs_yz...)
+   ax_w_perturb = Axis(fig_perturb[2, 3];
+                       title = "Vertical velocity perturbation (w')",
+                       axis_kwargs_yz...)
+   ax_u_perturb = Axis(fig_perturb[3, 1];
+                       title = "Zonal velocity perturbation (u')",
+                       axis_kwargs_yz...)
+   ax_v_perturb = Axis(fig_perturb[3, 3];
+                       title = "Meridional velocity perturbation (v')",
+                       axis_kwargs_yz...)
+
+   hm_b_total = heatmap!(ax_b_total, y, z[z_plt:end], b_total_f_yz,
+                         colorrange = lims_b_total, colormap = :balance)
+   hm_w_total = heatmap!(ax_w_total, y, z[z_plt:end], w_total_f_yz,
+                         colorrange = lims_w_total, colormap = :balance)
+   hm_u_total = heatmap!(ax_u_total, y, z[z_plt:end], u_total_f_yz,
+                         colorrange = lims_u_total, colormap = :balance)
+   hm_v_total = heatmap!(ax_v_total, y, z[z_plt:end], v_total_f_yz,
+                         colorrange = lims_v_total, colormap = :balance)
+
+   hm_b_perturb = heatmap!(ax_b_perturb, y, z[z_plt:end], Δb_f_yz,
+                           colorrange = lims_Δb, colormap = :balance)
+   hm_w_perturb = heatmap!(ax_w_perturb, y, z[z_plt:end], Δw_f_yz,
+                           colorrange = lims_Δw, colormap = :balance)
+   hm_u_perturb = heatmap!(ax_u_perturb, y, z[z_plt:end], Δu_f_yz,
+                           colorrange = lims_Δu, colormap = :balance)
+   hm_v_perturb = heatmap!(ax_v_perturb, y, z[z_plt:end], Δv_f_yz,
+                           colorrange = lims_Δv, colormap = :balance)
+
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", label = "m/s")
+
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+            label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+
+   title_total   = @sprintf("Fields at x = %i km; t = %.2f days",
+                            x_nearest, times[Nt]/(3600*24))
+   title_perturb = @sprintf(
+                          "Perturbation fields at x = %i km; t = %.2f days",
+                            x_nearest, times[Nt]/(3600*24))
+
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+                               tellwidth = false)
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+                               tellwidth = false)
+
+   save(joinpath("./Plots", "fields_x$(x_nearest)_tf_$(datetime).png"),
+                 fig_total)
+   save(joinpath("./Plots", "perturbs_x$(x_nearest)_tf_$(datetime).png"),
+                 fig_perturb)
    close(ds)
 end
 
 function visualize_fields_const_y(datetime, y_idx; 
-		                  plot_animation = true, t_idx_skip = 1)
+		                  plot_animation = false, t_idx_skip = 1)
    
    ds, x, y, z, times, Nt = open_dataset(datetime)
    bb, ub, vb, wb         = get_background_fields(ds)
@@ -469,88 +466,88 @@ function visualize_fields_const_y(datetime, y_idx;
                     video_total)
       save(joinpath("./Plots", "perturbs_y$(y_nearest)_$(datetime).mp4"),
                     video_perturb)
+   end
 
-   elseif !plot_animation #Plot static images (final frame, by default)
+   #Plot static images (final frame, by default)
 
-      fig_total   = Figure(size = (1200, 800))
-      fig_perturb = Figure(size = (1200, 800))
+   fig_total   = Figure(size = (1200, 800))
+   fig_perturb = Figure(size = (1200, 800))
 
-      ax_b_total = Axis(fig_total[2, 1];
+   ax_b_total = Axis(fig_total[2, 1];
                         title = "Total buoyancy (b)", axis_kwargs_xz...)
-      ax_w_total = Axis(fig_total[2, 3];
+   ax_w_total = Axis(fig_total[2, 3];
                         title = "Total vertical velocity (w)",
                         axis_kwargs_xz...)
-      ax_u_total = Axis(fig_total[3, 1];
+   ax_u_total = Axis(fig_total[3, 1];
                         title = "Total zonal velocity (u)", axis_kwargs_xz...)
-      ax_v_total = Axis(fig_total[3, 3];
+   ax_v_total = Axis(fig_total[3, 3];
                         title = "Total meridional velocity (v)",
                         axis_kwargs_xz...)
 
-      ax_b_perturb = Axis(fig_perturb[2, 1];
+   ax_b_perturb = Axis(fig_perturb[2, 1];
                           title = "Buoyancy perturbation (b')",
                           axis_kwargs_xz...)
-      ax_w_perturb = Axis(fig_perturb[2, 3];
+   ax_w_perturb = Axis(fig_perturb[2, 3];
                           title = "Vertical velocity perturbation (w')",
                           axis_kwargs_xz...)
-      ax_u_perturb = Axis(fig_perturb[3, 1];
+   ax_u_perturb = Axis(fig_perturb[3, 1];
                           title = "Zonal velocity perturbation (u')",
                           axis_kwargs_xz...)
-      ax_v_perturb = Axis(fig_perturb[3, 3];
+   ax_v_perturb = Axis(fig_perturb[3, 3];
                           title = "Meridional velocity perturbation (v')",
                           axis_kwargs_xz...)
 
-      hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_f_xz,
+   hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_f_xz,
                             colorrange = lims_b_total, colormap = :balance)
-      hm_w_total = heatmap!(ax_w_total, x, z[z_plt:end], w_total_f_xz,
+   hm_w_total = heatmap!(ax_w_total, x, z[z_plt:end], w_total_f_xz,
                             colorrange = lims_w_total, colormap = :balance)
-      hm_u_total = heatmap!(ax_u_total, x, z[z_plt:end], u_total_f_xz,
+   hm_u_total = heatmap!(ax_u_total, x, z[z_plt:end], u_total_f_xz,
                             colorrange = lims_u_total, colormap = :balance)
-      hm_v_total = heatmap!(ax_v_total, x, z[z_plt:end], v_total_f_xz,
+   hm_v_total = heatmap!(ax_v_total, x, z[z_plt:end], v_total_f_xz,
                             colorrange = lims_v_total, colormap = :balance)
 
-      hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_f_xz,
+   hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_f_xz,
                               colorrange = lims_Δb, colormap = :balance)
-      hm_w_perturb = heatmap!(ax_w_perturb, x, z[z_plt:end], Δw_f_xz,
+   hm_w_perturb = heatmap!(ax_w_perturb, x, z[z_plt:end], Δw_f_xz,
                               colorrange = lims_Δw, colormap = :balance)
-      hm_u_perturb = heatmap!(ax_u_perturb, x, z[z_plt:end], Δu_f_xz,
+   hm_u_perturb = heatmap!(ax_u_perturb, x, z[z_plt:end], Δu_f_xz,
                               colorrange = lims_Δu, colormap = :balance)
-      hm_v_perturb = heatmap!(ax_v_perturb, x, z[z_plt:end], Δv_f_xz,
+   hm_v_perturb = heatmap!(ax_v_perturb, x, z[z_plt:end], Δv_f_xz,
                               colorrange = lims_Δv, colormap = :balance)
 
-      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}",
                label = "m/s")
 
-      Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
                label = "m/s")
 
-      title_total   = @sprintf("Fields at y = %i km; t = %.2f days",
+   title_total   = @sprintf("Fields at y = %i km; t = %.2f days",
                                y_nearest, times[Nt]/(3600*24))
-      title_perturb = @sprintf(
+   title_perturb = @sprintf(
                           "Perturbation fields at y = %i km; t = %.2f days",
                           y_nearest, times[Nt]/(3600*24))
 
-      fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                   tellwidth = false)
-      fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                   tellwidth = false)
 
-      save(joinpath("./Plots", "fields_y$(y_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", "fields_y$(y_nearest)_tf_$(datetime).png"),
                     fig_total)
-      save(joinpath("./Plots", "perturbs_y$(y_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", "perturbs_y$(y_nearest)_tf_$(datetime).png"),
                     fig_perturb)
-   end
    close(ds)
 end
 
@@ -688,156 +685,91 @@ function visualize_fields_const_z(datetime, z_idx;
 	            video_total)
       save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_$(datetime).mp4"),
 	            video_perturb)
+   end
+   
+   #Plot static images (final frame, by default)
 
-   elseif !plot_animation #Plot static images (final frame, by default)
+   fig_total   = Figure(size = (1200, 800))
+   fig_perturb = Figure(size = (1200, 800))
 
-      fig_total   = Figure(size = (1200, 800))
-      fig_perturb = Figure(size = (1200, 800))
-
-      ax_b_total = Axis(fig_total[2, 1];
+   ax_b_total = Axis(fig_total[2, 1];
                         title = "Total buoyancy (b)", axis_kwargs_xy...)
-      ax_w_total = Axis(fig_total[2, 3];
+   ax_w_total = Axis(fig_total[2, 3];
                         title = "Total vertical velocity (w)",
                         axis_kwargs_xy...)
-      ax_u_total = Axis(fig_total[3, 1];
+   ax_u_total = Axis(fig_total[3, 1];
                         title = "Total zonal velocity (u)", axis_kwargs_xy...)
-      ax_v_total = Axis(fig_total[3, 3];
+   ax_v_total = Axis(fig_total[3, 3];
                         title = "Total meridional velocity (v)",
                         axis_kwargs_xy...)
 
-      ax_b_perturb = Axis(fig_perturb[2, 1];
+   ax_b_perturb = Axis(fig_perturb[2, 1];
                           title = "Buoyancy perturbation (b')",
                           axis_kwargs_xy...)
-      ax_w_perturb = Axis(fig_perturb[2, 3];
+   ax_w_perturb = Axis(fig_perturb[2, 3];
                           title = "Vertical velocity perturbation (w')",
                           axis_kwargs_xy...)
-      ax_u_perturb = Axis(fig_perturb[3, 1];
+   ax_u_perturb = Axis(fig_perturb[3, 1];
                           title = "Zonal velocity perturbation (u')",
                           axis_kwargs_xy...)
-      ax_v_perturb = Axis(fig_perturb[3, 3];
+   ax_v_perturb = Axis(fig_perturb[3, 3];
                           title = "Meridional velocity perturbation (v')",
                           axis_kwargs_xy...)
 
-      hm_b_total = heatmap!(ax_b_total, x, y, b_total_f_xy,
+   hm_b_total = heatmap!(ax_b_total, x, y, b_total_f_xy,
                             colorrange = lims_b_total, colormap = :balance)
-      hm_w_total = heatmap!(ax_w_total, x, y, w_total_f_xy,
+   hm_w_total = heatmap!(ax_w_total, x, y, w_total_f_xy,
                             colorrange = lims_w_total, colormap = :balance)
-      hm_u_total = heatmap!(ax_u_total, x, y, u_total_f_xy,
+   hm_u_total = heatmap!(ax_u_total, x, y, u_total_f_xy,
                             colorrange = lims_u_total, colormap = :balance)
-      hm_v_total = heatmap!(ax_v_total, x, y, v_total_f_xy,
+   hm_v_total = heatmap!(ax_v_total, x, y, v_total_f_xy,
                             colorrange = lims_v_total, colormap = :balance)
 
-      hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
+   hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
                               colorrange = lims_Δb, colormap = :balance)
-      hm_w_perturb = heatmap!(ax_w_perturb, x, y, Δw_f_xy,
+   hm_w_perturb = heatmap!(ax_w_perturb, x, y, Δw_f_xy,
                               colorrange = lims_Δw, colormap = :balance)
-      hm_u_perturb = heatmap!(ax_u_perturb, x, y, Δu_f_xy,
+   hm_u_perturb = heatmap!(ax_u_perturb, x, y, Δu_f_xy,
                               colorrange = lims_Δu, colormap = :balance)
-      hm_v_perturb = heatmap!(ax_v_perturb, x, y, Δv_f_xy,
+   hm_v_perturb = heatmap!(ax_v_perturb, x, y, Δv_f_xy,
                               colorrange = lims_Δv, colormap = :balance)
 
-      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}",
+   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}",
                label = "m/s")
 
-      Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
                label = "m/s")
 
-      title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
+   title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
                           depth_nearest, times[Nt]/(3600*24))
-      title_perturb = @sprintf(
+   title_perturb = @sprintf(
                           "Perturbation fields at %i-m depth; t = %.2f days",
                           depth_nearest, times[Nt]/(3600*24))
 
-      fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                   tellwidth = false)
-      fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                   tellwidth = false)
 
-      save(joinpath("./Plots", "fields_z-$(depth_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", "fields_z-$(depth_nearest)_tf_$(datetime).png"),
            fig_total)
-      save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", "perturbs_z-$(depth_nearest)_tf_$(datetime).png"),
            fig_perturb)
-   end
    close(ds)
 end
 
-<<<<<<< HEAD
-function visualize_growth_rate(datetime, f)
-
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-
-   fig_gr    = Figure(size = (1200, 700))
-   fig_norms = Figure(size = (1200, 700))
-
-   ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
-   ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
-   ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
-   ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
-
-   ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]")
-   ax_w_norm = Axis(fig_norms[2, 2]; title = "Norm of w'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||w'||$ [m/s]")
-   ax_u_norm = Axis(fig_norms[3, 1]; title = "Norm of u'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u'||$ [m/s]")
-   ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||v'||$ [m/s]")
-
-   n      = Observable(2)
-   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
-   b_norm = @lift growth_rate(ds["b"], $n, times)[2]
-   w_gr   = @lift growth_rate(ds["w"], $n, times)[1]
-   w_norm = @lift growth_rate(ds["w"], $n, times)[2]
-   u_gr   = @lift growth_rate(ds["u"], $n, times)[1]
-   u_norm = @lift growth_rate(ds["u"], $n, times)[2]
-   v_gr   = @lift growth_rate(ds["v"], $n, times)[1]
-   v_norm = @lift growth_rate(ds["v"], $n, times)[2]
-   
-   @lift scatter!(ax_b_gr, times[$n]/86400, $b_gr, color = :black)
-   @lift scatter!(ax_w_gr, times[$n]/86400, $w_gr, color = :black)
-   @lift scatter!(ax_u_gr, times[$n]/86400, $u_gr, color = :black)
-   @lift scatter!(ax_v_gr, times[$n]/86400, $v_gr, color = :black)
-
-   @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
-   @lift scatter!(ax_w_norm, times[$n]/86400, $w_norm, color = :black)
-   @lift scatter!(ax_u_norm, times[$n]/86400, $u_norm, color = :black)
-   @lift scatter!(ax_v_norm, times[$n]/86400, $v_norm, color = :black)
-
-   for i = 2:Nt-1
-      yield()
-      n[] = i
-   end
-
-   fig_gr[1, 1:2]    = Label(fig_gr, "Growth rates of perturbation fields", 
-		          fontsize = 24, tellwidth = false)
-   fig_norms[1, 1:2] = Label(fig_norms, "Norms of perturbation fields",
-			  fontsize = 24, tellwidth = false)
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
-   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
-
-   close(ds)
-end
-
-=======
->>>>>>> baf584b23a55933b68ace122a8c5811fadcd01e1
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    computed_file = joinpath("./Output", "computed_$(datetime).nc")
