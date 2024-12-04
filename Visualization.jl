@@ -715,22 +715,22 @@ function visualize_growth_rate(datetime, f)
    fig_norms = Figure(size = (1200, 700))
 
    ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
+	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
    ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
+	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
    ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
+	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
    ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
+	          xlabel = L"$t$ [days]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
 
    ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||b'||$ [m/s^2]")
+                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]")
    ax_w_norm = Axis(fig_norms[2, 2]; title = "Norm of w'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||w'||$ [m/s]")
+                    xlabel = L"$t$ [days]", ylabel = L"$||w'||$ [m/s]")
    ax_u_norm = Axis(fig_norms[3, 1]; title = "Norm of u'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||u'||$ [m/s]")
+                    xlabel = L"$t$ [days]", ylabel = L"$||u'||$ [m/s]")
    ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||v'||$ [m/s]")
+                    xlabel = L"$t$ [days]", ylabel = L"$||v'||$ [m/s]")
 
    n      = Observable(2)
    b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
@@ -742,15 +742,15 @@ function visualize_growth_rate(datetime, f)
    v_gr   = @lift growth_rate(ds["v"], $n, times)[1]
    v_norm = @lift growth_rate(ds["v"], $n, times)[2]
    
-   @lift scatter!(ax_b_gr, times[$n], $b_gr, color = :black)
-   @lift scatter!(ax_w_gr, times[$n], $w_gr, color = :black)
-   @lift scatter!(ax_u_gr, times[$n], $u_gr, color = :black)
-   @lift scatter!(ax_v_gr, times[$n], $v_gr, color = :black)
+   @lift scatter!(ax_b_gr, times[$n]/86400, $b_gr, color = :black)
+   @lift scatter!(ax_w_gr, times[$n]/86400, $w_gr, color = :black)
+   @lift scatter!(ax_u_gr, times[$n]/86400, $u_gr, color = :black)
+   @lift scatter!(ax_v_gr, times[$n]/86400, $v_gr, color = :black)
 
-   @lift scatter!(ax_b_norm, times[$n], $b_norm, color = :black)
-   @lift scatter!(ax_w_norm, times[$n], $w_norm, color = :black)
-   @lift scatter!(ax_u_norm, times[$n], $u_norm, color = :black)
-   @lift scatter!(ax_v_norm, times[$n], $v_norm, color = :black)
+   @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
+   @lift scatter!(ax_w_norm, times[$n]/86400, $w_norm, color = :black)
+   @lift scatter!(ax_u_norm, times[$n]/86400, $u_norm, color = :black)
+   @lift scatter!(ax_v_norm, times[$n]/86400, $v_norm, color = :black)
 
    for i = 2:Nt-1
       yield()
