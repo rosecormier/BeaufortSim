@@ -52,8 +52,8 @@ const N2 = 5e-4 * (second^(-2))
 const Δti     = 1 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.1
-const tf      = 40 * day
-const Δt_save = 6 * hour
+const tf      = 80 * day
+const Δt_save = 12 * hour
 
 #Architecture
 const use_GPU = true
@@ -64,7 +64,7 @@ const max_b′ = 5e-2
 #Whether to run visualization functions
 const do_vis_const_x     = true
 const do_vis_const_y     = false
-const do_vis_const_z     = false
+const do_vis_const_z     = true
 const do_vis_growth_rate = true
 
 #Indices at which to plot fields
