@@ -53,7 +53,7 @@ const Δti     = 1 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.1
 const tf      = 0.25 * day  #80 * day
-const Δt_save = 2 * hour #12 * hour
+const Δt_save = 0.5 * hour #12 * hour
 
 #Architecture
 const use_GPU = true
@@ -65,7 +65,7 @@ const max_b′ = 5e-2
 const do_vis_const_x     = false
 const do_vis_const_y     = false
 const do_vis_const_z     = true
-const do_vis_growth_rate = true
+const do_vis_growth_rate = false
 
 #Indices at which to plot fields
 const x_idx      = 259
@@ -236,8 +236,10 @@ if do_vis_const_y
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx; 
-			    plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_b_and_ωz(datetimenow, z_idx, Lx/Nx, Ly/Ny;
+		      plot_animation = true, t_idx_skip = t_idx_skip)
+   #visualize_fields_const_z(datetimenow, z_idx; 
+	#		    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
 

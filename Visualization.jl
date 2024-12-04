@@ -116,6 +116,159 @@ function visualize_growth_rate(datetime)
    close(ds)
 end
 
+function visualize_b_and_ωz(datetime, z_idx, Δx, Δy; 
+		            plot_animation = false, t_idx_skip = 1)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+   bb, ub, vb, wb         = get_background_fields(ds)
+
+   ωb_xy = ωz(ds["u"][:, :, z_idx, 1], ds["v"][:, :, z_idx, 1], Δx, Δy) 
+
+   b_total_f_xy = ds["b"][:, :, z_idx, Nt]
+   ω_total_f_xy = ωz(ds["u"][:, :, z_idx, Nt], ds["v"][:, :, z_idx, Nt], 
+		     Δx, Δy)
+
+   Δb_f_xy = b_total_f_xy .- bb[:, :, z_idx]
+   Δω_f_xy = ω_total_f_xy .- ωb_xy
+
+   lims_b_total = get_range_lims(b_total_f_xy)
+   lims_ω_total = get_range_lims(ω_total_f_xy)
+
+   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-16)
+   lims_Δω = get_range_lims(Δω_f_xy; prescribed_max = 1e-16)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+
+   depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
+
+   if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
+
+      n = Observable(1)
+
+      b_total_xy = @lift ds["b"][:, :, z_idx, $n]
+      ω_total_xy = @lift ωz(ds["u"][:, :, z_idx, $n], ds["v"][:, :, z_idx, $n], 
+			    Δx, Δy)
+
+      Δb_xy = @lift $b_total_xy .- bb[:, :, z_idx]
+      Δω_xy = @lift $ω_total_xy .- ωb_xy 
+   
+      fig_total   = Figure(size = (1200, 500))
+      fig_perturb = Figure(size = (1200, 500))
+
+      ax_b_total = Axis(fig_total[2, 1];
+                        title = "Total buoyancy (b)", axis_kwargs_xy...)
+      ax_ω_total = Axis(fig_total[2, 3];
+                        title = "Total vertical vorticity (ζ)", 
+			axis_kwargs_xy...)
+
+      ax_b_perturb = Axis(fig_perturb[2, 1];
+                          title = "Buoyancy perturbation (b')", 
+			  axis_kwargs_xy...)
+      ax_ω_perturb = Axis(fig_perturb[2, 3];
+                          title = "Vertical vorticity perturbation (ζ')",
+                          axis_kwargs_xy...)
+      
+      hm_b_total = heatmap!(ax_b_total, x, y, b_total_xy,
+                            colorrange = lims_b_total, colormap = :balance)
+      hm_ω_total = heatmap!(ax_ω_total, x, y, ω_total_xy,
+                            colorrange = lims_ω_total, colormap = :balance)
+
+      hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_xy,
+                              colorrange = lims_Δb, colormap = :balance)
+      hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_xy,
+                              colorrange = lims_Δω, colormap = :balance)
+
+      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
+      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "1/s")
+
+      Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+               label = "m/s²")
+      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+               label = "1/s")
+
+      title_total = @lift @sprintf("Fields at %i-m depth; t = %.2f days",
+                                   depth_nearest, times[$n]/(3600*24))
+      title_perturb = @lift @sprintf(
+                            "Perturbation fields at %i-m depth; t = %.2f days",
+                                     depth_nearest, times[$n]/(3600*24))
+
+      fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+                                  tellwidth = false)
+      fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+                                  tellwidth = false)
+   
+      frames = 1:Nt
+   
+      video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
+      video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
+
+      for i = 1:t_idx_skip:frames[end]
+         recordframe!(video_total)
+         recordframe!(video_perturb)
+         yield()
+         n[] = i
+      end
+   
+      save(joinpath("./Plots", "bzeta_total_z-$(depth_nearest)_$(datetime).mp4"), 
+	            video_total)
+      save(joinpath("./Plots", "bzeta_perturbs_z-$(depth_nearest)_$(datetime).mp4"),
+	            video_perturb)
+   end
+
+   #Plot static images (final frame, by default)
+
+   fig_total   = Figure(size = (1200, 500))
+   fig_perturb = Figure(size = (1200, 500))
+
+   ax_b_total = Axis(fig_total[2, 1];
+                     title = "Total buoyancy (b)", axis_kwargs_xy...)
+   ax_ω_total = Axis(fig_total[2, 3];
+                     title = "Total vertical vorticity (ζ)", 
+		     axis_kwargs_xy...)
+
+   ax_b_perturb = Axis(fig_perturb[2, 1];
+                       title = "Buoyancy perturbation (b')",
+                       axis_kwargs_xy...)
+   ax_ω_perturb = Axis(fig_perturb[2, 3];
+                       title = "Vertical vorticity perturbation (ζ')",
+                       axis_kwargs_xy...)
+
+   hm_b_total = heatmap!(ax_b_total, x, y, b_total_f_xy,
+                         colorrange = lims_b_total, colormap = :balance)
+   hm_ω_total = heatmap!(ax_ω_total, x, y, ω_total_f_xy,
+                         colorrange = lims_ω_total, colormap = :balance)
+
+   hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
+                           colorrange = lims_Δb, colormap = :balance)
+   hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_f_xy,
+                           colorrange = lims_Δω, colormap = :balance)
+
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", label = "1/s")
+
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+            label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
+            label = "1/s")
+
+   title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
+                            depth_nearest, times[Nt]/(3600*24))
+   title_perturb = @sprintf(
+                          "Perturbation fields at %i-m depth; t = %.2f days",
+                            depth_nearest, times[Nt]/(3600*24))
+
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+                               tellwidth = false)
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+                               tellwidth = false)
+
+   save(joinpath("./Plots", "bzeta_total_z-$(depth_nearest)_tf_$(datetime).png"),
+        fig_total)
+   save(joinpath("./Plots", "bzeta_perturbs_z-$(depth_nearest)_tf_$(datetime).png"),
+        fig_perturb)
+   close(ds)
+end
+
 function visualize_fields_const_x(datetime, x_idx; 
 		                  plot_animation = false, t_idx_skip = 1)
    
