@@ -53,13 +53,13 @@ function visualize_growth_rate(datetime, f)
    fig_norms = Figure(size = (1200, 700))
 
    ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||b'||$ [1/s]")
    ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||w'||$ [1/s]")
    ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||u'||$ [1/s]")
    ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||v'||$ [1/s]")
 
    ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
                     xlabel = L"$t$ [s]", ylabel = L"$||b'||$ [m/s^2]")
@@ -70,14 +70,19 @@ function visualize_growth_rate(datetime, f)
    ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
                     xlabel = L"$t$ [s]", ylabel = L"$||v'||$ [m/s]")
 
+   b_initial = growth_rate(ds["b"], 1, times)[2]
+   u_initial = growth_rate(ds["u"], 1, times)[2]
+   v_initial = growth_rate(ds["v"], 1, times)[2]
+   w_initial = growth_rate(ds["w"], 1, times)[2]
+	
    n      = Observable(2)
-   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
+   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] / b_initial
    b_norm = @lift growth_rate(ds["b"], $n, times)[2]
-   w_gr   = @lift growth_rate(ds["w"], $n, times)[1]
+   w_gr   = @lift growth_rate(ds["w"], $n, times)[1] / w_initial
    w_norm = @lift growth_rate(ds["w"], $n, times)[2]
-   u_gr   = @lift growth_rate(ds["u"], $n, times)[1]
+   u_gr   = @lift growth_rate(ds["u"], $n, times)[1] / u_initial
    u_norm = @lift growth_rate(ds["u"], $n, times)[2]
-   v_gr   = @lift growth_rate(ds["v"], $n, times)[1]
+   v_gr   = @lift growth_rate(ds["v"], $n, times)[1] / v_initial
    v_norm = @lift growth_rate(ds["v"], $n, times)[2]
    
    @lift scatter!(ax_b_gr, times[$n], $b_gr, color = :black)
