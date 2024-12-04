@@ -1,7 +1,6 @@
 include("LibraryVisualization.jl")
 
-using Oceananigans
-using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings, NCDatasets, Printf
+using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings, NCDatasets, Oceananigans, Printf
 using .ComputeSecondaries
 
 function open_dataset(datetime)
@@ -31,8 +30,8 @@ function get_range_lims(final_field; prescribed_max = 0)
    field_lims = [-field_max, field_max]
 end
 
-function get_axis_kwargs(x, y, z; 
-		         x_idx = nothing, y_idx = nothing, z_idx = nothing)
+function get_2D_spatial_axis_kwargs(x, y, z; 
+		                    x_idx = nothing, y_idx = nothing, z_idx = nothing)
    if !isnothing(x_idx)
       nearest     = round(Int, x[x_idx])
       axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
@@ -44,6 +43,68 @@ function get_axis_kwargs(x, y, z;
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
    return nearest, axis_kwargs
+end
+
+function visualize_growth_rate(datetime, f)
+
+   ds, x, y, z, times, Nt = open_dataset(datetime)
+
+   fig_gr    = Figure(size = (1200, 700))
+   fig_norms = Figure(size = (1200, 700))
+
+   ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
+   ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
+   ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
+   ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
+	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
+
+   ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
+                    xlabel = L"$t$ [s]", ylabel = L"$||b'||$ [m/s^2]")
+   ax_w_norm = Axis(fig_norms[2, 2]; title = "Norm of w'",
+                    xlabel = L"$t$ [s]", ylabel = L"$||w'||$ [m/s]")
+   ax_u_norm = Axis(fig_norms[3, 1]; title = "Norm of u'",
+                    xlabel = L"$t$ [s]", ylabel = L"$||u'||$ [m/s]")
+   ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
+                    xlabel = L"$t$ [s]", ylabel = L"$||v'||$ [m/s]")
+
+   n      = Observable(2)
+   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
+   b_norm = @lift growth_rate(ds["b"], $n, times)[2]
+   w_gr   = @lift growth_rate(ds["w"], $n, times)[1]
+   w_norm = @lift growth_rate(ds["w"], $n, times)[2]
+   u_gr   = @lift growth_rate(ds["u"], $n, times)[1]
+   u_norm = @lift growth_rate(ds["u"], $n, times)[2]
+   v_gr   = @lift growth_rate(ds["v"], $n, times)[1]
+   v_norm = @lift growth_rate(ds["v"], $n, times)[2]
+   
+   @lift scatter!(ax_b_gr, times[$n], $b_gr, color = :black)
+   @lift scatter!(ax_w_gr, times[$n], $w_gr, color = :black)
+   @lift scatter!(ax_u_gr, times[$n], $u_gr, color = :black)
+   @lift scatter!(ax_v_gr, times[$n], $v_gr, color = :black)
+
+   @lift scatter!(ax_b_norm, times[$n], $b_norm, color = :black)
+   @lift scatter!(ax_w_norm, times[$n], $w_norm, color = :black)
+   @lift scatter!(ax_u_norm, times[$n], $u_norm, color = :black)
+   @lift scatter!(ax_v_norm, times[$n], $v_norm, color = :black)
+
+   for i = 2:Nt-1
+      yield()
+      n[] = i
+   end
+
+   fig_gr[1, 1:2]    = Label(fig_gr, "Growth rates of perturbation fields", 
+		          fontsize = 24, tellwidth = false)
+   fig_norms[1, 1:2] = Label(fig_norms, "Norms of perturbation fields",
+			  fontsize = 24, tellwidth = false)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
+   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
+
+   close(ds)
 end
 
 function visualize_fields_const_x(datetime, x_idx; 
@@ -76,7 +137,7 @@ function visualize_fields_const_x(datetime, x_idx;
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+   x_nearest, axis_kwargs_yz = get_2D_spatial_axis_kwargs(x, y, z; x_idx = x_idx)
 
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
@@ -297,7 +358,7 @@ function visualize_fields_const_y(datetime, y_idx;
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
+   y_nearest, axis_kwargs_xz = get_2D_spatial_axis_kwargs(x, y, z; y_idx = y_idx)
 
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
@@ -516,7 +577,7 @@ function visualize_fields_const_z(datetime, z_idx;
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+   depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
 
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
@@ -707,68 +768,6 @@ function visualize_fields_const_z(datetime, z_idx;
    close(ds)
 end
 
-function visualize_growth_rate(datetime, f)
-
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-
-   fig_gr    = Figure(size = (1200, 700))
-   fig_norms = Figure(size = (1200, 700))
-
-   ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||b'||$ [m/s^3]")
-   ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||w'||$ [m/s^2]")
-   ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||u'||$ [m/s^2]")
-   ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [s]", ylabel = L"Growth rate of $||v'||$ [m/s^2]")
-
-   ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||b'||$ [m/s^2]")
-   ax_w_norm = Axis(fig_norms[2, 2]; title = "Norm of w'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||w'||$ [m/s]")
-   ax_u_norm = Axis(fig_norms[3, 1]; title = "Norm of u'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||u'||$ [m/s]")
-   ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
-                    xlabel = L"$t$ [s]", ylabel = L"$||v'||$ [m/s]")
-
-   n      = Observable(2)
-   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] 
-   b_norm = @lift growth_rate(ds["b"], $n, times)[2]
-   w_gr   = @lift growth_rate(ds["w"], $n, times)[1]
-   w_norm = @lift growth_rate(ds["w"], $n, times)[2]
-   u_gr   = @lift growth_rate(ds["u"], $n, times)[1]
-   u_norm = @lift growth_rate(ds["u"], $n, times)[2]
-   v_gr   = @lift growth_rate(ds["v"], $n, times)[1]
-   v_norm = @lift growth_rate(ds["v"], $n, times)[2]
-   
-   @lift scatter!(ax_b_gr, times[$n], $b_gr, color = :black)
-   @lift scatter!(ax_w_gr, times[$n], $w_gr, color = :black)
-   @lift scatter!(ax_u_gr, times[$n], $u_gr, color = :black)
-   @lift scatter!(ax_v_gr, times[$n], $v_gr, color = :black)
-
-   @lift scatter!(ax_b_norm, times[$n], $b_norm, color = :black)
-   @lift scatter!(ax_w_norm, times[$n], $w_norm, color = :black)
-   @lift scatter!(ax_u_norm, times[$n], $u_norm, color = :black)
-   @lift scatter!(ax_v_norm, times[$n], $v_norm, color = :black)
-
-   for i = 2:Nt-1
-      yield()
-      n[] = i
-   end
-
-   fig_gr[1, 1:2]    = Label(fig_gr, "Growth rates of perturbation fields", 
-		          fontsize = 24, tellwidth = false)
-   fig_norms[1, 1:2] = Label(fig_norms, "Norms of perturbation fields",
-			  fontsize = 24, tellwidth = false)
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
-   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
-
-   close(ds)
-end
-
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    computed_file = joinpath("./Output", "computed_$(datetime).nc")
@@ -852,7 +851,7 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
    lims_q = get_range_lims(q_yz_f)
 
-   x_nearest, axis_kwargs_yz = get_axis_kwargs(x, y, z; x_idx = x_idx)
+   x_nearest, axis_kwargs_yz = get_2D_spatial_axis_kwargs(x, y, z; x_idx = x_idx)
 
    fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
@@ -899,7 +898,7 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
 
    lims_q = get_range_lims(q_xz_f)
 
-   y_nearest, axis_kwargs_xz = get_axis_kwargs(x, y, z; y_idx = y_idx)
+   y_nearest, axis_kwargs_xz = get_2D_spatial_axis_kwargs(x, y, z; y_idx = y_idx)
 
    fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xz...)
@@ -944,7 +943,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    lims_q = get_range_lims(q_xy_f)
 
-   depth_nearest, axis_kwargs_xy = get_axis_kwargs(x, y, z; z_idx = z_idx)
+   depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
 
    fig_q = Figure(size = (600, 600))
    ax_q  = Axis(fig_q[2, 1]; axis_kwargs_xy...)
@@ -977,8 +976,8 @@ function plot_background_ζa(datetime, U, f, σr, σz;
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   nearest, axis_kwargs = get_axis_kwargs(x, y, z; 
-					  x_idx = x_idx, y_idx = y_idx)
+   nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z; 
+					             x_idx = x_idx, y_idx = y_idx)
 
    fig = Figure(size = (800, 400))
    ax  = Axis(fig[2, 1]; axis_kwargs...)
