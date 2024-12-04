@@ -1,7 +1,7 @@
 using LinearAlgebra, Printf
 
 module ComputeSecondaries
-   export ω, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
+   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
 end
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
@@ -16,6 +16,11 @@ function ω(u, v, w, i, j, k, Δx, Δy, Δz)
 	    - (u[i, j:j+1, k] - u[i, j-1:j, k]) / Δy)
    
    return (ωx[1] + ωx[2]) / 2, (ωy[1] + ωy[2]) / 2, (ωz[1] + ωz[2]) / 2
+end
+
+function ωz(u, v, Δx, Δy)
+   ωz = @. ((v[2:end, 2:end-1] - v[1:end-1, 2:end-1]) / Δx 
+	    - (u[2:end-1, 2:end] - u[2:end-1, 1:end-1]) / Δy)
 end
 
 function ζa_b(U, f, σr, σz, x, y, z)
