@@ -44,9 +44,9 @@ const σr = 250 * kilometer
 const σz = 300 * meter
 
 #Gyre speed and buoyancy frequency
-const U  = 1 * (meter/second)
-const N2 = 5e-4 * (second^(-2))
-@printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N2))
+const U   = 1 * (meter/second)
+const N²₀ = 5e-4 * (second^(-2))
+@printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N²₀))
 
 #Time-stepping parameters
 const Δti     = 1 * second
@@ -90,11 +90,11 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
 	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-@inline dbdz_top(x, y, t)    = (N2 
+@inline dbdz_top(x, y, t)    = (N²₀ 
 				+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp(1/2) 
 				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
-@inline dbdz_bottom(x, y, t) = (N2 
+@inline dbdz_bottom(x, y, t) = (N² 
 				+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp((1/2) - (Lz/σz)^2) 
 			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
@@ -138,7 +138,7 @@ v̄(x,y,z) = -((sqrt(2) * U * x / σr)
 	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 
 b′(x,y,z) = max_b′ * rand() * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-b̄(x,y,z)  = (N2 * z 
+b̄(x,y,z)  = (N²₀ * z 
 	     + (sqrt(2) * f * U * σr * z / (σz^2) 
 	        * exp((1/2) - (z/σz)^2) 
 		* (1 - exp(-(x^2 + y^2)/(σr^2))))
@@ -205,8 +205,8 @@ open(logfilepath, "w") do file
    write(file, "νh, νv, κh, κv = $(νh), $(νv), $(κh), $(κv) \n\n")
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "U, N2 = $(U), $(N2) \n")
-   write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N2)) \n\n")
+   write(file, "U, N²₀ = $(U), $(N²₀) \n")
+   write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N²₀)) \n\n")
    write(file, "Max. b' = $(max_b′) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
