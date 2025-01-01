@@ -25,9 +25,11 @@ const Lx = 2000 * kilometer
 const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
-#Eddy viscosities
-const νh = 0 * (meter^2/second) #(5e-2) * (meter^2/second)
-const νv = 0 * (meter^2/second) #(5e-5) * (meter^2/second)
+#Eddy viscosities and diffusivities
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
+const κh = 0 * (meter^2/second)
+const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -35,35 +37,41 @@ const lat = 74.0
 #f-plane and Coriolis frequency
 fPlane  = FPlane(latitude = lat)
 const f = fPlane.f
+@printf("f = %.2e Hz \n", f)
 
 #Gyre scales
-const σr  = 250 * kilometer
-const σz  = 300 * meter
+const σr = 250 * kilometer
+const σz = 300 * meter
 
 #Gyre speed and buoyancy frequency
-const U  = 0.1 * exp(1) * U_upper_bound(σr, f) * (meter/second)
-const N2 = 1.5 * N2_lower_bound(σr, σz, f, U) * (second^(-2))
+const U  = 1 * (meter/second)
+const N2 = 5e-4 * (second^(-2))
+@printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N2))
 
-#Time increments
-const Δti     = 0.5 * second
-const Δt_max  = 30 * second 
+#Time-stepping parameters
+const Δti     = 1 * second
+const Δt_max  = 1200 * second 
 const CFL     = 0.1
-const tf      = 10 * day
-const Δt_save = 2 * hour
+const tf      = 0.25 * day  #80 * day
+const Δt_save = 0.5 * hour #12 * hour
 
 #Architecture
 const use_GPU = true
 
+#Max. magnitude of initial b-perturbations (0 for no perturbation)
+const max_b′ = 5e-2
+
 #Whether to run visualization functions
-const do_vis_const_x = true
-const do_vis_const_y = false
-const do_vis_const_z = true
+const do_vis_const_x     = false
+const do_vis_const_y     = false
+const do_vis_const_z     = true
+const do_vis_growth_rate = false
 
 #Indices at which to plot fields
-const x_idx      = 256
-const y_idx      = 256
+const x_idx      = 259
+const y_idx      = 259
 const z_idx      = 252
-const t_idx_skip = 1
+const t_idx_skip = 2
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -77,37 +85,45 @@ grid = RectilinearGrid(architecture,
                        x = (-Lx/2, Lx/2), 
                        y = (-Ly/2, Ly/2), 
                        z = (-Lz, 0),
-                       halo = (3,3,3))
+                       halo = (3, 3, 3))
 
-closure = (HorizontalScalarDiffusivity(ν = νh), 
-	   VerticalScalarDiffusivity(ν = νv))
+closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
+	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-db_dz_top(x, y, t) = N2 + (sqrt(2)*f*U*σr/(σz^2)
-			   * exp(1/2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
-db_dz_bottom(x, y, t) = N2 + (sqrt(2)*f*U*σr/(σz^2)
-			     * exp((1/2) - (Lz/σz)^2) 
-			     * (1 - exp(-(x^2 + y^2)/(σr^2))) 
-			     * (1 - 2*(Lz/σz)^2))
+@inline dbdz_top(x, y, t)    = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp(1/2) 
+				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
+@inline dbdz_bottom(x, y, t) = (N2 
+				+ (sqrt(2) * f * U * σr / (σz^2)
+				   * exp((1/2) - (Lz/σz)^2) 
+			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
+			           * (1 - 2 * (Lz/σz)^2)))
 
-b_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(db_dz_top),
-				bottom = GradientBoundaryCondition(db_dz_bottom))
+b_top_BC    = GradientBoundaryCondition(dbdz_top)
+b_bottom_BC = GradientBoundaryCondition(dbdz_bottom)
+
+b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
-                            timestepper = :QuasiAdamsBashforth2, 
+                            timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             closure = closure, 
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
-			    boundary_conditions = (b = b_BCs,))
+			    boundary_conditions = (; b = b_BCs,))
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
-check_grav_stability(σr, σz, f, U, N2)
+check_grav_stability(σr, σz, f, U, N2,
+		     xnodes(model.grid, Face(), Face(), Face()),
+                     ynodes(model.grid, Face(), Face(), Face()),
+                     znodes(model.grid, Face(), Face(), Face()))
 
 ##########################
 # SET INITIAL CONDITIONS #
@@ -116,12 +132,17 @@ check_grav_stability(σr, σz, f, U, N2)
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x,y,z)  = (sqrt(2)*U*y/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-v̄(x,y,z)  = -(sqrt(2)*U*x/σr) * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-bʹ(x,y,z) = (1e-6) * rand()
-b̄(x,y,z)  = N2*z + (sqrt(2)*f*U*σr*z/(σz^2) 
-		    * exp((1/2) - (z/σz)^2) * (1 - exp(-(x^2 + y^2)/(σr^2))))
-#+ bʹ(x,y,z))
+ū(x,y,z) = ((sqrt(2) * U * y / σr) 
+	    * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+v̄(x,y,z) = -((sqrt(2) * U * x / σr) 
+	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+
+b′(x,y,z) = max_b′ * rand() * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
+b̄(x,y,z)  = (N2 * z 
+	     + (sqrt(2) * f * U * σr * z / (σz^2) 
+	        * exp((1/2) - (z/σz)^2) 
+		* (1 - exp(-(x^2 + y^2)/(σr^2))))
+	     + b′(x,y,z))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -132,7 +153,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1)) #(8))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -157,7 +178,6 @@ datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 outfilename   = "output_$(datetimenow).nc"
 outfilepath   = joinpath("./Output", outfilename)
 mkpath(dirname(outfilepath)) #Make path if nonexistent
-
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
                                   with_halos = true,
@@ -182,10 +202,12 @@ mkpath(dirname(logfilepath)) #Make path if nonexistent
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
-   write(file, "νh, νv = $(νh), $(νv) \n\n")
+   write(file, "νh, νv, κh, κv = $(νh), $(νv), $(κh), $(κv) \n\n")
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "U, N2 = $(U), $(N2) \n\n")
+   write(file, "U, N2 = $(U), $(N2) \n")
+   write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N2)) \n\n")
+   write(file, "Max. b' = $(max_b′) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
@@ -200,18 +222,27 @@ end
 ###################################
 
 if do_vis_const_x
-   visualize_fields_const_x(datetimenow, x_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
 if do_vis_const_y
-   visualize_fields_const_y(datetimenow, y_idx; t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
-   visualize_fields_const_z(datetimenow, z_idx; t_idx_skip = t_idx_skip)
+   visualize_b_and_ωz(datetimenow, z_idx, Lx/Nx, Ly/Ny;
+		      plot_animation = true, t_idx_skip = t_idx_skip)
+   #visualize_fields_const_z(datetimenow, z_idx; 
+	#		    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
+end
+
+if do_vis_growth_rate
+   visualize_growth_rate(datetimenow)
 end
