@@ -14,10 +14,11 @@ function check_inert_stability(σr, σz, f, U, x, y, z)
 end
 
 function check_grav_stability(σr, σz, f, U, N², x, y, z)
-   r2   = @. x^2 + y^2
-   z2   = transpose(z.^2 .* ones(Float64, (1, length(r2))))
-   ∂z_b = @. N² + ((sqrt(2)*f*U*σr/(σz^2)) * exp((1/2) - z2/(σz^2)) 
-		* (1 - exp(-r2/(σr^2))) * (1 - 2*z2/(σz^2)))
+   r2     = @. x^2 + y^2
+   z2     = transpose(z.^2 .* ones(Float64, (1, length(r2))))
+   N²_arr = transpose(N²(z) .* ones(Float64, (1, length(r2))))
+   ∂z_b   = @. N²_arr + ((sqrt(2)*f*U*σr/(σz^2)) * exp((1/2) - z2/(σz^2))
+	  	      * (1 - exp(-r2/(σr^2))) * (1 - 2*z2/(σz^2)))
    if !all(∂z_b .> 0)
       print("Warning: system is gravitationally unstable.")
    end

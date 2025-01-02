@@ -1,3 +1,4 @@
+include("LibraryDynamics.jl")
 include("LibraryStability.jl")
 include("Visualization.jl")
 
@@ -93,11 +94,13 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
 	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-@inline dbdz_top(x, y, t)    = (N²₀ 
+bkgd_N²(z) = uniform_stratification(N²₀)
+
+@inline dbdz_top(x, y, t)    = (bkgd_N²(0)
 				+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp(1/2) 
 				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
-@inline dbdz_bottom(x, y, t) = (N² 
+@inline dbdz_bottom(x, y, t) = (bkgd_N²(-Lz)
 				+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp((1/2) - (Lz/σz)^2) 
 			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
@@ -123,7 +126,7 @@ check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
-check_grav_stability(σr, σz, f, U, N2,
+check_grav_stability(σr, σz, f, U, bkgd_N²,
 		     xnodes(model.grid, Face(), Face(), Face()),
                      ynodes(model.grid, Face(), Face(), Face()),
                      znodes(model.grid, Face(), Face(), Face()))
@@ -141,7 +144,7 @@ v̄(x,y,z) = -((sqrt(2) * U * x / σr)
 	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 
 b′(x,y,z) = max_b′ * rand() * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-b̄(x,y,z)  = (N²₀ * z 
+b̄(x,y,z)  = (z * bkgd_N²(z) 
 	     + (sqrt(2) * f * U * σr * z / (σz^2) 
 	        * exp((1/2) - (z/σz)^2) 
 		* (1 - exp(-(x^2 + y^2)/(σr^2))))
@@ -152,7 +155,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-
+#=
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
@@ -249,3 +252,4 @@ end
 if do_vis_growth_rate
    visualize_growth_rate(datetimenow)
 end
+=#
