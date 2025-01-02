@@ -43,10 +43,13 @@ const f = fPlane.f
 const σr = 250 * kilometer
 const σz = 300 * meter
 
-#Gyre speed and buoyancy frequency
+#Speed and buoyancy frequency at surface of gyre
 const U   = 1 * (meter/second)
 const N²₀ = 5e-4 * (second^(-2))
 @printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N²₀))
+
+#Max buoyancy frequency (equal to N²₀ for constant stratification)
+const N²_max = N²₀
 
 #Time-stepping parameters
 const Δti     = 1 * second
