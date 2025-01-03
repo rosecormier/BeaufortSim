@@ -10,7 +10,7 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
-using .Stability
+#using .Stability
 
 ######################
 # SPECIFY PARAMETERS #
@@ -46,14 +46,17 @@ const σz = 300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1 * (meter/second)
-const N²₀ = 5e-4 * (second^(-2))
+const N²₀ = 2e-4 * (second^(-2)) #5e-4 * (second^(-2))
 @printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N²₀))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = N²₀
+const N²_max = 4e-3 * (second^(-2))
+
+#Mixed-layer depth
+const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 1 * second
+const Δti     = 1e-4 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.1
 const tf      = 0.25 * day  #80 * day
@@ -63,10 +66,10 @@ const Δt_save = 0.5 * hour #12 * hour
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 5e-2
+const max_b′ = 0 # 5e-2
 
 #Whether to run visualization functions
-const do_vis_const_x     = false
+const do_vis_const_x     = true
 const do_vis_const_y     = false
 const do_vis_const_z     = true
 const do_vis_growth_rate = false
@@ -94,14 +97,15 @@ grid = RectilinearGrid(architecture,
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
 	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-bkgd_N²(z) = uniform_stratification(N²₀)
+const bkgd_N²_top    = lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
+const bkgd_N²_bottom = lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
-@inline dbdz_top(x, y, t)    = (bkgd_N²(0)
-				+ (sqrt(2) * f * U * σr / (σz^2)
+@inline dbdz_top(x, y, t)    = (bkgd_N²_top
+				.+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp(1/2) 
 				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
-@inline dbdz_bottom(x, y, t) = (bkgd_N²(-Lz)
-				+ (sqrt(2) * f * U * σr / (σz^2)
+@inline dbdz_bottom(x, y, t) = (bkgd_N²_bottom
+				.+ (sqrt(2) * f * U * σr / (σz^2)
 				   * exp((1/2) - (Lz/σz)^2) 
 			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
 			           * (1 - 2 * (Lz/σz)^2)))
@@ -121,15 +125,19 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
 
+bkgd_N² = lognormal_strat(N²₀, N²_max, d_ML, 
+			  znodes(model.grid, Face(), Face(), Face()))[1]
+
 #Prints warnings if the respective instabilities are present
 check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
-check_grav_stability(σr, σz, f, U, bkgd_N²,
-		     xnodes(model.grid, Face(), Face(), Face()),
-                     ynodes(model.grid, Face(), Face(), Face()),
-                     znodes(model.grid, Face(), Face(), Face()))
+#Needs to be updated
+#check_grav_stability(σr, σz, f, U, bkgd_N²,
+#		     xnodes(model.grid, Face(), Face(), Face()),
+#                     ynodes(model.grid, Face(), Face(), Face()),
+#                     znodes(model.grid, Face(), Face(), Face()))
 
 ##########################
 # SET INITIAL CONDITIONS #
@@ -144,7 +152,7 @@ v̄(x,y,z) = -((sqrt(2) * U * x / σr)
 	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 
 b′(x,y,z) = max_b′ * rand() * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2)
-b̄(x,y,z)  = (z * bkgd_N²(z) 
+b̄(x,y,z)  = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
 	     + (sqrt(2) * f * U * σr * z / (σz^2) 
 	        * exp((1/2) - (z/σz)^2) 
 		* (1 - exp(-(x^2 + y^2)/(σr^2))))
@@ -155,7 +163,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
@@ -252,4 +260,3 @@ end
 if do_vis_growth_rate
    visualize_growth_rate(datetimenow)
 end
-=#
