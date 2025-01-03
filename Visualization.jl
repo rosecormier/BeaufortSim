@@ -179,11 +179,11 @@ function visualize_b_and_ωz(datetime, z_idx, Δx, Δy;
                               colorrange = lims_Δω, colormap = :balance)
 
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "1/s")
+      Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", label = "1/s")
 
       Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+      Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
                label = "1/s")
 
       title_total = @lift @sprintf("Fields at %i-m depth; t = %.2f days",
