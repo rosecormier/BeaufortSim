@@ -18,9 +18,24 @@ function ω(u, v, w, i, j, k, Δx, Δy, Δz)
    return (ωx[1] + ωx[2]) / 2, (ωy[1] + ωy[2]) / 2, (ωz[1] + ωz[2]) / 2
 end
 
-function ωz(u, v, Δx, Δy)
-   ωz = @. ((v[2:end, 2:end-1] - v[1:end-1, 2:end-1]) / Δx 
-	    - (u[2:end-1, 2:end] - u[2:end-1, 1:end-1]) / Δy)
+function ωz(u, v, Δx, Δy; 
+            x_idx = nothing, y_idx = nothing, z_idx = nothing)
+
+   if !isnothing(x_idx)
+      ωz = @. (((v[x_idx+1, 2:end-1, :] - v[x_idx, 2:end-1, :]) 
+	        + v[x_idx, 2:end-1, :] - v[x_idx-1, 2:end-1, :]) / (2*Δx)
+	       - (u[x_idx, 2:end, :] - u[x_idx, 1:end-1, :]) / Δy)
+   
+   elseif !isnothing(y_idx)
+      ωz = @. ((v[2:end, y_idx, :] - v[1:end-1, y_idx, :]) / Δx
+	       - ((u[2:end-1, y_idx+1, :] - u[2:end-1, y_idx, :])
+		  + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2*Δy))
+
+   elseif !isnothing(z_idx)
+      ωz = @. ((v[2:end, 2:end-1, z_idx] - v[1:end-1, 2:end-1, z_idx]) / Δx
+              - (u[2:end-1, 2:end, z_idx] - u[2:end-1, 1:end-1, z_idx]) / Δy)
+   end
+   return ωz
 end
 
 function ζa_b(U, f, σr, σz, x, y, z)
