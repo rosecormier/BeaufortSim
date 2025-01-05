@@ -40,7 +40,7 @@ function get_2D_spatial_axis_kwargs(x, y, z;
       nearest     = round(Int, y[y_idx])
       axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
    elseif !isnothing(z_idx)
-      nearest     = round(Int, -z[z_idx])
+      nearest     = round(Int, z[z_idx])
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
    return nearest, axis_kwargs
@@ -116,66 +116,119 @@ function visualize_growth_rate(datetime)
    close(ds)
 end
 
-function visualize_b_and_ωz(datetime, z_idx, Δx, Δy; 
+function visualize_b_and_ωz(datetime, Δx, Δy; 
+		            x_idx = nothing, y_idx = nothing, z_idx = nothing,
 		            plot_animation = false, t_idx_skip = 1)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
    bb, ub, vb, wb         = get_background_fields(ds)
 
-   ωb_xy = ωz(ds["u"][:, :, z_idx, 1], ds["v"][:, :, z_idx, 1], Δx, Δy) 
+   if !isnothing(x_idx)
 
-   b_total_f_xy = ds["b"][:, :, z_idx, Nt]
-   ω_total_f_xy = ωz(ds["u"][:, :, z_idx, Nt], ds["v"][:, :, z_idx, Nt], 
-		     Δx, Δy)
+      bb_slice = bb[x_idx, :, :]
+      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
+		    x_idx = x_idx)
 
-   Δb_f_xy = b_total_f_xy .- bb[:, :, z_idx]
-   Δω_f_xy = ω_total_f_xy .- ωb_xy
+      b_total_f_slice = ds["b"][x_idx, :, :, Nt]
+      Δb_f_slice      = b_total_f_slice .- bb[x_idx, :, :]
+      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
+			   Δx, Δy; x_idx = x_idx)
 
-   lims_b_total = get_range_lims(b_total_f_xy)
-   lims_ω_total = get_range_lims(ω_total_f_xy)
+      b_total_tseries_slice = ds["b"][x_idx, :, :, :]
+      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; x_idx = x_idx)
 
-   lims_Δb = get_range_lims(Δb_f_xy; prescribed_max = 1e-16)
-   lims_Δω = get_range_lims(Δω_f_xy; prescribed_max = 1e-16)
+      idx_kwargs = (x_idx = x_idx,)
+
+      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                          x_idx = x_idx)
+
+      h_dim, v_dim, const_dim, units = y, z, "x", "km"
+
+   elseif !isnothing(y_idx)
+      
+      bb_slice = bb[:, y_idx, :]
+      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
+		    y_idx = y_idx)
+
+      b_total_f_slice = ds["b"][:, y_idx, :, Nt]
+      Δb_f_slice      = b_total_f_slice .- bb[:, y_idx, :]
+      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt],
+                           Δx, Δy; y_idx = y_idx)
+
+      b_total_tseries_slice = ds["b"][:, y_idx, :, :]
+      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; y_idx = y_idx)
+
+      idx_kwargs = (y_idx = y_idx,)
+
+      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                          y_idx = y_idx)      
+
+      h_dim, v_dim, const_dim, units = x, z, "y", "km"
+
+   elseif !isnothing(z_idx)
+      
+      bb_slice = bb[:, :, z_idx]
+      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
+		    z_idx = z_idx) 
+
+      b_total_f_slice = ds["b"][:, :, z_idx, Nt]
+      Δb_f_slice      = b_total_f_slice .- bb[:, :, z_idx]
+      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
+		           Δx, Δy; z_idx = z_idx)
+
+      b_total_tseries_slice = ds["b"][:, :, z_idx, :]
+      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; z_idx = z_idx)
+
+      idx_kwargs = (z_idx = z_idx,)
+
+      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                          z_idx = z_idx)
+
+      h_dim, v_dim, const_dim, units = x, y, "z", "m"
+   end
+
+   Δω_f_slice = ω_total_f_slice .- ωb_slice
+
+   lims_b_total = get_range_lims(b_total_f_slice)
+   lims_ω_total = get_range_lims(ω_total_f_slice)
+
+   lims_Δb = get_range_lims(Δb_f_slice; prescribed_max = 1e-16)
+   lims_Δω = get_range_lims(Δω_f_slice; prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-
-   depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
 
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
       n = Observable(1)
 
-      b_total_xy = @lift ds["b"][:, :, z_idx, $n]
-      ω_total_xy = @lift ωz(ds["u"][:, :, z_idx, $n], ds["v"][:, :, z_idx, $n], 
-			    Δx, Δy)
+      b_total_n_slice = @lift b_total_tseries_slice[:, :, $n]
+      ω_total_n_slice = @lift ωz(ds["u"][:, :, :, $n], ds["v"][:, :, :, $n], Δx, Δy; idx_kwargs...)
 
-      Δb_xy = @lift $b_total_xy .- bb[:, :, z_idx]
-      Δω_xy = @lift $ω_total_xy .- ωb_xy 
+      Δb_n_slice = @lift $b_total_n_slice .- bb_slice
+      Δω_n_slice = @lift $ω_total_n_slice .- ωb_slice
    
       fig_total   = Figure(size = (1200, 500))
       fig_perturb = Figure(size = (1200, 500))
 
-      ax_b_total = Axis(fig_total[2, 1];
-                        title = "Total buoyancy (b)", axis_kwargs_xy...)
+      ax_b_total = Axis(fig_total[2, 1]; 
+			title = "Total buoyancy (b)", axis_kwargs...)
       ax_ω_total = Axis(fig_total[2, 3];
-                        title = "Total vertical vorticity (ζ)", 
-			axis_kwargs_xy...)
+                        title = "Total vertical vorticity (ζ)", axis_kwargs...)
 
       ax_b_perturb = Axis(fig_perturb[2, 1];
-                          title = "Buoyancy perturbation (b')", 
-			  axis_kwargs_xy...)
+                          title = "Buoyancy perturbation (b')", axis_kwargs...)
       ax_ω_perturb = Axis(fig_perturb[2, 3];
                           title = "Vertical vorticity perturbation (ζ')",
-                          axis_kwargs_xy...)
+                          axis_kwargs...)
       
-      hm_b_total = heatmap!(ax_b_total, x, y, b_total_xy,
+      hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_n_slice,
                             colorrange = lims_b_total, colormap = :balance)
-      hm_ω_total = heatmap!(ax_ω_total, x, y, ω_total_xy,
+      hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_n_slice,
                             colorrange = lims_ω_total, colormap = :balance)
 
-      hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_xy,
+      hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_n_slice,
                               colorrange = lims_Δb, colormap = :balance)
-      hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_xy,
+      hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_n_slice,
                               colorrange = lims_Δω, colormap = :balance)
 
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
@@ -186,11 +239,12 @@ function visualize_b_and_ωz(datetime, z_idx, Δx, Δy;
       Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
                label = "1/s")
 
-      title_total = @lift @sprintf("Fields at %i-m depth; t = %.2f days",
-                                   depth_nearest, times[$n]/(3600*24))
+      title_total = @lift @sprintf("Fields at %s = %i %s; t = %.2f days",
+                                   const_dim, nearest, units, 
+				   times[$n]/(3600*24))
       title_perturb = @lift @sprintf(
-                            "Perturbation fields at %i-m depth; t = %.2f days",
-                                     depth_nearest, times[$n]/(3600*24))
+                            "Perturbation fields at %s = %i %s; t = %.2f days",
+                            const_dim, nearest, units, times[$n]/(3600*24))
 
       fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                   tellwidth = false)
@@ -209,10 +263,12 @@ function visualize_b_and_ωz(datetime, z_idx, Δx, Δy;
          n[] = i
       end
    
-      save(joinpath("./Plots", "bzeta_total_z-$(depth_nearest)_$(datetime).mp4"), 
-	            video_total)
-      save(joinpath("./Plots", "bzeta_perturbs_z-$(depth_nearest)_$(datetime).mp4"),
-	            video_perturb)
+      save(joinpath("./Plots", 
+            "bzeta_total_$(const_dim)$(nearest)_$(datetime).mp4"), 
+	   video_total)
+      save(joinpath("./Plots", 
+            "bzeta_perturbs_$(const_dim)$(nearest)_$(datetime).mp4"),
+	   video_perturb)
    end
 
    #Plot static images (final frame, by default)
@@ -221,26 +277,24 @@ function visualize_b_and_ωz(datetime, z_idx, Δx, Δy;
    fig_perturb = Figure(size = (1200, 500))
 
    ax_b_total = Axis(fig_total[2, 1];
-                     title = "Total buoyancy (b)", axis_kwargs_xy...)
+                     title = "Total buoyancy (b)", axis_kwargs...)
    ax_ω_total = Axis(fig_total[2, 3];
-                     title = "Total vertical vorticity (ζ)", 
-		     axis_kwargs_xy...)
+                     title = "Total vertical vorticity (ζ)", axis_kwargs...)
 
    ax_b_perturb = Axis(fig_perturb[2, 1];
-                       title = "Buoyancy perturbation (b')",
-                       axis_kwargs_xy...)
+                       title = "Buoyancy perturbation (b')", axis_kwargs...)
    ax_ω_perturb = Axis(fig_perturb[2, 3];
-                       title = "Vertical vorticity perturbation (ζ')",
-                       axis_kwargs_xy...)
+                       title = "Vertical vorticity perturbation (ζ')", 
+		       axis_kwargs...)
 
-   hm_b_total = heatmap!(ax_b_total, x, y, b_total_f_xy,
+   hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_f_slice,
                          colorrange = lims_b_total, colormap = :balance)
-   hm_ω_total = heatmap!(ax_ω_total, x, y, ω_total_f_xy,
+   hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_f_slice,
                          colorrange = lims_ω_total, colormap = :balance)
 
-   hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
+   hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_f_slice,
                            colorrange = lims_Δb, colormap = :balance)
-   hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_f_xy,
+   hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_f_slice,
                            colorrange = lims_Δω, colormap = :balance)
 
    Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
@@ -251,24 +305,26 @@ function visualize_b_and_ωz(datetime, z_idx, Δx, Δy;
    Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
             label = "1/s")
 
-   title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
-                            depth_nearest, times[Nt]/(3600*24))
-   title_perturb = @sprintf(
-                          "Perturbation fields at %i-m depth; t = %.2f days",
-                            depth_nearest, times[Nt]/(3600*24))
+   title_total   = @sprintf("Fields at %s = %i %s; t = %.2f days",
+                            const_dim, nearest, units, times[Nt]/(3600*24))
+   title_perturb = @sprintf("Perturbation fields at %s = %i %s; t = %.2f days",
+                            const_dim, nearest, units, times[Nt]/(3600*24))
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
    fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                tellwidth = false)
 
-   save(joinpath("./Plots", "bzeta_total_z-$(depth_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", 
+		 "bzeta_total_$(const_dim)$(nearest)_tf_$(datetime).png"),
         fig_total)
-   save(joinpath("./Plots", "bzeta_perturbs_z-$(depth_nearest)_tf_$(datetime).png"),
+   save(joinpath("./Plots", 
+		 "bzeta_perturbs_$(const_dim)$(nearest)_tf_$(datetime).png"),
         fig_perturb)
    close(ds)
 end
 
+#=
 function visualize_b_and_ωz_const_z(datetime, z_idx, Δx, Δy; 
 		            plot_animation = false, t_idx_skip = 1)
 
@@ -421,6 +477,7 @@ function visualize_b_and_ωz_const_z(datetime, z_idx, Δx, Δy;
         fig_perturb)
    close(ds)
 end
+=#
 
 function visualize_fields_const_x(datetime, x_idx; 
 		                  plot_animation = false, t_idx_skip = 1)
