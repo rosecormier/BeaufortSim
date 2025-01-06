@@ -27,12 +27,12 @@ function chebyshev_spaced_faces(i, ξ_min, ξ_max, Nξ; ξ_centre = 0.0)
 
    Lξ = ξ_max - ξ_min
    
-   N_above_ξ_centre = -(Nξ/pi) * acos(1 - (2*ξ_centre)/Lξ)
+   N_above_ξ_centre = (Nξ/pi) * acos(1 + (2*ξ_centre)/Lξ)
 
    if i <= Nξ - N_above_ξ_centre
-      i_face = ξ_centre + (Lξ/2) * (1 + cos((pi/Nξ)*(i-N_above_ξ_centre)))
+      i_face = ξ_centre - (Lξ/2) * (1 + cos((pi/Nξ)*(i+N_above_ξ_centre)))
    elseif i > Nξ - N_above_ξ_centre
-      i_face = ξ_centre - (Lξ/2) * (1 + cos((pi/Nξ)*(i-N_above_ξ_centre)))
+      i_face = ξ_centre + (Lξ/2) * (1 + cos((pi/Nξ)*(i+N_above_ξ_centre)))
    end
 
    return i_face

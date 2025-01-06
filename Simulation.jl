@@ -10,7 +10,6 @@ using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf
-#using .Stability
 
 ######################
 # SPECIFY PARAMETERS #
@@ -86,12 +85,14 @@ const t_idx_skip = 2
 
 use_GPU ? architecture = GPU() : architecture = CPU()
 
+z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, 0.0, Nz; ξ_centre = d_ML)
+
 grid = RectilinearGrid(architecture,
 		       topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lx/2, Lx/2), 
                        y = (-Ly/2, Ly/2), 
-                       z = (-Lz, 0),
+                       z = z_grid_spacing,
                        halo = (3, 3, 3))
 
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
@@ -128,10 +129,11 @@ model = NonhydrostaticModel(;
 #bkgd_N² = lognormal_strat(N²₀, N²_max, d_ML, znodes(model.grid, Face(), Face(), Face())[:])[1]
 
 #Prints warnings if the respective instabilities are present
-check_inert_stability(σr, σz, f, U,
+#=check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
+=#
 #Needs to be updated
 #check_grav_stability(σr, σz, f, U, bkgd_N²,
 #		     xnodes(model.grid, Face(), Face(), Face()),
