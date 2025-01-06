@@ -135,12 +135,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 			   Δx, Δy; x_idx = x_idx)
 
       b_total_tseries_slice = ds["b"][x_idx, :, :, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; x_idx = x_idx)
 
-      idx_kwargs = (x_idx = x_idx,)
-
+      idx_kwargs           = (x_idx = x_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          x_idx = x_idx)
+                                                        x_idx = x_idx)
 
       h_dim, v_dim, const_dim, units = y, z, "x", "km"
 
@@ -156,12 +154,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
                            Δx, Δy; y_idx = y_idx)
 
       b_total_tseries_slice = ds["b"][:, y_idx, :, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; y_idx = y_idx)
 
-      idx_kwargs = (y_idx = y_idx,)
-
+      idx_kwargs           = (y_idx = y_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          y_idx = y_idx)      
+                                                        y_idx = y_idx)      
 
       h_dim, v_dim, const_dim, units = x, z, "y", "km"
 
@@ -177,12 +173,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 		           Δx, Δy; z_idx = z_idx)
 
       b_total_tseries_slice = ds["b"][:, :, z_idx, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; z_idx = z_idx)
 
-      idx_kwargs = (z_idx = z_idx,)
-
+      idx_kwargs           = (z_idx = z_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          z_idx = z_idx)
+                                                        z_idx = z_idx)
 
       h_dim, v_dim, const_dim, units = x, y, "z", "m"
    end
@@ -202,7 +196,8 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
       n = Observable(1)
 
       b_total_n_slice = @lift b_total_tseries_slice[:, :, $n]
-      ω_total_n_slice = @lift ωz(ds["u"][:, :, :, $n], ds["v"][:, :, :, $n], Δx, Δy; idx_kwargs...)
+      ω_total_n_slice = @lift ωz(ds["u"][:, :, :, $n], ds["v"][:, :, :, $n],
+				 Δx, Δy; idx_kwargs...)
 
       Δb_n_slice = @lift $b_total_n_slice .- bb_slice
       Δω_n_slice = @lift $ω_total_n_slice .- ωb_slice
