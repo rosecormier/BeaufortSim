@@ -135,12 +135,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 			   Δx, Δy; x_idx = x_idx)
 
       b_total_tseries_slice = ds["b"][x_idx, :, :, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; x_idx = x_idx)
 
-      idx_kwargs = (x_idx = x_idx,)
-
+      idx_kwargs           = (x_idx = x_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          x_idx = x_idx)
+                                                        x_idx = x_idx)
 
       h_dim, v_dim, const_dim, units = y, z, "x", "km"
 
@@ -156,12 +154,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
                            Δx, Δy; y_idx = y_idx)
 
       b_total_tseries_slice = ds["b"][:, y_idx, :, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; y_idx = y_idx)
 
-      idx_kwargs = (y_idx = y_idx,)
-
+      idx_kwargs           = (y_idx = y_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          y_idx = y_idx)      
+                                                        y_idx = y_idx)      
 
       h_dim, v_dim, const_dim, units = x, z, "y", "km"
 
@@ -177,12 +173,10 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 		           Δx, Δy; z_idx = z_idx)
 
       b_total_tseries_slice = ds["b"][:, :, z_idx, :]
-      #ω_total_tseries_slice = ωz(ds["u"], ds["v"], Δx, Δy; z_idx = z_idx)
 
-      idx_kwargs = (z_idx = z_idx,)
-
+      idx_kwargs           = (z_idx = z_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
-                                                          z_idx = z_idx)
+                                                        z_idx = z_idx)
 
       h_dim, v_dim, const_dim, units = x, y, "z", "m"
    end
@@ -202,7 +196,8 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
       n = Observable(1)
 
       b_total_n_slice = @lift b_total_tseries_slice[:, :, $n]
-      ω_total_n_slice = @lift ωz(ds["u"][:, :, :, $n], ds["v"][:, :, :, $n], Δx, Δy; idx_kwargs...)
+      ω_total_n_slice = @lift ωz(ds["u"][:, :, :, $n], ds["v"][:, :, :, $n],
+				 Δx, Δy; idx_kwargs...)
 
       Δb_n_slice = @lift $b_total_n_slice .- bb_slice
       Δω_n_slice = @lift $ω_total_n_slice .- ωb_slice
@@ -322,6 +317,32 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 		 "bzeta_perturbs_$(const_dim)$(nearest)_tf_$(datetime).png"),
         fig_perturb)
    close(ds)
+end
+
+function visualize_z_grid(datetime, grid, zmin; zmax = 0)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+
+   zc = znodes(grid, Center())
+   zf = znodes(grid, Face())
+   Δz = zspacings(grid, Center())
+   
+   fig  = Figure(size=(1200, 600))
+   axz  = Axis(fig[1, 1], title = "z-grid")
+   axΔz = Axis(fig[2, 1]; xlabel = "z (m)", ylabel = "z-spacing (m)")
+
+   lines!(axz, [zmin, zmax], [0, 0], color = :gray)
+   scatter!(axz, zf, 0 * zf, marker = :vline, color = :gray, markersize = 20)
+   scatter!(axz, zc, 0 * zc)
+   hidedecorations!(axz)
+   hidespines!(axz)
+
+   scatter!(axΔz, zc, Δz)
+   hidespines!(axΔz, :t, :r)
+
+   rowsize!(fig.layout, 1, Relative(0.1))
+
+   save(joinpath("./Plots", "zgrid_$(datetime).png"), fig)
 end
 
 function visualize_fields_const_x(datetime, x_idx; 
