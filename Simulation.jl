@@ -231,7 +231,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(filesize(outfilepath)) bytes")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
