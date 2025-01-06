@@ -62,16 +62,17 @@ const tf      = 0.25 * day  #80 * day
 const Δt_save = 0.5 * hour #12 * hour
 
 #Architecture
-const use_GPU = true
+const use_GPU = false
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
 const max_b′ = 0 # 5e-2
 
 #Whether to run visualization functions
 const do_vis_const_x     = true
-const do_vis_const_y     = true
+const do_vis_const_y     = false
 const do_vis_const_z     = true
 const do_vis_growth_rate = false
+const do_vis_z_grid      = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
@@ -126,19 +127,18 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
 
-#bkgd_N² = lognormal_strat(N²₀, N²_max, d_ML, znodes(model.grid, Face(), Face(), Face())[:])[1]
-
-#Prints warnings if the respective instabilities are present
-#=check_inert_stability(σr, σz, f, U,
+#= #Prints warnings if the respective instabilities are present
+##These need to be updated
+check_inert_stability(σr, σz, f, U,
                       xnodes(model.grid, Face(), Face(), Face()),
                       ynodes(model.grid, Face(), Face(), Face()),
                       znodes(model.grid, Face(), Face(), Face()))
-=#
-#Needs to be updated
+
 #check_grav_stability(σr, σz, f, U, bkgd_N²,
-#		     xnodes(model.grid, Face(), Face(), Face()),
-#                     ynodes(model.grid, Face(), Face(), Face()),
-#                     znodes(model.grid, Face(), Face(), Face()))
+		     xnodes(model.grid, Face(), Face(), Face()),
+                     ynodes(model.grid, Face(), Face(), Face()),
+                     znodes(model.grid, Face(), Face(), Face()))
+=#
 
 ##########################
 # SET INITIAL CONDITIONS #
@@ -231,7 +231,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(filesize(outfilepath)) bytes")
 end
-
+=#
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -260,8 +260,6 @@ if do_vis_const_z
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
                       z_idx = z_idx, plot_animation = true, 
 		      t_idx_skip = t_idx_skip)
-   #visualize_b_and_ωz(datetimenow, z_idx, Lx/Nx, Ly/Ny;
-   #		      plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_fields_const_z(datetimenow, z_idx; 
 	#		    plot_animation = true, t_idx_skip = t_idx_skip)
    #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
@@ -269,4 +267,8 @@ end
 
 if do_vis_growth_rate
    visualize_growth_rate(datetimenow)
+end
+
+if do_vis_z_grid
+   visualize_z_grid(datetimenow, model.grid, -Lz)
 end
