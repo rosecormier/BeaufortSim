@@ -23,16 +23,18 @@ function lognormal_strat(N²₀, N²_max, d_ML, z; σ = 0.5)
    return N², b
 end
 
-function chebyshev_spaced_faces(i, ξ_min, ξ_max, Nξ; ξ_centre = 0.0)
+function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ_centre = 0.0)
 
    Lξ = ξ_max - ξ_min
    
-   N_above_ξ_centre = (Nξ/pi) * acos(1 + (2*ξ_centre)/Lξ)
+   arg_shift = asin(1 + (ξ_centre/Lξ))
 
-   if i <= Nξ - N_above_ξ_centre
-      i_face = ξ_centre - (Lξ/2) * (1 + cos((pi/Nξ)*(i+N_above_ξ_centre)))
-   elseif i > Nξ - N_above_ξ_centre
-      i_face = ξ_centre + (Lξ/2) * (1 + cos((pi/Nξ)*(i+N_above_ξ_centre)))
+   N_below_ξ_centre = (Nξ*pi) / (2*(pi-arg_shift)) 
+
+   if i <= N_below_ξ_centre
+      i_face = ξ_centre + Lξ * (sin((pi-arg_shift)*i/Nξ) - 1)
+   elseif i > N_below_ξ_centre
+      i_face = ξ_centre - Lξ * (sin((pi-arg_shift)*i/Nξ) - 1)
    end
 
    return i_face
