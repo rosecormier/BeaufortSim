@@ -319,7 +319,7 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
    close(ds)
 end
 
-function visualize_z_grid(datetime, grid, zmin; zmax = 0)
+function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
