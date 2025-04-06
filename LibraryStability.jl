@@ -73,8 +73,7 @@ function check_inert_stability(grid, f, u, v;
       end
 
       fig = Figure(size = (500, 400))
-      ax  = Axis(fig[2, 1];
-                 title = "Absolute vorticity; t = 0", axis_kwargs...)
+      ax  = Axis(fig[2, 1]; axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ζz_abs_slice,
 	             colorrange = get_range_lims(ζz_abs_slice), 
 		     colormap = :balance)
@@ -90,15 +89,65 @@ function check_inert_stability(grid, f, u, v;
    end
 end
 
-function check_grav_stability(b; plot_∂b∂z = false)
+function check_grav_stability(b; plot_∂b∂z = false, grid = nothing,
+		              x_idx = nothing, y_idx = nothing, z_idx = nothing)
    
    if any(n -> n <= 0, ∂z(b))
       print("Warning: system is gravitationally unstable.\n")
    end
+   
+   if plot_∂b∂z
 
-   #if plot_∂b∂z
+      mkpath("./Plots") #Make visualization directory if nonexistent
 
-   #end
+      x = xnodes(grid, Center()) ./ 1000 #Convert to km for readability
+      y = ynodes(grid, Center()) ./ 1000 #Convert to km for readability
+      z = znodes(grid, Face())
+
+      if !isnothing(x_idx)
+
+         ∂b∂z_slice = @views adapt(Array, ∂z(b))[x_idx, :, :]
+         
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                           x_idx = x_idx)
+
+         h_dim, v_dim, const_dim, units = y, z, "x", "km"
+
+      elseif !isnothing(y_idx)
+
+         ∂b∂z_slice = @views adapt(Array, ∂z(b))[:, y_idx, :]
+
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                           y_idx = y_idx)
+
+         h_dim, v_dim, const_dim, units = x, z, "y", "km"
+
+      elseif !isnothing(z_idx)
+
+         ∂b∂z_slice = @views adapt(Array, ∂z(b))[:, :, z_idx]
+
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                           z_idx = z_idx)
+
+         h_dim, v_dim, const_dim, units = x, y, "z", "m"
+      end
+
+      fig = Figure(size = (500, 400))
+      ax  = Axis(fig[2, 1]; axis_kwargs...)
+      hm  = heatmap!(ax, h_dim, v_dim, ∂b∂z_slice,
+                     colorrange = get_range_lims(∂b∂z_slice),
+                     colormap = :balance)
+
+      Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s²")
+
+      title = @sprintf("∂b/∂z at %s = %i %s; t = 0.0 days",
+                       const_dim, nearest, units)
+
+      fig[1, 1:2] = Label(fig, title, fontsize = 18, tellwidth = false)
+
+      save(joinpath("./Plots", "dbdz_$(const_dim)$(nearest)_t0.png"), fig)
+
+   end
 end
 
 function compute_Bu(σr, σz, f, N²)
