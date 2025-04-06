@@ -72,8 +72,7 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    ∂x_q = @. (q[i:i+1, j, k] - q[i-1:i, j, k]) / Δx
    ∂y_q = @. (q[i, j:j+1, k] - q[i, j-1:j, k]) / Δy
    
-   r = sqrt(x^2 + y^2)
-   
+   r    = sqrt(x^2 + y^2) 
    ∂r_q = @. (x*∂x_q + y*∂y_q) / r
    
    return (∂r_q[1] + ∂r_q[2]) / 2
@@ -87,12 +86,59 @@ function growth_rate(φ, n, times)
    return order1_rate, norm(φ_perturb_nn)
 end
 
-#=function u_background(x,y,z,Umax,D,Lⱼ,z0,y0)
-    Uba = @. Umax/cosh((y-y0)/Lⱼ)^2
-    Ubb = @. exp(-(z-z0)^2/D^2)
-    Ub= Ubb*transpose(Uba) 
+#####################
+
+using NCDatasets
+
+module VisFunctions
+   export open_dataset, get_background_fields, get_range_lims, 
+   get_2D_spatial_axis_kwargs
 end
 
+function open_dataset(datetime)
+
+   outfilepath = joinpath("./Output", "output_$(datetime).nc")
+
+   ds = NCDataset(outfilepath, "r")
+   x  = ds["xC"][:] ./ 1000 #Convert to km for readability
+   y  = ds["yC"][:] ./ 1000 #Convert to km for readability
+   z  = ds["zC"][:]
+   t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
+   Nt = length(t)
+
+   return ds, x, y, z, t, Nt
+end
+
+function get_background_fields(ds)
+   bb = ds["b"][:, :, :, 1]
+   ub = ds["u"][:, :, :, 1]
+   vb = ds["v"][:, :, :, 1]
+   wb = ds["w"][:, :, 1:end-1, 1]
+   return bb, ub, vb, wb
+end
+
+function get_range_lims(final_field; prescribed_max = 0)
+   field_max  = max(maximum(abs.(final_field)), prescribed_max)
+   field_lims = [-field_max, field_max]
+end
+
+function get_2D_spatial_axis_kwargs(x, y, z;
+                                    x_idx = nothing, y_idx = nothing,
+                                    z_idx = nothing)
+   if !isnothing(x_idx)
+      nearest     = round(Int, x[x_idx])
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
+   elseif !isnothing(y_idx)
+      nearest     = round(Int, y[y_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
+   elseif !isnothing(z_idx)
+      nearest     = round(Int, z[z_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
+   end
+   return nearest, axis_kwargs
+end
+
+#=
 function buoyancy_L(x,y,z,N²,f,Umax,D,Lⱼ,z0,y0)
     Bba = @. 2*f*Umax*Lⱼ/D^2
     Bbb = @. (tanh((y-y0)/Lⱼ)+1)
@@ -135,12 +181,6 @@ function ωt(x,y,z,Umax,D,Lⱼ,z0,y0)
     ωb = @. 2 * Umax/Lⱼ * exp(-(z-z0)^2/D^2)
     ωt = ωb .* transpose(ωba)   #background vorticity field
 end
-# function ω_b(x,y,z,Umax,D,Lⱼ,z0)
-#     ωa = @. 2 / Lⱼ * Umax
-#     ωb = @. exp(-(z-z0)^2 / D^2)
-#     ωc = transpose(tanh.(y./Lⱼ) ./(cosh.(y./Lⱼ).^2))
-#     ω_background =  ωa .* ωb .* ωc   #background vorticity field
-# end
 
 function BestFit(degree,interval, abscissa,ordenate)
     linear_fit_polynomial = fit(abscissa[interval], log.(ordenate[interval]), degree, var = :abscissa)

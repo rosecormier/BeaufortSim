@@ -1,9 +1,12 @@
 include("LibraryVisualization.jl")
 
-using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings, NCDatasets, Oceananigans, Printf
-using .ComputeSecondaries
+using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings#, NCDatasets, 
+using Oceananigans, Printf
 
-function open_dataset(datetime)
+using .ComputeSecondaries
+using .VisFunctions
+
+#=function open_dataset(datetime)
 
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
    
@@ -45,13 +48,18 @@ function get_2D_spatial_axis_kwargs(x, y, z;
    end
    return nearest, axis_kwargs
 end
+=#
 
-function visualize_growth_rate(datetime)
+function visualize_growth_rate(datetime; f = 1)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
    fig_gr    = Figure(size = (1200, 700))
    fig_norms = Figure(size = (1200, 700))
+   
+   fig_bnorm = Figure(size = (600, 300))
+   ax_b_bnorm = Axis(fig_bnorm[2,1]; xlabel = L"$t$ [days]", 
+		     ylabel = L"$|b'|/f$", yscale=log)
 
    ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
 		  xlabel = L"$t$ [days]", 
@@ -82,7 +90,7 @@ function visualize_growth_rate(datetime)
 	
    n      = Observable(2)
    b_gr   = @lift growth_rate(ds["b"], $n, times)[1] / b_initial
-   b_norm = @lift growth_rate(ds["b"], $n, times)[2]
+   b_norm = @lift sum(ds["b"][:,:,:,$n]) #, times)[2]
    w_gr   = @lift growth_rate(ds["w"], $n, times)[1] / w_initial
    w_norm = @lift growth_rate(ds["w"], $n, times)[2]
    u_gr   = @lift growth_rate(ds["u"], $n, times)[1] / u_initial
@@ -100,6 +108,8 @@ function visualize_growth_rate(datetime)
    @lift scatter!(ax_u_norm, times[$n]/86400, $u_norm, color = :black)
    @lift scatter!(ax_v_norm, times[$n]/86400, $v_norm, color = :black)
 
+   @lift scatter!(ax_b_bnorm, times[$n]/86400, $b_norm/f, color=:black)
+
    for i = 2:Nt-1
       yield()
       n[] = i
@@ -109,10 +119,12 @@ function visualize_growth_rate(datetime)
 		          fontsize = 24, tellwidth = false)
    fig_norms[1, 1:2] = Label(fig_norms, "Norms of perturbation fields",
 			  fontsize = 24, tellwidth = false)
+   fig_bnorm[1, 1] = Label(fig_bnorm, "Norm of b'/f", fontsize=24, tellwidth=false)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
+   save(joinpath("./Plots", "norm_b_$(datetime).png"), fig_norms)
    close(ds)
 end
 
@@ -221,9 +233,9 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
       hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_n_slice,
                             colorrange = lims_ω_total, colormap = :balance)
 
-      hm_b_perturb = heatmap!(ax_b_perturb, x, y, Δb_n_slice,
+      hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_n_slice,
                               colorrange = lims_Δb, colormap = :balance)
-      hm_ω_perturb = heatmap!(ax_ω_perturb, x, y, Δω_n_slice,
+      hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_n_slice,
                               colorrange = lims_Δω, colormap = :balance)
 
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
