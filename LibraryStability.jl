@@ -17,7 +17,8 @@ function ζz_abs_ffc(i, j, k, grid, f, u, v)
 end
 
 function check_inert_stability(grid, f, u, v; 
-		               z_idx = nothing, plot_ζz_abs = false)
+		               plot_ζz_abs = false, x_idx = nothing, 
+			       y_idx = nothing, z_idx = nothing)
   
    ζz_abs_KernOp = KernelFunctionOperation{Face, Face, Center}(ζz_abs_ffc,
 							       grid, f, u, v)
@@ -37,13 +38,34 @@ function check_inert_stability(grid, f, u, v;
       y = ynodes(grid, Face()) ./ 1000 #Convert to km for readability
       z = znodes(grid, Center())
 
-      if !isnothing(z_idx)
+      if !isnothing(x_idx)
+
+         ζz_abs_x     = @views OffsetArrays.no_offset_view(
+						      ζz_abs[x_idx, :, :].data)
+         ζz_abs_slice = @views adapt(Array, ζz_abs_x)[1, :, :]
+
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                           x_idx = x_idx)
+
+         h_dim, v_dim, const_dim, units = y, z, "x", "km"
+
+      elseif !isnothing(y_idx)
+
+         ζz_abs_y     = @views OffsetArrays.no_offset_view(
+                                                      ζz_abs[:, y_idx, :].data)
+         ζz_abs_slice = @views adapt(Array, ζz_abs_y)[:, y, :]
+
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
+                                                           y_idx = y_idx)
+
+         h_dim, v_dim, const_dim, units = x, z, "y", "km"
+
+      elseif !isnothing(z_idx)
 
 	 ζz_abs_z     = @views OffsetArrays.no_offset_view(
 						      ζz_abs[:, :, z_idx].data)
 	 ζz_abs_slice = @views adapt(Array, ζz_abs_z)[:, :, 1]
 
-         idx_kwargs           = (z_idx = z_idx,)
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
 							   z_idx = z_idx)
 
