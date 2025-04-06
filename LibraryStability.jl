@@ -1,13 +1,16 @@
 include("LibraryVisualization.jl")
+using .VisFunctions
 
 using Adapt, CairoMakie, OffsetArrays
 using Oceananigans.AbstractOperations, Oceananigans.Fields, Oceananigans.Operators 
 
-using .VisFunctions
+####################
 
 module Stability
    export check_inert_stability, check_grav_stability, compute_Bu
 end
+
+####################
 
 function ζz_abs_ffc(i, j, k, grid, f, u, v)
    return f + ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
@@ -36,8 +39,8 @@ function check_inert_stability(grid, f, u, v;
 
       if !isnothing(z_idx)
 
-	 #ζz_abs_slice = @views adapt(Array, OffsetArrays.no_offset_view(ζz_abs[:, :, z_idx].data))[:, :, 1]
-	 ζz_abs_z = @views OffsetArrays.no_offset_view(ζz_abs[:, :, z_idx].data)
+	 ζz_abs_z     = @views OffsetArrays.no_offset_view(
+						      ζz_abs[:, :, z_idx].data)
 	 ζz_abs_slice = @views adapt(Array, ζz_abs_z)[:, :, 1]
 
          idx_kwargs           = (z_idx = z_idx,)
@@ -47,7 +50,7 @@ function check_inert_stability(grid, f, u, v;
          h_dim, v_dim, const_dim, units = x, y, "z", "m"
       end
 
-      fig = Figure(size = (500, 500))
+      fig = Figure(size = (500, 400))
       ax  = Axis(fig[2, 1];
                  title = "Absolute vorticity; t = 0", axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ζz_abs_slice,
@@ -59,7 +62,7 @@ function check_inert_stability(grid, f, u, v;
       title = @sprintf("Absolute vorticity at %s = %i %s; t = 0.0 days",
 		       const_dim, nearest, units)
 
-      fig[1, 1:2] = Label(fig, title, fontsize = 24, tellwidth = false)
+      fig[1, 1:2] = Label(fig, title, fontsize = 18, tellwidth = false)
 
       save(joinpath("./Plots", "zeta_abs_$(const_dim)$(nearest)_t0.png"), fig)
    end

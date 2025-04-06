@@ -1,8 +1,12 @@
 using LinearAlgebra, Printf
 
+####################
+
 module ComputeSecondaries
    export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
 end
+
+####################
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
    
@@ -90,10 +94,14 @@ end
 
 using NCDatasets
 
+####################
+
 module VisFunctions
    export open_dataset, get_background_fields, get_range_lims, 
    get_2D_spatial_axis_kwargs
 end
+
+####################
 
 function open_dataset(datetime)
 

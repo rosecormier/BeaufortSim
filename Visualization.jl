@@ -1,54 +1,9 @@
 include("LibraryVisualization.jl")
-
-using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings#, NCDatasets, 
-using Oceananigans, Printf
-
 using .ComputeSecondaries
 using .VisFunctions
 
-#=function open_dataset(datetime)
-
-   outfilepath = joinpath("./Output", "output_$(datetime).nc")
-   
-   ds = NCDataset(outfilepath, "r")
-   x  = ds["xC"][:] ./ 1000 #Convert to km for readability
-   y  = ds["yC"][:] ./ 1000 #Convert to km for readability
-   z  = ds["zC"][:]
-   t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
-   Nt = length(t)
-
-   return ds, x, y, z, t, Nt
-end
-
-function get_background_fields(ds)
-   bb = ds["b"][:, :, :, 1]
-   ub = ds["u"][:, :, :, 1]
-   vb = ds["v"][:, :, :, 1]
-   wb = ds["w"][:, :, 1:end-1, 1]
-   return bb, ub, vb, wb
-end
-
-function get_range_lims(final_field; prescribed_max = 0)
-   field_max  = max(maximum(abs.(final_field)), prescribed_max)
-   field_lims = [-field_max, field_max]
-end
-
-function get_2D_spatial_axis_kwargs(x, y, z; 
-		                    x_idx = nothing, y_idx = nothing, 
-				    z_idx = nothing)
-   if !isnothing(x_idx)
-      nearest     = round(Int, x[x_idx])
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
-   elseif !isnothing(y_idx)
-      nearest     = round(Int, y[y_idx])
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
-   elseif !isnothing(z_idx)
-      nearest     = round(Int, z[z_idx])
-      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
-   end
-   return nearest, axis_kwargs
-end
-=#
+using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings
+using Oceananigans, Printf
 
 function visualize_growth_rate(datetime; f = 1)
 
