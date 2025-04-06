@@ -45,11 +45,11 @@ const σz = 300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1.5e-1 * (meter/second)
-const N²₀ = 5e-2 * (second^(-2))
+const N²₀ = 3e-3 * (second^(-2))
 @printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N²₀))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 5e-2 * (second^(-2)) #3e-3 * (second^(-2))
+const N²_max = 3e-3 * (second^(-2))
 
 #Mixed-layer depth
 const d_ML = -50 * meter
@@ -139,24 +139,26 @@ model = NonhydrostaticModel(;
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x,y,z) = ((sqrt(2) * U * y / σr) 
-	    * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-v̄(x,y,z) = -((sqrt(2) * U * x / σr) 
-	     * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-
-b′(x,y,z) = max_b′ * rand()
-b̄(x,y,z)  = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-	     + (sqrt(2) * f * U * σr * z / (σz^2) 
-	        * exp((1/2) - (z/σz)^2) 
-		* (1 - exp(-(x^2 + y^2)/(σr^2))))
-	     + b′(x,y,z))
+ū(x, y, z) = ((sqrt(2) * U * y / σr) 
+	       * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+v̄(x, y, z) = -((sqrt(2) * U * x / σr) 
+	        * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
+	       + (sqrt(2) * f * U * σr * z / (σz^2) 
+	          * exp((1/2) - (z/σz)^2) 
+		  * (1 - exp(-(x^2 + y^2)/(σr^2)))))
 
 set!(model, u = ū, v = v̄, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
-		      z_idx = 256, plot_ζz_abs = true)
-check_grav_stability(model.tracers.b)
+		      plot_ζz_abs = true, x_idx = x_idx)
+check_grav_stability(model.tracers.b; plot_∂b∂z = true, grid = model.grid,
+                     z_idx = z_idx)
+
+b_perturbed(x, y, z) = (max_b′ * rand()) + b̄(x, y, z) 
+
+set!(model, b = b_perturbed)
 
 #############################
 # SET UP AND RUN SIMULATION #
