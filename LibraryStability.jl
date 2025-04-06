@@ -27,7 +27,7 @@ function check_inert_stability(grid, f, u, v;
    compute!(ζz_abs)
 
    if any(z -> z <= 0, ζz_abs)
-      print("Warning: system is inertially unstable.")
+      print("Warning: system is inertially unstable.\n")
    end
 
    if plot_ζz_abs
@@ -93,7 +93,7 @@ end
 function check_grav_stability(b; plot_∂b∂z = false)
    
    if any(n -> n <= 0, ∂z(b))
-      print("Warning: system is gravitationally unstable.")
+      print("Warning: system is gravitationally unstable.\n")
    end
 
    #if plot_∂b∂z
