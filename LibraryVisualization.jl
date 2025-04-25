@@ -1,9 +1,10 @@
 using LinearAlgebra, Printf
+using Oceananigans.Fields
 
 ####################
 
 module ComputeSecondaries
-   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, growth_rate
+   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm, φ
 end
 
 ####################
@@ -82,17 +83,27 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    return (∂r_q[1] + ∂r_q[2]) / 2
 end
 
-function growth_rate(φ, n, times)
-   Δt           = times[n+1] - times[n]
-   φ_perturb_n  = φ[:, :, :, n] .- φ[:, :, :, 1]
-   φ_perturb_nn = φ[:, :, :, n+1] .- φ[:, :, :, 1]
-   order1_rate  = (norm(φ_perturb_nn) - norm(φ_perturb_n)) / Δt #1st order fwd diff.
-   return order1_rate, norm(φ_perturb_nn)
+function field_norm(φ, n)
+
+   φ_initial, φ_n = φ[:, :, :, 1], φ[:, :, :, n]
+   φ_perturb_n    = φ_n .- φ_initial
+
+   perturb_norm  = norm(φ_perturb_n)
+   relative_norm = perturb_norm / norm(φ_initial)
+   
+   return perturb_norm, relative_norm
+end
+
+function φ(i, j, k, grid)
+   xc_i = xnodes(grid, Center())[i]
+   yc_j = ynodes(grid, Center())[j]
+   
+   return atan(yc_j, xc_i)
 end
 
 #####################
 
-using NCDatasets
+using Adapt, NCDatasets
 
 ####################
 
@@ -111,17 +122,17 @@ function open_dataset(datetime)
    x  = ds["xC"][:] ./ 1000 #Convert to km for readability
    y  = ds["yC"][:] ./ 1000 #Convert to km for readability
    z  = ds["zC"][:]
-   t  = ds["time"][1:end-1] #Drop the last index, in case it contains NaN
+   t  = ds["time"][:]
    Nt = length(t)
 
    return ds, x, y, z, t, Nt
 end
 
 function get_background_fields(ds)
-   bb = ds["b"][:, :, :, 1]
-   ub = ds["u"][:, :, :, 1]
-   vb = ds["v"][:, :, :, 1]
-   wb = ds["w"][:, :, 1:end-1, 1]
+   bb = @views adapt(Array, ds["b"])[:, :, :, 1]
+   ub = @views adapt(Array, ds["u"])[:, :, :, 1]
+   vb = @views adapt(Array, ds["v"])[:, :, :, 1]
+   wb = @views adapt(Array, ds["w"])[:, :, 1:end-1, 1]
    return bb, ub, vb, wb
 end
 

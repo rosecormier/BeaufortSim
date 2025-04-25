@@ -2,84 +2,56 @@ include("LibraryVisualization.jl")
 using .ComputeSecondaries
 using .VisFunctions
 
-using CairoMakie, CommonDataModel, DataStructures, LaTeXStrings
-using Oceananigans, Printf
+using Adapt, CairoMakie, CommonDataModel, DataStructures, LaTeXStrings
+using Oceananigans, OffsetArrays, Printf
 
-function visualize_growth_rate(datetime; f = 1)
+function visualize_norms(datetime; f = 1)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   fig_gr    = Figure(size = (1200, 700))
+   ux = @views adapt(Array, ds["u"])[:, :, :, :]
+   uy = @views adapt(Array, ds["v"])[:, :, :, :]
+
+   ur, uφ = @views project_to_polar(ux, uy, x, y) 
+
    fig_norms = Figure(size = (1200, 700))
-   
-   fig_bnorm = Figure(size = (600, 300))
-   ax_b_bnorm = Axis(fig_bnorm[2,1]; xlabel = L"$t$ [days]", 
-		     ylabel = L"$|b'|/f$", yscale=log)
 
-   ax_b_gr = Axis(fig_gr[2, 1]; title = "Growth rate of b'", 
-		  xlabel = L"$t$ [days]", 
-		  ylabel = L"Growth rate of $||b'||$ [1/s]")
-   ax_w_gr = Axis(fig_gr[2, 2]; title = "Growth rate of w'", 
-	          xlabel = L"$t$ [days]", 
-		  ylabel = L"Growth rate of $||w'||$ [1/s]")
-   ax_u_gr = Axis(fig_gr[3, 1]; title = "Growth rate of u'",
-	          xlabel = L"$t$ [days]", 
-		  ylabel = L"Growth rate of $||u'||$ [1/s]")
-   ax_v_gr = Axis(fig_gr[3, 2]; title = "Growth rate of v'",
-	          xlabel = L"$t$ [days]", 
-		  ylabel = L"Growth rate of $||v'||$ [1/s]")
-
-   ax_b_norm = Axis(fig_norms[2, 1]; title = "Norm of b'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]")
-   ax_w_norm = Axis(fig_norms[2, 2]; title = "Norm of w'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||w'||$ [m/s]")
-   ax_u_norm = Axis(fig_norms[3, 1]; title = "Norm of u'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u'||$ [m/s]")
-   ax_v_norm = Axis(fig_norms[3, 2]; title = "Norm of v'",
-                    xlabel = L"$t$ [days]", ylabel = L"$||v'||$ [m/s]")
-
-   b_initial = growth_rate(ds["b"], 1, times)[2]
-   u_initial = growth_rate(ds["u"], 1, times)[2]
-   v_initial = growth_rate(ds["v"], 1, times)[2]
-   w_initial = growth_rate(ds["w"], 1, times)[2]
+   ax_b_norm = Axis(fig_norms[2, 1]; title = "b'-norm",
+		    xlabel = L"$t$ [days]", 
+		    ylabel = L"$||b'||$ [m/s^2]", yscale = log10)
+   ax_w_norm = Axis(fig_norms[2, 2]; title = "w'-norm",
+                    xlabel = L"$t$ [days]", ylabel = L"$||w'||$ [m/s]", 
+		    yscale = log10)
+   ax_u_norm = Axis(fig_norms[3, 1]; title = L"u_r'-norm",
+                    xlabel = L"$t$ [days]", 
+		    ylabel = L"$||u_r'||$ [m/s]", yscale = log10)
+   ax_v_norm = Axis(fig_norms[3, 2]; title = L"u_{\phi}'-norm",
+                    xlabel = L"$t$ [days]", 
+		    ylabel = L"$||u_{\phi}'||$", yscale = log10)
 	
    n      = Observable(2)
-   b_gr   = @lift growth_rate(ds["b"], $n, times)[1] / b_initial
-   b_norm = @lift sum(ds["b"][:,:,:,$n]) #, times)[2]
-   w_gr   = @lift growth_rate(ds["w"], $n, times)[1] / w_initial
-   w_norm = @lift growth_rate(ds["w"], $n, times)[2]
-   u_gr   = @lift growth_rate(ds["u"], $n, times)[1] / u_initial
-   u_norm = @lift growth_rate(ds["u"], $n, times)[2]
-   v_gr   = @lift growth_rate(ds["v"], $n, times)[1] / v_initial
-   v_norm = @lift growth_rate(ds["v"], $n, times)[2]
-   
-   @lift scatter!(ax_b_gr, times[$n]/86400, $b_gr, color = :black)
-   @lift scatter!(ax_w_gr, times[$n]/86400, $w_gr, color = :black)
-   @lift scatter!(ax_u_gr, times[$n]/86400, $u_gr, color = :black)
-   @lift scatter!(ax_v_gr, times[$n]/86400, $v_gr, color = :black)
+   b_norm = @lift field_norm(ds["b"], $n)[1]
+   w_norm = @lift field_norm(ds["w"], $n)[1]
+   #u_norm = @lift field_norm(ds["u"], $n)[1]
+   #v_norm = @lift field_norm(ds["v"], $n)[1]
+   ur_norm = @lift field_norm(ur, $n)[1]
+   uφ_norm = @lift field_norm(uφ, $n)[1]
 
    @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
    @lift scatter!(ax_w_norm, times[$n]/86400, $w_norm, color = :black)
-   @lift scatter!(ax_u_norm, times[$n]/86400, $u_norm, color = :black)
-   @lift scatter!(ax_v_norm, times[$n]/86400, $v_norm, color = :black)
+   @lift scatter!(ax_u_norm, times[$n]/86400, $ur_norm, color = :black)
+   @lift scatter!(ax_v_norm, times[$n]/86400, $uφ_norm, color = :black)
 
-   @lift scatter!(ax_b_bnorm, times[$n]/86400, $b_norm/f, color=:black)
-
-   for i = 2:Nt-1
+   for i = 2:Nt
       yield()
       n[] = i
    end
 
-   fig_gr[1, 1:2]    = Label(fig_gr, "Growth rates of perturbation fields", 
-		          fontsize = 24, tellwidth = false)
    fig_norms[1, 1:2] = Label(fig_norms, "Norms of perturbation fields",
-			  fontsize = 24, tellwidth = false)
-   fig_bnorm[1, 1] = Label(fig_bnorm, "Norm of b'/f", fontsize=24, tellwidth=false)
+			     fontsize = 24, tellwidth = false)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "growth_rates_$(datetime).png"), fig_gr)
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
-   save(joinpath("./Plots", "norm_b_$(datetime).png"), fig_norms)
    close(ds)
 end
 
@@ -90,18 +62,20 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
    ds, x, y, z, times, Nt = open_dataset(datetime)
    bb, ub, vb, wb         = get_background_fields(ds)
 
+   u = @views adapt(Array, ds["u"])[:, :, :, :]
+   v = @views adapt(Array, ds["v"])[:, :, :, :]
+
    if !isnothing(x_idx)
 
-      bb_slice = bb[x_idx, :, :]
-      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
-		    x_idx = x_idx)
+      bb_slice = @views bb[x_idx, :, :]
+      ωb_slice = @views ωz(u[:, :, :, 1], v[:, :, :, 1], Δx, Δy; x_idx = x_idx) #ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy; x_idx = x_idx)
 
-      b_total_f_slice = ds["b"][x_idx, :, :, Nt]
-      Δb_f_slice      = b_total_f_slice .- bb[x_idx, :, :]
-      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
-			   Δx, Δy; x_idx = x_idx)
+      b_total_f_slice = @views adapt(Array, ds["b"])[x_idx, :, :, Nt]
+      #Δb_f_slice      = b_total_f_slice .- bb_slice
+      ω_total_f_slice = @views ωz(u[:, :, :, Nt], v[:, :, :, Nt], Δx, Δy; 
+				  x_idx = x_idx) #ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], Δx, Δy; x_idx = x_idx)
 
-      b_total_tseries_slice = ds["b"][x_idx, :, :, :]
+      b_total_tseries_slice = @views adapt(Array, ds["b"])[x_idx, :, :, :]
 
       idx_kwargs           = (x_idx = x_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
@@ -111,16 +85,15 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 
    elseif !isnothing(y_idx)
       
-      bb_slice = bb[:, y_idx, :]
-      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
-		    y_idx = y_idx)
+      bb_slice = @views bb[:, y_idx, :]
+      ωb_slice = @views ωz(u[:, :, :, 1], v[:, :, :, 1], Δx, Δy; y_idx = y_idx) #ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy; y_idx = y_idx)
 
-      b_total_f_slice = ds["b"][:, y_idx, :, Nt]
-      Δb_f_slice      = b_total_f_slice .- bb[:, y_idx, :]
-      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt],
-                           Δx, Δy; y_idx = y_idx)
+      b_total_f_slice = @views adapt(Array, ds["b"])[:, y_idx, :, Nt] #ds["b"][:, y_idx, :, Nt]
+      #Δb_f_slice      = b_total_f_slice .- bb_slice
+      ω_total_f_slice = @views ωz(u[:, :, :, Nt], v[:, :, :, Nt], Δx, Δy; 
+				  y_idx = y_idx)#ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], Δx, Δy; y_idx = y_idx)
 
-      b_total_tseries_slice = ds["b"][:, y_idx, :, :]
+      b_total_tseries_slice = @views adapt(Array, ds["b"])[:, y_idx, :, :] #ds["b"][:, y_idx, :, :]
 
       idx_kwargs           = (y_idx = y_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
@@ -130,16 +103,15 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 
    elseif !isnothing(z_idx)
       
-      bb_slice = bb[:, :, z_idx]
-      ωb_slice = ωz(ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy;
-		    z_idx = z_idx) 
+      bb_slice = @views bb[:, :, z_idx]
+      ωb_slice = @views ωz(u[:, :, :, 1], v[:, :, :, 1], Δx, Δy; z_idx = z_idx) #ds["u"][:, :, :, 1], ds["v"][:, :, :, 1], Δx, Δy; z_idx = z_idx) 
 
-      b_total_f_slice = ds["b"][:, :, z_idx, Nt]
-      Δb_f_slice      = b_total_f_slice .- bb[:, :, z_idx]
-      ω_total_f_slice = ωz(ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], 
-		           Δx, Δy; z_idx = z_idx)
+      b_total_f_slice = @views adapt(Array, ds["b"])[:, :, z_idx, Nt] #ds["b"][:, :, z_idx, Nt]
+      #Δb_f_slice      = b_total_f_slice .- bb[:, :, z_idx]
+      ω_total_f_slice = ωz(u[:, :, :, Nt], v[:, :, :, Nt], Δx, Δy;
+			   z_idx = z_idx) #ds["u"][:, :, :, Nt], ds["v"][:, :, :, Nt], Δx, Δy; z_idx = z_idx)
 
-      b_total_tseries_slice = ds["b"][:, :, z_idx, :]
+      b_total_tseries_slice = @views adapt(Array, ds["b"])[:, :, z_idx, :] #ds["b"][:, :, z_idx, :]
 
       idx_kwargs           = (z_idx = z_idx,)
       nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z;
@@ -147,7 +119,8 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 
       h_dim, v_dim, const_dim, units = x, y, "z", "m"
    end
-
+   
+   Δb_f_slice = b_total_f_slice .- bb_slice
    Δω_f_slice = ω_total_f_slice .- ωb_slice
 
    lims_b_total = get_range_lims(b_total_f_slice)
@@ -184,17 +157,27 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
                           axis_kwargs...)
       
       hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_n_slice,
-                            colorrange = lims_b_total, colormap = :balance)
+			    colorrange = lims_b_total, 
+			    colormap = Reverse(:RdBu_5), 
+			    highclip = :red, lowclip = :blue)
       hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_n_slice,
-                            colorrange = lims_ω_total, colormap = :balance)
+			    colorrange = 0.8 * lims_ω_total, 
+			    colormap = Reverse(:RdBu_5), 
+			    highclip = :red, lowclip = :blue)
 
       hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_n_slice,
-                              colorrange = lims_Δb, colormap = :balance)
+			      colorrange = 0.8 * lims_Δb, 
+			      colormap = Reverse(:RdBu_5), 
+			      highclip = :red, lowclip = :blue)
       hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_n_slice,
-                              colorrange = lims_Δω, colormap = :balance)
+			      colorrange = 0.8 * lims_Δω, 
+			      colormap = Reverse(:RdBu_5), 
+			      highclip = :red, lowclip = :blue)
 
-      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", label = "1/s")
+      Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", 
+	       label = "m/s²")
+      Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", 
+	       label = "1/s")
 
       Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
                label = "m/s²")
@@ -250,14 +233,21 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
 		       axis_kwargs...)
 
    hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_f_slice,
-                         colorrange = lims_b_total, colormap = :balance)
+                         colorrange = lims_b_total, colormap = Reverse(:RdBu_5), 
+			 highclip = :red, lowclip = :blue)
    hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_f_slice,
-                         colorrange = lims_ω_total, colormap = :balance)
+                         colorrange = 0.8 * lims_ω_total, 
+			 colormap = Reverse(:RdBu_5), highclip = :red, 
+			 lowclip = :blue)
 
    hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_f_slice,
-                           colorrange = lims_Δb, colormap = :balance)
+			   colorrange = 0.8 * lims_Δb, 
+			   colormap = Reverse(:RdBu_5), 
+			   highclip = :red, lowclip = :blue)
    hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_f_slice,
-                           colorrange = lims_Δω, colormap = :balance)
+                           colorrange = 0.8 * lims_Δω, 
+			   colormap = Reverse(:RdBu_5), 
+			   highclip = :red, lowclip = :blue)
 
    Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", label = "1/s")

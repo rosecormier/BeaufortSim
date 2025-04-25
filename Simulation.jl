@@ -2,14 +2,15 @@ include("LibraryDynamics.jl")
 include("LibraryStability.jl")
 include("Visualization.jl")
 
+using Adapt
 using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
-using Oceananigans.Coriolis
+using Oceananigans.Coriolis, Oceananigans.Grids
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
-using Printf
+using Printf, Random
 
 ######################
 # SPECIFY PARAMETERS #
@@ -26,10 +27,10 @@ const Ly = 2000 * kilometer
 const Lz = 1000 * meter
 
 #Eddy viscosities and diffusivities
-const νh = 5e-3 * (meter^2/second)
-const νv = 5e-5 * (meter^2/second)
-const κh = 5e-3 * (meter^2/second)
-const κv = 5e-5 * (meter^2/second)
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
+const κh = 0 * (meter^2/second)
+const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -55,30 +56,37 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 0.05 * second
+const Δti     = 5 * second
 const Δt_max  = 1200 * second 
 const CFL     = 0.2
-const tf      = 15 * day
-const Δt_save = 6 * hour
+const tf      = 3 * day
+const Δt_save = 12 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 5e-2
+const max_b′ = 4e-3 * (meter/(second^2))
 
 #Whether to run visualization functions
-const do_vis_const_x     = false
-const do_vis_const_y     = false
-const do_vis_const_z     = false
-const do_vis_growth_rate = true
-const do_vis_z_grid      = false #Can only be done on CPU
+const do_vis_const_x = false
+const do_vis_const_y = false
+const do_vis_const_z = false
+const do_vis_norms   = false
+const do_vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 252 #60
+const z_idx      = 253
 const t_idx_skip = 1
+
+#Seed for random-number generator
+const seed = 12345
+
+if !isnothing(seed)
+   Random.seed!(seed)
+end
 
 ##############################
 # INSTANTIATE GRID AND MODEL #
@@ -131,6 +139,9 @@ model = NonhydrostaticModel(;
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
+print(znodes(model.grid, Center()))
+phi = φ(x_idx, y_idx, adapt(Array, znodes(model.grid, Center())), model.grid)
+print(phi)
 
 ##########################
 # SET INITIAL CONDITIONS #
@@ -139,22 +150,28 @@ model = NonhydrostaticModel(;
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x, y, z) = ((sqrt(2) * U * y / σr) 
+ū(x, y, z) = ((sqrt(2)*U*y/σr) 
 	       * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-v̄(x, y, z) = -((sqrt(2) * U * x / σr) 
+v̄(x, y, z) = -((sqrt(2)*U*x/σr) 
 	        * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-	       + (sqrt(2) * f * U * σr * z / (σz^2) 
+	      + ((sqrt(2)*f*U*σr*z/(σz^2)) 
 	          * exp((1/2) - (z/σz)^2) 
-		  * (1 - exp(-(x^2 + y^2)/(σr^2)))))
+		  * (1 - exp(-(x^2 + y^2)/(σr^2)))
+		  * (1 - ((sqrt(2)*U/(f*σr)) * exp((1/2) - (z/σz)^2)
+			  * (1 + exp(-(x^2 + y^2)/(σr^2)))
+			  )
+		     )
+		  )
+	      )
 
 set!(model, u = ū, v = v̄, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
-		      plot_ζz_abs = true, x_idx = x_idx)
-check_grav_stability(model.tracers.b; plot_∂b∂z = true, grid = model.grid,
-                     z_idx = z_idx)
+		      plot_ζz_abs = false, z_idx = z_idx)
+check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
+                     x_idx = x_idx)
 
 b_perturbed(x, y, z) = (max_b′ * rand()) + b̄(x, y, z) 
 
@@ -163,8 +180,8 @@ set!(model, b = b_perturbed)
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-
-#=simulation = Simulation(model, Δt = Δti, stop_time = tf)
+#=
+simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
@@ -188,11 +205,11 @@ outputs = (u = model.velocities.u,
 	   b = model.tracers.b)
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+=#
+datetimenow   = "250425-143740" #format(datetimestart, "yymmdd-HHMMSS")
 outfilename   = "output_$(datetimenow).nc"
 outfilepath   = joinpath("./Output", outfilename)
-
-mkpath(dirname(outfilepath)) #Make path if nonexistent
+#=mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 outputwriter = NetCDFOutputWriter(model, 
 				  outputs, 
@@ -223,7 +240,7 @@ open(logfilepath, "w") do file
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N²₀)) \n\n")
-   write(file, "Max. b' = $(max_b′) \n\n")
+   write(file, "Max. b', random-number seed = $(max_b′), $(seed) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
@@ -232,7 +249,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(filesize(outfilepath)) bytes")
 end
-
+=#
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -241,9 +258,6 @@ if do_vis_const_x
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
                       x_idx = x_idx, plot_animation = true,
                       t_idx_skip = t_idx_skip)
-   #visualize_fields_const_x(datetimenow, x_idx; 
-   #			    plot_animation = true, t_idx_skip = t_idx_skip)
-   #visualize_q_const_x(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, x_idx)
    #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
 end
 
@@ -251,26 +265,18 @@ if do_vis_const_y
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
                       y_idx = y_idx, plot_animation = true,
                       t_idx_skip = t_idx_skip)
-   #visualize_fields_const_y(datetimenow, y_idx; 
-   #			    plot_animation = true, t_idx_skip = t_idx_skip)
-   #visualize_q_const_y(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, y_idx)
-   #plot_background_ζa(datetimenow, U, f, σr, σz; y_idx = y_idx)
 end
 
 if do_vis_const_z
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
                       z_idx = z_idx, plot_animation = true, 
 		      t_idx_skip = t_idx_skip)
-   #visualize_fields_const_z(datetimenow, z_idx; 
-	#		    plot_animation = true, t_idx_skip = t_idx_skip)
-   #visualize_q_const_z(datetimenow, Lx/Nx, Ly/Ny, Lz/Nz, f, z_idx)
 end
 
-if do_vis_growth_rate
-   visualize_growth_rate(datetimenow; f = f)
+if do_vis_norms
+   visualize_norms(datetimenow; f = f)
 end
 
 if do_vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
 end
-=#
