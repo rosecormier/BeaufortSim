@@ -1,8 +1,11 @@
 include("LibraryVisualization.jl")
 using .VisFunctions
 
-using Adapt, CairoMakie, OffsetArrays
-using Oceananigans.AbstractOperations, Oceananigans.Fields, Oceananigans.Operators 
+using Adapt, CairoMakie
+using Oceananigans.AbstractOperations
+using Oceananigans.Fields
+using Oceananigans.Operators 
+using OffsetArrays
 
 ####################
 

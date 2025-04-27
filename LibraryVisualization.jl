@@ -1,10 +1,10 @@
 using LinearAlgebra, Printf
-using Oceananigans.Fields
+using Oceananigans.AbstractOperations, Oceananigans.Fields
 
 ####################
 
 module ComputeSecondaries
-   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm, φ
+   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm, compute_polar_coords
 end
 
 ####################
@@ -94,11 +94,24 @@ function field_norm(φ, n)
    return perturb_norm, relative_norm
 end
 
-function φ(i, j, k, grid)
-   xc_i = xnodes(grid, Center())[i]
-   yc_j = ynodes(grid, Center())[j]
-   
-   return atan(yc_j, xc_i)
+function r_coord(i, j, k, grid)
+   xc_i, yc_j = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
+   r          = sqrt(xc_i^2 + yc_j^2)
+end
+
+function φ_coord(i, j, k, grid)
+   xc_i, yc_j = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
+   φ          = atan(yc_j, xc_i)
+end
+
+function compute_polar_coords(grid)
+   r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)	
+   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
+   r = Field(r_KernOp)
+   φ = Field(φ_KernOp)
+   compute!(r)
+   compute!(φ)
+   print(r, φ)
 end
 
 #####################

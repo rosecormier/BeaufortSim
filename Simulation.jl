@@ -4,7 +4,7 @@ include("Visualization.jl")
 
 using Dates: canonicalize, format, now
 using Oceananigans
-using Oceananigans.AbstractOperations, Oceananigans.Fields 
+#using Oceananigans.AbstractOperations, Oceananigans.Fields 
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
@@ -140,13 +140,10 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
 
-phi_KernOp = KernelFunctionOperation{Center, Center, Center}(φ, model.grid)
-phi = Field(phi_KernOp)
-compute!(phi)
-
-#phi = @. φ(x_idx, 200:201, z_idx, model.grid)
-print(phi)
-
+#phi_KernOp = KernelFunctionOperation{Center, Center, Center}(φ, model.grid)
+#phi = Field(phi_KernOp)
+#compute!(phi)
+compute_polar_coords(model.grid)
 ##########################
 # SET INITIAL CONDITIONS #
 ##########################
