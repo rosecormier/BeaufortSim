@@ -2,12 +2,12 @@ include("LibraryDynamics.jl")
 include("LibraryStability.jl")
 include("Visualization.jl")
 
-using Adapt
 using Dates: canonicalize, format, now
 using Oceananigans
+using Oceananigans.AbstractOperations, Oceananigans.Fields 
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
-using Oceananigans.Coriolis, Oceananigans.Grids
+using Oceananigans.Coriolis
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Printf, Random
@@ -139,8 +139,12 @@ model = NonhydrostaticModel(;
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
-print(znodes(model.grid, Center()))
-phi = φ(x_idx, y_idx, adapt(Array, znodes(model.grid, Center())), model.grid)
+
+phi_KernOp = KernelFunctionOperation{Center, Center, Center}(φ, model.grid)
+phi = Field(phi_KernOp)
+compute!(phi)
+
+#phi = @. φ(x_idx, 200:201, z_idx, model.grid)
 print(phi)
 
 ##########################
