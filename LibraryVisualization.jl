@@ -121,13 +121,12 @@ function compute_polar_coords(grid)
    end
    
    r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)	
-   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
    r        = Field(r_KernOp)
+   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
    φ        = Field(φ_KernOp)
   
    compute!(r)
    compute!(φ)
- 
    return(r, φ)
 end
 
@@ -146,7 +145,7 @@ function xy_vector_to_rφ(vx, vy, grid)
 
    vxC = Field(vxC_KernOp)
    compute!(vxC)
-   #print(vxC)
+   print(vxC)
    #return vr, vφ
 
 end
