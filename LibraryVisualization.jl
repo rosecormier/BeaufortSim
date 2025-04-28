@@ -105,17 +105,7 @@ module CylindricalCoords
 end
 
 ####################
-#=
-function r_coord(i, j, k, grid)
-   xCi, yCj = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
-   r        = sqrt(xCi^2 + yCj^2)
-end
 
-function φ_coord(i, j, k, grid)
-   xCi, yCj = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
-   φ        = atan(yCj, xCi)
-end
-=#
 function compute_polar_coords(grid)
   
    function r_coord(i, j, k, grid)

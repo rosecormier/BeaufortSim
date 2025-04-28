@@ -1,5 +1,6 @@
 include("LibraryVisualization.jl")
 using .ComputeSecondaries
+using .CylindricalCoords
 using .VisFunctions
 
 using Adapt, CairoMakie, CommonDataModel, DataStructures, LaTeXStrings
