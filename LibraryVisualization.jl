@@ -1,10 +1,9 @@
 using LinearAlgebra, Printf
-using Oceananigans.AbstractOperations, Oceananigans.Fields
 
 ####################
 
 module ComputeSecondaries
-   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm, compute_polar_coords
+   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm
 end
 
 ####################
@@ -83,40 +82,89 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    return (∂r_q[1] + ∂r_q[2]) / 2
 end
 
-function field_norm(φ, n)
+function field_norm(ψ, n)
 
-   φ_initial, φ_n = φ[:, :, :, 1], φ[:, :, :, n]
-   φ_perturb_n    = φ_n .- φ_initial
+   ψ_initial, ψ_n = ψ[:, :, :, 1], ψ[:, :, :, n]
+   ψ_perturb_n    = ψ_n .- ψ_initial
 
-   perturb_norm  = norm(φ_perturb_n)
-   relative_norm = perturb_norm / norm(φ_initial)
+   perturb_norm  = norm(ψ_perturb_n)
+   relative_norm = perturb_norm / norm(ψ_initial)
    
    return perturb_norm, relative_norm
 end
 
+####################
+
+using Adapt, CUDA
+using Oceananigans.AbstractOperations, Oceananigans.Fields
+
+####################
+
+module CylindricalCoords
+   export compute_polar_coords, xy_vector_to_rφ
+end
+
+####################
+#=
 function r_coord(i, j, k, grid)
-   xc_i, yc_j = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
-   r          = sqrt(xc_i^2 + yc_j^2)
+   xCi, yCj = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
+   r        = sqrt(xCi^2 + yCj^2)
 end
 
 function φ_coord(i, j, k, grid)
-   xc_i, yc_j = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
-   φ          = atan(yc_j, xc_i)
+   xCi, yCj = xnodes(grid, Center())[i], ynodes(grid, Center())[j]
+   φ        = atan(yCj, xCi)
 end
-
+=#
 function compute_polar_coords(grid)
+  
+   function r_coord(i, j, k, grid)
+      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i]
+      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
+      rij = sqrt(xCi^2 + yCj^2)
+   end
+   
+   function φ_coord(i, j, k, grid)
+      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i] 
+      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
+      φij = atan(yCj, xCi)
+   end
+   
    r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)	
    φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
-   r = Field(r_KernOp)
-   φ = Field(φ_KernOp)
+   r        = Field(r_KernOp)
+   φ        = Field(φ_KernOp)
+  
    compute!(r)
    compute!(φ)
-   print(r, φ)
+ 
+   return(r, φ)
 end
 
-#####################
+function xy_vector_to_rφ(vx, vy, grid)
 
-using Adapt, NCDatasets
+   function interpolate_vx(i, j, k, grid)
+      vxCi = interpolate((xnodes(grid, Center())[i], 
+			  ynodes(grid, Center())[j], 
+			  znodes(grid, Center())[k]), 
+			 vx, (Face(), Center(), Center()), grid)
+   end
+
+   vxC_KernOp = KernelFunctionOperation{Center, 
+					Center, 
+					Center}(interpolate_vx, grid)
+
+   vxC = Field(vxC_KernOp)
+   compute!(vxC)
+   #print(vxC)
+   #return vr, vφ
+
+end
+
+####################
+
+#using Adapt
+using NCDatasets
 
 ####################
 
