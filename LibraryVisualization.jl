@@ -133,26 +133,43 @@ end
 function xy_vector_to_rφ(vx, vy, grid)
 
    function interpolate_vx(i, j, k, grid)
-      vxCi = interpolate((xnodes(grid, Center())[i], 
-			  ynodes(grid, Center())[j], 
-			  znodes(grid, Center())[k]), 
-			 vx, (Face(), Center(), Center()), grid)
+      vxCi = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i], 
+			         adapt(CuArray, ynodes(grid, Center()))[j], 
+			         adapt(CuArray, znodes(grid, Center()))[k]), 
+			        vx, (Face(), Center(), Center()), grid)
    end
 
-   vxC_KernOp = KernelFunctionOperation{Center, 
-					Center, 
-					Center}(interpolate_vx, grid)
+   function interpolate_vy(i, j, k, grid)
+      vyCj = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i],
+				 adapt(CuArray, ynodes(grid, Center()))[j],
+				 adapt(CuArray, znodes(grid, Center()))[k]),
+				vy, (Center(), Face(), Center()), grid)
+   end
 
-   vxC = Field(vxC_KernOp)
+   vxC_KernOp = KernelFunctionOperation{Center, Center, Center}(
+					interpolate_vx, grid)
+   vxC        = Field(vxC_KernOp)
+   vyC_KernOp = KernelFunctionOperation{Center, Center, Center}(
+					interpolate_vy, grid)
+   vyC        = Field(vyC_KernOp)
+
    compute!(vxC)
-   print(vxC)
-   #return vr, vφ
+   compute!(vyC)
+   
+   r, φ = compute_polar_coords(grid)
+   
+   vr_BinaryOp = (vxC * cos(φ)) + (vyC * sin(φ))
+   vr          = Field(vr_BinaryOp)
+   vφ_BinaryOp = (vyC * cos(φ)) - (vxC * sin(φ))
+   vφ          = Field(vφ_BinaryOp)
 
+   compute!(vr)
+   compute!(vφ)
+   return vr, vφ
 end
 
 ####################
 
-#using Adapt
 using NCDatasets
 
 ####################

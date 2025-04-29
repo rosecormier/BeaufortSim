@@ -2,12 +2,8 @@ include("LibraryDynamics.jl")
 include("LibraryStability.jl")
 include("Visualization.jl")
 
-include("LibraryVisualization.jl")
-using .CylindricalCoords
-
 using Dates: canonicalize, format, now
 using Oceananigans
-#using Oceananigans.AbstractOperations, Oceananigans.Fields 
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
@@ -166,8 +162,6 @@ b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
 	      )
 
 set!(model, u = ū, v = v̄, b = b̄)
-
-xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
