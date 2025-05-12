@@ -77,7 +77,7 @@ const save_bkgd = true
 const do_vis_const_x = false
 const do_vis_const_y = false
 const do_vis_const_z = false
-const do_vis_norms   = false
+const do_vis_norms   = true
 const do_vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -186,7 +186,9 @@ if save_bkgd
    
    bkgd_simulation = Simulation(model, Δt = Δti, stop_iteration = 1)
 
-   ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
+   ur, uφ = xy_vector_to_rφ(model.velocities.u, 
+			    model.velocities.v, 
+			    model.grid)
 
    bkgd_outputs = (Ur = ur,
                    Uφ = uφ,
