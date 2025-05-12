@@ -1,14 +1,19 @@
 include("LibraryDynamics.jl")
 include("LibraryStability.jl")
+include("LibraryVisualization.jl")
+using .CylindricalCoords
 include("Visualization.jl")
 
 using Dates: canonicalize, format, now
+using NCDatasets
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
+using Oceananigans.Fields
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
+using Oceananigans.Utils
 using Printf, Random
 
 ######################
@@ -21,9 +26,9 @@ const Ny = 512
 const Nz = 256
 
 #Lengths of axes
-const Lx = 2000 * kilometer
-const Ly = 2000 * kilometer
-const Lz = 1000 * meter
+const Lx = 2e3 * kilometer
+const Ly = 2e3 * kilometer
+const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
 const νh = 0 * (meter^2/second)
@@ -37,7 +42,6 @@ const lat = 74.0
 #f-plane and Coriolis frequency
 fPlane  = FPlane(latitude = lat)
 const f = fPlane.f
-@printf("f = %.2e Hz \n", f)
 
 #Gyre scales
 const σr = 250 * kilometer
@@ -46,7 +50,6 @@ const σz = 300 * meter
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1.5e-1 * (meter/second)
 const N²₀ = 3e-3 * (second^(-2))
-@printf("Bu = %.2e \n", compute_Bu(σr, σz, f, N²₀))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
 const N²_max = 3e-3 * (second^(-2))
@@ -56,7 +59,7 @@ const d_ML = -50 * meter
 
 #Time-stepping parameters
 const Δti     = 5 * second
-const Δt_max  = 1200 * second 
+const Δt_max  = 1 * hour
 const CFL     = 0.2
 const tf      = 3 * day
 const Δt_save = 12 * hour
@@ -66,6 +69,9 @@ const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
 const max_b′ = 4e-3 * (meter/(second^2))
+
+#Whether to save background state to a NetCDF file
+const save_bkgd = true
 
 #Whether to run visualization functions
 const do_vis_const_x = false
@@ -126,8 +132,7 @@ const bkgd_N²_bottom = N²₀
 
 b_top_BC    = GradientBoundaryCondition(dbdz_top)
 b_bottom_BC = GradientBoundaryCondition(dbdz_bottom)
-
-b_BCs = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
+b_BCs       = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -139,27 +144,27 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b_BCs,))
 
-##########################
-# SET INITIAL CONDITIONS #
-##########################
+########################
+# SET BACKGROUND STATE #
+########################
 
 b       = model.tracers.b
 u, v, w = model.velocities
 
-ū(x, y, z) = ((sqrt(2)*U*y/σr) 
-	       * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-v̄(x, y, z) = -((sqrt(2)*U*x/σr) 
-	        * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-	      + ((sqrt(2)*f*U*σr*z/(σz^2)) 
-	          * exp((1/2) - (z/σz)^2) 
-		  * (1 - exp(-(x^2 + y^2)/(σr^2)))
-		  * (1 - ((sqrt(2)*U/(f*σr)) * exp((1/2) - (z/σz)^2)
-			  * (1 + exp(-(x^2 + y^2)/(σr^2)))
-			  )
-		     )
-		  )
-	      )
+@inline ū(x, y, z) = ((sqrt(2)*U*y/σr)
+                      * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+@inline v̄(x, y, z) = -((sqrt(2)*U*x/σr)
+                       * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+@inline b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
+                 + ((sqrt(2)*f*U*σr*z/(σz^2))
+                    * exp((1/2) - (z/σz)^2)
+                    * (1 - exp(-(x^2 + y^2)/(σr^2)))
+                    * (1 - ((sqrt(2)*U/(f*σr)) * exp((1/2) - (z/σz)^2)
+                             * (1 + exp(-(x^2 + y^2)/(σr^2)))
+                           )
+                      )
+                   )
+                )
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -169,14 +174,47 @@ check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
 check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
                      x_idx = x_idx)
 
-b_perturbed(x, y, z) = (max_b′ * rand()) + b̄(x, y, z) 
+#######################################
+# SAVE BACKGROUND STATE, IF INDICATED #
+#######################################
 
-set!(model, b = b_perturbed)
+datetimestart = now()
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+print("Date-time label: $(datetimenow)", "\n")
+
+if save_bkgd
+   
+   bkgd_simulation = Simulation(model, Δt = Δti, stop_iteration = 1)
+
+   ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
+
+   bkgd_outputs = (Ur = ur,
+                   Uφ = uφ,
+                   Ux = model.velocities.u,
+                   Uy = model.velocities.v,
+                   Uz = model.velocities.w,
+                   B  = model.tracers.b)
+
+   bkgd_filepath = joinpath("./Output", "bkgd_$(datetimenow).nc")
+   mkpath(dirname(bkgd_filepath)) #Make path if nonexistent
+
+   bkgd_writer = NetCDFOutputWriter(model,
+                                    bkgd_outputs,
+                                    with_halos = true,
+                                    filename = bkgd_filepath,
+                                    schedule = SpecifiedTimes([0]))
+
+   bkgd_simulation.output_writers[:field_writer] = bkgd_writer
+   run!(bkgd_simulation)
+end
 
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
+@inline b_perturbed(x, y, z) = (max_b′ * rand()) + b̄(x, y, z)
+set!(model, b = b_perturbed) #Update initial condition to trigger BCI
+
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
 wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
@@ -195,29 +233,29 @@ end
 
 add_callback!(simulation, progress, TimeInterval(Δt_save))
 
-outputs = (u = model.velocities.u,
-	   v = model.velocities.v,
-	   w = model.velocities.w,
-	   b = model.tracers.b)
+ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
 
-datetimestart = now()
-=#
-datetimenow   = "250425-143740" #format(datetimestart, "yymmdd-HHMMSS")
-outfilename   = "output_$(datetimenow).nc"
-outfilepath   = joinpath("./Output", outfilename)
-#=mkpath(dirname(outfilepath)) #Make path if nonexistent
+outputs = (ur = ur,
+	   uφ = uφ,
+	   ux = model.velocities.u,
+	   uy = model.velocities.v,
+	   uz = model.velocities.w,
+	   b  = model.tracers.b)
 
-outputwriter = NetCDFOutputWriter(model, 
+outfilename = "output_$(datetimenow).nc"
+outfilepath = joinpath("./Output", outfilename)
+mkpath(dirname(outfilepath)) #Make path if nonexistent
+
+field_writer = NetCDFOutputWriter(model, 
 				  outputs, 
                                   with_halos = true,
 		                  filename = outfilepath, 
-                                  schedule = TimeInterval(Δt_save))
+                                  schedule = TimeInterval(Δt_save),
+				  file_splitting = FileSizeLimit(30GiB))
 
-simulation.output_writers[:field_writer] = outputwriter
+simulation.output_writers[:field_writer] = field_writer
 
 run!(simulation)
-print("Date-time label: $(datetimenow)", "\n")
-
 duration = canonicalize(now() - datetimestart)
 
 ###############################
@@ -243,9 +281,9 @@ open(logfilepath, "w") do file
    write(file, "Total number of iterations = $(iteration(simulation)) \n")
    write(file, "Δtf = $(prettytime(simulation.Δt)) \n\n")
    write(file, "Simulation runtime = $(duration) \n")
-   write(file, "Output filesize = $(filesize(outfilepath)) bytes")
+   write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -270,7 +308,7 @@ if do_vis_const_z
 end
 
 if do_vis_norms
-   visualize_norms(datetimenow; f = f)
+   visualize_norms(datetimenow, model.grid)
 end
 
 if do_vis_z_grid
