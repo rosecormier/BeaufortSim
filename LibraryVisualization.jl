@@ -158,7 +158,6 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
 end
 
 function field_norm(ψ, n; ψ_bkgd = 0)
-
    ψ_n           = ψ[:, :, :, n]
    ψ_perturb_n   = ψ_n .- ψ_bkgd
    perturb_norm  = norm(ψ_perturb_n)
