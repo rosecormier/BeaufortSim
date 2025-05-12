@@ -1,50 +1,67 @@
 include("LibraryVisualization.jl")
-using .ComputeSecondaries
-using .CylindricalCoords
-using .VisFunctions
+#using .ComputeSecondaries
+#using .VisFunctions
 
-using Adapt, CairoMakie, CommonDataModel, DataStructures, LaTeXStrings
-using Oceananigans, OffsetArrays, Printf
+using Adapt, CairoMakie 
+using CommonDataModel, CUDA, DataStructures, LaTeXStrings, NCDatasets
+update_theme!(fontsize = 20)
 
-function visualize_norms(datetime; f = 1)
+using Oceananigans
+using Oceananigans.Fields
+using Oceananigans.OutputReaders
+using OffsetArrays: no_offset_view
+using Printf
+
+####################
+
+function visualize_norms(datetime, grid; bkgd_datetime = nothing)
+
+   #`grid` is a required argument for now
+   #but I would like to update the open_dataset function to get it automatically from the output file
+   #(will do this after I split up the simulation output into multiple files, since I will be changing the file structures at that time anyway)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   ux = @views adapt(Array, ds["u"])[:, :, :, :]
-   uy = @views adapt(Array, ds["v"])[:, :, :, :]
+   b  = ds["b"][:, :, :, :]
+   ur = ds["ur"][:, :, :, :]
+   uφ = ds["uφ"][:, :, :, :]
+   uz = ds["uz"][:, :, :, :]
 
-   ur, uφ = @views project_to_polar(ux, uy, x, y) 
+   if isnothing(bkgd_datetime)
+      bkgd_datetime = datetime
+   end
 
-   fig_norms = Figure(size = (1200, 700))
+   ds_bkgd = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"), "r")
+   B       = ds_bkgd["B"][:, :, :, 1]
+   Uφ      = ds_bkgd["Uφ"][:, :, :, 1]
 
-   ax_b_norm = Axis(fig_norms[2, 1]; title = "b'-norm",
+   fig_norms  = Figure(size = (1200, 700))
+   ax_b_norm  = Axis(fig_norms[2, 1]; title = L"Norm of $b'$",
 		    xlabel = L"$t$ [days]", 
 		    ylabel = L"$||b'||$ [m/s^2]", yscale = log10)
-   ax_w_norm = Axis(fig_norms[2, 2]; title = "w'-norm",
-                    xlabel = L"$t$ [days]", ylabel = L"$||w'||$ [m/s]", 
+   ax_uz_norm = Axis(fig_norms[2, 2]; title = L"Norm of $u_z'$",
+                    xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]", 
 		    yscale = log10)
-   ax_u_norm = Axis(fig_norms[3, 1]; title = L"u_r'-norm",
+   ax_ur_norm = Axis(fig_norms[3, 1]; title = L"Norm of $u_r'$",
                     xlabel = L"$t$ [days]", 
 		    ylabel = L"$||u_r'||$ [m/s]", yscale = log10)
-   ax_v_norm = Axis(fig_norms[3, 2]; title = L"u_{\phi}'-norm",
+   ax_uφ_norm = Axis(fig_norms[3, 2]; title = L"Norm of $u_{\phi}$'",
                     xlabel = L"$t$ [days]", 
 		    ylabel = L"$||u_{\phi}'||$", yscale = log10)
 	
-   n      = Observable(2)
-   b_norm = @lift field_norm(ds["b"], $n)[1]
-   w_norm = @lift field_norm(ds["w"], $n)[1]
-   #u_norm = @lift field_norm(ds["u"], $n)[1]
-   #v_norm = @lift field_norm(ds["v"], $n)[1]
-   ur_norm = @lift field_norm(ur, $n)[1]
-   uφ_norm = @lift field_norm(uφ, $n)[1]
+   n = Observable(1)
+   
+   b_norm  = @lift field_norm(b, $n; ψ_bkgd = B)
+   uz_norm = @lift field_norm(uz, $n)
+   ur_norm = @lift field_norm(ur, $n)
+   uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
 
-   @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
-   @lift scatter!(ax_w_norm, times[$n]/86400, $w_norm, color = :black)
-   @lift scatter!(ax_u_norm, times[$n]/86400, $ur_norm, color = :black)
-   @lift scatter!(ax_v_norm, times[$n]/86400, $uφ_norm, color = :black)
-
-   for i = 2:Nt
-      yield()
+   for i = 1:Nt
+      @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
+      @lift scatter!(ax_uz_norm, times[$n]/86400, $uz_norm, color = :black)
+      @lift scatter!(ax_ur_norm, times[$n]/86400, $ur_norm, color = :black)
+      @lift scatter!(ax_uφ_norm, times[$n]/86400, $uφ_norm, color = :black)
+     yield()
       n[] = i
    end
 
@@ -53,6 +70,7 @@ function visualize_norms(datetime; f = 1)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_norms)
+   close(ds_bkgd)
    close(ds)
 end
 
