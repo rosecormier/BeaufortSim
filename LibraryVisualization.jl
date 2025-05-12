@@ -1,4 +1,79 @@
-using LinearAlgebra, Printf
+using Adapt, CUDA
+using Oceananigans.AbstractOperations, Oceananigans.Fields
+
+####################
+
+module CylindricalCoords
+   export compute_polar_coords, xy_vector_to_rφ
+end
+
+####################
+
+function compute_polar_coords(grid)
+
+   function r_coord(i, j, k, grid)
+      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i]
+      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
+      rij = sqrt(xCi^2 + yCj^2)
+   end
+
+   function φ_coord(i, j, k, grid)
+      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i]
+      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
+      φij = atan(yCj, xCi)
+   end
+
+   r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)
+   r        = Field(r_KernOp)
+   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
+   φ        = Field(φ_KernOp)
+
+   compute!(r)
+   compute!(φ)
+   return(r, φ)
+end
+
+function xy_vector_to_rφ(vx, vy, grid)
+
+   function interpolate_vx(i, j, k, grid)
+      vxCi = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i],
+                                 adapt(CuArray, ynodes(grid, Center()))[j],
+                                 adapt(CuArray, znodes(grid, Center()))[k]),
+                                vx, (Face(), Center(), Center()), grid)
+   end
+
+   function interpolate_vy(i, j, k, grid)
+      vyCj = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i],
+                                 adapt(CuArray, ynodes(grid, Center()))[j],
+                                 adapt(CuArray, znodes(grid, Center()))[k]),
+                                vy, (Center(), Face(), Center()), grid)
+   end
+
+   vxC_KernOp = KernelFunctionOperation{Center, Center, Center}(
+                                        interpolate_vx, grid)
+   vxC        = Field(vxC_KernOp)
+   vyC_KernOp = KernelFunctionOperation{Center, Center, Center}(
+                                        interpolate_vy, grid)
+   vyC        = Field(vyC_KernOp)
+
+   compute!(vxC)
+   compute!(vyC)
+
+   r, φ = compute_polar_coords(grid)
+
+   vr_BinaryOp = (vxC * cos(φ)) + (vyC * sin(φ))
+   vr          = Field(vr_BinaryOp)
+   vφ_BinaryOp = (vyC * cos(φ)) - (vxC * sin(φ))
+   vφ          = Field(vφ_BinaryOp)
+
+   compute!(vr)
+   compute!(vφ)
+   return vr, vφ
+end
+
+####################
+
+using LinearAlgebra
 
 ####################
 
@@ -82,90 +157,11 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
    return (∂r_q[1] + ∂r_q[2]) / 2
 end
 
-function field_norm(ψ, n)
+function field_norm(ψ, n; ψ_bkgd = 0)
 
-   ψ_initial, ψ_n = ψ[:, :, :, 1], ψ[:, :, :, n]
-   ψ_perturb_n    = ψ_n .- ψ_initial
-
+   ψ_n           = ψ[:, :, :, n]
+   ψ_perturb_n   = ψ_n .- ψ_bkgd
    perturb_norm  = norm(ψ_perturb_n)
-   relative_norm = perturb_norm / norm(ψ_initial)
-   
-   return perturb_norm, relative_norm
-end
-
-####################
-
-using Adapt, CUDA
-using Oceananigans.AbstractOperations, Oceananigans.Fields
-
-####################
-
-module CylindricalCoords
-   export compute_polar_coords, xy_vector_to_rφ
-end
-
-####################
-
-function compute_polar_coords(grid)
-  
-   function r_coord(i, j, k, grid)
-      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i]
-      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
-      rij = sqrt(xCi^2 + yCj^2)
-   end
-   
-   function φ_coord(i, j, k, grid)
-      xCi = @views adapt(CuArray, xnodes(grid, Center()))[i] 
-      yCj = @views adapt(CuArray, ynodes(grid, Center()))[j]
-      φij = atan(yCj, xCi)
-   end
-   
-   r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)	
-   r        = Field(r_KernOp)
-   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
-   φ        = Field(φ_KernOp)
-  
-   compute!(r)
-   compute!(φ)
-   return(r, φ)
-end
-
-function xy_vector_to_rφ(vx, vy, grid)
-
-   function interpolate_vx(i, j, k, grid)
-      vxCi = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i], 
-			         adapt(CuArray, ynodes(grid, Center()))[j], 
-			         adapt(CuArray, znodes(grid, Center()))[k]), 
-			        vx, (Face(), Center(), Center()), grid)
-   end
-
-   function interpolate_vy(i, j, k, grid)
-      vyCj = @views interpolate((adapt(CuArray, xnodes(grid, Center()))[i],
-				 adapt(CuArray, ynodes(grid, Center()))[j],
-				 adapt(CuArray, znodes(grid, Center()))[k]),
-				vy, (Center(), Face(), Center()), grid)
-   end
-
-   vxC_KernOp = KernelFunctionOperation{Center, Center, Center}(
-					interpolate_vx, grid)
-   vxC        = Field(vxC_KernOp)
-   vyC_KernOp = KernelFunctionOperation{Center, Center, Center}(
-					interpolate_vy, grid)
-   vyC        = Field(vyC_KernOp)
-
-   compute!(vxC)
-   compute!(vyC)
-   
-   r, φ = compute_polar_coords(grid)
-   
-   vr_BinaryOp = (vxC * cos(φ)) + (vyC * sin(φ))
-   vr          = Field(vr_BinaryOp)
-   vφ_BinaryOp = (vyC * cos(φ)) - (vxC * sin(φ))
-   vφ          = Field(vφ_BinaryOp)
-
-   compute!(vr)
-   compute!(vφ)
-   return vr, vφ
 end
 
 ####################
@@ -183,6 +179,8 @@ end
 
 function open_dataset(datetime)
 
+   #Might be best to make a struct and output that? Need to investigate :D
+
    outfilepath = joinpath("./Output", "output_$(datetime).nc")
 
    ds = NCDataset(outfilepath, "r")
@@ -196,10 +194,10 @@ function open_dataset(datetime)
 end
 
 function get_background_fields(ds)
-   bb = @views adapt(Array, ds["b"])[:, :, :, 1]
-   ub = @views adapt(Array, ds["u"])[:, :, :, 1]
-   vb = @views adapt(Array, ds["v"])[:, :, :, 1]
-   wb = @views adapt(Array, ds["w"])[:, :, 1:end-1, 1]
+   bb = ds["b"][:, :, :, 1]
+   ub = ds["u"][:, :, :, 1]
+   vb = ds["v"][:, :, :, 1]
+   wb = ds["w"][:, :, 1:end-1, 1]
    return bb, ub, vb, wb
 end
 
