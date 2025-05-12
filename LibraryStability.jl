@@ -5,7 +5,7 @@ using Adapt, CairoMakie
 using Oceananigans.AbstractOperations
 using Oceananigans.Fields
 using Oceananigans.Operators 
-using OffsetArrays
+using OffsetArrays, Printf
 
 ####################
 
