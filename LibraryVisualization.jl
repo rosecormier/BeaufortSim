@@ -192,14 +192,6 @@ function open_dataset(datetime)
    return ds, x, y, z, t, Nt
 end
 
-function get_background_fields(ds)
-   bb = ds["b"][:, :, :, 1]
-   ub = ds["u"][:, :, :, 1]
-   vb = ds["v"][:, :, :, 1]
-   wb = ds["w"][:, :, 1:end-1, 1]
-   return bb, ub, vb, wb
-end
-
 function get_range_lims(final_field; prescribed_max = 0)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-field_max, field_max]
