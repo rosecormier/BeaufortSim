@@ -165,7 +165,7 @@ end
 
 ####################
 
-using NCDatasets
+using Glob, NCDatasets
 
 ####################
 
@@ -180,13 +180,13 @@ function open_dataset(datetime)
 
    #Might be best to make a struct and output that? Need to investigate :D
 
-   outfilepath = joinpath("./Output", "output_$(datetime).nc")
+   ds = NCDataset(glob("./Output/output_$(datetime)*"))
 
-   ds = NCDataset(outfilepath, "r")
-   x  = ds["xC"][:] ./ 1000 #Convert to km for readability
-   y  = ds["yC"][:] ./ 1000 #Convert to km for readability
-   z  = ds["zC"][:]
-   t  = ds["time"][:]
+   x  = ds[:xC][:] ./ 1000 #Convert to km for readability
+   y  = ds[:yC][:] ./ 1000 #Convert to km for readability
+   z  = ds[:zC][:]
+
+   t  = ds[:time][:]
    Nt = length(t)
 
    return ds, x, y, z, t, Nt
