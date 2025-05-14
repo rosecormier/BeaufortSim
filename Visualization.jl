@@ -22,10 +22,10 @@ function visualize_norms(datetime, grid; bkgd_datetime = nothing)
 
    ds, x, y, z, times, Nt = open_dataset(datetime)
 
-   b  = ds["b"][:, :, :, :]
-   ur = ds["ur"][:, :, :, :]
-   uφ = ds["uφ"][:, :, :, :]
-   uz = ds["uz"][:, :, :, :]
+   b  = ds[:b][:, :, :, :]
+   ur = ds[:ur][:, :, :, :]
+   uφ = ds[:uφ][:, :, :, :]
+   uz = ds[:uz][:, :, :, :]
 
    if isnothing(bkgd_datetime)
       bkgd_datetime = datetime
@@ -57,11 +57,14 @@ function visualize_norms(datetime, grid; bkgd_datetime = nothing)
    uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
 
    for i = 1:Nt
+
       @lift scatter!(ax_b_norm, times[$n]/86400, $b_norm, color = :black)
       @lift scatter!(ax_uz_norm, times[$n]/86400, $uz_norm, color = :black)
       @lift scatter!(ax_ur_norm, times[$n]/86400, $ur_norm, color = :black)
       @lift scatter!(ax_uφ_norm, times[$n]/86400, $uφ_norm, color = :black)
-     yield()
+     
+      yield()
+      
       n[] = i
    end
 
