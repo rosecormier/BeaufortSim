@@ -170,7 +170,7 @@ using Glob, NCDatasets
 ####################
 
 module VisFunctions
-   export open_dataset, get_background_fields, get_range_lims, 
+   export open_dataset, open_bkgd_dataset, get_range_lims, 
    get_2D_spatial_axis_kwargs
 end
 
@@ -192,13 +192,19 @@ function open_dataset(datetime)
    return ds, x, y, z, t, Nt
 end
 
+function open_bkgd_dataset(bkgd_datetime)
+   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
+   return bkgd_ds
+end
+
 function get_range_lims(final_field; prescribed_max = 0)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-field_max, field_max]
 end
 
 function get_2D_spatial_axis_kwargs(x, y, z;
-                                    x_idx = nothing, y_idx = nothing,
+                                    x_idx = nothing,
+				    y_idx = nothing,
                                     z_idx = nothing)
    if !isnothing(x_idx)
       nearest     = round(Int, x[x_idx])
