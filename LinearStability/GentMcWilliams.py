@@ -1,16 +1,15 @@
 #Modification of Storer's code 'Linear Stability of a Barotropic QG Vortex'
 
-import timeit
-import scipy
-import time
-import sys
 import argparse
-
-import scipy.sparse as sp
-import scipy.linalg as spalg
+import matplotlib.pyplot as plt
 import numpy as np
 import numpy.linalg as nlg
-import matplotlib.pyplot as plt
+import scipy
+import scipy.linalg as spalg
+import scipy.sparse as sp
+import sys
+import time
+import timeit
 
 from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
@@ -66,12 +65,15 @@ class Parameters:
     f0       = args.coriolis
     g        = args.gravity
     N        = args.buoyancy
-    Lr       = 6.25
-    Nr       = args.Neig
+
+    Lr       = 6.25 #Max. r-value in physical space; half computational domain
+    Nr       = args.Neig #Number of gridpoints
     halfNr   = args.Neig // 2 #formerly N2
+    
     Nt       = 40
     kts      = np.arange(args.k_theta[0], args.k_theta[1], args.k_theta[2])
     kzs      = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
+    
     nmodes   = args.modes
     printout = args.PrintOutputs
 
@@ -104,7 +106,11 @@ class Geometry:
         
         elif method == 'FD':
            
-            self.r = np.arange(params.Lr, -params.Lr - 2*params.Lr/(params.Nr), -2*params.Lr/(params.Nr)) #Double-check the order of args here
+            #Uniform r-interval size
+            dr = 2 * params.Lr / params.Nr
+
+            #Discretized domain with gridpoints listed in descending order 
+            self.r = np.arange(params.Lr, (-params.Lr - dr), -dr)
             
             #Nonzero entries of (sparse) differentiation matrix using 8th-order 
             # stencil. Size of matrix is len(r) x len(r).
@@ -153,11 +159,11 @@ def Print_npArray(fp, arr):
             
 def QG_Vortex_Stability():
 
-    #Initialize parameters
-    paramsCheb  = Parameters()
-    paramsFD    = Parameters()
+    #Initialize parameters and set up geometry
 
-    #Set up the geometry
+    paramsCheb = Parameters()
+    paramsFD   = Parameters()
+
     GeomCheb = Geometry('cheb', paramsCheb)
     GeomFD   = Geometry('FD', paramsFD)
 
