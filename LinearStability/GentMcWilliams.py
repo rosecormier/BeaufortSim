@@ -26,7 +26,7 @@ from FiniteDiff import FiniteDiff
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
                     help = 'Number of grid points for eig computations',
-                    type = int, default = 202)
+                    type = int, default = 1000) #202)
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
                     type = int, default = 1000)
@@ -156,10 +156,6 @@ def QG_Vortex_Stability():
     #Initialize parameters
     paramsCheb  = Parameters()
     paramsFD    = Parameters()
-    #paramsFD.Nr = args.Neigs
-    #paramsFD.N2 = args.Neigs // 2
-    paramsCheb.Nr     = 1000 #1001
-    paramsCheb.halfNr = 1000 // 2 #1001 // 2
 
     #Set up the geometry
     GeomCheb = Geometry('cheb', paramsCheb)
