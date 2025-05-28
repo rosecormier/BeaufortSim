@@ -1,7 +1,6 @@
 include("LibraryDynamics.jl")
 include("LibraryStability.jl")
 include("LibraryVisualization.jl")
-using .CylindricalCoords
 include("Visualization.jl")
 
 using Dates: canonicalize, format, now
@@ -21,20 +20,20 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 512
-const Ny = 512
-const Nz = 256
+const Nx = 2048 #512
+const Ny = 2048 #512
+const Nz = 16 #256
 
 #Lengths of axes
-const Lx = 2e3 * kilometer
-const Ly = 2e3 * kilometer
+const Lx = 4e3 * kilometer #2e3 * kilometer
+const Ly = 4e3 * kilometer #2e3 * kilometer
 const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
-const νh = 0 * (meter^2/second)
-const νv = 0 * (meter^2/second)
-const κh = 0 * (meter^2/second)
-const κv = 0 * (meter^2/second)
+const νh = 5e-3 * (meter^2/second)
+const νv = 5e-6 * (meter^2/second)
+const κh = 5e-3 * (meter^2/second)
+const κv = 5e-6 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -45,7 +44,7 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 250 * kilometer
-const σz = 300 * meter
+const σz = "infinity" #300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1.5e-1 * (meter/second)
@@ -61,29 +60,32 @@ const d_ML = -50 * meter
 const Δti     = 5 * second
 const Δt_max  = 1 * hour
 const CFL     = 0.2
-const tf      = 3 * day
-const Δt_save = 12 * hour
+const tf      = 60 * day
+const Δt_save = 8 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. magnitude of initial b-perturbations (0 for no perturbation)
-const max_b′ = 4e-3 * (meter/(second^2))
+#const max_b′ = 4e-3 * (meter/(second^2))
 
-#Whether to save background state to a NetCDF file
-const save_bkgd = true
+#Max. relative magnitude of initial u-perturbations
+const max_u′ = 1e-5
+
+const save_bkgd = false #Whether to save background state to a NetCDF file
+const bkgd_datetime = "250522-214102" #If save_bkgd == true, must == nothing
 
 #Whether to run visualization functions
-const do_vis_const_x = false
-const do_vis_const_y = false
-const do_vis_const_z = false
-const do_vis_norms   = true
-const do_vis_z_grid  = false #Can only be done on CPU
+const vis_const_x = false
+const vis_const_y = false
+const vis_const_z = true
+const vis_norms   = true
+const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
-const x_idx      = 259
+const x_idx      = 1026 #259
 const y_idx      = 259
-const z_idx      = 253
+const z_idx      = 12 #253
 const t_idx_skip = 1
 
 #Seed for random-number generator
@@ -93,9 +95,9 @@ if !isnothing(seed)
    Random.seed!(seed)
 end
 
-##############################
-# INSTANTIATE GRID AND MODEL #
-##############################
+#########################
+# SET UP GRID AND MODEL #
+#########################
 
 use_GPU ? architecture = GPU() : architecture = CPU()
 
@@ -118,21 +120,9 @@ closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh),
 #const bkgd_N²_bottom = lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
 const bkgd_N²_top = N²₀
-const bkgd_N²_bottom = N²₀
+const bkgd_N²_bot = N²₀
 
-@inline dbdz_top(x, y, t)    = (bkgd_N²_top
-				.+ (sqrt(2) * f * U * σr / (σz^2)
-				   * exp(1/2) 
-				   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
-@inline dbdz_bottom(x, y, t) = (bkgd_N²_bottom
-				.+ (sqrt(2) * f * U * σr / (σz^2)
-				   * exp((1/2) - (Lz/σz)^2) 
-			      	   * (1 - exp(-(x^2 + y^2)/(σr^2))) 
-			           * (1 - 2 * (Lz/σz)^2)))
-
-b_top_BC    = GradientBoundaryCondition(dbdz_top)
-b_bottom_BC = GradientBoundaryCondition(dbdz_bottom)
-b_BCs       = FieldBoundaryConditions(top = b_top_BC, bottom = b_bottom_BC)
+b̄, ū, v̄, b̄_BCs = bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -142,29 +132,10 @@ model = NonhydrostaticModel(;
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
-			    boundary_conditions = (; b = b_BCs,))
-
-########################
-# SET BACKGROUND STATE #
-########################
+			    boundary_conditions = (; b = b̄_BCs,))
 
 b       = model.tracers.b
 u, v, w = model.velocities
-
-@inline ū(x, y, z) = ((sqrt(2)*U*y/σr)
-                      * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-@inline v̄(x, y, z) = -((sqrt(2)*U*x/σr)
-                       * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-@inline b̄(x, y, z) = (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-                 + ((sqrt(2)*f*U*σr*z/(σz^2))
-                    * exp((1/2) - (z/σz)^2)
-                    * (1 - exp(-(x^2 + y^2)/(σr^2)))
-                    * (1 - ((sqrt(2)*U/(f*σr)) * exp((1/2) - (z/σz)^2)
-                             * (1 + exp(-(x^2 + y^2)/(σr^2)))
-                           )
-                      )
-                   )
-                )
 
 set!(model, u = ū, v = v̄, b = b̄)
 
@@ -214,8 +185,12 @@ end
 # SET UP AND RUN SIMULATION #
 #############################
 
-@inline b_perturbed(x, y, z) = (max_b′ * rand()) + b̄(x, y, z)
-set!(model, b = b_perturbed) #Update initial condition to trigger BCI
+#@inline b_perturbed(x, y, z) = (max_b′ * 2 * (rand() - 0.5)) + b̄(x, y, z)
+@inline ūφ_abs(x, y, z) = (sqrt(2) * U / σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2)) #barotropic case
+@inline speed_perturb(x, y, z) = (2 * (rand() - 0.5)) * max_u′ * ūφ_abs(x, y, z)
+@inline u_perturbed(x, y, z) = ū(x, y, z) + speed_perturb(x, y, z)
+#set!(model, b = b_perturbed) 
+set!(model, u = u_perturbed) #Update initial condition to trigger BCI
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
@@ -244,8 +219,7 @@ outputs = (ur = ur,
 	   uz = model.velocities.w,
 	   b  = model.tracers.b)
 
-outfilename = "output_$(datetimenow).nc"
-outfilepath = joinpath("./Output", outfilename)
+outfilepath = joinpath("./Output", "output_$(datetimenow).nc")
 mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 field_writer = NetCDFOutputWriter(model, 
@@ -264,8 +238,7 @@ duration = canonicalize(now() - datetimestart)
 # SAVE PARAMETERS TO LOG FILE #
 ###############################
 
-logfilename = "log_$(datetimenow).txt"
-logfilepath = joinpath("./Logs", logfilename)
+logfilepath = joinpath("./Logs", "log_$(datetimenow).txt")
 mkpath(dirname(logfilepath)) #Make path if nonexistent
 
 open(logfilepath, "w") do file
@@ -275,8 +248,7 @@ open(logfilepath, "w") do file
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
-   write(file, "Computed Bu = $(compute_Bu(σr, σz, f, N²₀)) \n\n")
-   write(file, "Max. b', random-number seed = $(max_b′), $(seed) \n\n")
+   write(file, "Max. u', random-number seed = $(max_u′), $(seed) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
@@ -290,29 +262,42 @@ end
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
 
-if do_vis_const_x
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
-                      x_idx = x_idx, plot_animation = true,
+if vis_const_x
+   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
+		      bkgd_datetime = bkgd_datetime,
+		      x_idx = x_idx,
+		      plot_animation = true,
                       t_idx_skip = t_idx_skip)
-   #plot_background_ζa(datetimenow, U, f, σr, σz; x_idx = x_idx)
+   visualize_fields_const_x(datetimenow, x_idx; 
+			    bkgd_datetime = bkgd_datetime,
+                            plot_animation = true, 
+			    t_idx_skip = t_idx_skip)
 end
 
-if do_vis_const_y
+if vis_const_y
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
-                      y_idx = y_idx, plot_animation = true,
+		      bkgd_datetime = bkgd_datetime,
+                      y_idx = y_idx, 
+		      plot_animation = true,
                       t_idx_skip = t_idx_skip)
 end
 
-if do_vis_const_z
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
-                      z_idx = z_idx, plot_animation = true, 
+if vis_const_z
+   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
+		      bkgd_datetime = bkgd_datetime,
+                      z_idx = z_idx,
+		      plot_animation = true, 
 		      t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx; 
+			    bkgd_datetime = bkgd_datetime,
+                            plot_animation = true, 
+			    t_idx_skip = t_idx_skip)
 end
 
-if do_vis_norms
-   visualize_norms(datetimenow, model.grid)
+if vis_norms
+   visualize_norms(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
 end
 
-if do_vis_z_grid
+if vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
 end
