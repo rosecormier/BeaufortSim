@@ -179,14 +179,24 @@ end
 function open_dataset(datetime)
 
    #Might be best to make a struct and output that? Need to investigate :D
+   
+   outfile_paths = glob("./Output/output_$(datetime)_part*")
 
+   if length(outfile_paths) > 9
+      for file_path in outfile_paths
+         if length(file_path) == 38
+	    mv(file_path, replace(file_path, "_part" => "_part0"))
+	 end
+      end
+   end
+   
    ds = NCDataset(glob("./Output/output_$(datetime)*"))
 
    x  = ds[:xC][:] ./ 1000 #Convert to km for readability
    y  = ds[:yC][:] ./ 1000 #Convert to km for readability
    z  = ds[:zC][:]
 
-   t  = ds[:time][:]
+   t  = ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
    return ds, x, y, z, t, Nt
