@@ -122,23 +122,14 @@ def Build_Laplacian(params, geom):
    
     halfNr, Nr = params.halfNr, params.Nr
 
-    #2nd-order r-derivative; upper left block
+    #2nd-order r-derivatives?
     D1d = geom.Dr2[1:halfNr+1, 1:halfNr+1]
-
-    if geom.method == 'FD':
-        D2d = geom.Dr2[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)] 
-    elif geom.method == 'cheb':
-        D2d = geom.Dr2[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)] # gave error
-    print(D2d.shape)
-
-    #1st-order r-derivative; upper left block
+    D2d = geom.Dr2[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)]
+    
+    #1st-order r-derivatives?
     E1d = geom.Dr[1:halfNr+1, 1:halfNr+1]
-
-    if geom.method == 'FD':
-        E2d = geom.Dr[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)] 
-    elif geom.method == 'cheb':
-        E2d = geom.Dr[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)] #gave error
-
+    E2d = geom.Dr[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)]
+    
     if sp.issparse(geom.Dr):
         R = sp.spdiags(np.transpose(1.0/geom.r[1:halfNr+1]), np.array([0]), halfNr, halfNr)
     else:
