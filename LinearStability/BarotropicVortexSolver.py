@@ -170,12 +170,13 @@ def QG_Vortex_Stability():
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
     GeomFD.Lap   = Build_Laplacian(paramsFD, GeomFD)
 
-    #Set up flow profile
-    rin    = GeomCheb.r[1:paramsCheb.halfNr+1]
+    #Set up background-state flow profile
+
+    rin    = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
     Prsp   = np.ravel(-0.5 * np.exp(-rin**2))            # 1/r*Psi_r
     Qrsp   = np.ravel(-2 * np.exp(-rin**2) * (rin**2 - 2))   # 1/r*Q_r
     
-    rin    = GeomFD.r[1:paramsFD.halfNr+1] 
+    rin    = GeomFD.r[1:(paramsFD.halfNr + 1)]
     Prfd   = np.ravel(-0.5 * np.exp(-rin**2))            # 1/r*Psi_r
     Qrfd   = np.ravel(-2 * np.exp(-rin**2) * (rin**2 - 2))   # 1/r*Q_r
 
