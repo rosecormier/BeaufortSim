@@ -98,16 +98,20 @@ class Geometry:
         self.method = method
         
         if method == 'cheb':
+           
+            #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
+            Dr, r = cheb(params.Nr)
             
-            Dr, r    = cheb(params.Nr)
-            self.r   = r * params.Lr
-            self.Dr  = Dr / params.Lr
+            #Scale gridpoints and variable of differentiation to fit 
+            # desired domain
+            self.r, self.Dr = r * params.Lr, Dr / params.Lr
+            
+            #Second-order differentiation matrix
             self.Dr2 = np.matmul(self.Dr, self.Dr)
         
         elif method == 'FD':
-           
-            #Uniform r-interval size
-            dr = 2 * params.Lr / params.Nr
+
+            dr = 2 * params.Lr / params.Nr #Uniform r-interval size
 
             #Discretized domain with gridpoints listed in descending order 
             self.r = np.arange(params.Lr, (-params.Lr - dr), -dr)
@@ -116,6 +120,7 @@ class Geometry:
             # stencil. Size of matrix is len(r) x len(r).
             self.Dr = FiniteDiff(self.r, 8, True, True)
 
+            #Second-order differentiation matrix
             self.Dr2 = np.dot(self.Dr, self.Dr)
 
 def Build_Laplacian(params, geom):
