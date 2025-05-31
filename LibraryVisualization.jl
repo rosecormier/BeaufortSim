@@ -207,9 +207,9 @@ function open_bkgd_dataset(bkgd_datetime)
    return bkgd_ds
 end
 
-function get_range_lims(final_field; prescribed_max = 0)
+function get_range_lims(final_field; max_fraction = 1, prescribed_max = 0)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
-   field_lims = [-field_max, field_max]
+   field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
 
 function get_2D_spatial_axis_kwargs(x, y, z;
