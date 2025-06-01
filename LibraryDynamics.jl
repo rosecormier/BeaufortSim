@@ -45,7 +45,7 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
    
    #this will all be cleaner if we convert to polar coords upfront; i plan to change this
 
-   if σz == "infinity"
+   if σz == "infinity" #Barotropic case
   
       b̄ = (x, y, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
       ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
@@ -53,10 +53,12 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
       v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
                          * exp((1/2) - (x^2 + y^2)/(σr^2)))
 
+      ūφ_abs = (x, y, z) -> (sqrt(2)*U/σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2))
+
       b̄z_top = (x, y, t) -> bkgd_N²_top
       b̄z_bot = (x, y, t) -> bkgd_N²_bot
    
-   else
+   else #Baroclinic case
       
       b̄ = (x, y, z) -> (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
                  + ((sqrt(2)*f*U*σr*z/(σz^2))
@@ -73,6 +75,8 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
       v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
                          * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
 
+      ūφ_abs = (x, y, z) -> (sqrt(2)*U/σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2) - (z/σz)^2)
+
       b̄z_top = (x, y, t) -> (bkgd_N²_top
                                 .+ (sqrt(2)*f*U*σr/(σz^2)
                                    * exp(1/2)
@@ -87,5 +91,5 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
    b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
 				   bottom = GradientBoundaryCondition(b̄z_bot))
 
-   return b̄, ū, v̄, b̄_BCs
+   return b̄, ū, v̄, ūφ_abs, b̄_BCs
 end
