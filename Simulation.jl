@@ -20,9 +20,9 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 1024
-const Ny = 1024
-const Nz = 16 #256
+const Nx = 512 #1024
+const Ny = 512 #1024
+const Nz = 64 #16 #256
 
 #Lengths of axes
 const Lx = 4e3 * kilometer #2e3 * kilometer
@@ -30,10 +30,10 @@ const Ly = 4e3 * kilometer #2e3 * kilometer
 const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
-const νh = 5e-3 * (meter^2/second)
-const νv = 5e-6 * (meter^2/second)
-const κh = 5e-3 * (meter^2/second)
-const κv = 5e-6 * (meter^2/second)
+const νh = 0 * (meter^2/second)
+const νv = 0 * (meter^2/second)
+const κh = 0 * (meter^2/second)
+const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -60,20 +60,17 @@ const d_ML = -50 * meter
 const Δti     = 5 * second
 const Δt_max  = 1 * hour
 const CFL     = 0.2
-const tf      = 60 * day
+const tf      = 120 * day
 const Δt_save = 8 * hour
 
 #Architecture
 const use_GPU = true
 
-#Max. magnitude of initial b-perturbations (0 for no perturbation)
-#const max_b′ = 4e-3 * (meter/(second^2))
-
 #Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-5
+const max_u′ = 1e-7
 
-const save_bkgd = true #Whether to save background state to a NetCDF file
-const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
+const save_bkgd = false #Whether to save background state to a NetCDF file
+const bkgd_datetime = "250602-103815" #If save_bkgd == true, must == nothing
 
 #Whether to run visualization functions
 const vis_const_x = false
@@ -83,16 +80,17 @@ const vis_norms   = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
-const x_idx      = 514 #259
+const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 12 #253
+const z_idx      = 32 #253
 const t_idx_skip = 1
 
-#Seed for random-number generator
-const seed = 12345
+#Seeds for 2 random-number generators
+const seed1 = 12345
+const seed2 = 67890
 
-if !isnothing(seed)
-   Random.seed!(seed)
+if !isnothing(seed1)
+   Random.seed!(seed1)
 end
 
 #########################
@@ -122,7 +120,8 @@ closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh),
 const bkgd_N²_top = N²₀
 const bkgd_N²_bot = N²₀
 
-b̄, ū, v̄, b̄_BCs = bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+b̄, ū, v̄, ūφ_abs, b̄_BCs = bkgd_fields(f, σr, σz, U, 
+				     bkgd_N²_top, bkgd_N²_bot)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -185,12 +184,18 @@ end
 # SET UP AND RUN SIMULATION #
 #############################
 
-#@inline b_perturbed(x, y, z) = (max_b′ * 2 * (rand() - 0.5)) + b̄(x, y, z)
-@inline ūφ_abs(x, y, z) = (sqrt(2) * U / σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2)) #barotropic case
 @inline speed_perturb(x, y, z) = (2 * (rand() - 0.5)) * max_u′ * ūφ_abs(x, y, z)
-@inline u_perturbed(x, y, z) = ū(x, y, z) + speed_perturb(x, y, z)
-#set!(model, b = b_perturbed) 
-set!(model, u = u_perturbed) #Update initial condition to trigger BCI
+
+if !isnothing(seed2)
+   Random.seed!(seed2)
+end
+
+@inline direction_perturb(x, y, z) = 2pi * rand()
+
+@inline u_perturbed(x, y, z) = ū(x, y, z) + (speed_perturb(x, y, z) * cos(direction_perturb(x, y, z)))
+@inline v_perturbed(x, y, z) = v̄(x, y, z) + (speed_perturb(x, y, z) * sin(direction_perturb(x, y, z)))
+
+set!(model, u = u_perturbed, v = v_perturbed) #Update initial condition to trigger BCI
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
@@ -248,7 +253,8 @@ open(logfilepath, "w") do file
    write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
-   write(file, "Max. u', random-number seed = $(max_u′), $(seed) \n\n")
+   write(file, "Max. u' = $(max_u′) \n")
+   write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
    write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
