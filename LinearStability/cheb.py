@@ -7,7 +7,7 @@ def cheb(N):
     Computes the Chebyshev differentiation matrix on N+1 points 
      (i.e., N intervals).
     Returns:
-      D = differentiation matrix
+      D = (N+1) x (N+1) Chebyshev differentiation matrix
       x = Chebyshev grid
     """
 
@@ -31,6 +31,7 @@ def cheb(N):
         #This is the element-wise difference between X and (X*)^T.
         #All entries of x are real, so X = X* and thus dX is antisymmetric.
 
+        #Define the Chebyshev coeffs c_{ij}
         c = (np.ravel(np.vstack([2, np.ones([N-1, 1]), 2]))
              * (-1.0)**np.ravel(np.array(range(N+1))))
         #Note: * above is an element-wise product, not matrix product
@@ -38,6 +39,9 @@ def cheb(N):
         #The resulting c is an (N+1)-component vector with entries:
         # [[2.0], [-1.0], ..., [(-1.0)^(N-1)], [2(-1.0)^N]]
 
+        print(c)
+        print(1/c.conj())
+        print(c * (1/c).conj().transpose())
         D = (c * (1/c).conj().transpose()) / (dX + (np.eye(N+1))) #Off-diags
         D = D - np.diag(np.sum(D, 1)) #Diagonal entries
    
