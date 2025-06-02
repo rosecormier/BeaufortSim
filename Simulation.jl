@@ -60,7 +60,7 @@ const d_ML = -50 * meter
 const Δti     = 5 * second
 const Δt_max  = 1 * hour
 const CFL     = 0.2
-const tf      = 120 * day
+const tf      = 200 * day
 const Δt_save = 8 * hour
 
 #Architecture
