@@ -1,3 +1,9 @@
+"""
+Modification of Storer's code cheb.py.
+
+I reference "Spectral Methods in MATLAB" by L. Trefethen.
+"""
+
 import numpy as np
 
 from math import pi
@@ -27,9 +33,9 @@ def cheb(N):
         #  ...
         #  [xN, xN, ..., xN]]
 
-        dX = X - X.conj().transpose()
-        #This is the element-wise difference between X and (X*)^T.
-        #All entries of x are real, so X = X* and thus dX is antisymmetric.
+        dX = X - X.conj().transpose() 
+        #Element-wise difference between X and (X*)^T;
+        # all entries of x are real, so X = X* and thus dX is antisymmetric
 
         #Define the Chebyshev coeffs c_{ij}
         c = (np.ravel(np.vstack([2, np.ones([N-1, 1]), 2]))
@@ -39,10 +45,11 @@ def cheb(N):
         #The resulting c is an (N+1)-component vector with entries:
         # [[2.0], [-1.0], ..., [(-1.0)^(N-1)], [2(-1.0)^N]]
 
-        print(c)
-        print(1/c.conj())
-        print(c * (1/c).conj().transpose())
-        D = (c * (1/c).conj().transpose()) / (dX + (np.eye(N+1))) #Off-diags
-        D = D - np.diag(np.sum(D, 1)) #Diagonal entries
+        #Initialize D with off-diag entries computed by eq. 6.5 in Trefethen
+        D = (c * (1/c).conj().transpose()) / (dX + (np.eye(N+1)))
+        
+        #Update the diagonal entries (currently = 0) 
+        # using identity 6.6 in Trefethen
+        D = D - np.diag(np.sum(D, 1)) 
    
     return D, x
