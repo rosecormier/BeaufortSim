@@ -22,7 +22,7 @@ using Printf, Random
 #Numbers of gridpoints
 const Nx = 512 #1024
 const Ny = 512 #1024
-const Nz = 64 #16 #256
+const Nz = 16 #256
 
 #Lengths of axes
 const Lx = 4e3 * kilometer #2e3 * kilometer
@@ -60,17 +60,17 @@ const d_ML = -50 * meter
 const Δti     = 5 * second
 const Δt_max  = 1 * hour
 const CFL     = 0.2
-const tf      = 200 * day
-const Δt_save = 8 * hour
+const tf      = 60 * day
+const Δt_save = 6 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-7
+const max_u′ = 1e-5
 
-const save_bkgd = false #Whether to save background state to a NetCDF file
-const bkgd_datetime = "250602-103815" #If save_bkgd == true, must == nothing
+const save_bkgd = true #Whether to save background state to a NetCDF file
+const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
 
 #Whether to run visualization functions
 const vis_const_x = false
@@ -82,7 +82,7 @@ const vis_z_grid  = false #Can only be done on CPU
 #Indices at which to plot fields
 const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 32 #253
+const z_idx      = 9 #253
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
