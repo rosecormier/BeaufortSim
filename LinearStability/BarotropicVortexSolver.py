@@ -1,4 +1,6 @@
-#Modification of Storer's code 'Linear Stability of a Barotropic QG Vortex'
+"""
+Modification of Storer's code 'Linear Stability of a Barotropic QG Vortex'
+"""
 
 import argparse
 import matplotlib.pyplot as plt
@@ -25,10 +27,10 @@ from FiniteDiff import FiniteDiff
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
                     help = 'Number of grid points for eig computations',
-                    type = int, default = 1000) #202)
+                    type = int, default = 1001)
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
-                    type = int, default = 1000)
+                    type = int, default = 1001)
 parser.add_argument('-H', '--depth', 
                     help = 'Fluid depth parameter (DOES NOTHING)',
                     type = float, default = 1e3)
@@ -127,20 +129,20 @@ def Build_Laplacian(params, geom):
    
     halfNr, Nr = params.halfNr, params.Nr
 
-    #2nd-order r-derivatives?
-    D1d = geom.Dr2[1:halfNr+1, 1:halfNr+1]
-    D2d = geom.Dr2[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)]
-    
-    #1st-order r-derivatives?
-    E1d = geom.Dr[1:halfNr+1, 1:halfNr+1]
-    E2d = geom.Dr[np.arange(1, halfNr+1, 1), :][:, np.arange(Nr-1, halfNr-1, -1)]
-    
+    #Quadrants of 2nd-order r-derivative matrix to be retained
+    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
+    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+
+    #Quadrants of 1st-order r-derivatives matrix to be retained
+    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
+    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+
     if sp.issparse(geom.Dr):
         R = sp.spdiags(np.transpose(1.0/geom.r[1:halfNr+1]), np.array([0]), halfNr, halfNr)
     else:
         R = np.diag(1.0/np.ravel(geom.r[1:halfNr+1]))
 
-    Lap = D1d + D2d + np.dot(R, E1d + E2d)
+    Lap = D1 + D2 + np.dot(R, E1 + E2)
 
     return Lap
 
