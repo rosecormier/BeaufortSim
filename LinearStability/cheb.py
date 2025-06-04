@@ -45,11 +45,10 @@ def cheb(N):
         #The resulting c is an (N+1)-component vector with entries:
         # [[2.0], [-1.0], ..., [(-1.0)^(N-1)], [2(-1.0)^N]]
 
-        #Initialize D with off-diag entries computed by eq. 6.5 in Trefethen
+        #Initialize D with off-diag entries computed by eq. 6.5 (Trefethen)
         D = (c * (1/c).conj().transpose()) / (dX + (np.eye(N+1)))
         
-        #Update the diagonal entries (currently = 0) 
-        # using identity 6.6 in Trefethen
+        #Update diagonal entries (currently = 0) using identity 6.6 (Trefethen)
         D = D - np.diag(np.sum(D, 1)) 
    
     return D, x
