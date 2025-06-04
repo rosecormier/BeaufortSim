@@ -139,14 +139,17 @@ def Build_Laplacian(params, geom):
     E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
     E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
 
+    #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
+    #Why are we skipping j = 0? They do this in the book too.
     if sp.issparse(geom.Dr):
         R = sp.spdiags(np.transpose(1.0/geom.r[1:halfNr+1]), np.array([0]), halfNr, halfNr)
     else:
         R = np.diag(1.0/np.ravel(geom.r[1:halfNr+1]))
 
-    Lap = D1 + D2 + np.dot(R, E1 + E2)
+    #Build discretized Laplacian as done in Ch.11 of Trefethen
+    Laplacian = D1 + D2 + np.dot(R, E1 + E2)
 
-    return Lap
+    return Laplacian
 
 def Print_npArray(fp, arr):
     for ii in xrange(0, arr.shape[0]):
