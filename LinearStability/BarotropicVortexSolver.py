@@ -70,7 +70,7 @@ class Parameters:
     g        = args.gravity
     N        = args.buoyancy
 
-    Lr       = 6.25 #Max. r-value in physical space; half computational domain
+    Lr       = 6.25 #Max. r in physical space; 1/2 computational-domain length
     Nr       = args.Neig #Number of gridpoints
     halfNr   = args.Neig // 2
     
@@ -106,8 +106,7 @@ class Geometry:
             #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
             Dr, r = Chebyshev(params.Nr)
             
-            #Scale gridpoints and variable of differentiation to fit 
-            # desired domain
+            #Scale gridpoints and variable of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             
             #Second-order differentiation matrix
@@ -162,16 +161,15 @@ def Print_npArray(fp, arr):
             
 def QG_Vortex_Stability():
 
-    #Initialize parameters and set up geometry
+    #Initialize parameters and set up geometries
 
-    paramsCheb = Parameters()
-    paramsFD   = Parameters()
-
-    GeomCheb = Geometry('cheb', paramsCheb)
-    GeomFD   = Geometry('FD', paramsFD)
-
+    paramsCheb   = Parameters()
+    GeomCheb     = Geometry("cheb", paramsCheb)
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
-    GeomFD.Lap   = Build_Laplacian(paramsFD, GeomFD)
+    
+    paramsFD   = Parameters()
+    GeomFD     = Geometry('FD', paramsFD)
+    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
 
     #Set up background-state flow profile
 
