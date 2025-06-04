@@ -173,13 +173,17 @@ def QG_Vortex_Stability():
 
     #Set up background-state flow profile
 
-    rin    = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
-    Prsp   = np.ravel(-0.5 * np.exp(-rin**2))            # 1/r*Psi_r
-    Qrsp   = np.ravel(-2 * np.exp(-rin**2) * (rin**2 - 2))   # 1/r*Q_r
+    #r-values at interior gridpoints that lie in physical space
+    rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)] #Same question, why omit index 0?
     
-    rin    = GeomFD.r[1:(paramsFD.halfNr + 1)]
-    Prfd   = np.ravel(-0.5 * np.exp(-rin**2))            # 1/r*Psi_r
-    Qrfd   = np.ravel(-2 * np.exp(-rin**2) * (rin**2 - 2))   # 1/r*Q_r
+    Prsp   = np.ravel(-0.5 * np.exp(-rInterior**2))            # 1/r*Psi_r
+    Qrsp   = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))   # 1/r*Q_r
+    
+    #r-values at interior gridpoints that lie in physical space
+    rInterior = GeomFD.r[1:(paramsFD.halfNr + 1)]
+
+    Prfd   = np.ravel(-0.5 * np.exp(-rInterior**2))            # 1/r*Psi_r
+    Qrfd   = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))   # 1/r*Q_r
 
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
@@ -187,6 +191,7 @@ def QG_Vortex_Stability():
  
     growthsp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     frequysp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
+
     growthfd = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     frequyfd = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
 
