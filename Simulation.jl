@@ -67,7 +67,7 @@ const Δt_save = 6 * hour
 const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-5
+const max_u′ = 1e-7
 
 const save_bkgd = true #Whether to save background state to a NetCDF file
 const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
