@@ -1,5 +1,7 @@
 """
-Modification of Storer's code 'Linear Stability of a Barotropic QG Vortex'
+Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
+
+Some of the notation follows "Spectral Methods in MATLAB" by L. Trefethen.
 """
 
 import argparse
@@ -17,7 +19,7 @@ from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
 from scipy.special import factorial
 
-from cheb import cheb
+from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 
 #############################
@@ -102,7 +104,7 @@ class Geometry:
         if method == 'cheb':
            
             #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
-            Dr, r = cheb(params.Nr)
+            Dr, r = Chebyshev(params.Nr)
             
             #Scale gridpoints and variable of differentiation to fit 
             # desired domain

@@ -8,7 +8,7 @@ import numpy as np
 
 from math import pi
 
-def cheb(N):
+def Chebyshev(N):
     """
     Computes the Chebyshev differentiation matrix on N+1 points 
      (i.e., N intervals).
