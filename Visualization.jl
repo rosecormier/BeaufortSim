@@ -36,16 +36,16 @@ function visualize_norms(datetime, grid;
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$",
 		    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]", 
-		    yscale = log)
+		    yscale = log10)
    ax_ur     = Axis(fig_cyl[2, 2]; title = L"Norm of $u_r'$",
                     xlabel = L"$t$ [days]", ylabel = L"$||u_r'||$ [m/s]", 
-		    yscale = log)
+		    yscale = log10)
    ax_uφ     = Axis(fig_cyl[3, 1]; title = L"Norm of $u_{\phi}'$",
 		    xlabel = L"$t$ [days]", ylabel = L"$||u_{\phi}'||$ [m/s]", 
-		    yscale = log)
+		    yscale = log10)
    ax_uz_cyl = Axis(fig_cyl[3, 2]; title = L"Norm of $u_z'$",
                     xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                    yscale = log)
+                    yscale = log10)
 
    n = Observable(2)
    
@@ -62,16 +62,16 @@ function visualize_norms(datetime, grid;
       fig_Cart   = Figure(size = (1200, 700))
       ax_b_Cart  = Axis(fig_Cart[2, 1]; title = L"Norm of $b'$",
                         xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
-                        yscale = log)
+                        yscale = log10)
       ax_ux      = Axis(fig_Cart[2, 2]; title = L"Norm of $u_x'$",
                         xlabel = L"$t$ [days]", ylabel = L"$||u_x'||$ [m/s]",
-                        yscale = log)
+                        yscale = log10)
       ax_uy      = Axis(fig_Cart[3, 1]; title = L"Norm of $u_y'$",
                         xlabel = L"$t$ [days]", ylabel = L"$||u_y'||$ [m/s]",
-                        yscale = log)
+                        yscale = log10)
       ax_uz_Cart = Axis(fig_Cart[3, 2]; title = L"Norm of $u_z'$",
                         xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                        yscale = log)
+                        yscale = log10)
 
       ux_norm = @lift field_norm(ux, $n; ψ_bkgd = Ux)
       uy_norm = @lift field_norm(uy, $n; ψ_bkgd = Uy)
