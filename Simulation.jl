@@ -20,13 +20,13 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 512 #1024
-const Ny = 512 #1024
-const Nz = 16 #256
+const Nx = 512
+const Ny = 512
+const Nz = 16
 
 #Lengths of axes
-const Lx = 4e3 * kilometer #2e3 * kilometer
-const Ly = 4e3 * kilometer #2e3 * kilometer
+const Lx = 4e3 * kilometer
+const Ly = 4e3 * kilometer
 const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
@@ -44,7 +44,7 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 250 * kilometer
-const σz = "infinity" #300 * meter
+const σz = "infinity" ##300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1.5e-1 * (meter/second)
@@ -60,14 +60,14 @@ const d_ML = -50 * meter
 const Δti     = 5 * second
 const Δt_max  = 1 * hour
 const CFL     = 0.2
-const tf      = 60 * day
-const Δt_save = 6 * hour
+const tf      = 40 * day
+const Δt_save = 4 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-7
+const max_u′ = 1e-6
 
 const save_bkgd = true #Whether to save background state to a NetCDF file
 const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
@@ -82,7 +82,7 @@ const vis_z_grid  = false #Can only be done on CPU
 #Indices at which to plot fields
 const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 9 #253
+const z_idx      = 9
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
@@ -184,14 +184,15 @@ end
 # SET UP AND RUN SIMULATION #
 #############################
 
-@inline speed_perturb(x, y, z) = (2 * (rand() - 0.5)) * max_u′ * ūφ_abs(x, y, z)
+#Perturb speed
+@inline speed_perturb(x, y, z) = (2 * (rand() - 0.5)) * max_u′ ##* ūφ_abs(x, y, z)
 
 if !isnothing(seed2)
    Random.seed!(seed2)
 end
 
+#Perturb components of velocity by randomizing direction of perturbation
 @inline direction_perturb(x, y, z) = 2pi * rand()
-
 @inline u_perturbed(x, y, z) = ū(x, y, z) + (speed_perturb(x, y, z) * cos(direction_perturb(x, y, z)))
 @inline v_perturbed(x, y, z) = v̄(x, y, z) + (speed_perturb(x, y, z) * sin(direction_perturb(x, y, z)))
 
@@ -301,7 +302,8 @@ if vis_const_z
 end
 
 if vis_norms
-   visualize_norms(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
+   visualize_norms(datetimenow, model.grid; 
+		   bkgd_datetime = bkgd_datetime, do_Cartesian = true)
 end
 
 if vis_z_grid
