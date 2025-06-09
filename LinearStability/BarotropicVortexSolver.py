@@ -1,7 +1,7 @@
 """
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
-Some of the notation follows "Spectral Methods in MATLAB" by L. Trefethen.
+Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
 All variables are assumed to have been non-dimensionalized.
 """
 
@@ -70,7 +70,7 @@ class Parameters:
     Nt       = 40
     kps      = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs      = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
-    
+        
     nmodes   = args.modes
     printout = args.PrintOutputs
 
@@ -124,12 +124,12 @@ def Build_Laplacian(params, geom):
     # Dirichlet BCs
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
-    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(r > 0, > 0)
-    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(r > 0, < 0)
+    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
+    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
 
     #Quadrants of 1st-order r-derivatives matrix to be retained
-    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(r > 0, > 0)
-    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(r > 0, < 0)
+    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
+    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
 
     #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
     if sp.issparse(geom.Dr):
@@ -168,12 +168,11 @@ def QG_Vortex_Stability():
     #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
 
-    #Array of 1/(r * dPsi/dr) evaluated at gridpoints
-    Prsp = np.ravel((2*e)**(-0.5) * rInterior**(-2) * np.exp(rInterior**2))
+    #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
+    Prsp = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
 
-    #Array of 1/(r * dQ/dr) evaluated at gridpoints
-    Qrsp = np.ravel((1/paramsCheb.Ro) 
-                    + np.sqrt(8*e) * np.exp(-rInterior**2) * (1 - rInterior**2))
+    #Array of (1/r) * (dQ/dr) evaluated at gridpoints
+    Qrsp = np.ravel(-np.sqrt(32*e) * (2 - rInterior**2) * np.exp(-rInterior**2))
 
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
@@ -193,29 +192,28 @@ def QG_Vortex_Stability():
     #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = GeomFD.r[1:(paramsFD.halfNr + 1)]
 
-    #Array of 1/(r * dPsi/dr) evaluated at gridpoints
-    Prfd = np.ravel((2*e)**(-0.5) * rInterior**(-2) * np.exp(rInterior**2))
+    #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
+    Prfd = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
 
-    #Array of 1/(r * dQ/dr) evaluated at gridpoints
-    Qrfd = np.ravel((1/paramsCheb.Ro)
-                    + np.sqrt(8*e) * np.exp(-rInterior**2) * (1 - rInterior**2))
+    #Array of (1/r) * (dQ/dr) evaluated at gridpoints
+    Qrfd = np.ravel(-np.sqrt(32*e) * (2 - rInterior**2) * np.exp(-rInterior**2))
 
     growthsp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     frequysp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
 
     growthfd = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     frequyfd = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-
+    
     #Start solving
 
-    for cntz in range(0, kzs.shape[0]):
+    for kz_idx in range(0, kzs.shape[0]):
 
-        kz  = kzs[cntz]
+        kz  = kzs[kz_idx]
         kz2 = kz**2
   
-        for cntp in range(0, kps.shape[0]):
+        for kp_idx in range(0, kps.shape[0]):
 
-            kp  = kps[cntp]
+            kp  = kps[kp_idx]
             kp2 = kp**2
     
             #Build A and B for eigen-analysis
@@ -242,10 +240,10 @@ def QG_Vortex_Stability():
             ind        = (-eigValCheb.imag).argsort()
             eigVecCheb = eigVecCheb[:, ind]
             eigValCheb = eigValCheb[ind]
-
-            omegaCheb               = eigValCheb * kp
-            growthsp[cntz, cntp, :] = omegaCheb[0:nmodes].imag
-            frequysp[cntz, cntp, :] = omegaCheb[0:nmodes].real
+            omegaCheb  = eigValCheb * kp
+            
+            growthsp[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].imag
+            frequysp[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].real
             
             for ii in range(0, nmodes): #Loop over modes
             
@@ -328,8 +326,8 @@ def QG_Vortex_Stability():
                 growfd = omegafd.imag
                 freqfd = omegafd.real
 
-                growthfd[cntz, cntp, ii] = growfd
-                frequyfd[cntz, cntp, ii] = freqfd
+                growthfd[kz_idx, kp_idx, ii] = growfd
+                frequyfd[kz_idx, kp_idx, ii] = freqfd
         
                 if paramsCheb.printout: #Display results
                     print('----------')
