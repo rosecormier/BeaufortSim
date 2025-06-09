@@ -237,7 +237,8 @@ def QG_Vortex_Stability():
                                   )
 
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
-                     - (kz2 * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
+                     - (kz2 * (1 / paramsCheb.Bu)
+                        * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
             A_Cheb = np.dot(np.diag(Ψ_op_Cheb), B_Cheb) - np.diag(Q_op_Cheb)
 
             #For finite-difference solver
@@ -246,7 +247,8 @@ def QG_Vortex_Stability():
                               np.ravel(1 / GeomFD.r[1:(paramsFD.halfNr + 1)]**2)
                                 )
             B_FD = (GeomFD.Lap - (kp2 * recipR2_FD) 
-                    - (kz2 * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
+                    - (kz2 * (1 / paramsFD.Bu)
+                       * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
             A_FD = np.dot(np.diag(Ψ_op_FD), B_FD) - np.diag(Q_op_FD)
             
             ############################
@@ -257,7 +259,7 @@ def QG_Vortex_Stability():
 
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
             
-            timesp = timeit.timeit() - t0
+            timeCheb = timeit.timeit() - t0
             
             ind        = (-eigValCheb.imag).argsort()
             eigVecCheb = eigVecCheb[:, ind]
@@ -354,7 +356,7 @@ def QG_Vortex_Stability():
                 if paramsCheb.printout: #Display results
                     print('----------')
                     print('kz = {0:4f}, kp = {1:2f}'.format(kz, kp))
-                    print('eig : growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growth, freq, timesp))
+                    print('eig : growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growth, freq, timeCheb))
                     print('eigs: growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growthFD_temp, freqFD_temp, timeFD))
                     sys.stdout.flush()
 
