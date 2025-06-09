@@ -130,20 +130,23 @@ def Build_Laplacian(params, geom):
    
     halfNr, Nr = params.halfNr, params.Nr
 
+    #Note: we do not explicitly set zeroth indices because we impose zero
+    # Dirichlet BCs
+
     #Quadrants of 2nd-order r-derivative matrix to be retained
-    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
-    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(r > 0, > 0)
+    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(r > 0, < 0)
 
     #Quadrants of 1st-order r-derivatives matrix to be retained
-    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
-    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(r > 0, > 0)
+    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(r > 0, < 0)
 
     #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
-    #Why are we skipping j = 0? They do this in the book too.
     if sp.issparse(geom.Dr):
-        R = sp.spdiags(np.transpose(1.0/geom.r[1:halfNr+1]), np.array([0]), halfNr, halfNr)
+        R = sp.spdiags(np.transpose(1 / geom.r[1:(halfNr+1)]), 
+                       np.array([0]), halfNr, halfNr)
     else:
-        R = np.diag(1.0/np.ravel(geom.r[1:halfNr+1]))
+        R = np.diag(1 / np.ravel(geom.r[1:(halfNr+1)]))
 
     #Build discretized Laplacian as done in Ch.11 of Trefethen
     Laplacian = D1 + D2 + np.dot(R, E1 + E2)
@@ -174,7 +177,7 @@ def QG_Vortex_Stability():
     #Set up background-state flow profile
 
     #r-values at interior gridpoints that lie in physical space
-    rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)] #Same question, why omit index 0?
+    rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
     
     Prsp   = np.ravel(-0.5 * np.exp(-rInterior**2))            # 1/r*Psi_r
     Qrsp   = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))   # 1/r*Q_r
