@@ -2,6 +2,7 @@
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L. Trefethen.
+All variables are assumed to have been non-dimensionalized.
 """
 
 import argparse
@@ -15,6 +16,7 @@ import sys
 import time
 import timeit
 
+from math import e
 from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
 from scipy.special import factorial
@@ -33,18 +35,12 @@ parser.add_argument('--Neig',
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
                     type = int, default = 1001)
-parser.add_argument('-H', '--depth', 
-                    help = 'Fluid depth parameter (DOES NOTHING)',
-                    type = float, default = 1e3)
-parser.add_argument('-L', '--width', 
-                    help = 'Radius of the domain (DOES NOTHING)',
-                    type = float, default = 1e6)
-parser.add_argument('-f0', '--coriolis', 
-                    help = 'Coriolis f0 value (DOES NOTHING)',
-                    type = float, default = 1e-4)
-parser.add_argument('-g', '--gravity', 
-                    help = 'Acceleration due to gravity (DOES NOTHING)',
-                    type = float, default = 9.81)
+parser.add_argument('-Lr', 
+                    help = 'DIMENSIONLESS radius of the physical domain',
+                    type = float, default = 6.25)
+parser.add_argument('-Ro', '--Rossby',
+                    help = 'Rossby number of background flow', 
+                    type = float, default = 1.0)
 parser.add_argument('-p', '--PrintOutputs', 
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
@@ -64,13 +60,10 @@ args = parser.parse_args()
                     
 class Parameters:
     
-    H        = args.depth
-    L        = args.width
-    f0       = args.coriolis
-    g        = args.gravity
-    N        = args.buoyancy
+    Ro = args.Rossby
+    N  = args.buoyancy
 
-    Lr       = 6.25 #Max. r in physical space; 1/2 computational-domain length
+    Lr       = args.Lr #Max. r in physical space; half of computational domain
     Nr       = args.Neig #Number of gridpoints
     halfNr   = args.Neig // 2
     
@@ -82,10 +75,7 @@ class Parameters:
     printout = args.PrintOutputs
 
     def display(self):
-        print('H = {}'.format(self.H))
-        print('L = {}'.format(self.L))
-        print('f0 = {}'.format(self.f0))
-        print('g = {}'.format(self.g))
+        print('Ro = {}'.format(self.Ro))
         print('N = {}'.format(self.N))
         print('Lr = {}'.format(self.Lr))
         print('Nr = {}'.format(self.Nr))
@@ -163,35 +153,53 @@ def Print_npArray(fp, arr):
         fp.write('\n')
             
 def QG_Vortex_Stability():
+ 
+    ####################
+    # CHEBYSHEV SOLVER #
+    ####################
 
-    #Initialize parameters and set up geometries
-
+    #Initialize parameters and set up geometry
     paramsCheb   = Parameters()
     GeomCheb     = Geometry("cheb", paramsCheb)
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
     
-    paramsFD   = Parameters()
-    GeomFD     = Geometry('FD', paramsFD)
-    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
+    #Set up background-state-flow operators
 
-    #Set up background-state flow profile
-
-    #r-values at interior gridpoints that lie in physical space
+    #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
-    
-    Prsp   = np.ravel(-0.5 * np.exp(-rInterior**2))            # 1/r*Psi_r
-    Qrsp   = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))   # 1/r*Q_r
-    
-    #r-values at interior gridpoints that lie in physical space
-    rInterior = GeomFD.r[1:(paramsFD.halfNr + 1)]
 
-    Prfd   = np.ravel(-0.5 * np.exp(-rInterior**2))            # 1/r*Psi_r
-    Qrfd   = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))   # 1/r*Q_r
+    #Array of 1/(r * dPsi/dr) evaluated at gridpoints
+    Prsp = np.ravel((2*e)**(-0.5) * rInterior**(-2) * np.exp(rInterior**2))
+
+    #Array of 1/(r * dQ/dr) evaluated at gridpoints
+    Qrsp = np.ravel((1/paramsCheb.Ro) 
+                    + np.sqrt(8*e) * np.exp(-rInterior**2) * (1 - rInterior**2))
 
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
     nmodes = paramsCheb.nmodes
- 
+
+    ############################
+    # FINITE-DIFFERENCE SOLVER #
+    ############################
+
+    #Initialize parameters and set up geometry
+    paramsFD   = Parameters()
+    GeomFD     = Geometry('FD', paramsFD)
+    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
+
+    #Set up background-state-flow operators
+
+    #Array of those r-values at interior gridpoints that lie in physical space
+    rInterior = GeomFD.r[1:(paramsFD.halfNr + 1)]
+
+    #Array of 1/(r * dPsi/dr) evaluated at gridpoints
+    Prfd = np.ravel((2*e)**(-0.5) * rInterior**(-2) * np.exp(rInterior**2))
+
+    #Array of 1/(r * dQ/dr) evaluated at gridpoints
+    Qrfd = np.ravel((1/paramsCheb.Ro)
+                    + np.sqrt(8*e) * np.exp(-rInterior**2) * (1 - rInterior**2))
+
     growthsp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     frequysp = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
 
