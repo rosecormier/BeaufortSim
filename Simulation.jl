@@ -126,12 +126,12 @@ b̄, ū, v̄, ūφ_abs, b̄_BCs = bkgd_fields(f, σr, σz, U,
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(),
-                            closure = closure, 
+                            advection = UpwindBiasedFifthOrder(), 
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
-			    boundary_conditions = (; b = b̄_BCs,))
+			    boundary_conditions = (; b = b̄_BCs,))#,
+#			    closure = closure)
 
 b       = model.tracers.b
 u, v, w = model.velocities
@@ -184,17 +184,22 @@ end
 # SET UP AND RUN SIMULATION #
 #############################
 
-#Perturb speed
-@inline speed_perturb(x, y, z) = (2 * (rand() - 0.5)) * max_u′ ##* ūφ_abs(x, y, z)
+#Perturb velocity components to trigger BCI
+
+@inline u_perturbed(x, y, z) = (ū(x, y, z) 
+				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 if !isnothing(seed2)
-   Random.seed!(seed2)
+   Random.seed!(seed2) #Update seed so next random number is independent
 end
 
+@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
+				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+
 #Perturb components of velocity by randomizing direction of perturbation
-@inline direction_perturb(x, y, z) = 2pi * rand()
-@inline u_perturbed(x, y, z) = ū(x, y, z) + (speed_perturb(x, y, z) * cos(direction_perturb(x, y, z)))
-@inline v_perturbed(x, y, z) = v̄(x, y, z) + (speed_perturb(x, y, z) * sin(direction_perturb(x, y, z)))
+#@inline direction_perturb(x, y, z) = 2pi * rand()
+#@inline u_perturbed(x, y, z) = ū(x, y, z) + (speed_perturb(x, y, z) * cos(direction_perturb(x, y, z)))
+#@inline v_perturbed(x, y, z) = v̄(x, y, z) + (speed_perturb(x, y, z) * sin(direction_perturb(x, y, z)))
 
 set!(model, u = u_perturbed, v = v_perturbed) #Update initial condition to trigger BCI
 
