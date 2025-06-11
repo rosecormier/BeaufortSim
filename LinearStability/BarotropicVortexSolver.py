@@ -158,9 +158,7 @@ def Print_npArray(fp, arr):
             
 def QG_Vortex_Stability():
  
-    ####################
-    # CHEBYSHEV SOLVER #
-    ####################
+    #For Chebyshev solver
 
     #Initialize parameters and set up geometry
     paramsCheb   = Parameters()
@@ -186,9 +184,7 @@ def QG_Vortex_Stability():
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     freqCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
 
-    ############################
-    # FINITE-DIFFERENCE SOLVER #
-    ############################
+    #For finite-difference solver
 
     #Initialize parameters and set up geometry
     paramsFD   = Parameters()
@@ -237,8 +233,8 @@ def QG_Vortex_Stability():
                                   )
 
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
-                     - (kz2 * (1 / paramsCheb.Bu)
-                        * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
+                      - (kz2 * (1 / paramsCheb.Bu)
+                         * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
             A_Cheb = np.dot(np.diag(Ψ_op_Cheb), B_Cheb) - np.diag(Q_op_Cheb)
 
             #For finite-difference solver
@@ -257,24 +253,29 @@ def QG_Vortex_Stability():
             
             t0 = timeit.timeit()
 
+            #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
             
-            timeCheb = timeit.timeit() - t0
+            timeCheb = timeit.timeit() - t0 #Time for direct solve
             
+            #Indexing that sorts eigvals by DESCENDING Im(c)
             ind        = (-eigValCheb.imag).argsort()
-            eigVecCheb = eigVecCheb[:, ind]
-            eigValCheb = eigValCheb[ind]
-            omegaCheb  = eigValCheb * kp
+
+            eigValCheb = eigValCheb[ind] #Sort eigvals
+            eigVecCheb = eigVecCheb[:, ind] #Sort eigvecs in the same order
+            omegaCheb  = eigValCheb * kp #Corresp. omega for this k_phi
             
             growthCheb[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].imag
             freqCheb[kz_idx, kp_idx, :]   = omegaCheb[0:nmodes].real
             
+            ##############################
+            # FIND EIGENSPACE INDIRECTLY #
+            ##############################
+
             for ii in range(0, nmodes): #Loop over modes
             
                 growth = omegaCheb[ii].imag
                 freq   = omegaCheb[ii].real
-      
-                #Find eigenvalues indirectly
 
                 sig0 = eigValCheb[ii]
 
@@ -307,7 +308,7 @@ def QG_Vortex_Stability():
                 
                 try:
 
-                    sig1, vec1 = eigs(np.dot(Afd, Tinv), 1, np.dot(Bfd, Tinv),
+                    sig1, vec1 = eigs(np.dot(A_FD, Tinv), 1, np.dot(B_FD, Tinv),
                                       sigma = sig0, v0 = np.dot(T, chebvec))
 
                     vec1_normalization = (-np.abs(vec1)).argsort(axis = None)
