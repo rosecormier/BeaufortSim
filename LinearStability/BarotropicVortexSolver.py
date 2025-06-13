@@ -55,7 +55,7 @@ parser.add_argument('-kp', '--k_phi',
                     help = 'Azimuthal wavenumbers; Enter as -kp min max step',
                     type = float, default = [1, 4, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
-                    help = 'Vertical wavenumbers; Enter as -kz min max step',
+                    help = 'DIMENSIONAL vertical wavenumbers; Enter as -kz min max step',
                     type = float, default = [0, 2, 0.1], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
@@ -74,9 +74,9 @@ class Parameters:
     Nr       = args.Neig #Number of gridpoints
     halfNr   = args.Neig // 2
     
-    Nt       = 40
-    kps      = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
-    kzs      = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
+    Nt  = 40
+    kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
+    kzs = σz * np.arange(args.k_z[0], args.k_z[1], args.k_z[2]) #Dimensionless
         
     nmodes   = args.modes
     printout = args.PrintOutputs
@@ -175,11 +175,11 @@ def QG_Vortex_Stability():
     rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
 
     #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
-    Ψ_op_Cheb = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
+    Ψ_op_Cheb = np.ravel(-0.5*np.exp(-rInterior**2)) #np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
 
     #Array of (1/r) * (dQ/dr) evaluated at gridpoints
-    Q_op_Cheb = np.ravel(-np.sqrt(32*e) * (2 - rInterior**2) 
-                         * np.exp(-rInterior**2))
+    Q_op_Cheb = np.ravel(-2*np.exp(-rInterior**2)*(rInterior**2-2)) #np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
+    #                     * np.exp(-rInterior**2))
 
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
@@ -204,7 +204,7 @@ def QG_Vortex_Stability():
     Ψ_op_FD = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
 
     #Array of (1/r) * (dQ/dr) evaluated at gridpoints
-    Q_op_FD = np.ravel(-np.sqrt(32*e) * (2 - rInterior**2) 
+    Q_op_FD = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
                        * np.exp(-rInterior**2))
 
     kps    = paramsFD.kps
@@ -237,7 +237,7 @@ def QG_Vortex_Stability():
                                   )
 
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
-                      - (kz2 * paramsCheb.Bu
+                      - (kz2 * (1/paramsCheb.Bu)
                          * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
             A_Cheb = np.dot(np.diag(Ψ_op_Cheb), B_Cheb) - np.diag(Q_op_Cheb)
 
@@ -247,7 +247,7 @@ def QG_Vortex_Stability():
                               np.ravel(1 / GeomFD.r[1:(paramsFD.halfNr + 1)]**2)
                                 )
             B_FD = (GeomFD.Lap - (kp2 * recipR2_FD) 
-                    - (kz2 * paramsFD.Bu
+                    - (kz2 * (1/paramsFD.Bu)
                        * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
             A_FD = np.dot(np.diag(Ψ_op_FD), B_FD) - np.diag(Q_op_FD)
             
@@ -275,7 +275,7 @@ def QG_Vortex_Stability():
             ##############################
             # FIND EIGENSPACE INDIRECTLY #
             ##############################
-
+            """
             for ii in range(0, nmodes): #Loop over modes
             
                 growth = omegaCheb[ii].imag
@@ -360,14 +360,16 @@ def QG_Vortex_Stability():
         
                 if paramsCheb.printout: #Display results
                     print('----------')
-                    print('kz = {0:4f}, kp = {1:2f}'.format(kz, kp))
+                    print('kz =i {0:4f}, kp = {1:2f}'.format(kz, kp))
                     print('eig : growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growth, freq, timeCheb))
                     print('eigs: growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growthFD_temp, freqFD_temp, timeFD))
                     sys.stdout.flush()
-
+            """
     #################
     # VISUALIZATION #
     #################
+
+    plt.rcParams.update({"text.usetex": True})
 
     #Dimensionalize eigenvalues and vertical wavenumbers
     
@@ -377,32 +379,41 @@ def QG_Vortex_Stability():
     dim_growthCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
     dim_freqCheb   = freqCheb * paramsCheb.Ro * paramsCheb.f0
     
-    dim_kzs = kzs / (paramsCheb.Bu * paramsCheb.σz) ###
-
+    dim_kzs = kzs / paramsCheb.σz #(np.sqrt(paramsCheb.Bu) * paramsCheb.σz) ###
+    
     nkp = (np.ravel(kps)).shape[0]
     nkz = (np.ravel(dim_kzs)).shape[0]
 
     for jj in range(0, nmodes):
         
-        plt.figure(jj)
+        fig = plt.figure(jj, figsize=(15,190))
         
         if nkp < 4:
             
             for ii in range(0, nkp):
-
-                plt.subplot(nkp, 2, (1 + 2*ii))
-                plt.plot(dim_kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), '-o',
-                         dim_kzs, 4 * np.ravel(dim_growthCheb[:, ii, jj]), '-*')
-                plt.title('Growth rate for azimuthal wavenumber = {}'.format(ii))
-                plt.xlabel('Vertical wavenumber ($m^{-1}$)')
-                plt.ylabel('Growth rate ($s^{-1}$)')
-        
-                plt.subplot(nkp, 2, (2 + 2*ii))
-                plt.plot(dim_kzs, 4 * np.ravel(dim_freqFD[:, ii, jj]), '-o',
-                         dim_kzs, 4 * np.ravel(dim_freqCheb[:, ii, jj]), '-*')
-                plt.title('Propagation speed for azimuthal wavenumber = {}'.format(ii))
-                plt.xlabel('Vertical wavenumber ($m^{-1}$)')
-                plt.ylabel('Azimuthal speed ($s^{-1}$)')
+                
+                ax_growth = fig.add_subplot(nkp, 2, (1 + 2*ii))
+                ax_growth.plot(dim_kzs, 
+                                   4 * np.ravel(dim_growthFD[:, ii, jj]), '-o',
+                                   dim_kzs, 
+                                   4 * np.ravel(dim_growthCheb[:, ii, jj]), 
+                                   '-*')
+                ax_growth.set(title = 
+                              f'Growth rate; $k_{{\phi}}$ = {ii}', 
+                              xlabel = 'Vertical wavenumber ($m^{-1}$)',
+                              ylabel = 'Growth rate ($s^{-1}$)')
+                
+                ax_prop = fig.add_subplot(nkp, 2, (2 + 2*ii))
+                ax_prop.plot(dim_kzs, 
+                                 4 * np.ravel(abs(dim_freqFD[:, ii, jj])), 
+                                 '-o',
+                                 dim_kzs, 
+                                 4 * np.ravel(abs(dim_freqCheb[:, ii, jj])), 
+                                 '-*')
+                ax_prop.set(title = 
+                        f'Propagation speed; $k_{{\phi}}$ = {ii}',
+                            xlabel = 'Vertical wavenumber ($m^{-1}$)',
+                            ylabel = 'Azimuthal speed ($s^{-1}$)')
 
         elif nkz < 4:
 
@@ -440,7 +451,6 @@ def QG_Vortex_Stability():
             plt.contour(np.ravel(kps), np.ravel(kzs), 4 * freqFD[:, :, jj])
             plt.title('Propagation speed (eig)')
 
-        plt.tight_layout()
         plt.show()
         plt.savefig('test.png')
     
