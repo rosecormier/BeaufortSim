@@ -24,9 +24,7 @@ from scipy.special import factorial
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 
-#############################
-# PARSE COMMAND-LINE INPUTS #
-#############################
+#Parse command-line inputs
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
@@ -37,22 +35,25 @@ parser.add_argument('--Neigs',
                     type = int, default = 1001)
 parser.add_argument('-Lr', 
                     help = 'DIMENSIONLESS radius of the physical domain',
-                    type = float, default = 6.25)
+                    type = float, default = 8.0) #6.25)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
-                    type = float, default = 1.0)
+                    type = float, default = 4e-3)
 parser.add_argument('-Bu', '--Burger',
                     help = 'Burger number of background flow',
-                    type = float, default = 1.0)
-parser.add_argument('-p', '--PrintOutputs', 
+                    type = float, default = 2.5e-3)
+parser.add_argument('-f0', '--Coriolis',
+                    help = 'Coriolis frequency f0 (Hz)',
+                    type = float, default = 1.4e-4)
+parser.add_argument('--sigmaz', 
+                    help = 'Vertical scale of flow (m)',
+                    type = float, default = 1e3)
+parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
-#parser.add_argument('-N', '--buoyancy', 
-#                    help = 'Buoyancy frequency (DOES NOTHING)',
-#                    type = float, default = np.sqrt(5)*1e-3)
 parser.add_argument('-kp', '--k_phi', 
                     help = 'Azimuthal wavenumbers; Enter as -kp min max step',
-                    type = float, default = [1, 3, 1], nargs = 3)
+                    type = float, default = [1, 4, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'Vertical wavenumbers; Enter as -kz min max step',
                     type = float, default = [0, 2, 0.1], nargs = 3)
@@ -65,6 +66,9 @@ class Parameters:
     
     Ro = args.Rossby
     Bu = args.Burger
+
+    f0 = args.Coriolis
+    σz = args.sigmaz
 
     Lr       = args.Lr #Max. r in physical space; half of computational domain
     Nr       = args.Neig #Number of gridpoints
@@ -233,7 +237,7 @@ def QG_Vortex_Stability():
                                   )
 
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
-                      - (kz2 * (1 / paramsCheb.Bu)
+                      - (kz2 * paramsCheb.Bu
                          * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
             A_Cheb = np.dot(np.diag(Ψ_op_Cheb), B_Cheb) - np.diag(Q_op_Cheb)
 
@@ -243,7 +247,7 @@ def QG_Vortex_Stability():
                               np.ravel(1 / GeomFD.r[1:(paramsFD.halfNr + 1)]**2)
                                 )
             B_FD = (GeomFD.Lap - (kp2 * recipR2_FD) 
-                    - (kz2 * (1 / paramsFD.Bu)
+                    - (kz2 * paramsFD.Bu
                        * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
             A_FD = np.dot(np.diag(Ψ_op_FD), B_FD) - np.diag(Q_op_FD)
             
@@ -361,11 +365,23 @@ def QG_Vortex_Stability():
                     print('eigs: growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growthFD_temp, freqFD_temp, timeFD))
                     sys.stdout.flush()
 
-    #Plot eigenvalue results
+    #################
+    # VISUALIZATION #
+    #################
+
+    #Dimensionalize eigenvalues and vertical wavenumbers
     
+    dim_growthFD = growthFD * paramsFD.Ro * paramsFD.f0
+    dim_freqFD   = freqFD * paramsFD.Ro * paramsFD.f0
+
+    dim_growthCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
+    dim_freqCheb   = freqCheb * paramsCheb.Ro * paramsCheb.f0
+    
+    dim_kzs = kzs / (paramsCheb.Bu * paramsCheb.σz) ###
+
     nkp = (np.ravel(kps)).shape[0]
-    nkz = (np.ravel(kzs)).shape[0]
-    
+    nkz = (np.ravel(dim_kzs)).shape[0]
+
     for jj in range(0, nmodes):
         
         plt.figure(jj)
@@ -375,18 +391,18 @@ def QG_Vortex_Stability():
             for ii in range(0, nkp):
 
                 plt.subplot(nkp, 2, (1 + 2*ii))
-                plt.plot(kzs, 4 * np.ravel(growthFD[:, ii, jj]), '-o',
-                         kzs, 4 * np.ravel(growthCheb[:, ii, jj]), '-*')
+                plt.plot(dim_kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), '-o',
+                         dim_kzs, 4 * np.ravel(dim_growthCheb[:, ii, jj]), '-*')
                 plt.title('Growth rate for azimuthal wavenumber = {}'.format(ii))
-                plt.xlabel('Vertical wavenumber (units?)')
-                plt.ylabel('Growth rate (units?)')
+                plt.xlabel('Vertical wavenumber ($m^{-1}$)')
+                plt.ylabel('Growth rate ($s^{-1}$)')
         
                 plt.subplot(nkp, 2, (2 + 2*ii))
-                plt.plot(kzs, 4 * np.ravel(freqFD[:, ii, jj]), '-o',
-                         kzs, 4 * np.ravel(freqCheb[:, ii, jj]), '-*')
+                plt.plot(dim_kzs, 4 * np.ravel(dim_freqFD[:, ii, jj]), '-o',
+                         dim_kzs, 4 * np.ravel(dim_freqCheb[:, ii, jj]), '-*')
                 plt.title('Propagation speed for azimuthal wavenumber = {}'.format(ii))
-                plt.xlabel('Vertical wavenumber (units?)')
-                plt.ylabel('Speed (units?)')
+                plt.xlabel('Vertical wavenumber ($m^{-1}$)')
+                plt.ylabel('Azimuthal speed ($s^{-1}$)')
 
         elif nkz < 4:
 
@@ -424,7 +440,9 @@ def QG_Vortex_Stability():
             plt.contour(np.ravel(kps), np.ravel(kzs), 4 * freqFD[:, :, jj])
             plt.title('Propagation speed (eig)')
 
+        plt.tight_layout()
         plt.show()
+        plt.savefig('test.png')
     
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
