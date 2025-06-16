@@ -29,7 +29,7 @@ from FiniteDiff import FiniteDiff
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
                     help = 'Number of grid points for eig computations',
-                    type = int, default = 1001)
+                    type = int, default = 91) #1001)
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
                     type = int, default = 1001)
@@ -45,9 +45,6 @@ parser.add_argument('-Bu', '--Burger',
 parser.add_argument('-f0', '--Coriolis',
                     help = 'Coriolis frequency f0 (Hz)',
                     type = float, default = 1.4e-4)
-parser.add_argument('--sigmaz', 
-                    help = 'Vertical scale of flow (m)',
-                    type = float, default = 1e3)
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
@@ -55,7 +52,7 @@ parser.add_argument('-kp', '--k_phi',
                     help = 'Azimuthal wavenumbers; Enter as -kp min max step',
                     type = float, default = [1, 4, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
-                    help = 'DIMENSIONAL vertical wavenumbers; Enter as -kz min max step',
+                    help = 'DIMENSIONLESS vertical wavenumbers; Enter as -kz min max step',
                     type = float, default = [0, 2, 0.1], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
@@ -68,15 +65,14 @@ class Parameters:
     Bu = args.Burger
 
     f0 = args.Coriolis
-    σz = args.sigmaz
 
-    Lr       = args.Lr #Max. r in physical space; half of computational domain
-    Nr       = args.Neig #Number of gridpoints
-    halfNr   = args.Neig // 2
+    Lr     = args.Lr #Max. r in physical space; half of computational domain
+    Nr     = args.Neig #Number of gridpoints
+    halfNr = args.Neig // 2
     
     Nt  = 40
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
-    kzs = σz * np.arange(args.k_z[0], args.k_z[1], args.k_z[2]) #Dimensionless
+    kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
     nmodes   = args.modes
     printout = args.PrintOutputs
@@ -85,7 +81,6 @@ class Parameters:
         print('Ro = {}'.format(self.Ro))
         print('Bu = {}'.format(self.Bu))
         print('Lr = {}'.format(self.Lr))
-        print(f"sigma_z = {self.σz} m")
         print('Nr = {}'.format(self.Nr))
         print('halfNr = {}'.format(self.halfNr))
         print('Nt = {}'.format(self.Nt))
@@ -206,11 +201,11 @@ def QG_Vortex_Stability():
     #Array of (1/r) * (dQ/dr) evaluated at gridpoints
     Q_op_FD = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
                        * np.exp(-rInterior**2))
-
+    """
     kps    = paramsFD.kps
     kzs    = paramsFD.kzs
     nmodes = paramsFD.nmodes
-
+    """
     growthFD = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     freqFD   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     
@@ -371,7 +366,7 @@ def QG_Vortex_Stability():
 
     plt.rcParams.update({"text.usetex": True})
 
-    #Dimensionalize eigenvalues and vertical wavenumbers
+    #Dimensionalize eigenvalues
     
     dim_growthFD = growthFD * paramsFD.Ro * paramsFD.f0
     dim_freqFD   = freqFD * paramsFD.Ro * paramsFD.f0
@@ -379,10 +374,8 @@ def QG_Vortex_Stability():
     dim_growthCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
     dim_freqCheb   = freqCheb * paramsCheb.Ro * paramsCheb.f0
     
-    dim_kzs = kzs / paramsCheb.σz #(np.sqrt(paramsCheb.Bu) * paramsCheb.σz) ###
-    
     nkp = (np.ravel(kps)).shape[0]
-    nkz = (np.ravel(dim_kzs)).shape[0]
+    nkz = (np.ravel(kzs)).shape[0]
 
     for jj in range(0, nmodes):
         
@@ -393,9 +386,9 @@ def QG_Vortex_Stability():
             for ii in range(0, nkp):
                 
                 ax_growth = axes[ii, 0]
-                ax_growth.plot(dim_kzs, 
+                ax_growth.plot(kzs, 
                                    4 * np.ravel(dim_growthCheb[:, ii, jj]), '-o')#,
-                                   #dim_kzs, 
+                                   #kzs, 
                                    #4 * np.ravel(dim_growthFD[:, ii, jj]), 
                                    #'-*')
                 ax_growth.set(title = 
@@ -403,18 +396,18 @@ def QG_Vortex_Stability():
                               ylabel = 'Growth rate ($s^{-1}$)')
                 
                 ax_prop = axes[ii, 1]
-                ax_prop.plot(dim_kzs, 
+                ax_prop.plot(kzs, 
                                  4 * np.ravel(dim_freqCheb[:, ii, jj]), 
                                  '-o')#,
-                                 #dim_kzs, 
+                                 #kzs, 
                                  #4 * np.ravel(dim_freqFD[:, ii, jj]), 
                                  #'-*')
                 ax_prop.set(title = 
                         f'Propagation speed; $k_{{\phi}}$ = {ii + 1}',
                             ylabel = 'Azimuthal speed ($s^{-1}$)')
 
-            ax_growth.set(xlabel = 'Vertical wavenumber ($m^{-1}$)')
-            ax_prop.set(xlabel = 'Vertical wavenumber ($m^{-1}$)')
+            ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
+            ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
         
             plt.show()
             fig.savefig(f"mode{jj}.png")
