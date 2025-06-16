@@ -83,9 +83,9 @@ class Parameters:
 
     def display(self):
         print('Ro = {}'.format(self.Ro))
-        #print('N = {}'.format(self.N))
         print('Bu = {}'.format(self.Bu))
         print('Lr = {}'.format(self.Lr))
+        print(f"sigma_z = {self.σz} m")
         print('Nr = {}'.format(self.Nr))
         print('halfNr = {}'.format(self.halfNr))
         print('Nt = {}'.format(self.Nt))
@@ -386,35 +386,39 @@ def QG_Vortex_Stability():
 
     for jj in range(0, nmodes):
         
-        fig = plt.figure(jj, figsize=(15,190))
-        
         if nkp < 4:
+        
+            fig, axes = plt.subplots(nkp, 2, sharex = "col")
             
             for ii in range(0, nkp):
                 
-                ax_growth = fig.add_subplot(nkp, 2, (1 + 2*ii))
+                ax_growth = axes[ii, 0]
                 ax_growth.plot(dim_kzs, 
-                                   4 * np.ravel(dim_growthFD[:, ii, jj]), '-o',
-                                   dim_kzs, 
-                                   4 * np.ravel(dim_growthCheb[:, ii, jj]), 
-                                   '-*')
+                                   4 * np.ravel(dim_growthCheb[:, ii, jj]), '-o')#,
+                                   #dim_kzs, 
+                                   #4 * np.ravel(dim_growthFD[:, ii, jj]), 
+                                   #'-*')
                 ax_growth.set(title = 
-                              f'Growth rate; $k_{{\phi}}$ = {ii}', 
-                              xlabel = 'Vertical wavenumber ($m^{-1}$)',
+                              f'Growth rate; $k_{{\phi}}$ = {ii + 1}', 
                               ylabel = 'Growth rate ($s^{-1}$)')
                 
-                ax_prop = fig.add_subplot(nkp, 2, (2 + 2*ii))
+                ax_prop = axes[ii, 1]
                 ax_prop.plot(dim_kzs, 
-                                 4 * np.ravel(abs(dim_freqFD[:, ii, jj])), 
-                                 '-o',
-                                 dim_kzs, 
-                                 4 * np.ravel(abs(dim_freqCheb[:, ii, jj])), 
-                                 '-*')
+                                 4 * np.ravel(dim_freqCheb[:, ii, jj]), 
+                                 '-o')#,
+                                 #dim_kzs, 
+                                 #4 * np.ravel(dim_freqFD[:, ii, jj]), 
+                                 #'-*')
                 ax_prop.set(title = 
-                        f'Propagation speed; $k_{{\phi}}$ = {ii}',
-                            xlabel = 'Vertical wavenumber ($m^{-1}$)',
+                        f'Propagation speed; $k_{{\phi}}$ = {ii + 1}',
                             ylabel = 'Azimuthal speed ($s^{-1}$)')
 
+            ax_growth.set(xlabel = 'Vertical wavenumber ($m^{-1}$)')
+            ax_prop.set(xlabel = 'Vertical wavenumber ($m^{-1}$)')
+        
+            plt.show()
+            fig.savefig(f"mode{jj}.png")
+        """
         elif nkz < 4:
 
             for ii in range(0, nkz):
@@ -450,9 +454,7 @@ def QG_Vortex_Stability():
             plt.subplot(2, 2, 4)
             plt.contour(np.ravel(kps), np.ravel(kzs), 4 * freqFD[:, :, jj])
             plt.title('Propagation speed (eig)')
-
-        plt.show()
-        plt.savefig('test.png')
-    
+        """  
+        
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
