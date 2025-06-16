@@ -381,7 +381,7 @@ def QG_Vortex_Stability():
         
         if nkp < 4:
         
-            fig, axes = plt.subplots(nkp, 2, sharex = "col")
+            fig, axes = plt.subplots(nkp, 2, figsize = (100, 70), sharex = "col")
             
             for ii in range(0, nkp):
                 
