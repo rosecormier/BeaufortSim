@@ -45,6 +45,9 @@ parser.add_argument('-Bu', '--Burger',
 parser.add_argument('-f0', '--Coriolis',
                     help = 'Coriolis frequency f0 (Hz)',
                     type = float, default = 1.4e-4)
+parser.add_argument('--bkgd',
+                    help = 'Background flow to use ("GM" or "BG")',
+                    type = str, default = "BG")
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
@@ -65,6 +68,7 @@ class Parameters:
     Bu = args.Burger
 
     f0 = args.Coriolis
+    bkgd = args.bkgd
 
     Lr     = args.Lr #Max. r in physical space; half of computational domain
     Nr     = args.Neig #Number of gridpoints
@@ -146,6 +150,21 @@ def Build_Laplacian(params, geom):
 
     return Laplacian
 
+def Build_Bkgd_Operators(params, geom):
+
+    #Array of those r-values at interior gridpoints that lie in physical space
+    rInterior = geom.r[1:(params.halfNr + 1)]
+
+    if params.bkgd == "GM":
+        Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
+        Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
+
+    elif params.bkgd == "BG":
+        Ψ_op = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
+        Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) * np.exp(-rInterior**2))
+
+    return Ψ_op, Q_op
+
 def Print_npArray(fp, arr):
     for ii in xrange(0, arr.shape[0]):
         for jj in xrange(0, arr.shape[1]):
@@ -165,17 +184,23 @@ def QG_Vortex_Stability():
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
     
     #Set up background-state-flow operators
-
+    """
     #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
 
+    Ψ_op_Cheb_GM = np.ravel(-0.5*np.exp(-rInterior**2))
+    Ψ_op_Cheb_BG = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
+    """
     #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
-    Ψ_op_Cheb = np.ravel(-0.5*np.exp(-rInterior**2)) #np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-
+    GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
+    """
+    Q_op_Cheb_GM = np.ravel(-2*np.exp(-rInterior**2)*(rInterior**2-2))
+    Q_op_Cheb_BG = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) * np.exp(-rInterior**2))
+    """
     #Array of (1/r) * (dQ/dr) evaluated at gridpoints
-    Q_op_Cheb = np.ravel(-2*np.exp(-rInterior**2)*(rInterior**2-2)) #np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
-    #                     * np.exp(-rInterior**2))
-
+    """
+    Q_op_Cheb = Q_op_Cheb_BG
+    """
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
     nmodes = paramsCheb.nmodes
@@ -234,7 +259,7 @@ def QG_Vortex_Stability():
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
                       - (kz2 * (1/paramsCheb.Bu)
                          * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
-            A_Cheb = np.dot(np.diag(Ψ_op_Cheb), B_Cheb) - np.diag(Q_op_Cheb)
+            A_Cheb = np.dot(np.diag(GeomCheb.Ψ_op), B_Cheb) - np.diag(GeomCheb.Q_op)
 
             #For finite-difference solver
 
