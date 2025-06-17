@@ -155,13 +155,16 @@ def Build_Bkgd_Operators(params, geom):
     #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = geom.r[1:(params.halfNr + 1)]
 
+    #Build array of (1/r) * (dPsi/dr) evaluated at gridpoints
+    # and array of (1/r) * (dQ/dr) evaluated at gridpoints
     if params.bkgd == "GM":
         Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
         Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
 
     elif params.bkgd == "BG":
         Ψ_op = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-        Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) * np.exp(-rInterior**2))
+        Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
+                        * np.exp(-rInterior**2))
 
     return Ψ_op, Q_op
 
@@ -184,23 +187,8 @@ def QG_Vortex_Stability():
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
     
     #Set up background-state-flow operators
-    """
-    #Array of those r-values at interior gridpoints that lie in physical space
-    rInterior = GeomCheb.r[1:(paramsCheb.halfNr + 1)]
-
-    Ψ_op_Cheb_GM = np.ravel(-0.5*np.exp(-rInterior**2))
-    Ψ_op_Cheb_BG = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-    """
-    #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
     GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
-    """
-    Q_op_Cheb_GM = np.ravel(-2*np.exp(-rInterior**2)*(rInterior**2-2))
-    Q_op_Cheb_BG = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) * np.exp(-rInterior**2))
-    """
-    #Array of (1/r) * (dQ/dr) evaluated at gridpoints
-    """
-    Q_op_Cheb = Q_op_Cheb_BG
-    """
+    
     kps    = paramsCheb.kps
     kzs    = paramsCheb.kzs
     nmodes = paramsCheb.nmodes
