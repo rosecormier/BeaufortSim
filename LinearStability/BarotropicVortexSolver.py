@@ -102,7 +102,7 @@ class Geometry:
            
             #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
             Dr, r = Chebyshev(params.Nr)
-            
+                        
             #Scale gridpoints and variable of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             
@@ -266,7 +266,7 @@ def QG_Vortex_Stability():
             ############################
             
             t0 = timeit.timeit()
-
+        
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
              
@@ -276,14 +276,14 @@ def QG_Vortex_Stability():
             ind        = (-eigValCheb.imag).argsort()
 
             eigValCheb = eigValCheb[ind] #Sort eigvals
-            eigVecCheb = eigVecCheb[:, ind] #Sort eigvecs in the same order
+            eigVecCheb = eigVecCheb.transpose()[:, ind] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
             growthCheb[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].imag
             propCheb[kz_idx, kp_idx, :]   = omegaCheb[0:nmodes].real
             eigvecCheb[kz_idx, kp_idx, :, 0, :] = eigVecCheb[0:nmodes].real
             eigvecCheb[kz_idx, kp_idx, :, 1, :] = eigVecCheb[0:nmodes].imag
-
+            
             ##############################
             # FIND EIGENSPACE INDIRECTLY #
             ##############################
@@ -468,14 +468,19 @@ def QG_Vortex_Stability():
 
         #Plot spatial structure of streamfunction
 
-        #psi = GetStreamfunc(eigVecCheb[jj], k = 1, m = 0.8 
-        print(eigvecCheb)
-        fig, ax = plt.subplots(figsize = (20, 20)) 
+        kz_idx, kp_idx = 8, 0
+
+        eigvec_Re = eigvecCheb[kz_idx, kp_idx, jj, 0, :]
+        eigvec_Im = eigvecCheb[kz_idx, kp_idx, jj, 1, :]
         
-        ax.scatter(GeomCheb.r[1:(paramsCheb.halfNr + 1)], 
-                   (eigVecCheb[jj].real)[::-1], color = "red")
-        ax.scatter(GeomCheb.r[1:(paramsCheb.halfNr + 1)],
-                   (eigVecCheb[jj].imag)[::-1], color = "indigo")
+        psi = GetStreamfunc((eigvec_Re + 1j * eigvec_Im)) #, k = 1, phi = 0)
+        
+        fig, ax = plt.subplots(figsize = (20, 20)) 
+         
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)], 
+                (psi.real), color = "red")
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)],
+                (psi.imag), color = "indigo")
         
         ax.set(xlabel = r"$r/\sigma_r$", 
                ylabel = r"Components of $\hat{\psi}$",
