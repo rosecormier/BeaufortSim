@@ -30,7 +30,7 @@ from GetStreamfunc import GetStreamfunc
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
                     help = 'Number of grid points for eig computations',
-                    type = int, default = 91) #1001)
+                    type = int, default = 181)
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
                     type = int, default = 1001)
@@ -102,7 +102,7 @@ class Geometry:
            
             #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
             Dr, r = Chebyshev(params.Nr)
-                        
+            
             #Scale gridpoints and variable of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             
@@ -196,7 +196,9 @@ def QG_Vortex_Stability():
 
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    eigvecCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes, 2, paramsCheb.halfNr])
+    modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, 
+                           paramsCheb.halfNr], 
+                          dtype=complex)
 
     #For finite-difference solver
 
@@ -276,13 +278,12 @@ def QG_Vortex_Stability():
             ind        = (-eigValCheb.imag).argsort()
 
             eigValCheb = eigValCheb[ind] #Sort eigvals
-            eigVecCheb = eigVecCheb.transpose()[:, ind] #Sort eigvecs in the same order
+            eigVecCheb = eigVecCheb[:, ind] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
             growthCheb[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].imag
             propCheb[kz_idx, kp_idx, :]   = omegaCheb[0:nmodes].real
-            eigvecCheb[kz_idx, kp_idx, :, 0, :] = eigVecCheb[0:nmodes].real
-            eigvecCheb[kz_idx, kp_idx, :, 1, :] = eigVecCheb[0:nmodes].imag
+            modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[0:nmodes]
             
             ##############################
             # FIND EIGENSPACE INDIRECTLY #
@@ -468,19 +469,19 @@ def QG_Vortex_Stability():
 
         #Plot spatial structure of streamfunction
 
-        kz_idx, kp_idx = 8, 0
+        kz_idx, kp_idx = 0, 1
 
-        eigvec_Re = eigvecCheb[kz_idx, kp_idx, jj, 0, :]
-        eigvec_Im = eigvecCheb[kz_idx, kp_idx, jj, 1, :]
-        
-        psi = GetStreamfunc((eigvec_Re + 1j * eigvec_Im)) #, k = 1, phi = 0)
-        
+        eigvec = modesCheb[kz_idx, kp_idx, jj, :] 
+        psi    = GetStreamfunc(eigvec, k=2, phi=0)
+        psiAmp = np.sqrt(psi.real**2 + psi.imag**2)
+
         fig, ax = plt.subplots(figsize = (20, 20)) 
          
-        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)], 
-                (psi.real), color = "red")
-        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)],
-                (psi.imag), color = "indigo")
+        ax.scatter(GeomCheb.r[(paramsCheb.halfNr + 1):1:-1], 
+                (psi.real)/max(psiAmp), color = "red")
+        ax.scatter(GeomCheb.r[(paramsCheb.halfNr + 1):1:-1],
+                (psi.imag)/max(psiAmp), color = "indigo")
+        #ax.plot(GeomCheb.r[(paramsCheb.halfNr+1):1:-1], amp, color="blue")
         
         ax.set(xlabel = r"$r/\sigma_r$", 
                ylabel = r"Components of $\hat{\psi}$",
