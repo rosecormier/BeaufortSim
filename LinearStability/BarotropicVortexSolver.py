@@ -74,7 +74,7 @@ class Parameters:
     Nr     = args.Neig #Number of gridpoints
     halfNr = args.Neig // 2
     
-    Nt  = 40
+    Np  = 40
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -82,15 +82,16 @@ class Parameters:
     printout = args.PrintOutputs
 
     def display(self):
-        print('Ro = {}'.format(self.Ro))
-        print('Bu = {}'.format(self.Bu))
-        print('Lr = {}'.format(self.Lr))
-        print('Nr = {}'.format(self.Nr))
-        print('halfNr = {}'.format(self.halfNr))
-        print('Nt = {}'.format(self.Nt))
-        print('kps = {}'.format(self.kps))
-        print('kzs = {}'.format(self.kzs))
-        print('nmodes = {}'.format(self.nmodes))
+        print(f"Ro = {self.Ro}")
+        print(f"Bu = {self.Bu}")
+        print(f"f0 = {self.f0}")
+        print(f"Lr = {self.Lr}")
+        print(f"Nr = {self.Nr}")
+        print(f"halfNr = {self.halfNr}")
+        print(f"Np = {self.Np}")
+        print(f"kps = {self.kps}")
+        print(f"kzs = {self.kzs}")
+        print(f"nmodes = {self.nmodes}")
 
 class Geometry:
 
@@ -151,12 +152,13 @@ def Build_Laplacian(params, geom):
     return Laplacian
 
 def Build_Bkgd_Operators(params, geom):
+    """
+    Build array of (1/r) * (dPsi/dr) and array of (1/r) * (dQ/dr), each 
+     evaluated at gridpoints.
+    """
 
     #Array of those r-values at interior gridpoints that lie in physical space
     rInterior = geom.r[1:(params.halfNr + 1)]
-
-    #Build array of (1/r) * (dPsi/dr) evaluated at gridpoints
-    # and array of (1/r) * (dQ/dr) evaluated at gridpoints
 
     if params.bkgd == "GM":
         Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
@@ -180,52 +182,38 @@ def Print_npArray(fp, arr):
             
 def QG_Vortex_Stability():
  
-    #For Chebyshev solver
-
-    #Initialize parameters and set up geometry
+    #Initialize parameters and set up geometry for Chebyshev solver
     paramsCheb   = Parameters()
     GeomCheb     = Geometry("cheb", paramsCheb)
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
-    
-    #Set up background-state-flow operators
+
+    #Discretize background-state-flow operators on Chebyshev grid
     GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
+
+    #Initialize parameters and set up geometry for finite-difference solver
+    paramsFD   = Parameters()
+    GeomFD     = Geometry('FD', paramsFD)
+    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
+
+    #Discretize background-state-flow operators on finite-differencing grid
+    GeomFD.Ψ_op, GeomFD.Q_op = Build_Bkgd_Operators(paramsFD, GeomFD)
     
-    kps    = paramsCheb.kps
-    kzs    = paramsCheb.kzs
-    nmodes = paramsCheb.nmodes
+    #Information about wavenumbers and modes is the same for both solvers
+    kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
+
+    #Initialize arrays to store results of eigen-computations
 
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, 
                            paramsCheb.halfNr], 
-                          dtype=complex)
+                          dtype = complex)
 
-    #For finite-difference solver
-
-    #Initialize parameters and set up geometry
-    paramsFD   = Parameters()
-    GeomFD     = Geometry('FD', paramsFD)
-    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
-
-    #Set up background-state-flow operators
-
-    #Array of those r-values at interior gridpoints that lie in physical space
-    rInterior = GeomFD.r[1:(paramsFD.halfNr + 1)]
-
-    #Array of (1/r) * (dPsi/dr) evaluated at gridpoints
-    Ψ_op_FD = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-
-    #Array of (1/r) * (dQ/dr) evaluated at gridpoints
-    Q_op_FD = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
-                       * np.exp(-rInterior**2))
-    """
-    kps    = paramsFD.kps
-    kzs    = paramsFD.kzs
-    nmodes = paramsFD.nmodes
-    """
     growthFD = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propFD   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    
+    modesFD  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, paramsFD.halfNr],
+                        dtype = complex)
+
     #Start solving
 
     for kz_idx in range(0, kzs.shape[0]):
@@ -261,30 +249,48 @@ def QG_Vortex_Stability():
             B_FD = (GeomFD.Lap - (kp2 * recipR2_FD) 
                     - (kz2 * (1/paramsFD.Bu)
                        * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
-            A_FD = np.dot(np.diag(Ψ_op_FD), B_FD) - np.diag(Q_op_FD)
+            A_FD = np.dot(np.diag(GeomFD.Ψ_op), B_FD) - np.diag(GeomFD.Q_op)
             
             ############################
             # FIND EIGENSPACE DIRECTLY #
             ############################
             
-            t0 = timeit.timeit()
+            t0Cheb = timeit.timeit()
         
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
              
-            timeCheb = timeit.timeit() - t0 #Time for direct solve
+            timeCheb = timeit.timeit() - t0Cheb #Time for direct solve
             
             #Indexing that sorts eigvals by DESCENDING Im(c)
-            ind        = (-eigValCheb.imag).argsort()
+            indCheb = (-eigValCheb.imag).argsort()
 
-            eigValCheb = eigValCheb[ind] #Sort eigvals
-            eigVecCheb = eigVecCheb[:, ind] #Sort eigvecs in the same order
+            eigValCheb = eigValCheb[indCheb] #Sort eigvals
+            eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
             growthCheb[kz_idx, kp_idx, :] = omegaCheb[0:nmodes].imag
             propCheb[kz_idx, kp_idx, :]   = omegaCheb[0:nmodes].real
             modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[0:nmodes]
             
+            t0FD = timeit.timeit()
+
+            #Compute eigvals c and eigvecs psi with direct solver ('eig')
+            eigValFD, eigVecFD = spalg.eig(A_FD, B_FD)
+
+            timeFD = timeit.timeit() - t0FD #Time for direct solve
+
+            #Indexing that sorts eigvals by DESCENDING Im(c)
+            indFD = (-eigValFD.imag).argsort()
+
+            eigValFD = eigValFD[indFD] #Sort eigvals
+            eigVecFD = eigVecFD[:, indFD] #Sort eigvecs in the same order
+            omegaFD  = eigValFD * kp #Corresp. omegas for this k_phi
+
+            growthFD[kz_idx, kp_idx, :] = omegaFD[0:nmodes].imag
+            propFD[kz_idx, kp_idx, :]   = omegaFD[0:nmodes].real
+            modesFD[kz_idx, kp_idx, :, :] = eigVecFD[0:nmodes]
+
             ##############################
             # FIND EIGENSPACE INDIRECTLY #
             ##############################
