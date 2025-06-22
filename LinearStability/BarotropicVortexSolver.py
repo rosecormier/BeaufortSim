@@ -280,9 +280,7 @@ def QG_Vortex_Stability():
 
             timeFD = timeit.timeit() - t0FD #Time for direct solve
 
-            #Indexing that sorts eigvals by DESCENDING Im(c)
-            #indFD = (-eigValFD.imag).argsort()
-            #asc
+            #Indexing that sorts eigvals by ASCENDING Im(c)
             indFD = np.argsort(eigValFD.imag)
 
             eigValFD = eigValFD[indFD] #Sort eigvals
@@ -476,7 +474,7 @@ def QG_Vortex_Stability():
 
         #Plot spatial structure of streamfunction
 
-        kz_idx, kp_idx = 8,0
+        kz_idx, kp_idx = 0,1
 
         eigvecCheb = modesCheb[kz_idx, kp_idx, jj, :] 
         psiCheb    = GetStreamfunc(eigvecCheb) #, k=2, phi=0)
