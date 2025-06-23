@@ -16,7 +16,7 @@ import sys
 import time
 import timeit
 
-from math import e
+from math import e, pi
 from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
 from scipy.special import factorial
@@ -125,11 +125,13 @@ class Geometry:
             self.Dr2 = np.dot(self.Dr, self.Dr)
 
 def Build_Laplacian(params, geom):
+    """
+    Build discretized Laplacian operator.
+    Note: we do not explicitly set zeroth indices because we impose zero
+     Dirichlet BCs.
+    """
    
     halfNr, Nr = params.halfNr, params.Nr
-
-    #Note: we do not explicitly set zeroth indices because we impose zero
-    # Dirichlet BCs
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
     D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
@@ -214,7 +216,9 @@ def QG_Vortex_Stability():
     modesFD  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, paramsFD.halfNr],
                         dtype = complex)
 
-    #Start solving
+    ########################################
+    # SOLVE GENERALIZED EIGENVALUE PROBLEM #
+    ########################################
 
     for kz_idx in range(0, kzs.shape[0]):
 
@@ -239,7 +243,8 @@ def QG_Vortex_Stability():
             B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
                       - (kz2 * (1/paramsCheb.Bu)
                          * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
-            A_Cheb = np.dot(np.diag(GeomCheb.Ψ_op), B_Cheb) - np.diag(GeomCheb.Q_op)
+            A_Cheb = (np.dot(np.diag(GeomCheb.Ψ_op), B_Cheb) 
+                      - np.diag(GeomCheb.Q_op))
 
             #For finite-difference solver
 
@@ -260,17 +265,17 @@ def QG_Vortex_Stability():
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
              
-            timeCheb = timeit.timeit() - t0Cheb #Time for direct solve
+            timeCheb = timeit.timeit() - t0Cheb #Time for direct Cheb solver
             
             #Indexing that sorts eigvals by ASCENDING Im(c)
             indCheb = np.argsort(eigValCheb.imag)
-            
+             
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
             eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
-            growthCheb[kz_idx, kp_idx, :] = -omegaCheb[0:nmodes].imag
-            propCheb[kz_idx, kp_idx, :]   = omegaCheb[0:nmodes].real
+            growthCheb[kz_idx, kp_idx, :]   = -omegaCheb[0:nmodes].imag
+            propCheb[kz_idx, kp_idx, :]     = omegaCheb[0:nmodes].real
             modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[0:nmodes]
             
             t0FD = timeit.timeit()
@@ -278,7 +283,7 @@ def QG_Vortex_Stability():
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValFD, eigVecFD = spalg.eig(A_FD, B_FD)
 
-            timeFD = timeit.timeit() - t0FD #Time for direct solve
+            timeFD = timeit.timeit() - t0FD #Time for direct FD solver
 
             #Indexing that sorts eigvals by ASCENDING Im(c)
             indFD = np.argsort(eigValFD.imag)
@@ -287,8 +292,8 @@ def QG_Vortex_Stability():
             eigVecFD = eigVecFD[:, indFD] #Sort eigvecs in the same order
             omegaFD  = eigValFD * kp #Corresp. omegas for this k_phi
 
-            growthFD[kz_idx, kp_idx, :] = -omegaFD[0:nmodes].imag
-            propFD[kz_idx, kp_idx, :]   = omegaFD[0:nmodes].real
+            growthFD[kz_idx, kp_idx, :]   = -omegaFD[0:nmodes].imag
+            propFD[kz_idx, kp_idx, :]     = omegaFD[0:nmodes].real
             modesFD[kz_idx, kp_idx, :, :] = eigVecFD[0:nmodes]
 
             ##############################
@@ -384,6 +389,7 @@ def QG_Vortex_Stability():
                     print('eigs: growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growthFD_temp, freqFD_temp, timeFD))
                     sys.stdout.flush()
             """
+
     #################
     # VISUALIZATION #
     #################
@@ -392,18 +398,19 @@ def QG_Vortex_Stability():
 
     #Dimensionalize eigenvalues
     
-    dim_growthFD = growthFD * paramsFD.Ro * paramsFD.f0
-    dim_propFD   = propFD * paramsFD.Ro * paramsFD.f0
-
     dim_growthCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
     dim_propCheb   = propCheb * paramsCheb.Ro * paramsCheb.f0
+
+    dim_growthFD = growthFD * paramsFD.Ro * paramsFD.f0
+    dim_propFD   = propFD * paramsFD.Ro * paramsFD.f0
     
-    nkp = (np.ravel(kps)).shape[0]
-    nkz = (np.ravel(kzs)).shape[0]
+    nkp, nkz = (np.ravel(kps)).shape[0], (np.ravel(kzs)).shape[0]
 
     for jj in range(0, nmodes):
         
         if nkp < 4:
+
+            #Visualize growth rates and propagation speeds for different kphi
         
             fig, axes = plt.subplots(nkp, 2, figsize = (50, 35), 
                                      sharex = "col")
@@ -412,7 +419,8 @@ def QG_Vortex_Stability():
                 
                 ax_growth = axes[ii, 0]
                 ax_growth.plot(kzs, 4 * np.ravel(dim_growthCheb[:, ii, jj]), 
-                               ".-", color = "mediumpurple", label = "Cheb solver")
+                               ".-", color = "mediumpurple", 
+                               label = "Cheb solver")
                 ax_growth.plot(kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), 
                                ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
@@ -421,17 +429,17 @@ def QG_Vortex_Stability():
                 
                 ax_prop = axes[ii, 1]
                 ax_prop.plot(kzs, 4 * np.ravel(dim_propCheb[:, ii, jj]), 
-                             ".-", color = "mediumpurple")
+                             ".-", color = "mediumpurple", 
+                             label = "Cheb solver")
                 ax_prop.plot(kzs, 4 * np.ravel(dim_propFD[:, ii, jj]), 
-                             ".-", color = "orange")
+                             ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
-                        f'Propagation speed; $k_{{\phi}}$ = {kps[ii]}',
-                            ylabel = 'Azimuthal speed ($s^{-1}$)')
+                        f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
+                            ylabel = "Azimuthal speed ($s^{-1}$)")
 
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             axes[0, 0].legend()
-
             plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
         """
@@ -472,35 +480,56 @@ def QG_Vortex_Stability():
             plt.title('Propagation speed (eig)')
         """
 
-        #Plot spatial structure of streamfunction
+        #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 0,1
+        kz_idx, kp_idx = 8, 0
+        kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
-        eigvecCheb = modesCheb[kz_idx, kp_idx, jj, :] 
-        psiCheb    = GetStreamfunc(eigvecCheb) #, k=2, phi=0)
-        psiChebAmp = np.sqrt(psiCheb.real**2 + psiCheb.imag**2)
+        eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :] 
+        #psiCheb    = GetStreamfunc(eigvecCheb, k = kphi, phi = 0.9)
+        eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
+        eigvecChebNorm = eigvecCheb / max(eigvecChebAmp)
 
-        eigvecFD = modesFD[kz_idx, kp_idx, jj, :]
-        psiFD = GetStreamfunc(eigvecFD) #, k=2, phi=0)
-        psiFDAmp = np.sqrt(psiFD.real**2 + psiFD.imag**2)
+        eigvecFD     = modesFD[kz_idx, kp_idx, jj, :]
+        #psiFD    = GetStreamfunc(eigvecFD, k = kphi, phi = 0.9)
+        eigvecFDAmp  = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
+        eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
 
         fig, ax = plt.subplots(figsize = (20, 20)) 
         
-        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], 
-                (psiCheb.real / max(psiChebAmp)), ".-", color = "mediumpurple", label = r"Re($\hat{\psi}$); Cheb solver")
-        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1],
-                (psiCheb.imag / max(psiChebAmp)), ".--", color = "mediumpurple", label = r"Im($\hat{\psi}$); Cheb solver")
-        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1],
-                (psiFD.real / max(psiFDAmp)), ".-", color = "orange", label = r"Re($\hat{\psi}$); FD solver")
-        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1],
-                (psiFD.imag / max(psiFDAmp)), ".--", color = "orange", label = r"Im($\hat{\psi}$); FD solver")
-
-        ax.set(xlabel = r"$r/\sigma_r$", 
-               ylabel = r"Component of $\hat{\psi}$",
-               title = f"Components of mode-{jj} streamfunction")
+        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.real, 
+                "-", color = "mediumpurple",
+                label = "Re($\hat{\psi}$); Cheb solver")
+        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.imag,
+                "--", color = "mediumpurple", 
+                label = "Im($\hat{\psi}$); Cheb solver")
+        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.real,
+                ".-", color = "orange", label = "Re($\hat{\psi}$); FD solver")
+        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.imag,
+                ".--", color = "orange", label = "Im($\hat{\psi}$); FD solver")
+        
+        ax.set(xlabel = "$r/\sigma_r$", 
+               ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
+               title = f"Components of mode-{jj} streamfunction for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
         plt.show()
-        fig.savefig(f"eigvec_structure_mode{jj}.png")
+        fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
+
+        #Plot streamfunction structures in r-phi plane
+
+        phiVis = np.linspace(0, 2*pi, 40)
+
+        psiCheb = np.zeros([len(phiVis), paramsCheb.halfNr], dtype = complex)
+        for r_idx in range(paramsCheb.halfNr):
+            for phi_idx in range(len(phiVis)):
+                psiCheb[phi_idx, r_idx] = GetStreamfunc(eigvecChebNorm[r_idx], k = kphi, phi = phiVis[phi_idx])
+
+        rCheb, phiCheb = np.meshgrid(GeomCheb.r[paramsCheb.halfNr:0:-1], phiVis)
+
+        fig, axes = plt.subplots(1, 2, figsize = (20, 20), subplot_kw = dict(projection = "polar"))
+        axes[0].contourf(phiCheb, rCheb, psiCheb.real)
+        axes[1].contourf(phiCheb, rCheb, psiCheb.imag)
+        plt.show()
 
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
