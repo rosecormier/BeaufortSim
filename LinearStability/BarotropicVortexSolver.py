@@ -17,6 +17,8 @@ import time
 import timeit
 
 from math import e, pi
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
 from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
 from scipy.special import factorial
@@ -442,6 +444,7 @@ def QG_Vortex_Stability():
             axes[0, 0].legend()
             plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
+            plt.close(fig)
         """
         elif nkz < 4:
 
@@ -486,12 +489,10 @@ def QG_Vortex_Stability():
         kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :] 
-        #psiCheb    = GetStreamfunc(eigvecCheb, k = kphi, phi = 0.9)
         eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
         eigvecChebNorm = eigvecCheb / max(eigvecChebAmp)
 
         eigvecFD     = modesFD[kz_idx, kp_idx, jj, :]
-        #psiFD    = GetStreamfunc(eigvecFD, k = kphi, phi = 0.9)
         eigvecFDAmp  = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
 
@@ -499,37 +500,81 @@ def QG_Vortex_Stability():
         
         ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.real, 
                 "-", color = "mediumpurple",
-                label = "Re($\hat{\psi}$); Cheb solver")
+                label = "Re[$\hat{\psi}$]; Cheb solver")
         ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.imag,
                 "--", color = "mediumpurple", 
-                label = "Im($\hat{\psi}$); Cheb solver")
+                label = "Im[$\hat{\psi}$]; Cheb solver")
         ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.real,
-                ".-", color = "orange", label = "Re($\hat{\psi}$); FD solver")
+                ".-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
         ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.imag,
-                ".--", color = "orange", label = "Im($\hat{\psi}$); FD solver")
+                ".--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
         
         ax.set(xlabel = "$r/\sigma_r$", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
-               title = f"Components of mode-{jj} streamfunction for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+               title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
         plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
+        plt.close(fig)
 
         #Plot streamfunction structures in r-phi plane
 
-        phiVis = np.linspace(0, 2*pi, 40)
+        Np     = paramsCheb.Np #Number of phi-grid-points
+        phiVis = np.linspace(0, 2*pi, Np)
 
-        psiCheb = np.zeros([len(phiVis), paramsCheb.halfNr], dtype = complex)
-        for r_idx in range(paramsCheb.halfNr):
-            for phi_idx in range(len(phiVis)):
-                psiCheb[phi_idx, r_idx] = GetStreamfunc(eigvecChebNorm[r_idx], k = kphi, phi = phiVis[phi_idx])
-
+        #Meshgrids of polar coordinates to plot
         rCheb, phiCheb = np.meshgrid(GeomCheb.r[paramsCheb.halfNr:0:-1], phiVis)
+        rFD, phiFD     = np.meshgrid(GeomFD.r[paramsFD.halfNr:0:-1], phiVis)
 
-        fig, axes = plt.subplots(1, 2, figsize = (20, 20), subplot_kw = dict(projection = "polar"))
-        axes[0].contourf(phiCheb, rCheb, psiCheb.real)
-        axes[1].contourf(phiCheb, rCheb, psiCheb.imag)
+        #Set up arrays to hold streamfunction values
+        psiCheb = np.zeros([Np, paramsCheb.halfNr], dtype = complex)
+        psiFD   = np.zeros([Np, paramsFD.halfNr], dtype = complex)
+        
+        #Evaluate streamfunction at (r, phi)-coordinate pairs
+        for phi_idx in range(Np):
+            for r_idx in range(paramsCheb.halfNr):
+                psiCheb[phi_idx, r_idx] = GetStreamfunc(eigvecChebNorm[r_idx],
+                                                        k = kphi, 
+                                                        phi = phiVis[phi_idx])
+            for r_idx in range(paramsFD.halfNr):
+                psiFD[phi_idx, r_idx] = GetStreamfunc(eigvecFDNorm[r_idx],
+                                                      k = kphi,
+                                                      phi = phiVis[phi_idx])
+
+        fig, axs = plt.subplots(2, 2, figsize = (20, 30),
+                                subplot_kw = dict(projection = "polar"))
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(False) #Required for pcolormesh
+
+        axs[0, 0].pcolormesh(phiCheb, rCheb, psiCheb.real, 
+                             cmap = "bwr", vmin = -1, vmax = 1)
+        axs[0, 0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
+
+        axs[0, 1].pcolormesh(phiCheb, rCheb, psiCheb.imag, 
+                             cmap = "bwr", vmin = -1, vmax = 1)
+        axs[0, 1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
+
+        axs[1, 0].pcolormesh(phiFD, rFD, psiFD.real,
+                             cmap = "bwr", vmin = -1, vmax = 1)
+        axs[1, 0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]; FD solver")
+
+        axs[1, 1].pcolormesh(phiFD, rFD, psiFD.imag, 
+                             cmap = "bwr", vmin = -1, vmax = 1)
+        axs[1, 1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]; FD solver")
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(True) #Restore grid for final version
+
+        fig.subplots_adjust(hspace = 0.4)
+        fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+
+        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), cmap = "bwr"), ax = axs.ravel().tolist(), orientation = "horizontal")
         plt.show()
+        fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
+        plt.close(fig)
 
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
