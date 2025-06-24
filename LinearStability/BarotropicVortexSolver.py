@@ -271,7 +271,7 @@ def QG_Vortex_Stability():
             indCheb = np.argsort(eigValCheb.imag)
              
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
-            eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
+            eigVecCheb = eigVecCheb[indCheb, :] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
             growthCheb[kz_idx, kp_idx, :]   = -omegaCheb[0:nmodes].imag
@@ -289,7 +289,7 @@ def QG_Vortex_Stability():
             indFD = np.argsort(eigValFD.imag)
 
             eigValFD = eigValFD[indFD] #Sort eigvals
-            eigVecFD = eigVecFD[:, indFD] #Sort eigvecs in the same order
+            eigVecFD = eigVecFD[indFD, :] #Sort eigvecs in the same order
             omegaFD  = eigValFD * kp #Corresp. omegas for this k_phi
 
             growthFD[kz_idx, kp_idx, :]   = -omegaFD[0:nmodes].imag
@@ -486,7 +486,7 @@ def QG_Vortex_Stability():
         kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
-        eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :] 
+        eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :]
         eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
         eigvecChebNorm = eigvecCheb / max(eigvecChebAmp)
 
@@ -495,16 +495,16 @@ def QG_Vortex_Stability():
         eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
 
         fig, ax = plt.subplots(figsize = (10, 8)) 
-        
-        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.real, 
+         
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], eigvecChebNorm.real, 
                 "-", color = "mediumpurple",
                 label = "Re[$\hat{\psi}$]; Cheb solver")
-        ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.imag,
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], eigvecChebNorm.imag,
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
-        #ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.real,
+        #ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1):1], eigvecFDNorm.real,
         #        "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
-        #ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.imag,
+        #ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1):1], eigvecFDNorm.imag,
         #        "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
         
         ax.set(xlabel = "$r/\sigma_r$", 
@@ -521,8 +521,8 @@ def QG_Vortex_Stability():
         phiVis = np.linspace(0, 2*pi, Np)
 
         #Meshgrids of polar coordinates to plot
-        rCheb, phiCheb = np.meshgrid(GeomCheb.r[paramsCheb.halfNr:0:-1], phiVis)
-        rFD, phiFD     = np.meshgrid(GeomFD.r[paramsFD.halfNr:0:-1], phiVis)
+        rCheb, phiCheb = np.meshgrid(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], phiVis)
+        rFD, phiFD     = np.meshgrid(GeomFD.r[1:(paramsFD.halfNr + 1):1], phiVis)
 
         #Set up arrays to hold streamfunction values
         psiCheb = np.zeros([Np, paramsCheb.halfNr], dtype = complex)
