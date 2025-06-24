@@ -38,7 +38,7 @@ parser.add_argument('--Neigs',
                     type = int, default = 1001)
 parser.add_argument('-Lr', 
                     help = 'DIMENSIONLESS radius of the physical domain',
-                    type = float, default = 8.0) #6.25)
+                    type = float, default = 8.0)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
                     type = float, default = 4e-3)
@@ -101,7 +101,7 @@ class Geometry:
         
         self.method = method
         
-        if method == 'cheb':
+        if method == "cheb":
            
             #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
             Dr, r = Chebyshev(params.Nr)
@@ -109,10 +109,9 @@ class Geometry:
             #Scale gridpoints and variable of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             
-            #Second-order differentiation matrix
-            self.Dr2 = np.matmul(self.Dr, self.Dr)
+            self.Dr2 = np.matmul(self.Dr, self.Dr) #Second-order diff. matrix
         
-        elif method == 'FD':
+        elif method == "FD":
 
             dr = 2 * params.Lr / params.Nr #Uniform r-interval size
 
@@ -123,8 +122,7 @@ class Geometry:
             # stencil. Size of matrix is len(r) x len(r).
             self.Dr = FiniteDiff(self.r, 8, True, True)
 
-            #Second-order differentiation matrix
-            self.Dr2 = np.dot(self.Dr, self.Dr)
+            self.Dr2 = np.dot(self.Dr, self.Dr) #Second-order diff. matrix
 
 def Build_Laplacian(params, geom):
     """
@@ -414,7 +412,7 @@ def QG_Vortex_Stability():
 
             #Visualize growth rates and propagation speeds for different kphi
         
-            fig, axes = plt.subplots(nkp, 2, figsize = (50, 35), 
+            fig, axes = plt.subplots(nkp, 2, figsize = (10, 7), 
                                      sharex = "col")
             
             for ii in range(0, nkp):
@@ -442,7 +440,7 @@ def QG_Vortex_Stability():
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             axes[0, 0].legend()
-            plt.show()
+            #plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
             plt.close(fig)
         """
@@ -485,7 +483,7 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 8, 0
+        kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :] 
@@ -496,7 +494,7 @@ def QG_Vortex_Stability():
         eigvecFDAmp  = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
 
-        fig, ax = plt.subplots(figsize = (20, 20)) 
+        fig, ax = plt.subplots(figsize = (10, 8)) 
         
         ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.real, 
                 "-", color = "mediumpurple",
@@ -504,16 +502,16 @@ def QG_Vortex_Stability():
         ax.plot(GeomCheb.r[paramsCheb.halfNr:0:-1], eigvecChebNorm.imag,
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
-        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.real,
-                ".-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
-        ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.imag,
-                ".--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
+        #ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.real,
+        #        "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
+        #ax.plot(GeomFD.r[paramsFD.halfNr:0:-1], eigvecFDNorm.imag,
+        #        "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
         
         ax.set(xlabel = "$r/\sigma_r$", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
-        plt.show()
+        #plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
 
@@ -541,7 +539,7 @@ def QG_Vortex_Stability():
                                                       k = kphi,
                                                       phi = phiVis[phi_idx])
 
-        fig, axs = plt.subplots(2, 2, figsize = (20, 30),
+        fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
 
         for i in range(2):
@@ -568,11 +566,13 @@ def QG_Vortex_Stability():
             for j in range(2):
                 axs[i, j].grid(True) #Restore grid for final version
 
-        fig.subplots_adjust(hspace = 0.4)
+        fig.subplots_adjust(hspace = 0.5, wspace = 0.1)
         fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
-
-        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), cmap = "bwr"), ax = axs.ravel().tolist(), orientation = "horizontal")
-        plt.show()
+        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), 
+                                    cmap = "bwr"), 
+                     ax = axs.ravel().tolist(), orientation = "horizontal",
+                     shrink = 0.75)
+        #plt.show()
         fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
 
