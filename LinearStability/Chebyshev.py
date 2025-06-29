@@ -20,9 +20,9 @@ def Chebyshev(N):
     if N == 0:
         D, x = 0, 1
   
-    else:
+    #else:
         
-        #Create a vector of N+1 Chebyshev-spaced components ranging [0, N]    
+        #Create a vector of N+1 Chebyshev-spaced components from 1 to -1
         x = (np.cos(pi * np.array(range(N+1)) / N)).reshape([N+1, 1])
 
         X = np.tile(x, (1, N+1))
@@ -33,9 +33,8 @@ def Chebyshev(N):
         #  ...
         #  [xN, xN, ..., xN]]
 
-        dX = X - X.conj().transpose() 
-        #Element-wise difference between X and (X*)^T;
-        # all entries of x are real, so X = X* and thus dX is antisymmetric
+        dX = X - X.transpose() 
+        #Element-wise difference between X and X^T
 
         #Define the Chebyshev coeffs c_{ij}
         c = (np.ravel(np.vstack([2, np.ones([N-1, 1]), 2]))
@@ -46,9 +45,18 @@ def Chebyshev(N):
         # [[2.0], [-1.0], ..., [(-1.0)^(N-1)], [2(-1.0)^N]]
 
         #Initialize D with off-diag entries computed by eq. 6.5 (Trefethen)
-        D = (c * (1/c).conj().transpose()) / (dX + (np.eye(N+1)))
+        D = (c * (1/c).transpose()) / (dX + (np.eye(N+1)))
         
         #Update diagonal entries (currently = 0) using identity 6.6 (Trefethen)
         D = D - np.diag(np.sum(D, 1)) 
    
+    else:
+
+        x = np.cos(pi*np.arange(0,N+1)/N)
+        c = np.hstack([2, np.ones(N-1), 2])*(-1)**np.arange(0,N+1)
+        X = np.tile(x,(N+1,1))
+        dX = X.T - X
+        D = (c[:,np.newaxis]*(1.0/c)[np.newaxis,:])/(dX+(np.identity(N+1)))       # off-diagonal entries
+        D = D - np.diag(D.sum(axis=1))
+
     return D, x

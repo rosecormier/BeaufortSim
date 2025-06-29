@@ -73,10 +73,10 @@ class Parameters:
     bkgd = args.bkgd
 
     Lr     = args.Lr #Max. r in physical space; half of computational domain
-    Nr     = args.Neig #Number of gridpoints
+    Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2
     
-    Np  = 40
+    Np  = 8# 40
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -103,9 +103,9 @@ class Geometry:
         
         if method == "cheb":
            
-            #Compute differentiation matrix (Dr) and Chebyshev-spaced grid (r)
+            #Compute differentiation matrix and Chebyshev-spaced grid
             Dr, r = Chebyshev(params.Nr)
-            
+                        
             #Scale gridpoints and variable of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             
@@ -131,27 +131,30 @@ def Build_Laplacian(params, geom):
      Dirichlet BCs.
     """
    
-    halfNr, Nr = params.halfNr, params.Nr
+    Nr, halfNr, Np = params.Nr, params.halfNr, params.Np
 
+    I, Z = np.eye(Np // 2), np.zeros(((Np // 2), (Np // 2)))
+    
     #Quadrants of 2nd-order r-derivative matrix to be retained
-    D1 = geom.Dr2[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
-    D2 = geom.Dr2[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
-
-    #Quadrants of 1st-order r-derivatives matrix to be retained
-    E1 = geom.Dr[1:halfNr+1, :][:, 1:halfNr+1] #(pos, pos)
-    E2 = geom.Dr[1:halfNr+1, :][:, np.arange(Nr-1, halfNr, -1)] #(pos, neg)
-
+    D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
+    D2 = geom.Dr2[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+     
+    #Quadrants of 1st-order r-derivative matrix to be retained
+    E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
+    E2 = geom.Dr[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+    
     #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
     if sp.issparse(geom.Dr):
-        R = sp.spdiags(np.transpose(1 / geom.r[1:(halfNr+1)]), 
+        R = sp.spdiags(np.transpose(1 / geom.r[1:(halfNr + 1)]), 
                        np.array([0]), halfNr, halfNr)
     else:
-        R = np.diag(1 / np.ravel(geom.r[1:(halfNr+1)]))
-
+        R = np.diag(1 / np.ravel(geom.r[1:(halfNr + 1)]))
+        
     #Build discretized Laplacian as done in Ch.11 of Trefethen
-    Laplacian = D1 + D2 + np.dot(R, E1 + E2)
-
-    return Laplacian
+    Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
+           + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
+     
+    return Lap
 
 def Build_Bkgd_Operators(params, geom):
     """
@@ -160,18 +163,26 @@ def Build_Bkgd_Operators(params, geom):
     """
 
     #Array of those r-values at interior gridpoints that lie in physical space
-    rInterior = geom.r[1:(params.halfNr + 1)]
-
-    if params.bkgd == "GM":
-        Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
-        Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
+    [rInterior, phi] = np.meshgrid(geom.r[1:(params.halfNr + 1)], np.arange(1, params.Np+1))
+    rInterior = np.hstack(np.stack(rInterior[:], axis = -1)) #I think redundant if not discretizing phi
+    
+    if params.bkgd == "GM": 
+        Ψ_op = np.diag(np.ravel(-0.5 * np.exp(-rInterior**2)))
+        
+        #Q_op1 = np.diag(-2 * np.exp(np.ravel(-1/geom.r[:]**2)) * np.ravel(1/geom.r[:]**2 - 1))[1:physNr,1:physNr]
+        ##-2 * np.exp(-r[1:physNr,1:physNr]**2) * (r[1:physNr, 1:physNr]**2 - 1)
+        #Q_op2 = np.diag(-2 * np.exp(np.ravel(-1/geom.r[:]**2)) * np.ravel(1/geom.r[:]**2 - 1))[1:physNr,:][:,np.arange(compNr-1,physNr,-1)]
+        ##-2 * np.exp(-r[1:physNr,:][:,np.arange(compNr-1,physNr,-1)]**2) * (r[1:physNr,:][:,np.arange(compNr-1,physNr,-1)]**2 - 2)
+        ##Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
+        #Q_op = 
+        Q_op = np.diag(np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2)))
 
     elif params.bkgd == "BG":
         Ψ_op = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
         Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
                         * np.exp(-rInterior**2))
 
-    return Ψ_op, Q_op
+    return rInterior, Ψ_op, Q_op
 
 def Print_npArray(fp, arr):
     for ii in xrange(0, arr.shape[0]):
@@ -190,15 +201,15 @@ def QG_Vortex_Stability():
     GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
 
     #Discretize background-state-flow operators on Chebyshev grid
-    GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
-
+    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
+    
     #Initialize parameters and set up geometry for finite-difference solver
     paramsFD   = Parameters()
     GeomFD     = Geometry("FD", paramsFD)
     GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
 
     #Discretize background-state-flow operators on finite-differencing grid
-    GeomFD.Ψ_op, GeomFD.Q_op = Build_Bkgd_Operators(paramsFD, GeomFD)
+    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = Build_Bkgd_Operators(paramsFD, GeomFD)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
@@ -207,13 +218,14 @@ def QG_Vortex_Stability():
 
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, 
-                           paramsCheb.halfNr], 
+    modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], 
+                           (paramsCheb.halfNr*paramsCheb.Np), nmodes], 
                           dtype = complex)
 
     growthFD = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propFD   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    modesFD  = np.zeros([kzs.shape[0], kps.shape[0], nmodes, paramsFD.halfNr],
+    modesFD  = np.zeros([kzs.shape[0], kps.shape[0],
+                         (paramsFD.halfNr), nmodes],
                         dtype = complex)
 
     ########################################
@@ -235,27 +247,31 @@ def QG_Vortex_Stability():
             ##############################
 
             #For Chebyshev solver
- 
-            recipR2_Cheb = np.diag(
-                          np.ravel(1 / GeomCheb.r[1:(paramsCheb.halfNr + 1)]**2)
-                                  )
-
-            B_Cheb = (GeomCheb.Lap - (kp2 * recipR2_Cheb) 
-                      - (kz2 * (1/paramsCheb.Bu)
-                         * np.eye(paramsCheb.halfNr, paramsCheb.halfNr)))
-            A_Cheb = (np.dot(np.diag(GeomCheb.Ψ_op), B_Cheb) 
-                      - np.diag(GeomCheb.Q_op))
-
-            #For finite-difference solver
-
-            recipR2_FD = np.diag(
-                              np.ravel(1 / GeomFD.r[1:(paramsFD.halfNr + 1)]**2)
-                                )
-            B_FD = (GeomFD.Lap - (kp2 * recipR2_FD) 
-                    - (kz2 * (1/paramsFD.Bu)
-                       * np.eye(paramsFD.halfNr, paramsFD.halfNr)))
-            A_FD = np.dot(np.diag(GeomFD.Ψ_op), B_FD) - np.diag(GeomFD.Q_op)
+            """
+            D1 = GeomCheb.Dr2[1:physNr, 1:physNr] #(pos, pos)
+            D2 = GeomCheb.Dr2[1:physNr, np.arange(compNr-1, physNr, -1)] #(pos, neg)
+            E1 = GeomCheb.Dr[1:physNr, 1:physNr] #(pos, pos)
+            E2 = GeomCheb.Dr[1:physNr, np.arange(compNr-1, physNr, -1)] 
+            R = np.diag(1 / np.ravel(GeomCheb.r[1:(physNr)]))
             
+            L1 = D1 + np.matmul(R, E1)
+            L2 = D2 + np.matmul(R, E2)
+
+            recip_R2_Cheb_1 = R**2
+            #recip_R2_Cheb_2 = np.diag(np.ravel(1/GeomCheb.r[1:physNr]**2))
+            #recipR2_Cheb = np.kron(np.diag(np.ravel(1/GeomCheb.r[1:paramsCheb.compNr-1]**2)), np.eye(1))
+            #recipR2_Cheb = np.kron(recip_R2_Cheb_1, np.eye(2)) + np.kron(recip_R2_Cheb_2, np.block([[np.zeros((1,1)), np.eye(1)], [np.eye(1), np.zeros((1,1))]]))
+            B1 = L1 - (kp2 * recip_R2_Cheb_1) - (kz2 * (1/paramsCheb.Bu) * np.eye(physNr-1))
+            B2 = L2 - (kp2 * recip_R2_Cheb_1) - (kz2 * (1/paramsCheb.Bu) * np.eye(physNr-1))
+            """
+            B_Cheb = (GeomCheb.Lap - np.diag(kp2 / GeomCheb.rInterior**2) - (kz2 * (1/paramsCheb.Bu) * np.eye(paramsCheb.halfNr*paramsCheb.Np)))
+            A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
+            """
+            #For finite-difference solver
+            print(GeomFD.Lap.shape, sp.diags(1/GeomFD.rInterior**2).shape, )
+            B_FD = (GeomFD.Lap - sp.diags(kp2 / GeomFD.rInterior**2).tocsr() - sp.diags([kz2 * (1/paramsFD.Bu)], shape=(paramsFD.compNr-1, paramsFD.compNr-1)))# * np.eye(paramsFD.compNr-1)))
+            A_FD = np.dot(np.diag(GeomFD.Ψ_op), B_FD) - np.diag(GeomFD.Q_op)
+            """
             ############################
             # FIND EIGENSPACE DIRECTLY #
             ############################
@@ -264,20 +280,28 @@ def QG_Vortex_Stability():
         
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
-             
+
             timeCheb = timeit.timeit() - t0Cheb #Time for direct Cheb solver
             
             #Indexing that sorts eigvals by ASCENDING Im(c)
             indCheb = np.argsort(eigValCheb.imag)
-             
+            
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
-            eigVecCheb = eigVecCheb[indCheb, :] #Sort eigvecs in the same order
+            eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
+            #tmp = eigVecCheb[2::paramsCheb.Np,0] #, eigVecCheb[6::paramsCheb.Np,0])
+            #print(np.ravel(tmp))
+            #tmplen = len(tmp)
+            #print(tmplen)
+            #tmp = np.reshape(tmp, (tmplen//2,2))
+            #print(tmp)
+            #tmp2 = np.hstack(tmp)
+            #print(tmp2)
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
             growthCheb[kz_idx, kp_idx, :]   = -omegaCheb[0:nmodes].imag
             propCheb[kz_idx, kp_idx, :]     = omegaCheb[0:nmodes].real
-            modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[0:nmodes]
-            
+            modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[:, 0:nmodes]
+            """
             t0FD = timeit.timeit()
 
             #Compute eigvals c and eigvecs psi with direct solver ('eig')
@@ -295,7 +319,7 @@ def QG_Vortex_Stability():
             growthFD[kz_idx, kp_idx, :]   = -omegaFD[0:nmodes].imag
             propFD[kz_idx, kp_idx, :]     = omegaFD[0:nmodes].real
             modesFD[kz_idx, kp_idx, :, :] = eigVecFD[0:nmodes]
-
+            """
             ##############################
             # FIND EIGENSPACE INDIRECTLY #
             ##############################
@@ -421,8 +445,8 @@ def QG_Vortex_Stability():
                 ax_growth.plot(kzs, 4 * np.ravel(dim_growthCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
-                ax_growth.plot(kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), 
-                               ".-", color = "orange", label = "FD solver")
+                #ax_growth.plot(kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), 
+                #               ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
@@ -431,8 +455,8 @@ def QG_Vortex_Stability():
                 ax_prop.plot(kzs, 4 * np.ravel(dim_propCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
-                ax_prop.plot(kzs, 4 * np.ravel(dim_propFD[:, ii, jj]), 
-                             ".-", color = "orange", label = "FD solver")
+                #ax_prop.plot(kzs, 4 * np.ravel(dim_propFD[:, ii, jj]), 
+                #             ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
@@ -486,22 +510,32 @@ def QG_Vortex_Stability():
         kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
-        eigvecCheb     = modesCheb[kz_idx, kp_idx, jj, :]
+        eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
+    
+        u = np.reshape(eigvecCheb, (paramsCheb.halfNr, paramsCheb.Np)).T
+        u2 = np.vstack((u[paramsCheb.Np-1, :], u[0:paramsCheb.Np-1, :]))
+        u = np.hstack([np.zeros((paramsCheb.Np, 1)), u2])
+        
         eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
-        eigvecChebNorm = eigvecCheb / max(eigvecChebAmp)
-
-        eigvecFD     = modesFD[kz_idx, kp_idx, jj, :]
+        eigvecChebNorm = u / max(eigvecChebAmp)
+        
+        eigvecFD     = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp  = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
-
-        fig, ax = plt.subplots(figsize = (10, 8)) 
-         
-        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], eigvecChebNorm.real, 
-                "-", color = "mediumpurple",
+        """
+        fig, ax = plt.subplots(figsize = (10, 8))
+        print(eigvecChebNorm[-1, :])
+        print(eigvecChebNorm[-1,:].shape)
+        print(GeomCheb.rInterior.shape)
+        tmp =np.vstack(np.stack((eigvecChebNorm[-1, 1:-1:2], eigvecChebNorm[-1, 2::2]), axis = -1))
+        #tmp = np.ravel(np.vstack((eigvecChebNorm[-1, 1::2], eigvecChebNorm[-1, paramsCheb.halfNr:1:-2])))
+        ax.plot(GeomCheb.rInterior[::paramsCheb.Np], tmp.real,
+        "-", color = "mediumpurple",
                 label = "Re[$\hat{\psi}$]; Cheb solver")
-        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], eigvecChebNorm.imag,
-                "--", color = "mediumpurple", 
-                label = "Im[$\hat{\psi}$]; Cheb solver")
+        
+        #ax.plot(GeomCheb.rInterior[2::paramsCheb.Np], tmp.imag,
+        #        "--", color = "mediumpurple", 
+        #        label = "Im[$\hat{\psi}$]; Cheb solver")
         #ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1):1], eigvecFDNorm.real,
         #        "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
         #ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1):1], eigvecFDNorm.imag,
@@ -514,7 +548,7 @@ def QG_Vortex_Stability():
         #plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-
+        
         #Plot streamfunction structures in r-phi plane
 
         Np     = paramsCheb.Np #Number of phi-grid-points
@@ -575,6 +609,28 @@ def QG_Vortex_Stability():
         #plt.show()
         fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
+        """
+        M = paramsCheb.Np
+        dθ = 2 * pi / M
+        θ = dθ * np.arange(1, M + 1)
+        u = np.reshape(eigvecCheb, (paramsCheb.halfNr, M)).T
+        u2 = np.vstack((u[M-1, :], u[0:M-1, :]))
+        u = np.hstack([np.zeros((M, 1)), u2])
+        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], np.hstack([θ[M - 1], θ[0:M - 1]]))
+        xx = rr * np.cos(θθ)
+        yy = rr * np.sin(θθ)
+        fig = plt.figure()
+        ax = fig.gca(projection='3d')
+        ax.plot_surface(xx, yy, eigvecChebNorm.real, rstride=1, cstride=1, cmap='coolwarm', alpha=.3)
+        ax.set_xlabel('x')
+        ax.set_ylabel('y')
+        ax.set_zlabel('u')
+        ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
+        ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
+        #ax.set_zlim(-1, .05)
+        #ax.set_zticks([-.01, .05])
+           
+        plt.show()
 
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
