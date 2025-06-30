@@ -76,7 +76,7 @@ class Parameters:
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2
     
-    Np  = 20 #Number (even) of gridpoints in phi
+    Np  = 4 #20 #Number (even) of gridpoints in phi
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -617,9 +617,10 @@ def QG_Vortex_Stability():
         plt.show()
         plt.close(fig)
         """
-        fig = plt.figure()
-        ax = fig.gca(projection='3d')
-        ax.plot_surface(xx, yy, eigvecChebNorm.imag, cmap = "bwr", alpha = 0.6) # rstride=1, cstride = 1, cmap = "bwr", alpha = 0.6)
+        #fig = plt.figure()
+        #ax = fig.gca(projection='3d')
+        fix, ax = plt.subplots(subplot_kw = dict(projection = "3d"))
+        ax.plot_surface(xx, yy, eigvecChebNorm.imag, cmap = "bwr", alpha = 0.6)
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('u')
