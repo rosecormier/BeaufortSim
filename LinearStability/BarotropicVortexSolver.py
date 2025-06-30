@@ -180,13 +180,13 @@ def QG_Vortex_Stability():
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], 
-                           (paramsCheb.halfNr*paramsCheb.Np), nmodes], 
+                           (paramsCheb.halfNr * paramsCheb.Np), nmodes],
                           dtype = complex)
 
     growthFD = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propFD   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     modesFD  = np.zeros([kzs.shape[0], kps.shape[0],
-                         (paramsFD.halfNr), nmodes],
+                         (paramsFD.halfNr * paramsFD.Np), nmodes],
                         dtype = complex)
 
     ########################################
@@ -209,7 +209,9 @@ def QG_Vortex_Stability():
 
             #For Chebyshev solver
             
-            B_Cheb = (GeomCheb.Lap - np.diag(kp2 / GeomCheb.rInterior**2) - (kz2 * (1/paramsCheb.Bu) * np.eye(paramsCheb.halfNr*paramsCheb.Np)))
+            B_Cheb = (GeomCheb.Lap - np.diag(kp2 / GeomCheb.rInterior**2)
+                      - (kz2 * (1 / paramsCheb.Bu) 
+                         * np.eye(paramsCheb.halfNr * paramsCheb.Np)))
             A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
 
             """
@@ -234,7 +236,7 @@ def QG_Vortex_Stability():
             
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
             eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
-            omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
+            omegaCheb  = eigValCheb * kp #Corresponding omegas for this k_phi
             
             #Store results of direct Cheb solve
 
@@ -254,7 +256,9 @@ def QG_Vortex_Stability():
 
             eigValFD = eigValFD[indFD] #Sort eigvals
             eigVecFD = eigVecFD[indFD, :] #Sort eigvecs in the same order
-            omegaFD  = eigValFD * kp #Corresp. omegas for this k_phi
+            omegaFD  = eigValFD * kp #Corresponding omegas for this k_phi
+
+            #Store results of direct FD solve
 
             growthFD[kz_idx, kp_idx, :]   = -omegaFD[0:nmodes].imag
             propFD[kz_idx, kp_idx, :]     = omegaFD[0:nmodes].real
@@ -376,8 +380,7 @@ def QG_Vortex_Stability():
 
             #Visualize growth rates and propagation speeds for different kphi
         
-            fig, axes = plt.subplots(nkp, 2, figsize = (10, 7), 
-                                     sharex = "col")
+            fig, axes = plt.subplots(nkp, 2, figsize = (10, 7), sharex = "col")
             
             for ii in range(0, nkp):
                 
