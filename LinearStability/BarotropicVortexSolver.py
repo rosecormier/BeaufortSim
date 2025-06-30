@@ -76,7 +76,7 @@ class Parameters:
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2
     
-    Np  = 8# 40
+    Np  = 20 #Number (even) of gridpoints in phi
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -483,27 +483,29 @@ def QG_Vortex_Stability():
         M = paramsCheb.Np
         dθ = 2 * pi / M
         θ = dθ * np.arange(1, M + 1)
-        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], np.hstack([θ[M - 1], θ[0:M - 1]]))
+        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], θ) #np.hstack([θ[0:M+1]])) #[M - 1], θ[0:M - 1]]))
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
     
         u = np.reshape(eigvecCheb, (paramsCheb.halfNr, paramsCheb.Np)).T
         u2 = np.vstack((u[paramsCheb.Np-1, :], u[0:paramsCheb.Np-1, :]))
         u = np.hstack([np.zeros((paramsCheb.Np, 1)), u2])
-        
+         
         eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
-        eigvecChebNorm = -u / max(eigvecChebAmp)
- 
+        eigvecChebNorm = u / max(eigvecChebAmp)
+        print(eigvecChebNorm)
+
+        """
         eigvecFD     = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp  = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         eigvecFDNorm = eigvecFD / max(eigvecFDAmp)
-        
+        """
         fig, ax = plt.subplots(figsize = (10, 8))
 
-        ax.plot(rr[-1], eigvecChebNorm[1, :].real,
+        ax.plot(rr[1, :], eigvecChebNorm[-1, :].real,
                 "-", color = "mediumpurple",
                 label = "Re[$\hat{\psi}$]; Cheb solver")
-        ax.plot(rr[-1], eigvecChebNorm[1, :].imag,
+        ax.plot(rr[1, :], eigvecChebNorm[-1, :].imag,
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
         #ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1):1], eigvecFDNorm.real,
@@ -515,33 +517,28 @@ def QG_Vortex_Stability():
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
-        #plt.show()
+        plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-        """
+        
         #Plot streamfunction structures in r-phi plane
-
-        Np     = paramsCheb.Np #Number of phi-grid-points
-        phiVis = np.linspace(0, 2*pi, Np)
-
+        
         #Meshgrids of polar coordinates to plot
-        rCheb, phiCheb = np.meshgrid(GeomCheb.r[1:(paramsCheb.halfNr + 1):1], phiVis)
-        rFD, phiFD     = np.meshgrid(GeomFD.r[1:(paramsFD.halfNr + 1):1], phiVis)
-
+        phiCheb, rCheb = np.meshgrid(θ, GeomCheb.r[1:(paramsCheb.halfNr + 1):1])
+        phiFD, rFD    = np.meshgrid(θ, GeomFD.r[1:(paramsFD.halfNr + 1):1])
+        
         #Set up arrays to hold streamfunction values
-        psiCheb = np.zeros([Np, paramsCheb.halfNr], dtype = complex)
-        psiFD   = np.zeros([Np, paramsFD.halfNr], dtype = complex)
+        psiCheb = np.zeros([paramsCheb.halfNr, M], dtype = complex)
+        psiFD   = np.zeros([paramsFD.halfNr, M], dtype = complex)
         
         #Evaluate streamfunction at (r, phi)-coordinate pairs
-        for phi_idx in range(Np):
+        for phi_idx in range(M):
             for r_idx in range(paramsCheb.halfNr):
-                psiCheb[phi_idx, r_idx] = GetStreamfunc(eigvecChebNorm[r_idx],
+                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[-1, r_idx],
                                                         k = kphi, 
-                                                        phi = phiVis[phi_idx])
+                                                        phi = θ[phi_idx])
             for r_idx in range(paramsFD.halfNr):
-                psiFD[phi_idx, r_idx] = GetStreamfunc(eigvecFDNorm[r_idx],
-                                                      k = kphi,
-                                                      phi = phiVis[phi_idx])
+                psiFD[r_idx, phi_idx] = 0 #GetStreamfunc(eigvecFDNorm[1, r_idx], k = kphi, phi = θ[phi_idx])
 
         fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
@@ -576,10 +573,9 @@ def QG_Vortex_Stability():
                                     cmap = "bwr"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
-        #plt.show()
+        plt.show()
         fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-        """
         """
         M = paramsCheb.Np
         dθ = 2 * pi / M
@@ -591,20 +587,39 @@ def QG_Vortex_Stability():
         """
         xx = rr * np.cos(θθ)
         yy = rr * np.sin(θθ)
+        
+        """
+        rStagger = []
+        for r_idx in range(len(rr[0, :]) - 1):
+            dr = rr[0, r_idx] - rr[0, r_idx+1]
+            if r_idx == 0:
+                rStagger = [rr[0, r_idx] + dr, rr[0, r_idx] - dr]
+            elif r_idx < len(rr[0, :]) - 2:
+                rStagger = [*rStagger, *[rr[0, r_idx] - dr]]
+            else:
+                rStagger = [*rStagger, *[rr[0, r_idx] - dr, 0]]
 
-        fig, ax = plt.subplots(subplot_kw = dict(projection = "3d"))
-        ax.plot_surface(xx, yy, eigvecChebNorm.real, rstride=1, cstride=1, cmap='coolwarm', alpha=.3)
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('u')
-        ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
-        ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
+        print(rStagger)
+
+        θStagger, rStagger = np.meshgrid(
+                              np.linspace(θθ[0, 0] - dθ, θθ[-1, 0] + dθ, M+1),
+                              rStagger)
+        
+        [θθ, rr] = np.meshgrid(θ, GeomCheb.r[0:paramsCheb.halfNr+1])
+
+        fig, ax = plt.subplots(subplot_kw = dict(projection = "polar"))
+        ax.pcolormesh(θθ, rr, eigvecChebNorm.real.T, cmap = "bwr", vmin=-1, vmax=1) # rstride=1, cstride=1, cmap='coolwarm', alpha=.3)
+        #ax.set_xlabel('x')
+        #ax.set_ylabel('y')
+        #ax.set_zlabel('u')
+        #ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
+        #ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
         plt.show()
         plt.close(fig)
-
+        """
         fig = plt.figure()
         ax = fig.gca(projection='3d')
-        ax.plot_surface(xx, yy, eigvecChebNorm.imag, rstride=1, cstride=1, cmap='coolwarm', alpha=.3)
+        ax.plot_surface(xx, yy, eigvecChebNorm.imag, cmap = "bwr", alpha = 0.6) # rstride=1, cstride = 1, cmap = "bwr", alpha = 0.6)
         ax.set_xlabel('x')
         ax.set_ylabel('y')
         ax.set_zlabel('u')
