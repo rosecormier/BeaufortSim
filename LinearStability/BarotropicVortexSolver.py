@@ -11,7 +11,6 @@ import numpy as np
 import numpy.linalg as nlg
 import scipy
 import scipy.linalg as spalg
-import scipy.sparse as sp
 import sys
 import time
 import timeit
@@ -23,6 +22,7 @@ from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
 from scipy.special import factorial
 
+from BuildLaplacian import BuildLaplacian
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 from GetStreamfunc import GetStreamfunc
@@ -124,38 +124,6 @@ class Geometry:
 
             self.Dr2 = np.dot(self.Dr, self.Dr) #Second-order diff. matrix
 
-def Build_Laplacian(params, geom):
-    """
-    Build discretized Laplacian operator.
-    Note: we do not explicitly set zeroth indices because we impose zero
-     Dirichlet BCs.
-    """
-   
-    Nr, halfNr, Np = params.Nr, params.halfNr, params.Np
-
-    I, Z = np.eye(Np // 2), np.zeros(((Np // 2), (Np // 2)))
-    
-    #Quadrants of 2nd-order r-derivative matrix to be retained
-    D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
-    D2 = geom.Dr2[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
-     
-    #Quadrants of 1st-order r-derivative matrix to be retained
-    E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
-    E2 = geom.Dr[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
-    
-    #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
-    if sp.issparse(geom.Dr):
-        R = sp.spdiags(np.transpose(1 / geom.r[1:(halfNr + 1)]), 
-                       np.array([0]), halfNr, halfNr)
-    else:
-        R = np.diag(1 / np.ravel(geom.r[1:(halfNr + 1)]))
-        
-    #Build discretized Laplacian as done in Ch.11 of Trefethen
-    Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
-           + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
-     
-    return Lap
-
 def Build_Bkgd_Operators(params, geom):
     """
     Build array of (1/r) * (dPsi/dr) and array of (1/r) * (dQ/dr), each 
@@ -191,7 +159,7 @@ def QG_Vortex_Stability():
     #Initialize parameters and set up geometry for Chebyshev solver
     paramsCheb   = Parameters()
     GeomCheb     = Geometry("cheb", paramsCheb)
-    GeomCheb.Lap = Build_Laplacian(paramsCheb, GeomCheb)
+    GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb)
 
     #Discretize background-state-flow operators on Chebyshev grid
     GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
@@ -199,7 +167,7 @@ def QG_Vortex_Stability():
     #Initialize parameters and set up geometry for finite-difference solver
     paramsFD   = Parameters()
     GeomFD     = Geometry("FD", paramsFD)
-    GeomFD.Lap = Build_Laplacian(paramsFD, GeomFD)
+    GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD)
 
     #Discretize background-state-flow operators on finite-differencing grid
     GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = Build_Bkgd_Operators(paramsFD, GeomFD)
@@ -268,6 +236,8 @@ def QG_Vortex_Stability():
             eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresp. omegas for this k_phi
             
+            #Store results of direct Cheb solve
+
             growthCheb[kz_idx, kp_idx, :]   = -omegaCheb[0:nmodes].imag
             propCheb[kz_idx, kp_idx, :]     = omegaCheb[0:nmodes].real
             modesCheb[kz_idx, kp_idx, :, :] = eigVecCheb[:, 0:nmodes]
@@ -477,13 +447,13 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 8, 0 #0, 1
+        kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx]
 
         M = paramsCheb.Np
         dθ = 2 * pi / M
         θ = dθ * np.arange(1, M + 1)
-        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], θ) #np.hstack([θ[0:M+1]])) #[M - 1], θ[0:M - 1]]))
+        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], θ)
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
     
