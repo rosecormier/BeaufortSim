@@ -490,10 +490,9 @@ def QG_Vortex_Stability():
         u = np.reshape(eigvecCheb, (paramsCheb.halfNr, paramsCheb.Np)).T
         u2 = np.vstack((u[paramsCheb.Np-1, :], u[0:paramsCheb.Np-1, :]))
         u = np.hstack([np.zeros((paramsCheb.Np, 1)), u2])
-         
+     
         eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
-        eigvecChebNorm = u / max(eigvecChebAmp)
-        print(eigvecChebNorm)
+        eigvecChebNorm = u.conj() / max(eigvecChebAmp)
 
         """
         eigvecFD     = modesFD[kz_idx, kp_idx, :, jj]
@@ -576,57 +575,21 @@ def QG_Vortex_Stability():
         plt.show()
         fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-        """
-        M = paramsCheb.Np
-        dθ = 2 * pi / M
-        θ = dθ * np.arange(1, M + 1)
-        u = np.reshape(eigvecCheb, (paramsCheb.halfNr, M)).T
-        u2 = np.vstack((u[M-1, :], u[0:M-1, :]))
-        u = np.hstack([np.zeros((M, 1)), u2])
-        [rr, θθ] = np.meshgrid(GeomCheb.r[0:paramsCheb.halfNr + 1], np.hstack([θ[M - 1], θ[0:M - 1]]))
-        """
+    
         xx = rr * np.cos(θθ)
         yy = rr * np.sin(θθ)
         
-        """
-        rStagger = []
-        for r_idx in range(len(rr[0, :]) - 1):
-            dr = rr[0, r_idx] - rr[0, r_idx+1]
-            if r_idx == 0:
-                rStagger = [rr[0, r_idx] + dr, rr[0, r_idx] - dr]
-            elif r_idx < len(rr[0, :]) - 2:
-                rStagger = [*rStagger, *[rr[0, r_idx] - dr]]
-            else:
-                rStagger = [*rStagger, *[rr[0, r_idx] - dr, 0]]
-
-        print(rStagger)
-
-        θStagger, rStagger = np.meshgrid(
-                              np.linspace(θθ[0, 0] - dθ, θθ[-1, 0] + dθ, M+1),
-                              rStagger)
+        fig, ax = plt.subplots(subplot_kw = dict(projection = "3d"))
         
-        [θθ, rr] = np.meshgrid(θ, GeomCheb.r[0:paramsCheb.halfNr+1])
-
-        fig, ax = plt.subplots(subplot_kw = dict(projection = "polar"))
-        ax.pcolormesh(θθ, rr, eigvecChebNorm.real.T, cmap = "bwr", vmin=-1, vmax=1) # rstride=1, cstride=1, cmap='coolwarm', alpha=.3)
-        #ax.set_xlabel('x')
-        #ax.set_ylabel('y')
-        #ax.set_zlabel('u')
-        #ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
-        #ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
-        plt.show()
-        plt.close(fig)
-        """
-        #fig = plt.figure()
-        #ax = fig.gca(projection='3d')
-        fix, ax = plt.subplots(subplot_kw = dict(projection = "3d"))
         ax.plot_surface(xx, yy, eigvecChebNorm.imag, cmap = "bwr", alpha = 0.6)
-        ax.set_xlabel('x')
-        ax.set_ylabel('y')
-        ax.set_zlabel('u')
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel(f"Im[$\hat{{\psi}}(r)$]; Cheb solver")
         ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
         ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
+        
         plt.show()
+        fig.savefig(f"eigvec_surface_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
