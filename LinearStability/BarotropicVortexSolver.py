@@ -398,7 +398,7 @@ def QG_Vortex_Stability():
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             axes[0, 0].legend()
-            plt.show()
+            #plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
             plt.close(fig)
         """
@@ -441,7 +441,7 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 0, 1
+        kz_idx, kp_idx = 8, 0
         kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
         dphi      = 2 * pi / paramsCheb.Np
@@ -496,7 +496,7 @@ def QG_Vortex_Stability():
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
-        plt.show()
+        #plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
         
@@ -513,11 +513,12 @@ def QG_Vortex_Stability():
         #Evaluate streamfunction at (r, phi)-coordinate pairs
         for phi_idx in range(paramsCheb.Np):
             for r_idx in range(paramsCheb.halfNr + 1):
-                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[-1, r_idx],
-                                                        k = kphi, 
-                                                        phi = phiCoords[phi_idx])
+                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[-1, 
+                                                                       r_idx],
+                                            k = kphi, phi = phiCoords[phi_idx])
             for r_idx in range(paramsFD.halfNr):
-                psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[-1, r_idx], k = kphi, phi = phiCoords[phi_idx])
+                psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[-1, r_idx], 
+                                            k = kphi, phi = phiCoords[phi_idx])
 
         fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
@@ -553,22 +554,36 @@ def QG_Vortex_Stability():
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
         plt.show()
-        fig.savefig(f"streamfunc_structure_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
     
         xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
         
-        fig, ax = plt.subplots(subplot_kw = dict(projection = "3d"))
+        fig, axs = plt.subplots(1, 2, figsize = (9, 5), subplot_kw = dict(projection = "3d"))
         
-        ax.plot_surface(xx.T, yy.T, eigvecChebNorm.imag, cmap = "bwr", alpha = 0.6)
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel(f"Im[$\hat{{\psi}}(r)$]; Cheb solver")
-        ax.set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
-        ax.set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
+        axs[0].plot_surface(xx, yy, psiCheb.real, 
+                            cmap = "bwr", vmin = -1, vmax = 1, alpha = 0.6)
+        axs[1].plot_surface(xx, yy, psiCheb.imag, 
+                            cmap = "bwr", vmin = -1, vmax = 1, alpha = 0.6)
         
+        for i in range(2):
+            axs[i].set_xlabel("x")
+            axs[i].set_ylabel("y")
+            axs[i].set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
+            axs[i].set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
+        
+        axs[0].set_zlabel(f"Re[$\hat{{\psi}}(r)$]; Cheb solver")
+        axs[1].set_zlabel(f"Im[$\hat{{\psi}}(r)$]; Cheb solver")
+
+        fig.subplots_adjust(hspace = 1.5, wspace = 0)
+        fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
+                                    cmap = "bwr"),
+                     ax = axs.ravel().tolist(), orientation = "horizontal",
+                     shrink = 0.75)
+
         plt.show()
-        fig.savefig(f"eigvec_surface_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"streamfunc_surface_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
