@@ -123,8 +123,7 @@ class Geometry:
             #Discretized domain with gridpoints listed in descending order 
             self.r = np.arange(params.Lr, (-params.Lr - dr), -dr)
                  
-            #Nonzero entries of (sparse) differentiation matrix using 8th-order 
-            # stencil. Size of matrix is len(r) x len(r).
+            #Compute (sparse) diff. matrix using 8th-order stencil
             self.Dr = FiniteDiff(self.r, 8, True, True)
 
             self.Dr2 = np.dot(self.Dr, self.Dr) #Second-order diff. matrix
@@ -140,21 +139,23 @@ def Print_npArray(fp, arr):
             
 def QG_Vortex_Stability():
  
-    #Initialize parameters and set up geometry for Chebyshev solver
+    #Initialize parameters and set up geometries for Chebyshev and FD solvers
+
     paramsCheb   = Parameters()
     GeomCheb     = Geometry("cheb", paramsCheb)
     GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb)
 
-    #Discretize background-state-flow operators on Chebyshev grid
-    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(paramsCheb, GeomCheb)
-    
-    #Initialize parameters and set up geometry for finite-difference solver
     paramsFD   = Parameters()
     GeomFD     = Geometry("FD", paramsFD)
     GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD)
 
-    #Discretize background-state-flow operators on finite-differencing grid
-    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD)
+    #Discretize background-state-flow operators on Chebyshev and FD grids
+
+    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(
+                                                        paramsCheb, GeomCheb)
+
+    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD,
+                                                                    GeomFD)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
@@ -195,7 +196,9 @@ def QG_Vortex_Stability():
             
             B_Cheb = (GeomCheb.Lap - np.diag(kp2 / GeomCheb.rInterior**2)
                       - (kz2 * (1 / paramsCheb.Bu) 
-                         * np.eye(paramsCheb.halfNr * paramsCheb.Np)))
+                         * np.eye(paramsCheb.halfNr * paramsCheb.Np)
+                        )
+                     )
             A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
 
             
@@ -214,7 +217,7 @@ def QG_Vortex_Stability():
             
             t0Cheb = timeit.timeit()
         
-            #Compute eigvals c and eigvecs psi with direct solver ('eig')
+            #Compute eigvals c and eigvecs psi with direct solver
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
 
             timeCheb = timeit.timeit() - t0Cheb #Time for direct Cheb solver
