@@ -357,11 +357,11 @@ def QG_Vortex_Stability():
 
     #Dimensionalize eigenvalues
     
-    dim_growthCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
-    dim_propCheb   = propCheb * paramsCheb.Ro * paramsCheb.f0
+    growthDimCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
+    propDimCheb   = propCheb * paramsCheb.Ro * paramsCheb.f0
 
-    dim_growthFD = growthFD * paramsFD.Ro * paramsFD.f0
-    dim_propFD   = propFD * paramsFD.Ro * paramsFD.f0
+    growthDimFD = growthFD * paramsFD.Ro * paramsFD.f0
+    propDimFD   = propFD * paramsFD.Ro * paramsFD.f0
     
     nkp, nkz = (np.ravel(kps)).shape[0], (np.ravel(kzs)).shape[0]
 
@@ -376,20 +376,20 @@ def QG_Vortex_Stability():
             for ii in range(0, nkp):
                 
                 ax_growth = axes[ii, 0]
-                ax_growth.plot(kzs, 4 * np.ravel(dim_growthCheb[:, ii, jj]), 
+                ax_growth.plot(kzs, 4 * np.ravel(growthDimCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
-                ax_growth.plot(kzs, 4 * np.ravel(dim_growthFD[:, ii, jj]), 
+                ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
                                ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
                 
                 ax_prop = axes[ii, 1]
-                ax_prop.plot(kzs, 4 * np.ravel(dim_propCheb[:, ii, jj]), 
+                ax_prop.plot(kzs, 4 * np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
-                ax_prop.plot(kzs, 4 * np.ravel(dim_propFD[:, ii, jj]), 
+                ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
                              ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
@@ -442,32 +442,41 @@ def QG_Vortex_Stability():
         #Plot eigenfunction structures against r
 
         kz_idx, kp_idx = 0, 1
-        kz, kphi       = kzs[kz_idx], kps[kp_idx]
+        kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
         dphi      = 2 * pi / paramsCheb.Np
         phiCoords = dphi * np.arange(1, (paramsCheb.Np + 1))
-        [rVisCheb, phiVisCheb] = np.meshgrid(GeomCheb.r[0:(paramsCheb.halfNr + 1)], phiCoords)
-        [rVisFD, phiVisFD] = np.meshgrid(GeomFD.r[0:(paramsFD.halfNr + 1)], phiCoords)
+
+        [rVisCheb, phiVisCheb] = np.meshgrid(GeomCheb.r[0:(paramsCheb.halfNr 
+                                                           + 1)], 
+                                             phiCoords)
+        [rVisFD, phiVisFD]     = np.meshgrid(GeomFD.r[0:(paramsFD.halfNr + 1)],
+                                             phiCoords)
 
         eigvecCheb    = modesCheb[kz_idx, kp_idx, :, jj]
         eigvecChebAmp = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
 
         #Reshape output for visualization
 
-        tmp1       = np.reshape(eigvecCheb, (paramsCheb.halfNr, paramsCheb.Np)).T
-        tmp2       = np.vstack((tmp1[(paramsCheb.Np - 1), :], tmp1[0:(paramsCheb.Np - 1), :]))
-        eigvecCheb = np.hstack([np.zeros((paramsCheb.Np, 1)), tmp2]) #Pad with zeros
-     
-        #eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
+        tmp1       = np.reshape(eigvecCheb, 
+                                (paramsCheb.halfNr, paramsCheb.Np)
+                               ).T
+        tmp2       = np.vstack((tmp1[(paramsCheb.Np - 1), :], 
+                                tmp1[0:(paramsCheb.Np - 1), :]))
+        eigvecCheb = np.hstack([np.zeros((paramsCheb.Np, 1)), tmp2])
+
+        #Conjugate (because we used '.T') and normalize eigenvector
         eigvecChebNorm = eigvecCheb.conj() / max(eigvecChebAmp)
 
         eigvecFD    = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         
         tmp1     = np.reshape(eigvecFD, (paramsFD.halfNr, paramsFD.Np)).T
-        tmp2     = np.vstack((tmp1[(paramsFD.Np - 1), :], tmp1[0:(paramsFD.Np - 1), :]))
-        eigvecFD = np.hstack([np.zeros((paramsFD.Np, 1)), tmp2]) #Pad with zeros
+        tmp2     = np.vstack((tmp1[(paramsFD.Np - 1), :], 
+                              tmp1[0:(paramsFD.Np - 1), :]))
+        eigvecFD = np.hstack([np.zeros((paramsFD.Np, 1)), tmp2])
 
+        #Conjugate (because we used '.T') and normalize eigenvector
         eigvecFDNorm = eigvecFD.conj() / max(eigvecFDAmp)
         
         fig, ax = plt.subplots(figsize = (10, 8))
