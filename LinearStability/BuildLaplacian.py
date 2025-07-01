@@ -20,15 +20,23 @@ def BuildLaplacian(params, geom):
     E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
     E2 = geom.Dr[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
 
-    #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
     if sp.issparse(geom.Dr):
+        
+        #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
         R = sp.spdiags(np.transpose(1 / geom.r[1:(halfNr + 1)]),
                        np.array([0]), halfNr, halfNr)
+        
+        #Build discretized Laplacian as done in Ch.11 of Trefethen
+        Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Np))
+               + sp.kron((D2 + R.dot(E2)), np.block([[Z, I], [I, Z]])))
+
     else:
+        
+        #Build diagonal matrix from reciprocals of r_j for 1 <= j <= halfNr
         R = np.diag(1 / np.ravel(geom.r[1:(halfNr + 1)]))
 
-    #Build discretized Laplacian as done in Ch.11 of Trefethen
-    Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
-           + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
+        #Build discretized Laplacian as done in Ch.11 of Trefethen
+        Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
+               + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
 
     return Lap
