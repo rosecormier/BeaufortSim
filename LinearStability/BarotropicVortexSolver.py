@@ -1,4 +1,4 @@
-"""
+"""`
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
@@ -503,14 +503,21 @@ def QG_Vortex_Stability():
         #Plot streamfunction structures in r-phi plane
         
         #Meshgrids of polar coordinates to plot
-        phiVisCheb, rVisCheb = np.meshgrid(phiCoords, GeomCheb.r[0:(paramsCheb.halfNr + 1):1])
-        phiVisFD, rVisFD    = np.meshgrid(phiCoords, GeomFD.r[0:(paramsFD.halfNr + 1):1])
         
-        #Set up arrays to hold streamfunction values
-        psiCheb = np.zeros([(paramsCheb.halfNr + 1), paramsCheb.Np], dtype = complex)
-        psiFD   = np.zeros([(paramsFD.halfNr + 1), paramsCheb.Np], dtype = complex)
+        phiVisCheb, rVisCheb = np.meshgrid(phiCoords, 
+                                    GeomCheb.r[0:(paramsCheb.halfNr + 1)])
+        phiVisFD, rVisFD     = np.meshgrid(phiCoords, 
+                                    GeomFD.r[0:(paramsFD.halfNr + 1)])
+        
+        #Arrays to hold streamfunction values
+        
+        psiCheb = np.zeros([(paramsCheb.halfNr + 1), paramsCheb.Np], 
+                           dtype = complex)
+        psiFD   = np.zeros([(paramsFD.halfNr + 1), paramsCheb.Np], 
+                           dtype = complex)
         
         #Evaluate streamfunction at (r, phi)-coordinate pairs
+        
         for phi_idx in range(paramsCheb.Np):
             for r_idx in range(paramsCheb.halfNr + 1):
                 psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[-1, 
@@ -559,7 +566,8 @@ def QG_Vortex_Stability():
     
         xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
         
-        fig, axs = plt.subplots(1, 2, figsize = (9, 5), subplot_kw = dict(projection = "3d"))
+        fig, axs = plt.subplots(1, 2, figsize = (9, 5), 
+                                subplot_kw = dict(projection = "3d"))
         
         axs[0].plot_surface(xx, yy, psiCheb.real, 
                             cmap = "bwr", vmin = -1, vmax = 1, alpha = 0.6)
@@ -581,7 +589,6 @@ def QG_Vortex_Stability():
                                     cmap = "bwr"),
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
-
         plt.show()
         fig.savefig(f"streamfunc_surface_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
