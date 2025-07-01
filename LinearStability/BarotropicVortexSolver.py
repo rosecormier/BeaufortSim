@@ -27,6 +27,7 @@ from scipy.interpolate import interp1d
 from scipy.special import factorial
 
 from BuildLaplacian import BuildLaplacian
+from BuildBkgdOperators import BuildBkgdOperators
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 from GetStreamfunc import GetStreamfunc
@@ -128,37 +129,6 @@ class Geometry:
 
             self.Dr2 = np.dot(self.Dr, self.Dr) #Second-order diff. matrix
 
-def Build_Bkgd_Operators(params, geom):
-    """
-    Build array of (1/r) * (dPsi/dr) and array of (1/r) * (dQ/dr), each 
-     evaluated at gridpoints.
-    """
-
-    halfNr, Np       = params.halfNr, params.Np
-    [rInterior, phi] = np.meshgrid(geom.r[1:(halfNr + 1)], 
-                                   np.arange(1, (Np + 1)))
-    
-    #Array of those r-values at interior gridpoints that lie in physical space
-    rInterior = np.hstack(np.stack(rInterior[:], axis = -1))
-    
-    if params.bkgd == "GM": 
-        Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
-        Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
-
-        if sp.issparse(geom.Dr):
-            Ψ_op = sp.spdiags(Ψ_op, 0, (halfNr * Np), (halfNr * Np))
-            Q_op = sp.spdiags(Q_op, 0, (halfNr * Np), (halfNr * Np))
-            
-        else:
-            Ψ_op, Q_op = np.diag(Ψ_op), np.diag(Q_op)
-
-    elif params.bkgd == "BG":
-        Ψ_op = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-        Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2) 
-                        * np.exp(-rInterior**2))
-
-    return rInterior, Ψ_op, Q_op
-
 def Print_npArray(fp, arr):
     for ii in xrange(0, arr.shape[0]):
         for jj in xrange(0, arr.shape[1]):
@@ -176,7 +146,7 @@ def QG_Vortex_Stability():
     GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb)
 
     #Discretize background-state-flow operators on Chebyshev grid
-    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = Build_Bkgd_Operators(paramsCheb, GeomCheb)
+    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(paramsCheb, GeomCheb)
     
     #Initialize parameters and set up geometry for finite-difference solver
     paramsFD   = Parameters()
@@ -184,7 +154,7 @@ def QG_Vortex_Stability():
     GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD)
 
     #Discretize background-state-flow operators on finite-differencing grid
-    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = Build_Bkgd_Operators(paramsFD, GeomFD)
+    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
