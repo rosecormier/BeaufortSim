@@ -445,7 +445,7 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 8, 0
+        kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
         dphi      = 2 * pi / paramsCheb.Np
@@ -474,7 +474,7 @@ def QG_Vortex_Stability():
 
         #Is there a formula I can use to get this a priori?
         indEigvecCheb = np.argsort(
-                           -eigvecChebNorm[:, paramsCheb.halfNr//2].real)[0]
+                           np.sum(abs(eigvecChebNorm), axis = 1))[-1]
 
         eigvecFD    = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
@@ -486,7 +486,7 @@ def QG_Vortex_Stability():
 
         #Conjugate (because we used '.T') and normalize eigenvector
         eigvecFDNorm = eigvecFD.conj() / max(eigvecFDAmp)
-        
+         
         fig, ax = plt.subplots(figsize = (10, 8))
 
         ax.plot(rVisCheb[1, :], eigvecChebNorm[indEigvecCheb, :].real,
@@ -513,13 +513,13 @@ def QG_Vortex_Stability():
         #Meshgrids of polar coordinates to plot
         
         phiVisCheb, rVisCheb = np.meshgrid(phiCoords, 
-                                    GeomCheb.r[0:(paramsCheb.halfNr + 1)])
+                                    GeomCheb.r[1:(paramsCheb.halfNr + 1)])
         phiVisFD, rVisFD     = np.meshgrid(phiCoords, 
                                     GeomFD.r[0:(paramsFD.halfNr + 1)])
         
         #Arrays to hold streamfunction values
         
-        psiCheb = np.zeros([(paramsCheb.halfNr + 1), paramsCheb.Np], 
+        psiCheb = np.zeros([paramsCheb.halfNr, paramsCheb.Np], 
                            dtype = complex)
         psiFD   = np.zeros([(paramsFD.halfNr + 1), paramsCheb.Np], 
                            dtype = complex)
@@ -527,13 +527,16 @@ def QG_Vortex_Stability():
         #Evaluate streamfunction at (r, phi)-coordinate pairs
         
         for phi_idx in range(paramsCheb.Np):
-            for r_idx in range(paramsCheb.halfNr + 1):
+            for r_idx in range(paramsCheb.halfNr):
                 psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[indEigvecCheb, 
-                                                                       r_idx],
+                                                                       r_idx+1],
                                             k = kphi, phi = phiCoords[phi_idx])
             for r_idx in range(paramsFD.halfNr):
                 psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[-1, r_idx], 
                                             k = kphi, phi = phiCoords[phi_idx])
+
+        #psiChebAmp  = np.sqrt(psiCheb.real**2 + psiCheb.imag**2)
+        #psiChebNorm = psiCheb / max(psiChebAmp)
 
         fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
@@ -568,19 +571,22 @@ def QG_Vortex_Stability():
                                     cmap = "bwr"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
-        #plt.show()
+        plt.show()
         fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-    
+   
+        """
         xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
         
         fig, axs = plt.subplots(1, 2, figsize = (9, 5), 
                                 subplot_kw = dict(projection = "3d"))
-        
+
         axs[0].plot_surface(xx, yy, psiCheb.real, 
-                            cmap = "bwr", vmin = -1, vmax = 1, alpha = 0.6)
-        axs[1].plot_surface(xx, yy, psiCheb.imag, 
-                            cmap = "bwr", vmin = -1, vmax = 1, alpha = 0.6)
+                            rstride = 2, cstride = 2, cmap = "RdYlBu_r", 
+                            vmin = -1, vmax = 1, alpha = 0.8)
+        axs[1].plot_surface(xx, yy, psiCheb.imag,
+                            rstride = 2, cstride = 2, cmap = "RdYlBu_r",
+                            vmin = -1, vmax = 1, alpha = 0.8)
         
         for i in range(2):
             axs[i].set_xlabel("x")
@@ -591,15 +597,15 @@ def QG_Vortex_Stability():
         axs[0].set_zlabel(f"Re[$\hat{{\psi}}(r)$]; Cheb solver")
         axs[1].set_zlabel(f"Im[$\hat{{\psi}}(r)$]; Cheb solver")
 
-        fig.subplots_adjust(hspace = 1.5, wspace = 0)
+        fig.subplots_adjust(hspace = 0.5, wspace = 0.1)
         fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
-                                    cmap = "bwr"),
+                                    cmap = "RdYlBu_r"),
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
         plt.show()
         fig.savefig(f"streamfunc_surface_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
-
+        """
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
