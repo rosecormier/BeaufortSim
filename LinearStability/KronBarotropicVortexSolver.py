@@ -27,7 +27,7 @@ from scipy.interpolate import interp1d
 from scipy.special import factorial
 
 from BuildLaplacian import BuildLaplacian
-from BuildBkgdOperators import BuildBkgdOperators
+from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 from GetStreamfunc import GetStreamfunc
@@ -144,21 +144,24 @@ def QG_Vortex_Stability():
  
     #Initialize parameters and set up geometries for Chebyshev and FD solvers
 
-    paramsCheb   = Parameters()
-    GeomCheb     = Geometry("cheb", paramsCheb)
-    GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb)
+    paramsCheb         = Parameters()
+    GeomCheb           = Geometry("cheb", paramsCheb)
+    GeomCheb.Lap       = BuildLaplacian(paramsCheb, GeomCheb, 
+                                        discretize2D = True)
+    GeomCheb.rInterior = rInterior(paramsCheb, GeomCheb, discretize2D = True)
 
-    paramsFD   = Parameters()
-    GeomFD     = Geometry("FD", paramsFD)
-    GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD)
+    paramsFD         = Parameters()
+    GeomFD           = Geometry("FD", paramsFD)
+    GeomFD.Lap       = BuildLaplacian(paramsFD, GeomFD, discretize2D = True)
+    GeomFD.rInterior = rInterior(paramsFD, GeomFD, discretize2D = True)
 
     #Discretize background-state-flow operators on Chebyshev and FD grids
 
-    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(
-                                                        paramsCheb, GeomCheb)
+    GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(paramsCheb, GeomCheb, 
+                                                      discretize2D = True)
 
-    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD,
-                                                                    GeomFD)
+    GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD, 
+                                                  discretize2D = True)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
