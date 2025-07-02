@@ -36,29 +36,32 @@ from GetStreamfunc import GetStreamfunc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
-                    help = 'Number of grid points for eig computations',
+                    help = 'Number (must be ODD) of grid points for eig computations',
                     type = int, default = 181)
 parser.add_argument('--Neigs', 
                     help = 'Number of grid points for eigs computations',
                     type = int, default = 1001)
 parser.add_argument('-Lr', 
                     help = 'DIMENSIONLESS radius of the physical domain',
-                    type = float, default = 8.0)
+                    type = float, default = 5.0) #8.0)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
                     type = float, default = 4e-3)
 parser.add_argument('-Bu', '--Burger',
                     help = 'Burger number of background flow',
-                    type = float, default = 2.5e-3)
+                    type = float, default = 1.0) #2.5e-3)
 parser.add_argument('-f0', '--Coriolis',
                     help = 'Coriolis frequency f0 (Hz)',
                     type = float, default = 1.4e-4)
 parser.add_argument('--bkgd',
                     help = 'Background flow to use ("GM" or "BG")',
-                    type = str, default = "BG")
+                    type = str, default = "GM") #"BG")
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
+parser.add_argument('-Np', 
+                    help = 'Number (must be EVEN) of points for discretization of phi', 
+                    type = int, default = 4)
 parser.add_argument('-kp', '--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
                     type = float, default = [1, 3, 1], nargs = 3)
@@ -81,7 +84,7 @@ class Parameters:
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2
     
-    Np  = 4 #20 #Number (even) of gridpoints in phi
+    Np  = args.Np
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -379,8 +382,8 @@ def QG_Vortex_Stability():
                 ax_growth.plot(kzs, 4 * np.ravel(growthDimCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
-                ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
-                               ".-", color = "orange", label = "FD solver")
+                #ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
+                #               ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
@@ -389,8 +392,8 @@ def QG_Vortex_Stability():
                 ax_prop.plot(kzs, 4 * np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
-                ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
-                             ".-", color = "orange", label = "FD solver")
+                #ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
+                #             ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
@@ -398,9 +401,10 @@ def QG_Vortex_Stability():
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             axes[0, 0].legend()
-            #plt.show()
+            plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
             plt.close(fig)
+        
         """
         elif nkz < 4:
 
@@ -468,6 +472,10 @@ def QG_Vortex_Stability():
         #Conjugate (because we used '.T') and normalize eigenvector
         eigvecChebNorm = eigvecCheb.conj() / max(eigvecChebAmp)
 
+        #Is there a formula I can use to get this a priori?
+        indEigvecCheb = np.argsort(
+                           -eigvecChebNorm[:, paramsCheb.halfNr//2].real)[0]
+
         eigvecFD    = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
         
@@ -481,22 +489,22 @@ def QG_Vortex_Stability():
         
         fig, ax = plt.subplots(figsize = (10, 8))
 
-        ax.plot(rVisCheb[1, :], eigvecChebNorm[-1, :].real,
+        ax.plot(rVisCheb[1, :], eigvecChebNorm[indEigvecCheb, :].real,
                 "-", color = "mediumpurple",
                 label = "Re[$\hat{\psi}$]; Cheb solver")
-        ax.plot(rVisCheb[1, :], eigvecChebNorm[-1, :].imag,
+        ax.plot(rVisCheb[1, :], eigvecChebNorm[indEigvecCheb, :].imag,
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
-        ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].real,
-                "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
-        ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].imag,
-                "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
+        #ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].real,
+        #        "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
+        #ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].imag,
+        #        "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
         
         ax.set(xlabel = "$r/\sigma_r$", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
-        #plt.show()
+        plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
         
@@ -520,7 +528,7 @@ def QG_Vortex_Stability():
         
         for phi_idx in range(paramsCheb.Np):
             for r_idx in range(paramsCheb.halfNr + 1):
-                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[-1, 
+                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[indEigvecCheb, 
                                                                        r_idx],
                                             k = kphi, phi = phiCoords[phi_idx])
             for r_idx in range(paramsFD.halfNr):
@@ -560,7 +568,7 @@ def QG_Vortex_Stability():
                                     cmap = "bwr"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
-        plt.show()
+        #plt.show()
         fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
     
