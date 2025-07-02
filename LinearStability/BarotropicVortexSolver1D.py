@@ -27,7 +27,7 @@ from scipy.interpolate import interp1d
 from scipy.special import factorial
 
 from BuildLaplacian import BuildLaplacian
-from BuildBkgdOperators import BuildBkgdOperators
+from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
 from GetStreamfunc import GetStreamfunc
@@ -144,21 +144,21 @@ def QG_Vortex_Stability():
  
     #Initialize parameters and set up geometries for Chebyshev and FD solvers
 
-    paramsCheb   = Parameters()
-    GeomCheb     = Geometry("cheb", paramsCheb)
-    GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb, discretize2D = True)
+    paramsCheb         = Parameters()
+    GeomCheb           = Geometry("cheb", paramsCheb)
+    GeomCheb.Lap       = BuildLaplacian(paramsCheb, GeomCheb)
+    GeomCheb.rInterior = rInterior(paramsCheb, GeomCheb)
 
-    paramsFD   = Parameters()
-    GeomFD     = Geometry("FD", paramsFD)
-    GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD, discretize2D = True)
+    paramsFD         = Parameters()
+    GeomFD           = Geometry("FD", paramsFD)
+    GeomFD.Lap       = BuildLaplacian(paramsFD, GeomFD)
+    GeomFD.rInterior = rInterior(paramsFD, GeomFD)
 
     #Discretize background-state-flow operators on Chebyshev and FD grids
 
-    GeomCheb.rInterior, GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(
-                                                        paramsCheb, GeomCheb)
+    GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(paramsCheb, GeomCheb)
 
-    GeomFD.rInterior, GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD,
-                                                                    GeomFD)
+    GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
@@ -199,7 +199,7 @@ def QG_Vortex_Stability():
             
             B_Cheb = (GeomCheb.Lap - np.diag(kp2 / GeomCheb.rInterior**2)
                       - (kz2 * (1 / paramsCheb.Bu) 
-                         * np.eye(paramsCheb.halfNr * paramsCheb.Np)
+                         * np.eye(paramsCheb.halfNr)
                         )
                      )
             A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
@@ -208,8 +208,7 @@ def QG_Vortex_Stability():
             #For finite-difference solver
             B_FD = (GeomFD.Lap - sp.diags(kp2 / GeomFD.rInterior**2).tocsr()
                     - sp.diags([kz2 * (1/paramsFD.Bu)], 
-                               shape = ((paramsFD.halfNr * paramsFD.Np), 
-                                        (paramsFD.halfNr * paramsFD.Np))
+                               shape = (paramsFD.halfNr, paramsFD.halfNr)
                               ).tocsr()
                     )
             A_FD = GeomFD.Ψ_op.dot(B_FD) - GeomFD.Q_op
