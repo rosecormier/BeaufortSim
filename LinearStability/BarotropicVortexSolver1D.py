@@ -84,7 +84,7 @@ class Parameters:
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2
     
-    Np  = args.Np
+    Np  = args.Np #Number of azimuthal gridpoints; for visualization only
     kps = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     kzs = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
         
@@ -146,11 +146,11 @@ def QG_Vortex_Stability():
 
     paramsCheb   = Parameters()
     GeomCheb     = Geometry("cheb", paramsCheb)
-    GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb)
+    GeomCheb.Lap = BuildLaplacian(paramsCheb, GeomCheb, discretize2D = True)
 
     paramsFD   = Parameters()
     GeomFD     = Geometry("FD", paramsFD)
-    GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD)
+    GeomFD.Lap = BuildLaplacian(paramsFD, GeomFD, discretize2D = True)
 
     #Discretize background-state-flow operators on Chebyshev and FD grids
 
