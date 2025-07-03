@@ -42,19 +42,19 @@ parser.add_argument('--Neigs',
                     type = int, default = 1001)
 parser.add_argument('-Lr', 
                     help = 'DIMENSIONLESS radius of the physical domain',
-                    type = float, default = 5.0) #8.0)
+                    type = float, default = 8.0)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
                     type = float, default = 4e-3)
 parser.add_argument('-Bu', '--Burger',
                     help = 'Burger number of background flow',
-                    type = float, default = 1.0) #2.5e-3)
+                    type = float, default = 2.5e-3)
 parser.add_argument('-f0', '--Coriolis',
                     help = 'Coriolis frequency f0 (Hz)',
                     type = float, default = 1.4e-4)
 parser.add_argument('--bkgd',
                     help = 'Background flow to use ("GM" or "BG")',
-                    type = str, default = "GM") #"BG")
+                    type = str, default = "BG")
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
