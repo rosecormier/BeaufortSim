@@ -19,12 +19,11 @@ import sys
 import time
 import timeit
 
-from math import e, pi
+from math import pi
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 from scipy.sparse.linalg import eigs
 from scipy.interpolate import interp1d
-from scipy.special import factorial
 
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, rInterior
@@ -380,8 +379,8 @@ def QG_Vortex_Stability():
                 ax_growth.plot(kzs, 4 * np.ravel(growthDimCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
-                ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
-                               ".-", color = "orange", label = "FD solver")
+                #ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
+                #               ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
@@ -390,8 +389,8 @@ def QG_Vortex_Stability():
                 ax_prop.plot(kzs, 4 * np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
-                ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
-                             ".-", color = "orange", label = "FD solver")
+                #ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
+                #             ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
