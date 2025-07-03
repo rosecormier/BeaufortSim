@@ -60,8 +60,8 @@ parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
 parser.add_argument('-Np', 
-                    help = 'Number (must be EVEN) of points for discretization of phi', 
-                    type = int, default = 4)
+                    help = 'Number of points for discretization of phi', 
+                    type = int, default = 50)
 parser.add_argument('-kp', '--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
                     type = float, default = [1, 3, 1], nargs = 3)
@@ -167,14 +167,13 @@ def QG_Vortex_Stability():
 
     growthCheb = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propCheb   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], 
-                           (paramsCheb.halfNr * paramsCheb.Np), nmodes],
+    modesCheb  = np.zeros([kzs.shape[0], kps.shape[0], paramsCheb.halfNr, 
+                           nmodes],
                           dtype = complex)
 
     growthFD = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
     propFD   = np.zeros([kzs.shape[0], kps.shape[0], nmodes])
-    modesFD  = np.zeros([kzs.shape[0], kps.shape[0],
-                         (paramsFD.halfNr * paramsFD.Np), nmodes],
+    modesFD  = np.zeros([kzs.shape[0], kps.shape[0], paramsFD.halfNr, nmodes],
                         dtype = complex)
 
     ########################################
@@ -381,8 +380,8 @@ def QG_Vortex_Stability():
                 ax_growth.plot(kzs, 4 * np.ravel(growthDimCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
-                #ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
-                #               ".-", color = "orange", label = "FD solver")
+                ax_growth.plot(kzs, 4 * np.ravel(growthDimFD[:, ii, jj]), 
+                               ".-", color = "orange", label = "FD solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
@@ -391,8 +390,8 @@ def QG_Vortex_Stability():
                 ax_prop.plot(kzs, 4 * np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
-                #ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
-                #             ".-", color = "orange", label = "FD solver")
+                ax_prop.plot(kzs, 4 * np.ravel(propDimFD[:, ii, jj]), 
+                             ".-", color = "orange", label = "FD solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
@@ -400,7 +399,7 @@ def QG_Vortex_Stability():
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             axes[0, 0].legend()
-            plt.show()
+            #plt.show()
             fig.savefig(f"omega_vs_m_mode{jj}.png")
             plt.close(fig)
         
@@ -447,95 +446,65 @@ def QG_Vortex_Stability():
         kz_idx, kp_idx = 0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
-        dphi      = 2 * pi / paramsCheb.Np
-        phiCoords = dphi * np.arange(1, (paramsCheb.Np + 1))
+        eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
+        eigvecChebAmp  = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
+        eigvecChebNorm = eigvecCheb / max(eigvecChebAmp) #Normalize eigenvector
 
-        [rVisCheb, phiVisCheb] = np.meshgrid(GeomCheb.r[0:(paramsCheb.halfNr 
-                                                           + 1)], 
-                                             phiCoords)
-        [rVisFD, phiVisFD]     = np.meshgrid(GeomFD.r[0:(paramsFD.halfNr + 1)],
-                                             phiCoords)
-
-        eigvecCheb    = modesCheb[kz_idx, kp_idx, :, jj]
-        eigvecChebAmp = np.sqrt(eigvecCheb.real**2 + eigvecCheb.imag**2)
-
-        #Reshape output for visualization
-
-        tmp1       = np.reshape(eigvecCheb, 
-                                (paramsCheb.halfNr, paramsCheb.Np)
-                               ).T
-        tmp2       = np.vstack((tmp1[(paramsCheb.Np - 1), :], 
-                                tmp1[0:(paramsCheb.Np - 1), :]))
-        eigvecCheb = np.hstack([np.zeros((paramsCheb.Np, 1)), tmp2])
-
-        #Conjugate (because we used '.T') and normalize eigenvector
-        eigvecChebNorm = eigvecCheb.conj() / max(eigvecChebAmp)
-
-        #Is there a formula I can use to get this a priori?
-        indEigvecCheb = np.argsort(
-                           np.sum(abs(eigvecChebNorm), axis = 1))[-1]
-
+        
         eigvecFD    = modesFD[kz_idx, kp_idx, :, jj]
         eigvecFDAmp = np.sqrt(eigvecFD.real**2 + eigvecFD.imag**2)
-        
-        tmp1     = np.reshape(eigvecFD, (paramsFD.halfNr, paramsFD.Np)).T
-        tmp2     = np.vstack((tmp1[(paramsFD.Np - 1), :], 
-                              tmp1[0:(paramsFD.Np - 1), :]))
-        eigvecFD = np.hstack([np.zeros((paramsFD.Np, 1)), tmp2])
-
-        #Conjugate (because we used '.T') and normalize eigenvector
-        eigvecFDNorm = eigvecFD.conj() / max(eigvecFDAmp)
+        eigvecFDNorm = eigvecFD / max(eigvecFDAmp) #Normalize eigenvector
          
         fig, ax = plt.subplots(figsize = (10, 8))
 
-        ax.plot(rVisCheb[1, :], eigvecChebNorm[indEigvecCheb, :].real,
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)], eigvecChebNorm.real,
                 "-", color = "mediumpurple",
                 label = "Re[$\hat{\psi}$]; Cheb solver")
-        ax.plot(rVisCheb[1, :], eigvecChebNorm[indEigvecCheb, :].imag,
+        ax.plot(GeomCheb.r[1:(paramsCheb.halfNr + 1)], eigvecChebNorm.imag,
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
-        #ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].real,
-        #        "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
-        #ax.plot(rVisFD[1, :], eigvecFDNorm[-1, :].imag,
-        #        "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
+        ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1)], eigvecFDNorm.real,
+                "-", color = "orange", label = "Re[$\hat{\psi}$]; FD solver")
+        ax.plot(GeomFD.r[1:(paramsFD.halfNr + 1)], eigvecFDNorm.imag,
+                "--", color = "orange", label = "Im[$\hat{\psi}$]; FD solver")
         
         ax.set(xlabel = "$r/\sigma_r$", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
-        plt.show()
+        #plt.show()
         fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
         
         #Plot streamfunction structures in r-phi plane
         
+        dphi      = 2 * pi / paramsCheb.Np
+        phiCoords = dphi * np.arange(1, (paramsCheb.Np + 1))
+
         #Meshgrids of polar coordinates to plot
         
         phiVisCheb, rVisCheb = np.meshgrid(phiCoords, 
                                     GeomCheb.r[1:(paramsCheb.halfNr + 1)])
         phiVisFD, rVisFD     = np.meshgrid(phiCoords, 
-                                    GeomFD.r[0:(paramsFD.halfNr + 1)])
+                                    GeomFD.r[1:(paramsFD.halfNr + 1)])
         
         #Arrays to hold streamfunction values
         
         psiCheb = np.zeros([paramsCheb.halfNr, paramsCheb.Np], 
                            dtype = complex)
-        psiFD   = np.zeros([(paramsFD.halfNr + 1), paramsCheb.Np], 
+        psiFD   = np.zeros([paramsFD.halfNr, paramsCheb.Np], 
                            dtype = complex)
         
         #Evaluate streamfunction at (r, phi)-coordinate pairs
         
         for phi_idx in range(paramsCheb.Np):
-            for r_idx in range(paramsCheb.halfNr):
-                psiCheb[r_idx, phi_idx] = GetStreamfunc(eigvecChebNorm[indEigvecCheb, 
-                                                                       r_idx+1],
+            for r_idx in range(paramsCheb.halfNr - 1):
+                psiCheb[r_idx, phi_idx] = GetStreamfunc(
+                                            eigvecChebNorm[r_idx + 1],
                                             k = kphi, phi = phiCoords[phi_idx])
-            for r_idx in range(paramsFD.halfNr):
-                psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[-1, r_idx], 
+            for r_idx in range(paramsFD.halfNr - 1):
+                psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[r_idx + 1], 
                                             k = kphi, phi = phiCoords[phi_idx])
-
-        #psiChebAmp  = np.sqrt(psiCheb.real**2 + psiCheb.imag**2)
-        #psiChebNorm = psiCheb / max(psiChebAmp)
 
         fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
