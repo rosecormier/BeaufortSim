@@ -538,9 +538,6 @@ def QG_Vortex_Stability():
                 psiFD[r_idx, phi_idx] = GetStreamfunc(eigvecFDNorm[-1, r_idx], 
                                             k = kphi, phi = phiCoords[phi_idx])
 
-        #psiChebAmp  = np.sqrt(psiCheb.real**2 + psiCheb.imag**2)
-        #psiChebNorm = psiCheb / max(psiChebAmp)
-
         fig, axs = plt.subplots(2, 2, figsize = (8, 10),
                                 subplot_kw = dict(projection = "polar"))
 
