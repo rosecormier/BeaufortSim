@@ -3,7 +3,7 @@ include("LibraryVisualization.jl")
 using Adapt, CairoMakie 
 using CommonDataModel, CUDA, DataStructures, LaTeXStrings, NCDatasets
 
-update_theme!(fontsize = 20)
+update_theme!(fontsize = 16)
 
 using Oceananigans
 using Oceananigans.Fields
