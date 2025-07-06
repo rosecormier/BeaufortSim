@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
 using Adapt, CairoMakie 
-using CommonDataModel, CUDA, DataStructures, LaTeXStrings, NCDatasets
+using CommonDataModel, CUDA, DataStructures, Glob, LaTeXStrings, NCDatasets
 
 update_theme!(fontsize = 16)
 
@@ -18,12 +18,6 @@ function visualize_norms(datetime, grid;
    
    #`grid` is a required argument for now
    #but I would like to update the open_dataset function to get it automatically from the output file
-
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-
-   b      = ds[:b][:, :, :, :]
-   ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
-   uz     = ds[:uz][:, :, :, :]
 
    if isnothing(bkgd_datetime)
       bkgd_datetime = datetime
@@ -47,16 +41,8 @@ function visualize_norms(datetime, grid;
                     xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
                     yscale = log10)
 
-   n = Observable(2)
-   
-   b_norm  = @lift field_norm(b, $n; ψ_bkgd = B)
-   ur_norm = @lift field_norm(ur, $n)
-   uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
-   uz_norm = @lift field_norm(uz, $n)
-
    if do_Cartesian
 
-      ux, uy = ds[:ux][:, :, :, :], ds[:uy][:, :, :, :]
       Ux, Uy = bkgd_ds[:Ux][:, :, :, 1], bkgd_ds[:Uy][:, :, :, 1]
 
       fig_Cart   = Figure(size = (1200, 700))
@@ -72,29 +58,58 @@ function visualize_norms(datetime, grid;
       ax_uz_Cart = Axis(fig_Cart[3, 2]; title = L"Norm of $u_z'$",
                         xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
                         yscale = log10)
-
-      ux_norm = @lift field_norm(ux, $n; ψ_bkgd = Ux)
-      uy_norm = @lift field_norm(uy, $n; ψ_bkgd = Uy)
    end
 
-   for i = 2:Nt
+   outfile_list = glob("./Output/output_$(datetime)*")
+   file_idx     = 1
 
-      @lift scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
-      @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
-      @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
-      @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
-      
+   while file_idx < length(outfile_list)
+
+      outfilename            = outfile_list[file_idx]
+      ds, x, y, z, times, Nt = open_dataset(outfilename)
+
+      b      = ds[:b][:, :, :, :]
+      ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
+      uz     = ds[:uz][:, :, :, :]
+
       if do_Cartesian
-         @lift scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
-	 @lift scatter!(ax_ux, times[$n], $ux_norm, color = :black)
-	 @lift scatter!(ax_uy, times[$n], $uy_norm, color = :black)
-	 @lift scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
+         ux, uy = ds[:ux][:, :, :, :], ds[:uy][:, :, :, :]
       end
 
-      yield()
-      n[] = i
-   end
+      n = Observable(2)
 
+      b_norm  = @lift field_norm(b, $n; ψ_bkgd = B)
+      ur_norm = @lift field_norm(ur, $n)
+      uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
+      uz_norm = @lift field_norm(uz, $n)
+
+      if do_Cartesian
+         ux_norm = @lift field_norm(ux, $n; ψ_bkgd = Ux)
+         uy_norm = @lift field_norm(uy, $n; ψ_bkgd = Uy)
+      end
+
+      for i = 2:Nt
+
+         @lift scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
+         @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
+         @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
+         @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
+
+         if do_Cartesian
+	    @lift scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
+            @lift scatter!(ax_ux, times[$n], $ux_norm, color = :black)
+            @lift scatter!(ax_uy, times[$n], $uy_norm, color = :black)
+            @lift scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
+         end
+         
+         yield()
+         n[] = i
+      end
+
+      close(ds)
+      file_idx += 1
+   end
+   
    mkpath("./Plots") #Make visualization directory if nonexistent
 
    fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
@@ -108,7 +123,6 @@ function visualize_norms(datetime, grid;
    end
 
    close(bkgd_ds)
-   close(ds)
 end
 
 function visualize_b_and_ωz(datetime, Δx, Δy; 
