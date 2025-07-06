@@ -169,6 +169,10 @@ using Glob, NCDatasets
 
 ####################
 
+module OutFileFormat
+   export pad_filenames
+end
+
 module VisFunctions
    export open_dataset, open_bkgd_dataset, get_range_lims, 
    get_2D_spatial_axis_kwargs
@@ -176,10 +180,8 @@ end
 
 ####################
 
-function open_dataset(datetime)
+function pad_filenames(datetime)
 
-   #Might be best to make a struct and output that? Need to investigate :D
-   
    outfile_paths = glob("./Output/output_$(datetime)_part*")
 
    if length(outfile_paths) > 9
@@ -190,7 +192,12 @@ function open_dataset(datetime)
       end
    end
    
-   ds = NCDataset(glob("./Output/output_$(datetime)*"))
+   return glob("./Output/output_$(datetime)*")
+end
+
+function open_dataset(outfilename)
+
+   ds = NCDataset(outfilename)
 
    x  = ds[:xC][:] ./ 1000 #Convert to km for readability
    y  = ds[:yC][:] ./ 1000 #Convert to km for readability
