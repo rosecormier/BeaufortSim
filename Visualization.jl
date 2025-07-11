@@ -60,13 +60,16 @@ function visualize_norms(datetime, grid;
                         yscale = log10)
    end
 
-   outfile_list = glob("./Output/output_$(datetime)*")
-   file_idx     = 1
+   outfile_list = glob("output_$(datetime)*", "./Output") #/output_$(datetime)*")
+   print(outfile_list)
+   file_idx = 1
 
-   while file_idx < length(outfile_list)
+   while file_idx < 7
+      #length(outfile_list)
 
-      outfilename            = outfile_list[file_idx]
-      ds, x, y, z, times, Nt = open_dataset(outfilename)
+      outfilename = outfile_list[file_idx]
+      print(outfilename)
+      ds, x, y, z, times, Nt = open_dataset(outfile_list)
 
       b      = ds[:b][:, :, :, :]
       ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
@@ -84,32 +87,47 @@ function visualize_norms(datetime, grid;
       uz_norm = @lift field_norm(uz, $n)
 
       if do_Cartesian
-         ux_norm = @lift field_norm(ux, $n; ψ_bkgd = Ux)
-         uy_norm = @lift field_norm(uy, $n; ψ_bkgd = Uy)
+         ux_norm = @lift field_norm(ux, $n, ψ_bkgd = Ux)
+	 uy_norm = @lift field_norm(uy, $n, ψ_bkgd = Uy)
       end
 
       for i = 2:Nt
-
+      
          @lift scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
          @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
          @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
          @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
-
-         if do_Cartesian
-	    @lift scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
-            @lift scatter!(ax_ux, times[$n], $ux_norm, color = :black)
-            @lift scatter!(ax_uy, times[$n], $uy_norm, color = :black)
-            @lift scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
-         end
-         
+   
+         #if do_Cartesian...
+      
          yield()
          n[] = i
       end
 
       close(ds)
       file_idx += 1
+   end 
+   #=
+   for i = 2:1000:1
+      print(i)
+
+      #scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
+      #scatter!(ax_ur, times[$n], $ur_norm, color = :black)
+      #scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
+      #scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
+
+      #if do_Cartesian
+      #	 scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
+      #   scatter!(ax_ux, times[$n], $ux_norm, color = :black)
+      #   scatter!(ax_uy, times[$n], $uy_norm, color = :black)
+      #   scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
+      #end
+         
+      yield()
+      n[] = i
    end
-   
+   =#
+   ##close(ds)   
    mkpath("./Plots") #Make visualization directory if nonexistent
 
    fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
@@ -879,8 +897,6 @@ function visualize_fields_const_z(datetime, z_idx;
 		                  bkgd_datetime = nothing,
 				  plot_animation = true, t_idx_skip = 1)
    
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-   
    if isnothing(bkgd_datetime)
       bkgd_datetime = datetime
    end
@@ -889,10 +905,13 @@ function visualize_fields_const_z(datetime, z_idx;
    B       = bkgd_ds[:B][:, :, :, 1]
    Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
 
-   b_total_f_xy  = ds[:b][:, :, z_idx, Nt]
-   ur_total_f_xy = ds[:ur][:, :, z_idx, Nt]
-   uφ_total_f_xy = ds[:uφ][:, :, z_idx, Nt]
-   uz_total_f_xy = ds[:uz][:, :, z_idx, Nt]
+   outfile_list             = glob("./Output/output_$(datetime)*")
+   ds_f, x, y, z, times, Nt = open_dataset(outfile_list[length(outfile_list)])
+
+   b_total_f_xy  = ds_f[:b][:, :, z_idx, Nt]
+   ur_total_f_xy = ds_f[:ur][:, :, z_idx, Nt]
+   uφ_total_f_xy = ds_f[:uφ][:, :, z_idx, Nt]
+   uz_total_f_xy = ds_f[:uz][:, :, z_idx, Nt]
 
    Δb_f_xy  = b_total_f_xy .- B[:, :, z_idx]
    Δuφ_f_xy = uφ_total_f_xy .- Uφ[:, :, z_idx]
@@ -915,18 +934,103 @@ function visualize_fields_const_z(datetime, z_idx;
    depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; 
 							      z_idx = z_idx)
 
+   #Plot static images (final frame, by default)
+   
+   fig_total   = Figure(size = (1200, 800))
+   fig_perturb = Figure(size = (1200, 800))
+
+   ax_b_total  = Axis(fig_total[2, 1];
+                      title = L"Total buoyancy ($b$)", axis_kwargs_xy...)
+   ax_ur_total = Axis(fig_total[2, 3];
+                      title = L"Total radial velocity ($u_r$)",
+                      axis_kwargs_xy...)
+   ax_uφ_total = Axis(fig_total[3, 1];
+                      title = L"Total azimuthal velocity ($u_{\phi}$)", axis_kwargs_xy...)
+   ax_uz_total = Axis(fig_total[3, 3];
+                      title = L"Total vertical velocity ($u_z$)",
+                      axis_kwargs_xy...)
+
+   ax_b_perturb  = Axis(fig_perturb[2, 1];
+                        title = L"Buoyancy perturbation ($b'$)",
+                        axis_kwargs_xy...)
+   ax_ur_perturb = Axis(fig_perturb[2, 3];
+                        title = L"Radial velocity perturbation ($u_r'$)",
+                        axis_kwargs_xy...)
+   ax_uφ_perturb = Axis(fig_perturb[3, 1];
+                        title = L"Azimuthal velocity perturbation ($u_{\phi}'$)",
+                        axis_kwargs_xy...)
+   ax_uz_perturb = Axis(fig_perturb[3, 3];
+                        title = L"Vertical velocity perturbation ($u_z'$)",
+                        axis_kwargs_xy...)
+
+   hm_b_total  = heatmap!(ax_b_total, x, y, b_total_f_xy,
+                          colorrange = lims_b_total,
+                          colormap = Reverse(:RdBu_5),
+                          highclip = :red, lowclip = :blue)
+   hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy,
+                          colorrange = lims_ur,
+                          colormap = Reverse(:RdBu_5),
+                          highclip = :red, lowclip = :blue)
+   hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_f_xy,
+                          colorrange = lims_uφ_total,
+                          colormap = Reverse(:RdBu_5),
+                          highclip = :red, lowclip = :blue)
+   hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_f_xy,
+                          colorrange = lims_uz,
+                          colormap = Reverse(:RdBu_5),
+                          highclip = :red, lowclip = :blue)
+
+   hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
+                            colorrange = lims_Δb,
+                            colormap = Reverse(:RdBu_5),
+                            highclip = :red, lowclip = :blue)
+   hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy,
+                            colorrange = lims_ur,
+                            colormap = Reverse(:RdBu_5),
+                            highclip = :red, lowclip = :blue)
+   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_f_xy,
+                            colorrange = lims_Δuφ,
+                            colormap = Reverse(:RdBu_5),
+                            highclip = :red, lowclip = :blue)
+   hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_f_xy,
+                            colorrange = lims_uz,
+                            colormap = Reverse(:RdBu_5),
+                            highclip = :red, lowclip = :blue)
+
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 2], hm_uφ_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 4], hm_uz_total, tickformat = "{:.1e}", label = "m/s")
+
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+            label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_ur_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 2], hm_uφ_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 4], hm_uz_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+
+   title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
+                            depth_nearest, times[Nt])
+   title_perturb = @sprintf(
+                          "Perturbation fields at %i-m depth; t = %.2f days",
+                            depth_nearest, times[Nt])
+
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+                               tellwidth = false)
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+                               tellwidth = false)
+
+   save(joinpath("./Plots", "fields_z$(depth_nearest)_tf_$(datetime).png"),
+        fig_total)
+   save(joinpath("./Plots", "perturbs_z$(depth_nearest)_tf_$(datetime).png"),
+        fig_perturb)
+
+   close(ds_f)
+
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
-      n = Observable(1)
-
-      b_total_xy  = @lift ds[:b][:, :, z_idx, $n]
-      ur_total_xy = @lift ds[:ur][:, :, z_idx, $n]
-      uφ_total_xy = @lift ds[:uφ][:, :, z_idx, $n]
-      uz_total_xy = @lift ds[:uz][:, :, z_idx, $n]
-
-      Δb_xy  = @lift $b_total_xy .- B[:, :, z_idx]
-      Δuφ_xy = @lift $uφ_total_xy .- Uφ[:, :, z_idx]
-   
       fig_total   = Figure(size = (1200, 800))
       fig_perturb = Figure(size = (1200, 800))
 
@@ -955,6 +1059,22 @@ function visualize_fields_const_z(datetime, z_idx;
                            title = L"Vertical velocity perturbation ($u_z'$)",
                            axis_kwargs_xy...)
 
+      video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
+      video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
+
+      
+      ds, x, y, z, times, Nt = open_dataset(outfile_list)
+
+      n = Observable(1)
+
+      b_total_xy  = @lift ds[:b][:, :, z_idx, $n]
+      ur_total_xy = @lift ds[:ur][:, :, z_idx, $n]
+      uφ_total_xy = @lift ds[:uφ][:, :, z_idx, $n]
+      uz_total_xy = @lift ds[:uz][:, :, z_idx, $n]
+
+      Δb_xy  = @lift $b_total_xy .- B[:, :, z_idx]
+      Δuφ_xy = @lift $uφ_total_xy .- Uφ[:, :, z_idx]
+      
       hm_b_total  = heatmap!(ax_b_total, x, y, b_total_xy,
                              colorrange = lims_b_total,
 			     colormap = Reverse(:RdBu_5),
@@ -1004,7 +1124,7 @@ function visualize_fields_const_z(datetime, z_idx;
                label = "m/s")
 
       title_total   = @lift @sprintf("Fields at %i-m depth; t = %.2f days",
-                                     depth_nearest, times[$n])
+					depth_nearest, times[$n])
       title_perturb = @lift @sprintf(
                             "Perturbation fields at %i-m depth; t = %.2f days",
                                      depth_nearest, times[$n])
@@ -1014,25 +1134,25 @@ function visualize_fields_const_z(datetime, z_idx;
       fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                   tellwidth = false)
    
-      frames = 1:Nt
-   
       video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
       video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
-
-      for i = 1:t_idx_skip:frames[end]
-         recordframe!(video_total)
+         
+      for i = 1:t_idx_skip:Nt
+         print(i, " of ", Nt)
+	 recordframe!(video_total)
          recordframe!(video_perturb)
          yield()
          n[] = i
       end
-   
+
+      close(ds)
       save(joinpath("./Plots", "fields_z$(depth_nearest)_$(datetime).mp4"), 
 	            video_total)
       save(joinpath("./Plots", "perturbs_z$(depth_nearest)_$(datetime).mp4"),
 	            video_perturb)
    end
    
-   #Plot static images (final frame, by default)
+   #=Plot static images (final frame, by default)
 
    fig_total   = Figure(size = (1200, 800))
    fig_perturb = Figure(size = (1200, 800))
@@ -1123,9 +1243,9 @@ function visualize_fields_const_z(datetime, z_idx;
    save(joinpath("./Plots", "fields_z$(depth_nearest)_tf_$(datetime).png"),
         fig_total)
    save(joinpath("./Plots", "perturbs_z$(depth_nearest)_tf_$(datetime).png"),
-        fig_perturb)
+        fig_perturb) =#
    close(bkgd_ds)
-   close(ds)
+   #close(ds)
 end
 
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)

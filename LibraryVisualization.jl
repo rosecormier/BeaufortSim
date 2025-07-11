@@ -210,7 +210,7 @@ function open_dataset(outfilename)
 end
 
 function open_bkgd_dataset(bkgd_datetime)
-   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
+   bkgd_ds = NCDataset(joinpath("/mnt/autofs/sutton.math/fsys1/rmc2corm/Output", "bkgd_$(bkgd_datetime).nc"))
    return bkgd_ds
 end
 

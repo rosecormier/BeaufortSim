@@ -20,13 +20,13 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 512
-const Ny = 512
+const Nx = 800
+const Ny = 800
 const Nz = 16
 
 #Lengths of axes
-const Lx = 4e3 * kilometer
-const Ly = 4e3 * kilometer
+const Lx = 1e7 * kilometer
+const Ly = 1e7 * kilometer
 const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
@@ -58,31 +58,31 @@ const d_ML = -50 * meter
 
 #Time-stepping parameters
 const Δti     = 5 * second
-const Δt_max  = 1 * hour
+const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 40 * day
-const Δt_save = 4 * hour
+const tf      = 150 * day
+const Δt_save = 5 * hour
 
 #Architecture
 const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-6
+const max_u′ = 1e-8
 
-const save_bkgd = true #Whether to save background state to a NetCDF file
-const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
+const save_bkgd = false #true #Whether to save background state to a NetCDF file
+const bkgd_datetime = "250706-143810" #nothing #If save_bkgd == true, must == nothing
 
 #Whether to run visualization functions
 const vis_const_x = false
 const vis_const_y = false
-const vis_const_z = true
+const vis_const_z = false
 const vis_norms   = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 9
+const z_idx      = 11
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
@@ -149,8 +149,8 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #######################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
-print("Date-time label: $(datetimenow)", "\n")
+datetimenow   = "250706-143810" #format(datetimestart, "yymmdd-HHMMSS")
+#=print("Date-time label: $(datetimenow)", "\n")
 
 if save_bkgd
    
@@ -243,7 +243,10 @@ field_writer = NetCDFOutputWriter(model,
 simulation.output_writers[:field_writer] = field_writer
 
 run!(simulation)
+
 duration = canonicalize(now() - datetimestart)
+
+pad_filenames(datetimenow)
 
 ###############################
 # SAVE PARAMETERS TO LOG FILE #
@@ -269,7 +272,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-
+=#
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -295,20 +298,20 @@ if vis_const_y
 end
 
 if vis_const_z
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
-		      bkgd_datetime = bkgd_datetime,
-                      z_idx = z_idx,
-		      plot_animation = true, 
-		      t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
+   #		      bkgd_datetime = bkgd_datetime,
+   #                   z_idx = z_idx,
+   #		      plot_animation = true, 
+   #		      t_idx_skip = t_idx_skip)
    visualize_fields_const_z(datetimenow, z_idx; 
-			    bkgd_datetime = bkgd_datetime,
+   			    bkgd_datetime = bkgd_datetime,
                             plot_animation = true, 
-			    t_idx_skip = t_idx_skip)
+   			    t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
    visualize_norms(datetimenow, model.grid; 
-		   bkgd_datetime = bkgd_datetime, do_Cartesian = true)
+		   bkgd_datetime = bkgd_datetime, do_Cartesian = false)
 end
 
 if vis_z_grid
