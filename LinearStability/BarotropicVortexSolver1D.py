@@ -208,7 +208,8 @@ def QG_Vortex_Stability():
             #Visualize growth rates and propagation speeds for different kphi
         
             fig, axes = plt.subplots(nkp, 2, figsize = (10, 7), sharex = "col")
-            
+            fig_poster, ax_poster = plt.subplots(1, 1, figsize = (3, 4))
+
             for ii in range(0, nkp):
                 
                 ax_growth = axes[ii, 0]
@@ -226,6 +227,20 @@ def QG_Vortex_Stability():
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
+
+            ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 0, 0]),
+                           "-", color = "#f49100",
+                           label = "k = 1")
+            ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 1, 0]),
+                           "-", color = "#0d82a8",
+                           label = "k = 2")
+            ax_poster.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)',
+                          ylabel = "Growth rate ($s^{-1}$)",
+                          title = "Growth rates of fastest-growing\n modes")
+            plt.grid(True)
+            ax_poster.legend()
+            fig_poster.savefig("omega_vs_m_poster.pdf")
+            plt.close(fig_poster)
 
             ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
             ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
