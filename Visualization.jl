@@ -153,9 +153,9 @@ function visualize_norms_poster(datetime, grid;
    bkgd_ds = open_bkgd_dataset(bkgd_datetime)
    Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
 
-   fig = Figure(size = (600, 300))
+   fig = Figure(size = (500, 300))
    ax = Axis(fig[1, 1]; title = L"Norms of $u_r', u_{{\phi}}'$",
-	                xlabel = L"$t$ [days]", ylabel = L"$||L_2||$ norm [m/s]",
+	                xlabel = L"$t$ [days]", ylabel = L"$\ell^2$-norm [m/s]",
                         yscale = log10)
    
    outfile_list = glob("output_$(datetime)*", "./Output")
