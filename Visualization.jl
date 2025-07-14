@@ -143,6 +143,60 @@ function visualize_norms(datetime, grid;
    close(bkgd_ds)
 end
 
+function visualize_norms_poster(datetime, grid;
+		bkgd_datetime = nothing)
+
+   if isnothing(bkgd_datetime)
+      bkgd_datetime = datetime
+   end
+
+   bkgd_ds = open_bkgd_dataset(bkgd_datetime)
+   Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
+
+   fig = Figure(size = (600, 300))
+   ax = Axis(fig[1, 1]; title = L"Norms of $u_r', u_{{\phi}}'$",
+	                xlabel = L"$t$ [days]", ylabel = L"$||L_2||$ norm [m/s]",
+                        yscale = log10)
+   
+   outfile_list = glob("output_$(datetime)*", "./Output")
+   print(outfile_list)
+   file_idx = 1
+
+   while file_idx < 7
+      
+      outfilename = outfile_list[file_idx]
+      print(outfilename)
+      ds, x, y, z, times, Nt = open_dataset(outfile_list)
+
+      ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
+
+      n = Observable(2)
+
+      ur_norm = @lift field_norm(ur, $n)
+      uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
+
+      for i = 2:Nt
+
+         @lift scatter!(ax, times[$n], $ur_norm, label = L"$u_r'$", color = colorant"#DB3E3E")
+	 @lift scatter!(ax, times[$n], $uφ_norm, label = L"$u_{{\phi}}'$", color = colorant"#FAB146")
+
+         yield()
+         n[] = i
+      end
+
+      close(ds)
+      file_idx += 1
+   end
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   axislegend(position = :rb, unique = true)
+   #fig[1, 1] = Label(fig, "Norms of perturbation velocities",
+   #                        fontsize = 24, tellwidth = false)
+   save(joinpath("./Plots", "poster_version_norm_fields_$(datetime).png"), fig)
+
+   close(bkgd_ds)
+end
+
 function visualize_b_and_ωz(datetime, Δx, Δy; 
 		            x_idx = nothing, y_idx = nothing, z_idx = nothing,
 		            bkgd_datetime = nothing, plot_animation = false, 

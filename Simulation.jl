@@ -310,8 +310,9 @@ if vis_const_z
 end
 
 if vis_norms
-   visualize_norms(datetimenow, model.grid; 
-		   bkgd_datetime = bkgd_datetime, do_Cartesian = false)
+   #visualize_norms(datetimenow, model.grid; 
+   #		   bkgd_datetime = bkgd_datetime, do_Cartesian = false)
+   visualize_norms_poster(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
 end
 
 if vis_z_grid
