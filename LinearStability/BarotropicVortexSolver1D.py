@@ -289,7 +289,7 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 0, 1
+        kz_idx, kp_idx = 8, 0 #0, 1
         kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
@@ -334,7 +334,7 @@ def QG_Vortex_Stability():
                                             eigvecChebNorm[r_idx + 1],
                                             k = kphi, phi = phiCoords[phi_idx])
 
-        fig, axs = plt.subplots(1, 2, figsize = (8, 6),
+        fig, axs = plt.subplots(1, 2, figsize = (4, 6),
                                 subplot_kw = dict(projection = "polar"))
 
         for i in range(2):
@@ -357,9 +357,24 @@ def QG_Vortex_Stability():
                                     cmap = "bwr"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.75)
-        plt.show()
+        #plt.show()
         fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
+        
+        fig_poster, ax_poster = plt.subplots(1, 1, figsize = (4, 6),
+                                subplot_kw = dict(projection = "polar"))
+        ax_poster.grid(False)
+        ax_poster.pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, cmap = "RdBu_r", vmin = -1, vmax = 1)
+        #ax_poster.set_title(f"$k=$ {kphi}; $m=$ {kz}")
+        ax_poster.grid(True)
+
+        fig_poster.suptitle(f"Re [$\hat{{\psi}}(r)$ exp$(ik\phi)$];\n most unstable mode with $k=$ {kphi}")
+        fig_poster.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), cmap = "RdBu_r"),
+                     ax = ax_poster, orientation = "horizontal") #, shrink = 0.75)
+        plt.show()
+        fig_poster.savefig(f"poster_streamfunc_k{kphi}_m{kz}.pdf")
+        plt.close(fig_poster)
+
         """
         xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
         
