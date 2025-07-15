@@ -192,7 +192,8 @@ def QG_Vortex_Stability():
     # VISUALIZATION #
     #################
 
-    plt.rcParams.update({"text.usetex": True})
+    plt.rcParams.update({"text.usetex": True,
+                         "font.size": 17})
 
     #Dimensionalize eigenvalues
     
@@ -234,7 +235,7 @@ def QG_Vortex_Stability():
             ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 1, 0]),
                            "-", color = "#0d82a8",
                            label = "k = 2")
-            ax_poster.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)',
+            ax_poster.set(xlabel = r"$m$ (vertical wavenumber) $\times H$",
                           ylabel = "Growth rate ($s^{-1}$)",
                           title = "Growth rates of fastest-growing\n modes")
             plt.grid(True)
@@ -361,14 +362,14 @@ def QG_Vortex_Stability():
         fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
         plt.close(fig)
         
-        fig_poster, ax_poster = plt.subplots(1, 1, figsize = (4, 6),
+        fig_poster, ax_poster = plt.subplots(1, 1, figsize = (4, 7),
                                 subplot_kw = dict(projection = "polar"))
         ax_poster.grid(False)
         ax_poster.pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, cmap = "RdBu_r", vmin = -1, vmax = 1)
         #ax_poster.set_title(f"$k=$ {kphi}; $m=$ {kz}")
         ax_poster.grid(True)
 
-        fig_poster.suptitle(f"Re [$\hat{{\psi}}(r)$ exp$(ik\phi)$];\n most unstable mode with $k=$ {kphi}")
+        fig_poster.suptitle(f"Re [$\hat{{\psi}}(r)$ exp$(ik\phi)$];\n fastest-growing mode with\n $k=$ {kphi} and $m=$ {kz}\n\n")
         fig_poster.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), cmap = "RdBu_r"),
                      ax = ax_poster, orientation = "horizontal") #, shrink = 0.75)
         plt.show()
