@@ -20,7 +20,7 @@ for filepath in file_list:
 
     openfile = Dataset(filepath, "r")
   
-    times = openfile.variables["time"][:]
+    times = (openfile.variables["time"][:]) / 86400 #Convert to days
     ur    = openfile.variables["ur"][:, :, :, :]
     uphi  = openfile.variables["uφ"][:, :, :, :]
 
@@ -50,9 +50,12 @@ uphi_fit_params = np.polyfit(times, uphi_norms_log_fit, 1)
 print("Best-fit parameters for log|u_r|: [slope, intercept] = ", ur_fit_params, "\n")
 print("Best-fit parameters for log|u_phi|: [slope, intercept] = ", uphi_fit_params, "\n")
 
-plt.figure()
-plt.scatter(all_times, ur_norms_log)
-plt.scatter(all_times, uphi_norms_log, color="red")
-plt.plot(np.array(times), ur_fit_params[0] * np.array(times) + ur_fit_params[1], color = "orange")
-plt.plot(np.array(times), uphi_fit_params[0] * np.array(times) + uphi_fit_params[1], color = "red")
+fig, ax = plt.subplots(1, 1)
+ax.scatter(all_times, ur_norms_log, color = "red", label = "$||u_r'||$")
+ax.scatter(all_times, uphi_norms_log, color = "orange", label = "$||u_{{\phi}}'||$")
+ax.plot(np.array(times), ur_fit_params[0] * np.array(times) + ur_fit_params[1], color = "red", label = "Best fit to $||u_r'||$")
+ax.plot(np.array(times), uphi_fit_params[0] * np.array(times) + uphi_fit_params[1], color = "orange", label = "Best fit to $||u_{{\phi}}'||$")
+ax.set(xlabel = "Time [days]", ylabel = "Log of field norm")
 plt.show()
+fig.savefig("test.png")
+plt.close(fig)
