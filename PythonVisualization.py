@@ -109,13 +109,13 @@ ur_data   = ur_data[time_indexing]
 uphi_data = uphi_data[time_indexing]
 uz_data   = uz_data[time_indexing]
 
-for k in range(3, len(z)-3, 1):
+for k in range(10, 11, 1): #len(z)-3, 1):
 
     for t in range(fit_idx_start, fit_idx_stop, 3):
-        print(t, "\n")
-        time = all_times[t]
+        
+        time = (all_times[time_indexing])[t]
         zval = z[k]
-
+        
         fig, axs = plt.subplots(1, 2, sharey = True)
         pcm_ur = axs[0].pcolormesh(x[200:606] / 1e3, y[200:606] / 1e3,
                                      ur_data[t, k, 200:606, 200:606],
@@ -131,6 +131,6 @@ for k in range(3, len(z)-3, 1):
         fig.suptitle(f"Perturbations in horizontal velocity components; \n t = {time/86400:.2f} days, z = {zval} m")
         #plt.show()
         fig.savefig(join("Plots",
-                    f"ur_uphi_perturb_{datetime}_t{t}_z{zval}.png"))
+                    f"ur_uphi_perturb_{datetime}_t{str(t).zfill(5)}_z{zval}.png"))
         plt.close(fig)
 
