@@ -22,7 +22,7 @@ from matplotlib.colors import Normalize
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
-from GetStreamfunc import GetStreamfunc
+from Streamfunctions import GetStreamfunc
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 

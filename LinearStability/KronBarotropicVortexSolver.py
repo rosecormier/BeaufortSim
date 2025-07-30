@@ -29,7 +29,7 @@ from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
 from FiniteDiff import FiniteDiff
-from GetStreamfunc import GetStreamfunc
+from Streamfunctions import GetStreamfunc
 
 #Parse command-line inputs
 
