@@ -1,3 +1,8 @@
+import matplotlib
+matplotlib.use('Agg')
+
+####################
+
 from glob import glob
 from netCDF4 import Dataset
 from numpy.linalg import norm
@@ -14,6 +19,28 @@ uφ_bkgd   = openbkgd.variables["Uφ"][0, :, :, :]
 
 openbkgd.close()
 
+def compute_specificKE(t, ux, uy, uz, xF, yF, zF):
+
+    specificKE = 0.0
+
+    for k in range(len(zF) - 1):
+        dz_k = zF[k+1] - zF[k]
+
+        for j in range(len(yF) - 1):
+            dy_j = yF[j+1] - yF[j]
+
+            for i in range(len(xF) - 1):
+                dx_i = xF[i+1] - xF[i]
+
+                ux_avg_kji = (ux[t, k, j, i+1] + ux[t, k, j, i]) / 2
+                uy_avg_kji = (uy[t, k, j+1, i] + uy[t, k, j, i]) / 2
+                uz_avg_kji = (uz[t, k+1, j, i] + uz[t, k, j, i]) / 2
+
+                specificKE += ((ux_avg_kji**2 + uy_avg_kji**2 + uz_avg_kji**2)
+                               * dx_i * dy_j * dz_k / 2)
+
+    return specificKE
+
 all_times      = []
 ur_norms_log   = []
 uphi_norms_log = []
@@ -22,28 +49,38 @@ uz_norms_log   = []
 ur_data   = []
 uphi_data = []
 uz_data   = []
+specificKE_data = []
 
 file_list = glob(fr"./Output/output_{datetime}*.nc")
 
 for filepath in file_list:
 
     openfile = Dataset(filepath, "r")
-     
-    x     = openfile.variables["xC"][:]
-    y     = openfile.variables["yC"][:]
-    z     = openfile.variables["zC"][:]
+    
+    if filepath == file_list[0]: #Grid is the same for all files, so only save once
+       x  = openfile.variables["xC"][:]
+       y  = openfile.variables["yC"][:]
+       z  = openfile.variables["zC"][:]
+       xF = openfile.variables["xF"][:]
+       yF = openfile.variables["yF"][:]
+       zF = openfile.variables["zF"][:]
+
     times = openfile.variables["time"][:]
     ur    = openfile.variables["ur"][:, :, :, :]
     uphi  = openfile.variables["uφ"][:, :, :, :]
+    
+    ux    = openfile.variables["ux"][:, :, :, :]
+    uy    = openfile.variables["uy"][:, :, :, :]
     uz    = openfile.variables["uz"][:, :, :, :]
 
     for t in range(len(times)):
-    
+       
        ur_norm_t   = norm(ur[t, :, :, :])
        uphi_norm_t = norm(uphi[t, :, :, :] - uφ_bkgd)
        uz_norm_t   = norm(uz[t, :, :, :])
-
+       
        all_times.append(times[t])
+       
        ur_norms_log.append(np.log(ur_norm_t))
        uphi_norms_log.append(np.log(uphi_norm_t))
        uz_norms_log.append(np.log(uz_norm_t))
@@ -51,6 +88,8 @@ for filepath in file_list:
        ur_data.append(ur[t, :, :, :])
        uphi_data.append(uphi[t, :, :, :])
        uz_data.append(uz[t, :, :, :])
+       
+       specificKE_data.append(compute_specificKE(t, ux, uy, uz, xF, yF, zF))
 
     openfile.close()
 
@@ -64,11 +103,14 @@ ur_data   = np.array(ur_data)
 uphi_data = np.array(uphi_data)
 uz_data   = np.array(uz_data)
 
+specificKE_data = np.array(specificKE_data)
+
 time_indexing = np.argsort(all_times)
 
 fit_idx_start, fit_idx_stop = 55, 140
 
 times              = (all_times[time_indexing])[fit_idx_start:fit_idx_stop]
+
 ur_norms_log_fit   = (ur_norms_log[time_indexing])[fit_idx_start:fit_idx_stop]
 uphi_norms_log_fit = (uphi_norms_log[time_indexing])[fit_idx_start:fit_idx_stop]
 uz_norms_log_fit   = (uz_norms_log[time_indexing])[fit_idx_start:fit_idx_stop]
@@ -98,17 +140,26 @@ ax.plot(np.array(times) / 86400,
         uz_fit_params[0] * np.array(times) + uz_fit_params[1],
         color = "black", label = "Best fit to $||u_z'||$")
 ax.set(xlabel = "Time [days]", ylabel = "Log of $\ell^2$-norm [m/s]")
+fig.suptitle("Norms of perturbation-velocity components")
 ax.legend()
 plt.grid(True)
-#plt.show()
 fig.savefig(join("Plots",
             f"norms_{datetime}_fit_{fit_idx_start}-{fit_idx_stop}.png"))
+plt.close(fig)
+
+fig, ax = plt.subplots(1, 1)
+ax.scatter(all_times / 86400, specificKE_data, color = "red")
+ax.set(xlabel = "Time [days]", ylabel = "Kinetic energy per mass [$m^2/s^2$]")
+ax.set_yscale("log")
+fig.suptitle("Domain-integrated specific kinetic energy")
+plt.grid(True)
+fig.savefig(join("Plots", f"specificKE_{datetime}.png"))
 plt.close(fig)
 
 ur_data   = ur_data[time_indexing]
 uphi_data = uphi_data[time_indexing]
 uz_data   = uz_data[time_indexing]
-
+"""
 for k in range(10, 11, 1): #len(z)-3, 1):
 
     for t in range(fit_idx_start, fit_idx_stop, 3):
@@ -129,8 +180,7 @@ for k in range(10, 11, 1): #len(z)-3, 1):
         axs[1].set(xlabel = "x [km]", ylabel = "y [km]")
         plt.colorbar(pcm_uphi, ax = axs[1])
         fig.suptitle(f"Perturbations in horizontal velocity components; \n t = {time/86400:.2f} days, z = {zval} m")
-        #plt.show()
         fig.savefig(join("Plots",
                     f"ur_uphi_perturb_{datetime}_t{str(t).zfill(5)}_z{zval}.png"))
         plt.close(fig)
-
+"""
