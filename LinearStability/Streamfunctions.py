@@ -21,3 +21,11 @@ def GetStreamfunc(eigenvec, **kwargs):
         psi = psi * (cos(omega*t) - 1j * sin(omega*t))
 
     return psi
+
+def VelocityFromStreamfunc(psi, ):
+
+    
+
+    ux = 
+
+    return ux, uy
