@@ -44,7 +44,7 @@ end
 function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
    
    #this will all be cleaner if we convert to polar coords upfront; i plan to change this
-
+   
    if σz == "infinity" #Barotropic case
   
       b̄ = (x, y, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
