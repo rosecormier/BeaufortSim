@@ -60,12 +60,11 @@ function visualize_norms(datetime, grid;
                         yscale = log10)
    end
 
-   outfile_list = glob("output_$(datetime)*", "./Output") #/output_$(datetime)*")
+   outfile_list = glob("output_$(datetime)*", "./Output")
    print(outfile_list)
    file_idx = 1
 
-   while file_idx < 7
-      #length(outfile_list)
+   while file_idx < length(outfile_list)
 
       outfilename = outfile_list[file_idx]
       print(outfilename)
@@ -98,7 +97,12 @@ function visualize_norms(datetime, grid;
          @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
          @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
    
-         #if do_Cartesian...
+         if do_Cartesian
+            @lift scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
+            @lift scatter!(ax_ux, times[$n], $ux_norm, color = :black)
+            @lift scatter!(ax_uy, times[$n], $uy_norm, color = :black)
+            @lift scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
+         end
       
          yield()
          n[] = i
@@ -107,27 +111,7 @@ function visualize_norms(datetime, grid;
       close(ds)
       file_idx += 1
    end 
-   #=
-   for i = 2:1000:1
-      print(i)
 
-      #scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
-      #scatter!(ax_ur, times[$n], $ur_norm, color = :black)
-      #scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
-      #scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
-
-      #if do_Cartesian
-      #	 scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
-      #   scatter!(ax_ux, times[$n], $ux_norm, color = :black)
-      #   scatter!(ax_uy, times[$n], $uy_norm, color = :black)
-      #   scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
-      #end
-         
-      yield()
-      n[] = i
-   end
-   =#
-   ##close(ds)   
    mkpath("./Plots") #Make visualization directory if nonexistent
 
    fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
@@ -165,9 +149,9 @@ function visualize_norms_poster(datetime, grid;
    while file_idx < 7
       
       outfilename = outfile_list[file_idx]
-      print(outfilename)
-      ds, x, y, z, times, Nt = open_dataset(outfile_list)
 
+      ds, x, y, z, times, Nt = open_dataset(outfile_list)
+      
       ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
 
       n = Observable(2)
@@ -190,10 +174,7 @@ function visualize_norms_poster(datetime, grid;
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    axislegend(position = :rb, unique = true)
-   #fig[1, 1] = Label(fig, "Norms of perturbation velocities",
-   #                        fontsize = 24, tellwidth = false)
    save(joinpath("./Plots", "poster_version_norm_fields_$(datetime).png"), fig)
-
    close(bkgd_ds)
 end
 
