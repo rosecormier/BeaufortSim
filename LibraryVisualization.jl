@@ -210,8 +210,7 @@ function open_dataset(outfilename)
 end
 
 function open_bkgd_dataset(bkgd_datetime)
-	bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc")) #"/mnt/autofs/sutton.math/fsys1/rmc2corm/Output", "bkgd_$(bkgd_datetime).nc"))
-   return bkgd_ds
+   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
 end
 
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 0)
