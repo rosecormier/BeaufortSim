@@ -13,6 +13,52 @@ using Printf
 
 ####################
 
+function visualize_norms_new(datetime)
+
+   scalars_ds = open_scalars_dataset("scalars_$(datetime).nc")
+
+   #b′_norm = scalars_ds[:b′_norm][:]
+   #print(b′_norm)
+   ux′_norm = scalars_ds[:ux′_norm][:]
+   print(ux′_norm)
+   
+   times = scalars_ds[:time][:] ./ 86400 #Convert to days for readability
+   #=
+                      uy′_norm = uy_perturbation_norm,
+                      ur′_norm = ur_perturbation_norm,
+                      uφ′_norm = uφ_perturbation_norm,
+                      uz′_norm = uz_perturbation_norm,
+                      b′_norm = b_perturbation_norm)
+   =#
+
+   fig_cyl   = Figure(size = (1200, 700))
+   ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$",
+                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
+                    yscale = log10)
+   ax_ur     = Axis(fig_cyl[2, 2]; title = L"Norm of $u_r'$",
+                    xlabel = L"$t$ [days]", ylabel = L"$||u_r'||$ [m/s]",
+                    yscale = log10)
+   ax_uφ     = Axis(fig_cyl[3, 1]; title = L"Norm of $u_{\phi}'$",
+                    xlabel = L"$t$ [days]", ylabel = L"$||u_{\phi}'||$ [m/s]",
+                    yscale = log10)
+   ax_uz_cyl = Axis(fig_cyl[3, 2]; title = L"Norm of $u_z'$",
+                    xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
+                    yscale = log10)
+
+   scatter!(ax_b_cyl, times, b′_norm, color = :black)
+   #      @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
+   #      @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
+   #      @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+
+   fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
+                           fontsize = 24, tellwidth = false)
+   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
+
+   close(scalars_ds)
+end
+
 function visualize_norms(datetime, grid; 
 		         bkgd_datetime = nothing, do_Cartesian = false)
    
@@ -61,7 +107,7 @@ function visualize_norms(datetime, grid;
    end
 
    outfile_list = glob("output_$(datetime)*", "./Output")
-   print(outfile_list)
+
    file_idx = 1
 
    while file_idx < length(outfile_list)
@@ -143,7 +189,7 @@ function visualize_norms_poster(datetime, grid;
                         yscale = log10)
    
    outfile_list = glob("output_$(datetime)*", "./Output")
-   print(outfile_list)
+   
    file_idx = 1
 
    while file_idx < 7

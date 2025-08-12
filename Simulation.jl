@@ -4,6 +4,7 @@ include("LibraryVisualization.jl")
 include("Visualization.jl")
 
 using Dates: canonicalize, format, now
+using LinearAlgebra: norm
 using NCDatasets
 using Oceananigans
 using Oceananigans.Architectures
@@ -13,6 +14,7 @@ using Oceananigans.Fields
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Oceananigans.Utils
+using Oceanostics
 using Printf, Random
 
 ######################
@@ -20,13 +22,13 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 800
-const Ny = 800
-const Nz = 16
+const Nx = 1200
+const Ny = 1200
+const Nz = 12
 
 #Lengths of axes
-const Lx = 1e7 * kilometer
-const Ly = 1e7 * kilometer
+const Lx = 2.5e3 * kilometer
+const Ly = 2.5e3 * kilometer
 const Lz = 1 * kilometer
 
 #Eddy viscosities and diffusivities
@@ -57,11 +59,11 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 5 * second
+const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 150 * day
-const Δt_save = 5 * hour
+const tf      = 200 * second #20 * day
+const Δt_save = 20 * second #2 * hour
 
 #Architecture
 const use_GPU = true
@@ -69,8 +71,8 @@ const use_GPU = true
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
-const save_bkgd = false #true #Whether to save background state to a NetCDF file
-const bkgd_datetime = "250706-143810" #nothing #If save_bkgd == true, must == nothing
+const save_bkgd = false #Whether to save background state to a NetCDF file
+const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
 
 #Whether to run visualization functions
 const vis_const_x = false
@@ -108,21 +110,16 @@ grid = RectilinearGrid(architecture,
                        y = (-Ly/2, Ly/2), 
                        z = (-Lz, 0.0),
 		       halo = (3, 3, 3))
-#                       z = z_grid_spacing,
-#                       halo = (3, 3, 3))
+#                       z = z_grid_spacing)
 
 closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
 	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
-#const bkgd_N²_top    = lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
-#const bkgd_N²_bottom = lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
-
-const bkgd_N²_top = N²₀
-const bkgd_N²_bot = N²₀
+const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
+const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
 b̄, ū, v̄, ūφ_abs, b̄_BCs = bkgd_fields(f, σr, σz, U, 
 				     bkgd_N²_top, bkgd_N²_bot)
-
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :RungeKutta3,
@@ -133,10 +130,8 @@ model = NonhydrostaticModel(;
 			    boundary_conditions = (; b = b̄_BCs,))#,
 #			    closure = closure)
 
-b       = model.tracers.b
-u, v, w = model.velocities
-
-set!(model, u = ū, v = v̄, b = b̄)
+set!(model, u = ū, v = v̄)
+set!(model, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -149,8 +144,8 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #######################################
 
 datetimestart = now()
-datetimenow   = "250706-143810" #format(datetimestart, "yymmdd-HHMMSS")
-#=print("Date-time label: $(datetimenow)", "\n")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+print("Date-time label: $(datetimenow)", "\n")
 
 if save_bkgd
    
@@ -180,6 +175,16 @@ if save_bkgd
    run!(bkgd_simulation)
 end
 
+#const Ux = model.velocities.u
+Ux = Field{Face, Center, Center}(model.grid)
+Ux .= model.velocities.u
+const Uy = model.velocities.v
+const Ur, Uφ = xy_vector_to_rφ(Ux, Uy, model.grid)
+const Uz = model.velocities.w
+const B  = model.tracers.b
+
+@inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
+
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
@@ -196,17 +201,12 @@ end
 @inline v_perturbed(x, y, z) = (v̄(x, y, z) 
 				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
-#Perturb components of velocity by randomizing direction of perturbation
-#@inline direction_perturb(x, y, z) = 2pi * rand()
-#@inline u_perturbed(x, y, z) = ū(x, y, z) + (speed_perturb(x, y, z) * cos(direction_perturb(x, y, z)))
-#@inline v_perturbed(x, y, z) = v̄(x, y, z) + (speed_perturb(x, y, z) * sin(direction_perturb(x, y, z)))
-
 set!(model, u = u_perturbed, v = v_perturbed) #Update initial condition to trigger BCI
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
-wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
+#wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
+#simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -216,6 +216,7 @@ function progress(sim)
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
+   @info @sprintf("norm u = %.10e", norm(sim.model.velocities.u))
    return nothing
 end
 
@@ -240,7 +241,40 @@ field_writer = NetCDFOutputWriter(model,
                                   schedule = TimeInterval(Δt_save),
 				  file_splitting = FileSizeLimit(30GiB))
 
+ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
+uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
+ur_perturbation_norm(model) = perturbation_norm(ur, Ur)
+uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ)
+uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz)
+b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B)
+
+scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
+		      uy′_norm = uy_perturbation_norm,
+		      ur′_norm = ur_perturbation_norm,
+		      uφ′_norm = uφ_perturbation_norm,
+		      uz′_norm = uz_perturbation_norm,
+		      b′_norm = b_perturbation_norm)
+#scalar_diagnostics = (; ur′_norm = ur_perturbation_norm) 
+
+scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
+mkpath(dirname(scalarfilepath)) #Make path if nonexistent
+
+scalar_writer = NetCDFOutputWriter(model, 
+				   scalar_diagnostics, 
+				   with_halos = true, 
+				   filename = scalarfilepath, 
+				   schedule = TimeInterval(Δt_save),
+                                   file_splitting = FileSizeLimit(30GiB),
+				   dimensions = (ux′_norm = (),
+						 uy′_norm = (),
+						 ur′_norm = (),
+						 uφ′_norm = (),
+						 uz′_norm = (),
+						 b′_norm = ()))
+				   #dimensions = (; ur′_norm = ()))
+
 simulation.output_writers[:field_writer] = field_writer
+simulation.output_writers[:scalar_writer] = scalar_writer
 
 run!(simulation)
 
@@ -264,7 +298,8 @@ open(logfilepath, "w") do file
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
-   write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
+   #write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
+   write(file, "Δt = $(Δti) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
    write(file, "Total number of iterations = $(iteration(simulation)) \n")
@@ -272,7 +307,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -312,7 +347,8 @@ end
 if vis_norms
    #visualize_norms(datetimenow, model.grid; 
    #		   bkgd_datetime = bkgd_datetime, do_Cartesian = false)
-   visualize_norms_poster(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
+   #visualize_norms_poster(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
+   visualize_norms_new(datetimenow)
 end
 
 if vis_z_grid

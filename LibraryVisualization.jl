@@ -174,8 +174,8 @@ module OutFileFormat
 end
 
 module VisFunctions
-   export open_dataset, open_bkgd_dataset, get_range_lims, 
-   get_2D_spatial_axis_kwargs
+   export open_dataset, open_bkgd_dataset, open_scalars_dataset, 
+	  get_range_lims, get_2D_spatial_axis_kwargs
 end
 
 ####################
@@ -211,6 +211,10 @@ end
 
 function open_bkgd_dataset(bkgd_datetime)
    bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
+end
+
+function open_scalars_dataset(scalarfilename)
+   scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
 end
 
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 0)
