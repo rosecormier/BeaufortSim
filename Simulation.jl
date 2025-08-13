@@ -62,7 +62,7 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 200 * second #20 * day
+const tf      = 0.2 * day #20 * day
 const Δt_save = 20 * second #2 * hour
 
 #Architecture
@@ -78,7 +78,7 @@ const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
 const vis_const_x = false
 const vis_const_y = false
 const vis_const_z = false
-const vis_norms   = true
+const vis_norms   = false
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -216,7 +216,7 @@ function progress(sim)
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
-   @info @sprintf("norm u = %.10e", norm(sim.model.velocities.u))
+   @info @sprintf("norm u' = %.10e", norm(sim.model.velocities.u - Ux))
    return nothing
 end
 
