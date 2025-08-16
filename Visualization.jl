@@ -13,23 +13,19 @@ using Printf
 
 ####################
 
-function visualize_norms_new(datetime)
+function visualize_norms(datetime)
 
    scalars_ds = open_scalars_dataset("scalars_$(datetime).nc")
 
-   #b′_norm = scalars_ds[:b′_norm][:]
-   #print(b′_norm)
+   b′_norm  = scalars_ds[:b′_norm][:]
+   print(b′_norm)
    ux′_norm = scalars_ds[:ux′_norm][:]
-   print(ux′_norm)
+   uy′_norm = scalars_ds[:uy′_norm][:]
+   ur′_norm = scalars_ds[:ur′_norm][:]
+   uφ′_norm = scalars_ds[:uφ′_norm][:]
+   uz′_norm = scalars_ds[:uz′_norm][:]
    
    times = scalars_ds[:time][:] ./ 86400 #Convert to days for readability
-   #=
-                      uy′_norm = uy_perturbation_norm,
-                      ur′_norm = ur_perturbation_norm,
-                      uφ′_norm = uφ_perturbation_norm,
-                      uz′_norm = uz_perturbation_norm,
-                      b′_norm = b_perturbation_norm)
-   =#
 
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$",
@@ -45,22 +41,45 @@ function visualize_norms_new(datetime)
                     xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
                     yscale = log10)
 
+   fig_Cart   = Figure(size = (1200, 700))
+   ax_b_Cart  = Axis(fig_Cart[2, 1]; title = L"Norm of $b'$",
+                     xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
+	    	     yscale = log10)
+   ax_ux      = Axis(fig_Cart[2, 2]; title = L"Norm of $u_x'$",
+                     xlabel = L"$t$ [days]", ylabel = L"$||u_x'||$ [m/s]",
+                     yscale = log10)
+   ax_uy      = Axis(fig_Cart[3, 1]; title = L"Norm of $u_y'$",
+                     xlabel = L"$t$ [days]", ylabel = L"$||u_y'||$ [m/s]",
+                     yscale = log10)
+   ax_uz_Cart = Axis(fig_Cart[3, 2]; title = L"Norm of $u_z'$",
+                     xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
+                     yscale = log10)
+
    scatter!(ax_b_cyl, times, b′_norm, color = :black)
-   #      @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
-   #      @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
-   #      @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
+   scatter!(ax_ur, times, ur′_norm, color = :black)
+   scatter!(ax_uφ, times, uφ′_norm, color = :black)
+   scatter!(ax_uz_cyl, times, uz′_norm, color = :black)
    
+   scatter!(ax_b_Cart, times, b′_norm, color = :black)
+   scatter!(ax_ux, times, ur′_norm, color = :black)
+   scatter!(ax_uy, times, uφ′_norm, color = :black)
+   scatter!(ax_uz_Cart, times, uz′_norm, color = :black)
+
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
+   fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields",
                            fontsize = 24, tellwidth = false)
-   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
+   fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields",
+                           fontsize = 24, tellwidth = false)
 
+   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
+   save(joinpath("./Plots", "norm_Cart_fields_$(datetime).png"), fig_Cart)
    close(scalars_ds)
 end
 
-function visualize_norms(datetime, grid; 
-		         bkgd_datetime = nothing, do_Cartesian = false)
+function compute_and_visualize_norms(datetime, grid; 
+		                     bkgd_datetime = nothing, 
+				     do_Cartesian = false)
    
    #`grid` is a required argument for now
    #but I would like to update the open_dataset function to get it automatically from the output file

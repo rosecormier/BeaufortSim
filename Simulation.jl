@@ -62,8 +62,8 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 0.2 * day #20 * day
-const Δt_save = 20 * second #2 * hour
+const tf      = 30 * day
+const Δt_save = 6 * hour
 
 #Architecture
 const use_GPU = true
@@ -78,7 +78,7 @@ const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
 const vis_const_x = false
 const vis_const_y = false
 const vis_const_z = false
-const vis_norms   = false
+const vis_norms   = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -144,8 +144,8 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #######################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
-print("Date-time label: $(datetimenow)", "\n")
+datetimenow   = "250815-134420" #format(datetimestart, "yymmdd-HHMMSS")
+#=print("Date-time label: $(datetimenow)", "\n")
 
 if save_bkgd
    
@@ -176,12 +176,20 @@ if save_bkgd
 end
 
 #const Ux = model.velocities.u
-Ux = Field{Face, Center, Center}(model.grid)
-Ux .= model.velocities.u
-const Uy = model.velocities.v
-const Ur, Uφ = xy_vector_to_rφ(Ux, Uy, model.grid)
-const Uz = model.velocities.w
-const B  = model.tracers.b
+Ux      = Field{Face, Center, Center}(model.grid)
+Ux     .= model.velocities.u
+Uy      = Field{Center, Face, Center}(model.grid)
+Uy     .= model.velocities.v
+#const Uy = model.velocities.v
+Ur      = Field{Center, Center, Center}(model.grid)
+Uφ      = Field{Center, Center, Center}(model.grid)
+Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
+Ur .= Ur_vals
+Uφ .= Uφ_vals
+Uz      = Field{Center, Center, Face}(model.grid)
+Uz     .= model.velocities.w
+B       = Field{Center, Center, Center}(model.grid)
+B      .= model.tracers.b
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
@@ -307,7 +315,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-
+=#
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -345,10 +353,7 @@ if vis_const_z
 end
 
 if vis_norms
-   #visualize_norms(datetimenow, model.grid; 
-   #		   bkgd_datetime = bkgd_datetime, do_Cartesian = false)
-   #visualize_norms_poster(datetimenow, model.grid; bkgd_datetime = bkgd_datetime)
-   visualize_norms_new(datetimenow)
+   visualize_norms(datetimenow)
 end
 
 if vis_z_grid
