@@ -77,8 +77,8 @@ const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
 #Whether to run visualization functions
 const vis_const_x = false
 const vis_const_y = false
-const vis_const_z = false
-const vis_norms   = true
+const vis_const_z = true
+const vis_norms   = false
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -145,7 +145,7 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 
 datetimestart = now()
 datetimenow   = "250815-134420" #format(datetimestart, "yymmdd-HHMMSS")
-#=print("Date-time label: $(datetimenow)", "\n")
+print("Date-time label: $(datetimenow)", "\n")
 
 if save_bkgd
    
@@ -190,7 +190,7 @@ Uz      = Field{Center, Center, Face}(model.grid)
 Uz     .= model.velocities.w
 B       = Field{Center, Center, Center}(model.grid)
 B      .= model.tracers.b
-
+#=
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
 #############################
@@ -346,10 +346,11 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx; 
-   			    bkgd_datetime = bkgd_datetime,
-                            plot_animation = true, 
-   			    t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx, 
+                            B, Uφ; plot_animation = true, t_idx_skip = t_idx_skip)
+   # 			    bkgd_datetime = bkgd_datetime,
+   #                         plot_animation = true, 
+   #			    t_idx_skip = t_idx_skip)
 end
 
 if vis_norms

@@ -993,27 +993,29 @@ function visualize_fields_const_y(datetime, y_idx;
    close(ds)
 end
 
-function visualize_fields_const_z(datetime, z_idx; 
-		                  bkgd_datetime = nothing,
-				  plot_animation = true, t_idx_skip = 1)
+function visualize_fields_const_z(datetime, z_idx,
+		B, Uφ; plot_animation = true, t_idx_skip = 1)
+   #		                  bkgd_datetime = nothing,
+   #				  plot_animation = true, t_idx_skip = 1)
    
-   if isnothing(bkgd_datetime)
-      bkgd_datetime = datetime
-   end
+   #if isnothing(bkgd_datetime)
+   #   bkgd_datetime = datetime
+   #end
 
-   bkgd_ds = open_bkgd_dataset(bkgd_datetime)
-   B       = bkgd_ds[:B][:, :, :, 1]
-   Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
+   #bkgd_ds = open_bkgd_dataset(bkgd_datetime)
+   B       = adapt(Array, B)[:, :, z_idx] #bkgd_ds[:B][:, :, :, 1]
+   Uφ      = adapt(Array, Uφ) #][:, :, :, 1]
 
    outfile_list             = glob("./Output/output_$(datetime)*")
    ds_f, x, y, z, times, Nt = open_dataset(outfile_list[length(outfile_list)])
-
-   b_total_f_xy  = ds_f[:b][:, :, z_idx, Nt]
+   
+   b_total_f_xy  = adapt(Array, ds_f[:b])[:, :, z_idx, Nt] #[1:length(x)-6, 1:length(y)-6, z_idx, Nt]
    ur_total_f_xy = ds_f[:ur][:, :, z_idx, Nt]
    uφ_total_f_xy = ds_f[:uφ][:, :, z_idx, Nt]
    uz_total_f_xy = ds_f[:uz][:, :, z_idx, Nt]
-
-   Δb_f_xy  = b_total_f_xy .- B[:, :, z_idx]
+   
+   print(size(b_total_f_xy), size(B))
+   Δb_f_xy  = b_total_f_xy .- no_offset_view(B) # .- B[:, :, z_idx]
    Δuφ_f_xy = uφ_total_f_xy .- Uφ[:, :, z_idx]
 
    lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 0.75)
