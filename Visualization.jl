@@ -18,7 +18,6 @@ function visualize_norms(datetime)
    scalars_ds = open_scalars_dataset("scalars_$(datetime).nc")
 
    b′_norm  = scalars_ds[:b′_norm][:]
-   print(b′_norm)
    ux′_norm = scalars_ds[:ux′_norm][:]
    uy′_norm = scalars_ds[:uy′_norm][:]
    ur′_norm = scalars_ds[:ur′_norm][:]
@@ -75,172 +74,6 @@ function visualize_norms(datetime)
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
    save(joinpath("./Plots", "norm_Cart_fields_$(datetime).png"), fig_Cart)
    close(scalars_ds)
-end
-
-function compute_and_visualize_norms(datetime, grid; 
-		                     bkgd_datetime = nothing, 
-				     do_Cartesian = false)
-   
-   #`grid` is a required argument for now
-   #but I would like to update the open_dataset function to get it automatically from the output file
-
-   if isnothing(bkgd_datetime)
-      bkgd_datetime = datetime
-   end
-
-   bkgd_ds = open_bkgd_dataset(bkgd_datetime)
-   B       = bkgd_ds[:B][:, :, :, 1]
-   Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
-
-   fig_cyl   = Figure(size = (1200, 700))
-   ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$",
-		    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]", 
-		    yscale = log10)
-   ax_ur     = Axis(fig_cyl[2, 2]; title = L"Norm of $u_r'$",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u_r'||$ [m/s]", 
-		    yscale = log10)
-   ax_uφ     = Axis(fig_cyl[3, 1]; title = L"Norm of $u_{\phi}'$",
-		    xlabel = L"$t$ [days]", ylabel = L"$||u_{\phi}'||$ [m/s]", 
-		    yscale = log10)
-   ax_uz_cyl = Axis(fig_cyl[3, 2]; title = L"Norm of $u_z'$",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                    yscale = log10)
-
-   if do_Cartesian
-
-      Ux, Uy = bkgd_ds[:Ux][:, :, :, 1], bkgd_ds[:Uy][:, :, :, 1]
-
-      fig_Cart   = Figure(size = (1200, 700))
-      ax_b_Cart  = Axis(fig_Cart[2, 1]; title = L"Norm of $b'$",
-                        xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
-                        yscale = log10)
-      ax_ux      = Axis(fig_Cart[2, 2]; title = L"Norm of $u_x'$",
-                        xlabel = L"$t$ [days]", ylabel = L"$||u_x'||$ [m/s]",
-                        yscale = log10)
-      ax_uy      = Axis(fig_Cart[3, 1]; title = L"Norm of $u_y'$",
-                        xlabel = L"$t$ [days]", ylabel = L"$||u_y'||$ [m/s]",
-                        yscale = log10)
-      ax_uz_Cart = Axis(fig_Cart[3, 2]; title = L"Norm of $u_z'$",
-                        xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                        yscale = log10)
-   end
-
-   outfile_list = glob("output_$(datetime)*", "./Output")
-
-   file_idx = 1
-
-   while file_idx < length(outfile_list)
-
-      outfilename = outfile_list[file_idx]
-      print(outfilename)
-      ds, x, y, z, times, Nt = open_dataset(outfile_list)
-
-      b      = ds[:b][:, :, :, :]
-      ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
-      uz     = ds[:uz][:, :, :, :]
-
-      if do_Cartesian
-         ux, uy = ds[:ux][:, :, :, :], ds[:uy][:, :, :, :]
-      end
-
-      n = Observable(2)
-
-      b_norm  = @lift field_norm(b, $n; ψ_bkgd = B)
-      ur_norm = @lift field_norm(ur, $n)
-      uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
-      uz_norm = @lift field_norm(uz, $n)
-
-      if do_Cartesian
-         ux_norm = @lift field_norm(ux, $n, ψ_bkgd = Ux)
-	 uy_norm = @lift field_norm(uy, $n, ψ_bkgd = Uy)
-      end
-
-      for i = 2:Nt
-      
-         @lift scatter!(ax_b_cyl, times[$n], $b_norm, color = :black)
-         @lift scatter!(ax_ur, times[$n], $ur_norm, color = :black)
-         @lift scatter!(ax_uφ, times[$n], $uφ_norm, color = :black)
-         @lift scatter!(ax_uz_cyl, times[$n], $uz_norm, color = :black)
-   
-         if do_Cartesian
-            @lift scatter!(ax_b_Cart, times[$n], $b_norm, color = :black)
-            @lift scatter!(ax_ux, times[$n], $ux_norm, color = :black)
-            @lift scatter!(ax_uy, times[$n], $uy_norm, color = :black)
-            @lift scatter!(ax_uz_Cart, times[$n], $uz_norm, color = :black)
-         end
-      
-         yield()
-         n[] = i
-      end
-
-      close(ds)
-      file_idx += 1
-   end 
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-
-   fig_cyl[1, 1:2] = Label(fig_cyl, "Norms of perturbation fields",
-			   fontsize = 24, tellwidth = false)
-   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
-
-   if do_Cartesian
-      fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields",
-			       fontsize = 24, tellwidth = false)
-      save(joinpath("./Plots", "norms_Cartesian_$(datetime).png"), fig_Cart)
-   end
-
-   close(bkgd_ds)
-end
-
-function visualize_norms_poster(datetime, grid;
-		bkgd_datetime = nothing)
-
-   if isnothing(bkgd_datetime)
-      bkgd_datetime = datetime
-   end
-
-   bkgd_ds = open_bkgd_dataset(bkgd_datetime)
-   Uφ      = bkgd_ds[:Uφ][:, :, :, 1]
-
-   fig = Figure(size = (500, 300))
-   ax = Axis(fig[1, 1]; title = L"Norms of $u_r', u_{{\phi}}'$",
-	                xlabel = L"$t$ [days]", ylabel = L"$\ell^2$-norm [m/s]",
-                        yscale = log10)
-   
-   outfile_list = glob("output_$(datetime)*", "./Output")
-   
-   file_idx = 1
-
-   while file_idx < 7
-      
-      outfilename = outfile_list[file_idx]
-
-      ds, x, y, z, times, Nt = open_dataset(outfile_list)
-      
-      ur, uφ = ds[:ur][:, :, :, :], ds[:uφ][:, :, :, :]
-
-      n = Observable(2)
-
-      ur_norm = @lift field_norm(ur, $n)
-      uφ_norm = @lift field_norm(uφ, $n; ψ_bkgd = Uφ)
-
-      for i = 2:Nt
-
-         @lift scatter!(ax, times[$n], $ur_norm, label = L"$u_r'$", color = colorant"#DB3E3E")
-	 @lift scatter!(ax, times[$n], $uφ_norm, label = L"$u_{{\phi}}'$", color = colorant"#FAB146")
-
-         yield()
-         n[] = i
-      end
-
-      close(ds)
-      file_idx += 1
-   end
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   axislegend(position = :rb, unique = true)
-   save(joinpath("./Plots", "poster_version_norm_fields_$(datetime).png"), fig)
-   close(bkgd_ds)
 end
 
 function visualize_b_and_ωz(datetime, Δx, Δy; 
@@ -1004,19 +837,18 @@ function visualize_fields_const_z(datetime, z_idx,
 
    #bkgd_ds = open_bkgd_dataset(bkgd_datetime)
    B       = adapt(Array, B)[:, :, z_idx] #bkgd_ds[:B][:, :, :, 1]
-   Uφ      = adapt(Array, Uφ) #][:, :, :, 1]
+   Uφ      = adapt(Array, Uφ)[:, :, z_idx]
 
    outfile_list             = glob("./Output/output_$(datetime)*")
    ds_f, x, y, z, times, Nt = open_dataset(outfile_list[length(outfile_list)])
    
    b_total_f_xy  = adapt(Array, ds_f[:b])[:, :, z_idx, Nt] #[1:length(x)-6, 1:length(y)-6, z_idx, Nt]
-   ur_total_f_xy = ds_f[:ur][:, :, z_idx, Nt]
-   uφ_total_f_xy = ds_f[:uφ][:, :, z_idx, Nt]
-   uz_total_f_xy = ds_f[:uz][:, :, z_idx, Nt]
+   ur_total_f_xy = adapt(Array, ds_f[:ur])[:, :, z_idx, Nt]
+   uφ_total_f_xy = adapt(Array, ds_f[:uφ])[:, :, z_idx, Nt]
+   uz_total_f_xy = adapt(Array, ds_f[:uz])[:, :, z_idx, Nt]
    
-   print(size(b_total_f_xy), size(B))
    Δb_f_xy  = b_total_f_xy .- no_offset_view(B) # .- B[:, :, z_idx]
-   Δuφ_f_xy = uφ_total_f_xy .- Uφ[:, :, z_idx]
+   Δuφ_f_xy = uφ_total_f_xy .- no_offset_view(Uφ) #[:, :, z_idx]
 
    lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 0.75)
    lims_ur       = get_range_lims(ur_total_f_xy; 
@@ -1174,8 +1006,8 @@ function visualize_fields_const_z(datetime, z_idx,
       uφ_total_xy = @lift ds[:uφ][:, :, z_idx, $n]
       uz_total_xy = @lift ds[:uz][:, :, z_idx, $n]
 
-      Δb_xy  = @lift $b_total_xy .- B[:, :, z_idx]
-      Δuφ_xy = @lift $uφ_total_xy .- Uφ[:, :, z_idx]
+      Δb_xy  = @lift $b_total_xy .- no_offset_view(B) #[:, :, z_idx]
+      Δuφ_xy = @lift $uφ_total_xy .- no_offset_view(Uφ) #[:, :, z_idx]
       
       hm_b_total  = heatmap!(ax_b_total, x, y, b_total_xy,
                              colorrange = lims_b_total,
@@ -1240,7 +1072,7 @@ function visualize_fields_const_z(datetime, z_idx,
       video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
          
       for i = 1:t_idx_skip:Nt
-         print(i, " of ", Nt)
+         print(i, " of ", Nt, "\n")
 	 recordframe!(video_total)
          recordframe!(video_perturb)
          yield()
@@ -1346,7 +1178,7 @@ function visualize_fields_const_z(datetime, z_idx,
         fig_total)
    save(joinpath("./Plots", "perturbs_z$(depth_nearest)_tf_$(datetime).png"),
         fig_perturb) =#
-   close(bkgd_ds)
+   #close(bkgd_ds)
    #close(ds)
 end
 
