@@ -62,7 +62,7 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 30 * day
+const tf      = 20 * day #30 * day
 const Δt_save = 6 * hour
 
 #Architecture
@@ -71,14 +71,11 @@ const use_GPU = true
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
-const save_bkgd = false #Whether to save background state to a NetCDF file
-const bkgd_datetime = nothing #If save_bkgd == true, must == nothing
-
 #Whether to run visualization functions
 const vis_const_x = false
 const vis_const_y = false
-const vis_const_z = true
-const vis_norms   = false
+const vis_const_z = false
+const vis_norms   = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -139,58 +136,33 @@ check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
 check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
                      x_idx = x_idx)
 
-#######################################
-# SAVE BACKGROUND STATE, IF INDICATED #
-#######################################
+#########################
+# SAVE BACKGROUND STATE #
+#########################
 
 datetimestart = now()
-datetimenow   = "250815-134420" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = "250816-182636" #format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
-if save_bkgd
-   
-   bkgd_simulation = Simulation(model, Δt = Δti, stop_iteration = 1)
+#Create fields to store background state
+Ux = Field{Face, Center, Center}(model.grid)
+Uy = Field{Center, Face, Center}(model.grid)
+Ur = Field{Center, Center, Center}(model.grid)
+Uφ = Field{Center, Center, Center}(model.grid)
+Uz = Field{Center, Center, Face}(model.grid)
+B  = Field{Center, Center, Center}(model.grid)
 
-   ur, uφ = xy_vector_to_rφ(model.velocities.u, 
-			    model.velocities.v, 
-			    model.grid)
+Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, 
+				   model.velocities.v, model.grid)
 
-   bkgd_outputs = (Ur = ur,
-                   Uφ = uφ,
-                   Ux = model.velocities.u,
-                   Uy = model.velocities.v,
-                   Uz = model.velocities.w,
-                   B  = model.tracers.b)
-
-   bkgd_filepath = joinpath("./Output", "bkgd_$(datetimenow).nc")
-   mkpath(dirname(bkgd_filepath)) #Make path if nonexistent
-
-   bkgd_writer = NetCDFOutputWriter(model,
-                                    bkgd_outputs,
-                                    with_halos = true,
-                                    filename = bkgd_filepath,
-                                    schedule = SpecifiedTimes([0]))
-
-   bkgd_simulation.output_writers[:field_writer] = bkgd_writer
-   run!(bkgd_simulation)
-end
-
-#const Ux = model.velocities.u
-Ux      = Field{Face, Center, Center}(model.grid)
-Ux     .= model.velocities.u
-Uy      = Field{Center, Face, Center}(model.grid)
-Uy     .= model.velocities.v
-#const Uy = model.velocities.v
-Ur      = Field{Center, Center, Center}(model.grid)
-Uφ      = Field{Center, Center, Center}(model.grid)
-Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
+#Save background-state data
+Ux .= model.velocities.u
+Uy .= model.velocities.v
 Ur .= Ur_vals
 Uφ .= Uφ_vals
-Uz      = Field{Center, Center, Face}(model.grid)
-Uz     .= model.velocities.w
-B       = Field{Center, Center, Center}(model.grid)
-B      .= model.tracers.b
-#=
+Uz .= model.velocities.w
+B  .= model.tracers.b
+
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
 #############################
@@ -198,7 +170,7 @@ B      .= model.tracers.b
 #############################
 
 #Perturb velocity components to trigger BCI
-
+#=
 @inline u_perturbed(x, y, z) = (ū(x, y, z) 
 				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
@@ -262,7 +234,6 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uφ′_norm = uφ_perturbation_norm,
 		      uz′_norm = uz_perturbation_norm,
 		      b′_norm = b_perturbation_norm)
-#scalar_diagnostics = (; ur′_norm = ur_perturbation_norm) 
 
 scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
 mkpath(dirname(scalarfilepath)) #Make path if nonexistent
@@ -279,7 +250,6 @@ scalar_writer = NetCDFOutputWriter(model,
 						 uφ′_norm = (),
 						 uz′_norm = (),
 						 b′_norm = ()))
-				   #dimensions = (; ur′_norm = ()))
 
 simulation.output_writers[:field_writer] = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
@@ -346,11 +316,8 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, 
-                            B, Uφ; plot_animation = true, t_idx_skip = t_idx_skip)
-   # 			    bkgd_datetime = bkgd_datetime,
-   #                         plot_animation = true, 
-   #			    t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx,  B, Uφ; 
+			    plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
