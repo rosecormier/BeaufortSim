@@ -17,14 +17,14 @@ function visualize_norms(datetime)
 
    scalars_ds = open_scalars_dataset("scalars_$(datetime).nc")
 
-   b′_norm  = scalars_ds[:b′_norm][:]
-   ux′_norm = scalars_ds[:ux′_norm][:]
-   uy′_norm = scalars_ds[:uy′_norm][:]
-   ur′_norm = scalars_ds[:ur′_norm][:]
-   uφ′_norm = scalars_ds[:uφ′_norm][:]
-   uz′_norm = scalars_ds[:uz′_norm][:]
+   b′_norm  = scalars_ds[:b′_norm][2:end]
+   ux′_norm = scalars_ds[:ux′_norm][2:end]
+   uy′_norm = scalars_ds[:uy′_norm][2:end]
+   ur′_norm = scalars_ds[:ur′_norm][2:end]
+   uφ′_norm = scalars_ds[:uφ′_norm][2:end]
+   uz′_norm = scalars_ds[:uz′_norm][2:end]
    
-   times = scalars_ds[:time][:] ./ 86400 #Convert to days for readability
+   times = scalars_ds[:time][2:end] ./ 86400 #Convert to days for readability
 
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$",
