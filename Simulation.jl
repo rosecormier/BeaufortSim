@@ -3,6 +3,7 @@ include("LibraryStability.jl")
 include("LibraryVisualization.jl")
 include("Visualization.jl")
 
+using Adapt
 using Dates: canonicalize, format, now
 using LinearAlgebra: norm
 using NCDatasets
@@ -15,6 +16,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceanostics
+using OffsetArrays: no_offset_view
 using Printf, Random
 
 ######################
@@ -62,8 +64,8 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 20 * day #30 * day
-const Δt_save = 6 * hour
+const tf      = 2 * hour #20 * day #30 * day
+const Δt_save = 1 * hour #6 * hour
 
 #Architecture
 const use_GPU = true
@@ -74,8 +76,9 @@ const max_u′ = 1e-8
 #Whether to run visualization functions
 const vis_const_x = false
 const vis_const_y = false
-const vis_const_z = false
-const vis_norms   = true
+const vis_const_z    = false #true
+const vis_norms      = false #true
+const vis_energetics = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -128,6 +131,7 @@ model = NonhydrostaticModel(;
 #			    closure = closure)
 
 set!(model, u = ū, v = v̄)
+fill_halo_regions!(model.velocities, model.tracers.b)
 set!(model, b = b̄)
 
 #Prints warnings if the respective instabilities are present
@@ -136,41 +140,42 @@ check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
 check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
                      x_idx = x_idx)
 
-#########################
-# SAVE BACKGROUND STATE #
-#########################
+#########################################################
+# SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
+#########################################################
 
 datetimestart = now()
-datetimenow   = "250816-182636" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
+Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
+                                   model.velocities.v, model.grid)
+
 #Create fields to store background state
-Ux = Field{Face, Center, Center}(model.grid)
-Uy = Field{Center, Face, Center}(model.grid)
-Ur = Field{Center, Center, Center}(model.grid)
-Uφ = Field{Center, Center, Center}(model.grid)
-Uz = Field{Center, Center, Face}(model.grid)
-B  = Field{Center, Center, Center}(model.grid)
+const Ux_Field = XFaceField(model.grid; data = model.velocities.u.data)
+const Uy_Field = YFaceField(model.grid; data = model.velocities.v.data)
+const Ur_Field = CenterField(model.grid; data = Ur_vals.data)
+const Uφ_Field = CenterField(model.grid; data = Uφ_vals.data)
+const Uz_Field = ZFaceField(model.grid; data = model.velocities.w.data)
+const B_Field  = CenterField(model.grid; data = model.tracers.b.data)
 
-Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, 
-				   model.velocities.v, model.grid)
-
-#Save background-state data
-Ux .= model.velocities.u
-Uy .= model.velocities.v
-Ur .= Ur_vals
-Uφ .= Uφ_vals
-Uz .= model.velocities.w
-B  .= model.tracers.b
+const Ux = adapt(CuArray, Ux_Field[1:Nx+1, 1:Ny, 1:Nz])
+const Uy = adapt(CuArray, Uy_Field[1:Nx, 1:Ny+1, 1:Nz])
+const Uz = adapt(CuArray, Uz_Field[1:Nx, 1:Ny, 1:Nz+1])
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
+
+perturbation_KE_op(model) = KineticEnergy(model, 
+				   model.velocities.u .- no_offset_view(Ux),
+				   model.velocities.v .- no_offset_view(Uy),
+			           model.velocities.w .- no_offset_view(Uz))
 
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
 
 #Perturb velocity components to trigger BCI
-#=
+
 @inline u_perturbed(x, y, z) = (ū(x, y, z) 
 				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
@@ -196,7 +201,8 @@ function progress(sim)
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
-   @info @sprintf("norm u' = %.10e", norm(sim.model.velocities.u - Ux))
+   @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
+   #@info @sprintf("Total pKE = %.10e", Integral(no_offset_view(adapt(Array, pKE))))
    return nothing
 end
 
@@ -215,18 +221,18 @@ outfilepath = joinpath("./Output", "output_$(datetimenow).nc")
 mkpath(dirname(outfilepath)) #Make path if nonexistent
 
 field_writer = NetCDFOutputWriter(model, 
-				  outputs, 
+				  outputs,
                                   with_halos = true,
 		                  filename = outfilepath, 
                                   schedule = TimeInterval(Δt_save),
 				  file_splitting = FileSizeLimit(30GiB))
 
-ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
-uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
-ur_perturbation_norm(model) = perturbation_norm(ur, Ur)
-uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ)
-uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz)
-b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B)
+ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux_Field)
+uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy_Field)
+ur_perturbation_norm(model) = perturbation_norm(ur, Ur_Field)
+uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ_Field)
+uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz_Field)
+b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B_Field)
 
 scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uy′_norm = uy_perturbation_norm,
@@ -239,8 +245,7 @@ scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
 mkpath(dirname(scalarfilepath)) #Make path if nonexistent
 
 scalar_writer = NetCDFOutputWriter(model, 
-				   scalar_diagnostics, 
-				   with_halos = true, 
+				   scalar_diagnostics,
 				   filename = scalarfilepath, 
 				   schedule = TimeInterval(Δt_save),
                                    file_splitting = FileSizeLimit(30GiB),
@@ -251,8 +256,31 @@ scalar_writer = NetCDFOutputWriter(model,
 						 uz′_norm = (),
 						 b′_norm = ()))
 
+pKE = CenterField(model.grid)
+@inline function compute_pKE!(sim)
+   pKE = compute!(Field(perturbation_KE_op(model)))
+   fill_halo_regions!(pKE)
+   return nothing
+end
+
+add_callback!(simulation, compute_pKE!, TimeInterval(Δt_save))
+#simulation.callbacks[:energetics] = Callback(compute_pKE!)
+energy_diagnostics = (; pKE = pKE,)
+#energy_diagnostics = (; pKE = compute!(perturbation_KE),)
+
+energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
+mkpath(dirname(energyfilepath)) #Make path if nonexistent
+
+energy_writer = NetCDFOutputWriter(model, 
+				   energy_diagnostics,
+                                   with_halos = true,
+				   filename = energyfilepath,
+				   schedule = TimeInterval(Δt_save),
+				   file_splitting = FileSizeLimit(30GiB))
+
 simulation.output_writers[:field_writer] = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
+simulation.output_writers[:energy_writer] = energy_writer
 
 run!(simulation)
 
@@ -276,7 +304,6 @@ open(logfilepath, "w") do file
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
-   #write(file, "Δti, Δt_max, Δt_save = $(Δti), $(Δt_max), $(Δt_save) \n")
    write(file, "Δt = $(Δti) \n")
    write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
@@ -285,7 +312,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -316,12 +343,16 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx,  B, Uφ; 
+   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; 
 			    plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
    visualize_norms(datetimenow)
+end
+
+if vis_energetics
+   visualize_energetics(datetimenow, model.grid)
 end
 
 if vis_z_grid

@@ -76,6 +76,20 @@ function visualize_norms(datetime)
    close(scalars_ds)
 end
 
+function visualize_energetics(datetime, grid)
+
+   energetics_ds = open_energetics_dataset("energetics_$(datetimenow).nc")
+
+   pKE_data = energetics_ds[:pKE][:, :, :, :]
+
+   pKE_Field = CenterField(grid; data = pKE_data[:, :, :, end-1])
+   print(pKE_Field.data)
+   #pKE = adapt(CuArray, pKE_Field[:, :, :])
+   print(Field(Integral(pKE_Field)))
+
+   close(energetics_ds)
+end
+
 function visualize_b_and_ωz(datetime, Δx, Δy; 
 		            x_idx = nothing, y_idx = nothing, z_idx = nothing,
 		            bkgd_datetime = nothing, plot_animation = false, 

@@ -213,6 +213,10 @@ function open_bkgd_dataset(bkgd_datetime)
    bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
 end
 
+function open_energetics_dataset(energeticsfilename)
+   energetics_ds = NCDataset(joinpath("./Output", energeticsfilename))
+end
+
 function open_scalars_dataset(scalarfilename)
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
 end
