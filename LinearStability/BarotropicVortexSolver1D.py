@@ -54,7 +54,7 @@ parser.add_argument('-kp', '--k_phi',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONLESS vertical wavenumbers; enter as -kz start stop step',
-                    type = float, default = [0, 2, 0.1], nargs = 3)
+                    type = float, default = [0, 1e-1, 5e-3], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)

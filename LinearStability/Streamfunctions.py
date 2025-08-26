@@ -22,10 +22,10 @@ def GetStreamfunc(eigenvec, **kwargs):
 
     return psi
 
-def VelocityFromStreamfunc(psi, ):
+#def VelocityFromStreamfunc(psi, ):
 
     
 
-    ux = 
+#    ux = 
 
-    return ux, uy
+#    return ux, uy

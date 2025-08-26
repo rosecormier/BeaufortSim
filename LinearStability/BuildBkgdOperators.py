@@ -22,7 +22,8 @@ def rInterior(params, geom, discretize2D = False):
 
     return rInterior
 
-def BuildBkgdOperators(params, geom, discretize2D = False):
+def BuildBkgdOperators(params, geom, discretize2D = False, 
+                       dimensional_U = 1, dimensional_σr = 1):
     """
     Build array of (1/r) * (dPsi/dr) and array of (1/r) * (dQ/dr), each
      evaluated at gridpoints.
@@ -31,13 +32,18 @@ def BuildBkgdOperators(params, geom, discretize2D = False):
     rInterior = geom.rInterior
 
     if params.bkgd == "GM":
-        Ψ_op = np.ravel(-0.5 * np.exp(-rInterior**2))
-        Q_op = np.ravel(-2 * np.exp(-rInterior**2) * (rInterior**2 - 2))
+        Ψ_op = np.ravel((-0.5 * np.exp(-rInterior**2 / dimensional_σr**2)) 
+                        * (dimensional_σr * dimensional_U))
+        Q_op = np.ravel((-2 * np.exp(-rInterior**2 / dimensional_σr**2) 
+                         * ((rInterior / dimensional_σr)**2 - 2)) 
+                        * (dimensional_U / dimensional_σr))
 
     elif params.bkgd == "BG":
-        Ψ_op = np.ravel(np.sqrt(2*e) * np.exp(-(rInterior**2)))
-        Q_op = np.ravel(np.sqrt(32*e) * (rInterior**2 - 2)
-                        * np.exp(-rInterior**2))
+        Ψ_op = np.ravel((np.sqrt(2*e) * np.exp(-(rInterior**2 / dimensional_σr**2))) 
+                        * (dimensional_σr * dimensional_U))
+        Q_op = np.ravel((np.sqrt(32*e) * ((rInterior / dimensional_σr)**2 - 2)
+                        * np.exp(-rInterior**2 / dimensional_σr**2))
+                        * (dimensional_U / dimensional_σr))
 
     if sp.issparse(geom.Dr):
             
