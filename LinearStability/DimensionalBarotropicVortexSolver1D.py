@@ -54,10 +54,10 @@ parser.add_argument('-Np',
                     type = int, default = 50)
 parser.add_argument('-kp', '--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
-                    type = float, default = [1, 5, 1], nargs = 3)
+                    type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
-                    type = float, default = [0, 1e-4, 5e-6], nargs = 3)
+                    type = float, default = [0, 4e-4, 5e-6], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
