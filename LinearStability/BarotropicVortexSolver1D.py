@@ -214,7 +214,7 @@ def QG_Vortex_Stability():
             for ii in range(0, nkp):
                 
                 ax_growth = axes[ii, 0]
-                ax_growth.plot(kzs, 4 * np.ravel(growthDimCheb[:, ii, jj]), 
+                ax_growth.plot(kzs, np.ravel(growthDimCheb[:, ii, jj]), 
                                ".-", color = "mediumpurple", 
                                label = "Cheb solver")
                 ax_growth.set(title = 
@@ -222,7 +222,7 @@ def QG_Vortex_Stability():
                               ylabel = "Growth rate ($s^{-1}$)")
                 
                 ax_prop = axes[ii, 1]
-                ax_prop.plot(kzs, 4 * np.ravel(propDimCheb[:, ii, jj]), 
+                ax_prop.plot(kzs, np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
                 ax_prop.set(title = 
