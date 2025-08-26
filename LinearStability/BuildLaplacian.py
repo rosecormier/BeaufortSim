@@ -7,7 +7,7 @@ def BuildLaplacian(params, geom, discretize2D = False):
     Note: we do not explicitly set zeroth indices because we impose zero
      Dirichlet BCs.
     """
-
+    
     Nr, halfNr, Np = params.Nr, params.halfNr, params.Np
 
     if discretize2D:
