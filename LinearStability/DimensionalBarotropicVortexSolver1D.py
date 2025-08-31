@@ -210,7 +210,6 @@ def QG_Vortex_Stability():
             #Visualize growth rates and propagation speeds for different kphi
         
             fig, axes = plt.subplots(nkp, 2, figsize = (15, 7), sharex = "col")
-            fig_poster, ax_poster = plt.subplots(1, 1, figsize = (3, 4))
 
             for ii in range(0, nkp):
                 
@@ -220,36 +219,23 @@ def QG_Vortex_Stability():
                                label = "Cheb solver")
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
-                              ylabel = "Growth rate ($s^{-1}$)")
-                
+                              ylabel = "Growth rate (s$^{{-1}}$)")
+                ax_growth.grid(True)
+
                 ax_prop = axes[ii, 1]
                 ax_prop.plot(kzs, np.ravel(propCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
                              label = "Cheb solver")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
-                            ylabel = "Azimuthal speed ($s^{-1}$)")
+                            ylabel = "Azimuthal speed (s$^{{-1}}$)")
+                ax_prop.grid(True)
 
-            ax_poster.plot(kzs, np.ravel(growthCheb[:, 0, 0]),
-                           "-", color = "#f49100",
-                           label = "k = 1")
-            ax_poster.plot(kzs, np.ravel(growthCheb[:, 1, 0]),
-                           "-", color = "#0d82a8",
-                           label = "k = 2")
-            ax_poster.set(xlabel = r"$m$ (vertical wavenumber)",
-                          ylabel = "Growth rate ($s^{-1}$)",
-                          title = "Growth rates of fastest-growing\n modes")
-            plt.grid(True)
-            ax_poster.legend()
-            #plt.show()
-            fig_poster.savefig("omega_vs_m_poster.png")
-            plt.close(fig_poster)
-
-            ax_growth.set(xlabel = r'Vertical wavenumber ($m^{-1}$)')
-            ax_prop.set(xlabel = r'Vertical wavenumber ($m^{-1}$)')
+            ax_growth.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
+            ax_prop.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
             axes[0, 0].legend()
             #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}.png")
+            fig.savefig(f"omega_vs_m_mode{jj}_dimensional.png")
             plt.close(fig)
         
         """
@@ -308,12 +294,12 @@ def QG_Vortex_Stability():
                 "--", color = "mediumpurple", 
                 label = "Im[$\hat{\psi}$]; Cheb solver")
         
-        ax.set(xlabel = "$r (m)$", 
+        ax.set(xlabel = "$r$ (m)", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
-               title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+               title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
         #plt.show()
-        fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_dimensional.png")
         plt.close(fig)
         
         #Plot streamfunction structures in r-phi plane
@@ -329,86 +315,39 @@ def QG_Vortex_Stability():
         psiCheb = np.zeros([paramsCheb.halfNr, paramsCheb.Np], 
                            dtype = complex)
         
-        #Evaluate streamfunction at (r, phi)-coordinate pairs
-        
+        #Evaluate streamfunction at (r, phi)-coordinate pairs  
         for phi_idx in range(paramsCheb.Np):
             for r_idx in range(paramsCheb.halfNr - 1):
                 psiCheb[r_idx, phi_idx] = GetStreamfunc(
                                             eigvecChebNorm[r_idx + 1],
                                             k = kphi, phi = phiCoords[phi_idx])
 
-        fig, axs = plt.subplots(1, 2, figsize = (4, 6),
+        fig, axs = plt.subplots(1, 2, figsize = (11, 7),
                                 subplot_kw = dict(projection = "polar"))
 
         for i in range(2):
             axs[i].grid(False) #Required for pcolormesh
 
         axs[0].pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, 
-                             cmap = "bwr", vmin = -1, vmax = 1)
+                             cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
 
         axs[1].pcolormesh(phiVisCheb, rVisCheb, psiCheb.imag, 
-                             cmap = "bwr", vmin = -1, vmax = 1)
+                             cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
 
         for i in range(2):
             axs[i].grid(True) #Restore grid for final version
 
-        fig.subplots_adjust(hspace = 0.5, wspace = 0.1)
-        fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+        fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
+        fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz} m$^{{-1}}$\n\n")
         fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), 
-                                    cmap = "bwr"), 
+                                    cmap = "RdBu_r"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
-                     shrink = 0.75)
+                     shrink = 0.8)
         #plt.show()
-        fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_dimensional.png")
         plt.close(fig)
-        
-        fig_poster, ax_poster = plt.subplots(1, 1, figsize = (4, 7),
-                                subplot_kw = dict(projection = "polar"))
-        ax_poster.grid(False)
-        ax_poster.pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, cmap = "RdBu_r", vmin = -1, vmax = 1)
-        #ax_poster.set_title(f"$k=$ {kphi}; $m=$ {kz}")
-        ax_poster.grid(True)
 
-        fig_poster.suptitle(f"Re [$\hat{{\psi}}(r)$ exp$(ik\phi)$];\n fastest-growing mode with\n $k=$ {kphi} and $m=$ {kz}\n\n")
-        fig_poster.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), cmap = "RdBu_r"),
-                     ax = ax_poster, orientation = "horizontal") #, shrink = 0.75)
-        #plt.show()
-        fig_poster.savefig(f"poster_streamfunc_k{kphi}_m{kz}.pdf")
-        plt.close(fig_poster)
-
-        """
-        xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
-        
-        fig, axs = plt.subplots(1, 2, figsize = (9, 5), 
-                                subplot_kw = dict(projection = "3d"))
-
-        axs[0].plot_surface(xx, yy, psiCheb.real, 
-                            rstride = 2, cstride = 2, cmap = "RdYlBu_r", 
-                            vmin = -1, vmax = 1, alpha = 0.8)
-        axs[1].plot_surface(xx, yy, psiCheb.imag,
-                            rstride = 2, cstride = 2, cmap = "RdYlBu_r",
-                            vmin = -1, vmax = 1, alpha = 0.8)
-        
-        for i in range(2):
-            axs[i].set_xlabel("x")
-            axs[i].set_ylabel("y")
-            axs[i].set_xlim(-paramsCheb.Lr, paramsCheb.Lr)
-            axs[i].set_ylim(-paramsCheb.Lr, paramsCheb.Lr)
-        
-        axs[0].set_zlabel(f"Re[$\hat{{\psi}}(r)$]; Cheb solver")
-        axs[1].set_zlabel(f"Im[$\hat{{\psi}}(r)$]; Cheb solver")
-
-        fig.subplots_adjust(hspace = 0.5, wspace = 0.1)
-        fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
-        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
-                                    cmap = "RdYlBu_r"),
-                     ax = axs.ravel().tolist(), orientation = "horizontal",
-                     shrink = 0.75)
-        plt.show()
-        fig.savefig(f"streamfunc_surface_k{kphi}_m{kz}_mode{jj}.png")
-        plt.close(fig)
-        """
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
