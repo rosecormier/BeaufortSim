@@ -169,7 +169,7 @@ def QG_Vortex_Stability():
                          * np.eye(paramsCheb.halfNr)
                         )
                      )
-            A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op) / paramsCheb.Ro
+            A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
 
             ##############################
             # FIND EIGENSPACE (DIRECTLY) #
@@ -179,6 +179,7 @@ def QG_Vortex_Stability():
         
             #Compute eigvals c and eigvecs psi with direct solver
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
+            eigValCheb             = eigValCheb / paramsCheb.Ro
 
             timeCheb = timeit.timeit() - t0Cheb #Time for direct Cheb solver
             
@@ -188,7 +189,7 @@ def QG_Vortex_Stability():
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
             eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresponding omegas for this k_phi
-            
+
             #Store results
 
             growthCheb[kz_idx, kp_idx, :]   = -omegaCheb[0:nmodes].imag
