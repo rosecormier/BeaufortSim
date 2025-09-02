@@ -864,7 +864,7 @@ function visualize_fields_const_z(datetime, z_idx,
    Δb_f_xy  = b_total_f_xy .- no_offset_view(B) # .- B[:, :, z_idx]
    Δuφ_f_xy = uφ_total_f_xy .- no_offset_view(Uφ) #[:, :, z_idx]
 
-   lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 0.75)
+   #lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 0.75)
    lims_ur       = get_range_lims(ur_total_f_xy; 
 			          max_fraction = 0.75, prescribed_max = 1e-16)
    lims_uφ_total = get_range_lims(uφ_total_f_xy; 
@@ -872,8 +872,8 @@ function visualize_fields_const_z(datetime, z_idx,
    lims_uz       = get_range_lims(uz_total_f_xy; 
 				  max_fraction = 0.75, prescribed_max = 1e-16)
 
-   lims_Δb  = get_range_lims(Δb_f_xy; 
-			     max_fraction = 0.75, prescribed_max = 1e-16)
+   #lims_Δb  = get_range_lims(Δb_f_xy; 
+   #			     max_fraction = 0.75, prescribed_max = 1e-16)
    lims_Δuφ = get_range_lims(Δuφ_f_xy; 
 			     max_fraction = 0.75, prescribed_max = 1e-16)
 
@@ -911,10 +911,10 @@ function visualize_fields_const_z(datetime, z_idx,
                         title = L"Vertical velocity perturbation ($u_z'$)",
                         axis_kwargs_xy...)
 
-   hm_b_total  = heatmap!(ax_b_total, x, y, b_total_f_xy,
-                          colorrange = lims_b_total,
-                          colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
+   hm_b_total  = heatmap!(ax_b_total, x, y, b_total_f_xy) #,
+   #                       colorrange = lims_b_total,
+   #                       colormap = Reverse(:RdBu_5),
+   #                       highclip = :red, lowclip = :blue)
    hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy,
                           colorrange = lims_ur,
                           colormap = Reverse(:RdBu_5),
@@ -928,10 +928,10 @@ function visualize_fields_const_z(datetime, z_idx,
                           colormap = Reverse(:RdBu_5),
                           highclip = :red, lowclip = :blue)
 
-   hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
-                            colorrange = lims_Δb,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
+   hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy) #,
+   #                         colorrange = lims_Δb,
+   #                         colormap = Reverse(:RdBu_5),
+   #                         highclip = :red, lowclip = :blue)
    hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy,
                             colorrange = lims_ur,
                             colormap = Reverse(:RdBu_5),
@@ -1023,10 +1023,10 @@ function visualize_fields_const_z(datetime, z_idx,
       Δb_xy  = @lift $b_total_xy .- no_offset_view(B) #[:, :, z_idx]
       Δuφ_xy = @lift $uφ_total_xy .- no_offset_view(Uφ) #[:, :, z_idx]
       
-      hm_b_total  = heatmap!(ax_b_total, x, y, b_total_xy,
-                             colorrange = lims_b_total,
-			     colormap = Reverse(:RdBu_5),
-			     highclip = :red, lowclip = :blue)
+      hm_b_total  = heatmap!(ax_b_total, x, y, b_total_xy) #,
+      #                       colorrange = lims_b_total,
+      #			     colormap = Reverse(:RdBu_5),
+      #			     highclip = :red, lowclip = :blue)
       hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_xy,
                              colorrange = lims_ur, 
 			     colormap = Reverse(:RdBu_5),
@@ -1040,10 +1040,10 @@ function visualize_fields_const_z(datetime, z_idx,
 			     colormap = Reverse(:RdBu_5),
                              highclip = :red, lowclip = :blue)
 
-      hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_xy,
-                               colorrange = lims_Δb, 
-			       colormap = Reverse(:RdBu_5),
-                               highclip = :red, lowclip = :blue)
+      hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_xy) #,
+      #                         colorrange = lims_Δb, 
+      #			       colormap = Reverse(:RdBu_5),
+      #                         highclip = :red, lowclip = :blue)
       hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_xy,
                                colorrange = lims_ur,
 			       colormap = Reverse(:RdBu_5),
