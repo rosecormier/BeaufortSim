@@ -1,8 +1,8 @@
-"""`
+"""
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
-All variables are assumed to have been non-dimensionalized.
+All variables are assumed to be dimensionless.
 """
 
 import argparse
@@ -27,7 +27,7 @@ from Streamfunctions import GetStreamfunc
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
                     help = 'Number (must be ODD) of grid points for eig computations',
-                    type = int, default = 181)
+                    type = int, default = 2401)
 parser.add_argument('-Lr', 
                     help = 'DIMENSIONLESS radius of the physical domain',
                     type = float, default = 8.0)
@@ -54,7 +54,7 @@ parser.add_argument('-kp', '--k_phi',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONLESS vertical wavenumbers; enter as -kz start stop step',
-                    type = float, default = [0, 1e-1, 5e-3], nargs = 3)
+                    type = float, default = [0, 4e-1, 5e-3], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
@@ -197,8 +197,8 @@ def QG_Vortex_Stability():
 
     #Dimensionalize eigenvalues
     
-    growthDimCheb = growthCheb * paramsCheb.Ro * paramsCheb.f0
-    propDimCheb   = propCheb * paramsCheb.Ro * paramsCheb.f0
+    growthDimCheb = growthCheb * paramsCheb.f0
+    propDimCheb   = propCheb * paramsCheb.f0
     
     nkp, nkz = (np.ravel(kps)).shape[0], (np.ravel(kzs)).shape[0]
 
@@ -209,7 +209,6 @@ def QG_Vortex_Stability():
             #Visualize growth rates and propagation speeds for different kphi
         
             fig, axes = plt.subplots(nkp, 2, figsize = (10, 7), sharex = "col")
-            fig_poster, ax_poster = plt.subplots(1, 1, figsize = (3, 4))
 
             for ii in range(0, nkp):
                 
@@ -220,7 +219,8 @@ def QG_Vortex_Stability():
                 ax_growth.set(title = 
                               f"Growth rate; $k_{{\phi}}$ = {kps[ii]}",
                               ylabel = "Growth rate ($s^{-1}$)")
-                
+                ax_growth.grid(True)
+
                 ax_prop = axes[ii, 1]
                 ax_prop.plot(kzs, np.ravel(propDimCheb[:, ii, jj]), 
                              ".-", color = "mediumpurple", 
@@ -228,6 +228,7 @@ def QG_Vortex_Stability():
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kps[ii]}",
                             ylabel = "Azimuthal speed ($s^{-1}$)")
+                ax_prop.grid(True)
 
             ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 0, 0]),
                            "-", color = "#f49100",
