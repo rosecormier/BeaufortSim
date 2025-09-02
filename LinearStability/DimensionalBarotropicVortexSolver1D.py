@@ -71,6 +71,8 @@ class Parameters:
     σr   = args.sigmar
     bkgd = args.bkgd
 
+    Ro = U / (σr * f0) #Rossby number
+
     Lr     = args.Lr #Max. r in physical space; half of computational domain
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
     halfNr = args.Neig // 2   
@@ -167,7 +169,7 @@ def QG_Vortex_Stability():
                          * np.eye(paramsCheb.halfNr)
                         )
                      )
-            A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op)
+            A_Cheb = (np.matmul(GeomCheb.Ψ_op, B_Cheb) - GeomCheb.Q_op) / paramsCheb.Ro
 
             ##############################
             # FIND EIGENSPACE (DIRECTLY) #
@@ -184,7 +186,6 @@ def QG_Vortex_Stability():
             indCheb = np.argsort(eigValCheb.imag)
             
             eigValCheb = eigValCheb[indCheb] #Sort eigvals
-            print(kz, eigValCheb[0])
             eigVecCheb = eigVecCheb[:, indCheb] #Sort eigvecs in the same order
             omegaCheb  = eigValCheb * kp #Corresponding omegas for this k_phi
             
