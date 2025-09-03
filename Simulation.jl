@@ -76,9 +76,9 @@ const max_u′ = 1e-8
 #Whether to run visualization functions
 const vis_const_x = false
 const vis_const_y = false
-const vis_const_z    = true
-const vis_norms      = false #true
-const vis_energetics = false #true
+const vis_const_z    = false
+const vis_norms      = true
+const vis_energetics = true
 const vis_z_grid  = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -145,7 +145,7 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #########################################################
 
 datetimestart = now()
-datetimenow   = "250816-182636" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
@@ -173,7 +173,7 @@ perturbation_KE_op(model) = KineticEnergy(model,
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 #Perturb velocity components to trigger BCI
 
 @inline u_perturbed(x, y, z) = (ū(x, y, z) 
@@ -265,8 +265,9 @@ end
 
 add_callback!(simulation, compute_pKE!, TimeInterval(Δt_save))
 #simulation.callbacks[:energetics] = Callback(compute_pKE!)
-energy_diagnostics = (; pKE = pKE,)
+#energy_diagnostics = (; pKE = pKE,)
 #energy_diagnostics = (; pKE = compute!(perturbation_KE),)
+energy_diagnostics = (; pKE = perturbation_KE_op)
 
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 mkpath(dirname(energyfilepath)) #Make path if nonexistent
@@ -312,7 +313,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
