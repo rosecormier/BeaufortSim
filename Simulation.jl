@@ -84,7 +84,7 @@ const vis_z_grid  = false #Can only be done on CPU
 #Indices at which to plot fields
 const x_idx      = 259
 const y_idx      = 259
-const z_idx      = 11
+const z_idx      = 8
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
@@ -343,7 +343,7 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; 
+   visualize_fields_const_z(datetimenow, z_idx, B_Field, Uφ_Field; 
 			    plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
