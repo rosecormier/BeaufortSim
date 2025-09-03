@@ -172,6 +172,7 @@ def QG_Vortex_Stability():
         
             #Compute eigvals c and eigvecs psi with direct solver
             eigValCheb, eigVecCheb = spalg.eig(A_Cheb, B_Cheb)
+            eigValCheb             = eigValCheb / paramsCheb.Ro
 
             timeCheb = timeit.timeit() - t0Cheb #Time for direct Cheb solver
             
@@ -230,25 +231,11 @@ def QG_Vortex_Stability():
                             ylabel = "Azimuthal speed ($s^{-1}$)")
                 ax_prop.grid(True)
 
-            ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 0, 0]),
-                           "-", color = "#f49100",
-                           label = "k = 1")
-            ax_poster.plot(kzs, np.ravel(growthDimCheb[:, 1, 0]),
-                           "-", color = "#0d82a8",
-                           label = "k = 2")
-            ax_poster.set(xlabel = r"$m$ (vertical wavenumber) $\times H$",
-                          ylabel = "Growth rate ($s^{-1}$)",
-                          title = "Growth rates of fastest-growing\n modes")
-            plt.grid(True)
-            ax_poster.legend()
-            fig_poster.savefig("omega_vs_m_poster.pdf")
-            plt.close(fig_poster)
-
-            ax_growth.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
-            ax_prop.set(xlabel = r'Vertical wavenumber ($\times \sigma_z$)')
+            ax_growth.set(xlabel = 'Vertical wavenumber (per 1 km)')
+            ax_prop.set(xlabel = 'Vertical wavenumber (per 1 km)')
             axes[0, 0].legend()
             #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}.png")
+            fig.savefig(f"omega_vs_m_mode{jj}_nondimensional.png")
             plt.close(fig)
         
         """
@@ -291,7 +278,7 @@ def QG_Vortex_Stability():
 
         #Plot eigenfunction structures against r
 
-        kz_idx, kp_idx = 8, 0 #0, 1
+        kz_idx, kp_idx = 0, 1 #8, 0
         kz, kphi       = kzs[kz_idx], kps[kp_idx] #Wavenumbers to plot for
 
         eigvecCheb     = modesCheb[kz_idx, kp_idx, :, jj]
@@ -309,10 +296,10 @@ def QG_Vortex_Stability():
         
         ax.set(xlabel = "$r/\sigma_r$", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
-               title = f"Components of mode-{jj} eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+               title = fr"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}} =$ {kphi}, $\tilde{{m}} =$ {kz}")
         ax.legend()
         #plt.show()
-        fig.savefig(f"eigvec_structure_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_nondimensional.png")
         plt.close(fig)
         
         #Plot streamfunction structures in r-phi plane
@@ -336,33 +323,33 @@ def QG_Vortex_Stability():
                                             eigvecChebNorm[r_idx + 1],
                                             k = kphi, phi = phiCoords[phi_idx])
 
-        fig, axs = plt.subplots(1, 2, figsize = (4, 6),
+        fig, axs = plt.subplots(1, 2, figsize = (11, 7),
                                 subplot_kw = dict(projection = "polar"))
 
         for i in range(2):
             axs[i].grid(False) #Required for pcolormesh
 
         axs[0].pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, 
-                             cmap = "bwr", vmin = -1, vmax = 1)
+                             cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
 
         axs[1].pcolormesh(phiVisCheb, rVisCheb, psiCheb.imag, 
-                             cmap = "bwr", vmin = -1, vmax = 1)
+                             cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
 
         for i in range(2):
             axs[i].grid(True) #Restore grid for final version
 
-        fig.subplots_adjust(hspace = 0.5, wspace = 0.1)
-        fig.suptitle(f"Components of mode-{jj} eigen-streamfunction in $r\phi$-plane for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
+        fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
+        fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n" + fr"for wavenumbers $k_{{\phi}} =$ {kphi}, $\tilde{{m}} =$ {kz}")
         fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), 
                                     cmap = "bwr"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
-                     shrink = 0.75)
+                     shrink = 0.8)
         #plt.show()
-        fig.savefig(f"streamfunc_2d_k{kphi}_m{kz}_mode{jj}.png")
+        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_nondimensional.png")
         plt.close(fig)
-        
+        """
         fig_poster, ax_poster = plt.subplots(1, 1, figsize = (4, 7),
                                 subplot_kw = dict(projection = "polar"))
         ax_poster.grid(False)
@@ -377,7 +364,6 @@ def QG_Vortex_Stability():
         fig_poster.savefig(f"poster_streamfunc_k{kphi}_m{kz}.pdf")
         plt.close(fig_poster)
 
-        """
         xx, yy = rVisCheb * np.cos(phiVisCheb), rVisCheb * np.sin(phiVisCheb)
         
         fig, axs = plt.subplots(1, 2, figsize = (9, 5), 
