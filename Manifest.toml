@@ -2,7 +2,7 @@
 
 julia_version = "1.10.8"
 manifest_format = "2.0"
-project_hash = "f4ec8d90a190ce197acc7c468e97fc8bd8b470dc"
+project_hash = "a21e064f7696fdaf2bf3a0ccab9c7b6265469f61"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -929,9 +929,9 @@ version = "0.2.1+0"
 
 [[deps.KernelAbstractions]]
 deps = ["Adapt", "Atomix", "InteractiveUtils", "MacroTools", "PrecompileTools", "Requires", "StaticArrays", "UUIDs"]
-git-tree-sha1 = "80d268b2f4e396edc5ea004d1e0f569231c71e9e"
+git-tree-sha1 = "83c617e9e9b02306a7acab79e05ec10253db7c87"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.9.34"
+version = "0.9.38"
 
     [deps.KernelAbstractions.extensions]
     EnzymeExt = "EnzymeCore"
