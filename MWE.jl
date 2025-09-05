@@ -86,7 +86,7 @@ const Uz = adapt(CuArray, Uz_Field)
 @kernel function pKE_ccc!(pKE, grid, u, v, w)
    i, j, k = @index(Global, NTuple)
    @inbounds pKE[i, j, k] = (
-			      ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
+                              ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
                               ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
                               ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)
                              ) / 2
