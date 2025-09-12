@@ -865,17 +865,17 @@ function visualize_fields_const_z(datetime, z_idx,
    Δuφ_f_xy = uφ_total_f_xy .- no_offset_view(Uφ) #[:, :, z_idx]
 
    #lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 0.75)
-   lims_ur       = get_range_lims(ur_total_f_xy; 
-			          max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_uφ_total = get_range_lims(uφ_total_f_xy; 
-				  max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_uz       = get_range_lims(uz_total_f_xy; 
-				  max_fraction = 0.75, prescribed_max = 1e-16)
+   #lims_ur       = get_range_lims(ur_total_f_xy; 
+   #			          max_fraction = 0.75, prescribed_max = 1e-16)
+   #lims_uφ_total = get_range_lims(uφ_total_f_xy; 
+   #				  max_fraction = 0.75, prescribed_max = 1e-16)
+   #lims_uz       = get_range_lims(uz_total_f_xy; 
+   #				  max_fraction = 0.75, prescribed_max = 1e-16)
 
    #lims_Δb  = get_range_lims(Δb_f_xy; 
    #			     max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δuφ = get_range_lims(Δuφ_f_xy; 
-			     max_fraction = 0.75, prescribed_max = 1e-16)
+   #lims_Δuφ = get_range_lims(Δuφ_f_xy; 
+   #			     max_fraction = 0.75, prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
@@ -915,35 +915,35 @@ function visualize_fields_const_z(datetime, z_idx,
    #                       colorrange = lims_b_total,
    #                       colormap = Reverse(:RdBu_5),
    #                       highclip = :red, lowclip = :blue)
-   hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy,
-                          colorrange = lims_ur,
-                          colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
-   hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_f_xy,
-                          colorrange = lims_uφ_total,
-                          colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
-   hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_f_xy,
-                          colorrange = lims_uz,
-                          colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
+   hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy) #,
+   #                       colorrange = lims_ur,
+   #                       colormap = Reverse(:RdBu_5),
+   #                       highclip = :red, lowclip = :blue)
+   hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_f_xy) #,
+   #                       colorrange = lims_uφ_total,
+   #                       colormap = Reverse(:RdBu_5),
+   #                       highclip = :red, lowclip = :blue)
+   hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_f_xy) #,
+   #                       colorrange = lims_uz,
+   #                       colormap = Reverse(:RdBu_5),
+   #                       highclip = :red, lowclip = :blue)
 
    hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy) #,
    #                         colorrange = lims_Δb,
    #                         colormap = Reverse(:RdBu_5),
    #                         highclip = :red, lowclip = :blue)
-   hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy,
-                            colorrange = lims_ur,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_f_xy,
-                            colorrange = lims_Δuφ,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-   hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_f_xy,
-                            colorrange = lims_uz,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
+   hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy)#,
+   #                         colorrange = lims_ur,
+   #                         colormap = Reverse(:RdBu_5),
+   #                         highclip = :red, lowclip = :blue)
+   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_f_xy) #,
+   #                         colorrange = lims_Δuφ,
+   #                         colormap = Reverse(:RdBu_5),
+   #                         highclip = :red, lowclip = :blue)
+   hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_f_xy) #,
+   #                         colorrange = lims_uz,
+   #                         colormap = Reverse(:RdBu_5),
+   #                         highclip = :red, lowclip = :blue)
 
    Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
@@ -1027,35 +1027,35 @@ function visualize_fields_const_z(datetime, z_idx,
       #                       colorrange = lims_b_total,
       #			     colormap = Reverse(:RdBu_5),
       #			     highclip = :red, lowclip = :blue)
-      hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_xy,
-                             colorrange = lims_ur, 
-			     colormap = Reverse(:RdBu_5),
-                             highclip = :red, lowclip = :blue)
-      hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_xy,
-                             colorrange = lims_uφ_total,
-			     colormap = Reverse(:RdBu_5),
-                             highclip = :red, lowclip = :blue)
-      hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_xy,
-                             colorrange = lims_uz,
-			     colormap = Reverse(:RdBu_5),
-                             highclip = :red, lowclip = :blue)
+      hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_xy)#,
+      #                       colorrange = lims_ur, 
+      #			     colormap = Reverse(:RdBu_5),
+      #                       highclip = :red, lowclip = :blue)
+      hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_xy)#,
+      #                       colorrange = lims_uφ_total,
+      #			     colormap = Reverse(:RdBu_5),
+      #                       highclip = :red, lowclip = :blue)
+      hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_xy)#,
+      #                       colorrange = lims_uz,
+      #   			     colormap = Reverse(:RdBu_5),
+      #                       highclip = :red, lowclip = :blue)
 
       hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_xy) #,
       #                         colorrange = lims_Δb, 
       #			       colormap = Reverse(:RdBu_5),
       #                         highclip = :red, lowclip = :blue)
-      hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_xy,
-                               colorrange = lims_ur,
-			       colormap = Reverse(:RdBu_5),
-                               highclip = :red, lowclip = :blue)
-      hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_xy,
-                               colorrange = lims_Δuφ,
-			       colormap = Reverse(:RdBu_5),
-                               highclip = :red, lowclip = :blue)
-      hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_xy,
-                               colorrange = lims_uz,
-			       colormap = Reverse(:RdBu_5),
-                               highclip = :red, lowclip = :blue)
+      hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_xy)#,
+      #                         colorrange = lims_ur,
+      # 			       colormap = Reverse(:RdBu_5),
+      #                         highclip = :red, lowclip = :blue)
+      hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_xy)#,
+      #                         colorrange = lims_Δuφ,
+      #			       colormap = Reverse(:RdBu_5),
+      #                         highclip = :red, lowclip = :blue)
+      hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_xy)#,
+      #                         colorrange = lims_uz,
+      #			       colormap = Reverse(:RdBu_5),
+      #                         highclip = :red, lowclip = :blue)
    
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
       Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
