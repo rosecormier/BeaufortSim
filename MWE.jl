@@ -14,8 +14,8 @@ using OffsetArrays: no_offset_view
 using Printf, Random
 
 #Numbers of gridpoints
-const Nx = 1200
-const Ny = 1200
+const Nx = 12
+const Ny = 12
 const Nz = 12
 
 #Lengths of axes
@@ -31,7 +31,7 @@ fPlane  = FPlane(latitude = lat)
 const f = fPlane.f
 
 #Characteristic scales for basic state
-const σr = 250 * kilometer
+const σr  = 250 * kilometer
 const U   = 1.5e-1 * (meter/second)
 const N²₀ = 3e-3 * (second^(-2))
 
@@ -43,7 +43,12 @@ const Δt_save = 1 * hour
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
-grid = RectilinearGrid(GPU(),
+
+const use_GPU = false
+
+use_GPU ? architecture = GPU() : architecture = CPU()
+
+grid = RectilinearGrid(architecture,
 		       topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lx/2, Lx/2), 
@@ -70,20 +75,23 @@ model = NonhydrostaticModel(;
 			    boundary_conditions = (; b = b̄_BCs,))
 
 set!(model, u = ū, v = v̄)
-fill_halo_regions!(model.velocities, model.tracers.b)
+fill_halo_regions!(model.velocities)
 set!(model, b = b̄)
 
-datetimenow   = format(now(), "yymmdd-HHMMSS")
+datetimenow = format(now(), "yymmdd-HHMMSS")
 
-#Store basic-state velocities
-const Ux_Field = XFaceField(model.grid; data = model.velocities.u.data)
-const Uy_Field = YFaceField(model.grid; data = model.velocities.v.data)
-const Uz_Field = ZFaceField(model.grid; data = model.velocities.w.data)
-const Ux = adapt(CuArray, Ux_Field)
-const Uy = adapt(CuArray, Uy_Field)
-const Uz = adapt(CuArray, Uz_Field)
+Ux = XFaceField(model.grid)
+Uy = YFaceField(model.grid)
+Uz = ZFaceField(model.grid)
 
-@kernel function pKE_ccc!(pKE, grid, u, v, w)
+set!(Ux, model.velocities.u)
+set!(Uy, model.velocities.v)
+set!(Uz, model.velocities.w)
+fill_halo_regions!(Ux)
+fill_halo_regions!(Uy)
+fill_halo_regions!(Uz)
+
+@kernel function pKE_ccc!(pKE, grid, u, v, w, Ux, Uy, Uz)
    i, j, k = @index(Global, NTuple)
    @inbounds pKE[i, j, k] = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
@@ -92,16 +100,25 @@ const Uz = adapt(CuArray, Uz_Field)
                              ) / 2
 end
 
+pKE = CenterField(model.grid)
+
+#pKE_ccc!(pKE, model.grid, model.velocities.u, model.velocities.v, model.velocities.w, Ux, Uy, Uz)
+
 pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc!, 
 							 grid, 
 							 model.velocities.u, 
 							 model.velocities.v, 
-							 model.velocities.w)
+							 model.velocities.w,
+							 Ux, Uy, Uz)
+
+#pKE_field = Field(pKE_op)
+compute!(pKE_op)#field)
 
 #Perturb velocity components to trigger instability
 @inline u_perturbed(x, y, z) = (ū(x, y, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 @inline v_perturbed(x, y, z) = (v̄(x, y, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 set!(model, u = u_perturbed, v = v_perturbed)
+fill_halo_regions!(model.velocities, model.tracers.b)
 
 simulation = Simulation(model, Δt = Δt, stop_time = tf)
 
