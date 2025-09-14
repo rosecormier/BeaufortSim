@@ -64,8 +64,8 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 2 * hour #20 * day #30 * day
-const Δt_save = 1 * hour #6 * hour
+const tf      = 20 * day #30 * day
+const Δt_save = 6 * hour
 
 #Architecture
 const use_GPU = true
@@ -77,7 +77,7 @@ const max_u′ = 1e-8
 const vis_const_x = false
 const vis_const_y = false
 const vis_const_z    = true
-const vis_norms      = false #true
+const vis_norms      = true
 const vis_energetics = false #true
 const vis_z_grid  = false #Can only be done on CPU
 
@@ -145,7 +145,7 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #########################################################
 
 datetimestart = now()
-datetimenow   = "250816-182636" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
@@ -165,15 +165,15 @@ const Uz = adapt(CuArray, Uz_Field[1:Nx, 1:Ny, 1:Nz+1])
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
-perturbation_KE_op(model) = KineticEnergy(model, 
-				   model.velocities.u .- no_offset_view(Ux),
-				   model.velocities.v .- no_offset_view(Uy),
-			           model.velocities.w .- no_offset_view(Uz))
+#perturbation_KE_op(model) = KineticEnergy(model, 
+#				   model.velocities.u .- no_offset_view(Ux),
+#				   model.velocities.v .- no_offset_view(Uy),
+#			           model.velocities.w .- no_offset_view(Uz))
 
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 #Perturb velocity components to trigger BCI
 
 @inline u_perturbed(x, y, z) = (ū(x, y, z) 
@@ -256,31 +256,31 @@ scalar_writer = NetCDFOutputWriter(model,
 						 uz′_norm = (),
 						 b′_norm = ()))
 
-pKE = CenterField(model.grid)
-@inline function compute_pKE!(sim)
-   pKE = compute!(Field(perturbation_KE_op(model)))
-   fill_halo_regions!(pKE)
-   return nothing
-end
+#pKE = CenterField(model.grid)
+#@inline function compute_pKE!(sim)
+#   pKE = compute!(Field(perturbation_KE_op(model)))
+#   fill_halo_regions!(pKE)
+#   return nothing
+#end
 
-add_callback!(simulation, compute_pKE!, TimeInterval(Δt_save))
+#add_callback!(simulation, compute_pKE!, TimeInterval(Δt_save))
 #simulation.callbacks[:energetics] = Callback(compute_pKE!)
-energy_diagnostics = (; pKE = pKE,)
+#energy_diagnostics = (; pKE = pKE,)
 #energy_diagnostics = (; pKE = compute!(perturbation_KE),)
 
-energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
-mkpath(dirname(energyfilepath)) #Make path if nonexistent
+#energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
+#mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
-energy_writer = NetCDFOutputWriter(model, 
-				   energy_diagnostics,
-                                   with_halos = true,
-				   filename = energyfilepath,
-				   schedule = TimeInterval(Δt_save),
-				   file_splitting = FileSizeLimit(30GiB))
+#energy_writer = NetCDFOutputWriter(model, 
+#				   energy_diagnostics,
+#                                   with_halos = true,
+#				   filename = energyfilepath,
+#				   schedule = TimeInterval(Δt_save),
+#				   file_splitting = FileSizeLimit(30GiB))
 
 simulation.output_writers[:field_writer] = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
-simulation.output_writers[:energy_writer] = energy_writer
+#simulation.output_writers[:energy_writer] = energy_writer
 
 run!(simulation)
 
