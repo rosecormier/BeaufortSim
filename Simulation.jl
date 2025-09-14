@@ -152,16 +152,29 @@ Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
                                    model.velocities.v, model.grid)
 
 #Create fields to store background state
-const Ux_Field = XFaceField(model.grid; data = model.velocities.u.data)
-const Uy_Field = YFaceField(model.grid; data = model.velocities.v.data)
-const Ur_Field = CenterField(model.grid; data = Ur_vals.data)
-const Uφ_Field = CenterField(model.grid; data = Uφ_vals.data)
-const Uz_Field = ZFaceField(model.grid; data = model.velocities.w.data)
-const B_Field  = CenterField(model.grid; data = model.tracers.b.data)
+Ux = XFaceField(model.grid)
+Uy = YFaceField(model.grid)
+Ur = CenterField(model.grid)
+Uφ = CenterField(model.grid)
+Uz = ZFaceField(model.grid)
+B  = CenterField(model.grid)
 
-const Ux = adapt(CuArray, Ux_Field[1:Nx+1, 1:Ny, 1:Nz])
-const Uy = adapt(CuArray, Uy_Field[1:Nx, 1:Ny+1, 1:Nz])
-const Uz = adapt(CuArray, Uz_Field[1:Nx, 1:Ny, 1:Nz+1])
+set!(Ux, model.velocities.u)
+set!(Uy, model.velocities.v)
+set!(Ur, Ur_vals)
+set!(Uφ, Uφ_vals)
+set!(Uz, model.velocities.w)
+set!(B, model.tracers.b)
+#const Ux_Field = XFaceField(model.grid; data = model.velocities.u.data)
+#const Uy_Field = YFaceField(model.grid; data = model.velocities.v.data)
+#const Ur_Field = CenterField(model.grid; data = Ur_vals.data)
+#const Uφ_Field = CenterField(model.grid; data = Uφ_vals.data)
+#const Uz_Field = ZFaceField(model.grid; data = model.velocities.w.data)
+#const B_Field  = CenterField(model.grid; data = model.tracers.b.data)
+
+#const Ux = adapt(CuArray, Ux_Field[1:Nx+1, 1:Ny, 1:Nz])
+#const Uy = adapt(CuArray, Uy_Field[1:Nx, 1:Ny+1, 1:Nz])
+#const Uz = adapt(CuArray, Uz_Field[1:Nx, 1:Ny, 1:Nz+1])
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
@@ -227,12 +240,12 @@ field_writer = NetCDFOutputWriter(model,
                                   schedule = TimeInterval(Δt_save),
 				  file_splitting = FileSizeLimit(30GiB))
 
-ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux_Field)
-uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy_Field)
-ur_perturbation_norm(model) = perturbation_norm(ur, Ur_Field)
-uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ_Field)
-uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz_Field)
-b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B_Field)
+ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)#_Field)
+uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)#_Field)
+ur_perturbation_norm(model) = perturbation_norm(ur, Ur)#_Field)
+uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ)#_Field)
+uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz)#_Field)
+b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B)#_Field)
 
 scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uy′_norm = uy_perturbation_norm,
@@ -312,7 +325,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
