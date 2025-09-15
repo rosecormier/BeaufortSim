@@ -1,3 +1,5 @@
+include("Visualization.jl")
+
 using Adapt, CUDA
 using Dates: canonicalize, format, now
 using NCDatasets
@@ -89,9 +91,15 @@ fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 
+#=
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
 
 @inline @inbounds pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
+=#
+
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
+
+@inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
                               ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
                               ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)
@@ -123,6 +131,7 @@ mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
 energy_writer = NetCDFOutputWriter(model, 
 				   energy_diagnostics,
+				   with_halos = true,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
@@ -130,3 +139,5 @@ energy_writer = NetCDFOutputWriter(model,
 simulation.output_writers[:energy_writer] = energy_writer
 
 run!(simulation)
+
+visualize_energetics(datetimenow, grid)
