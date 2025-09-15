@@ -3,10 +3,12 @@ using Dates: canonicalize, format, now
 using KernelAbstractions: @index, @kernel
 using NCDatasets
 using Oceananigans
+#using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
 using Oceananigans.Fields
+using Oceananigans.Operators
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceanostics
@@ -91,25 +93,28 @@ fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 
-function pKE_ccc!(pKE, grid, u, v, w, Ux, Uy, Uz)
-   i, j, k = @index(Global, NTuple)
-   @inbounds pKE[i, j, k] = (
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
+
+#i, j, k = @index(Global, NTuple)
+   #@inbounds pKE[i, j, k] = (
+@inline @inbounds pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
                               ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
                               ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)
                              ) / 2
-end
 
-pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc!, 
+pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
 							 grid, 
 							 model.velocities.u, 
 							 model.velocities.v, 
 							 model.velocities.w,
 							 Ux, Uy, Uz)
 
-function compute_pKE(sim)
+function compute_pKE()
    compute!(pKE_op)
 end
+
+compute_pKE()
 
 #Perturb velocity components to trigger instability
 @inline u_perturbed(x, y, z) = (ū(x, y, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
@@ -126,7 +131,6 @@ mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
 energy_writer = NetCDFOutputWriter(model, 
 				   energy_diagnostics,
-                                   with_halos = true,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
