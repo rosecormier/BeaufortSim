@@ -145,7 +145,7 @@ check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
 #########################################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = "250914-145551" #format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
@@ -182,7 +182,7 @@ set!(B, model.tracers.b)
 #				   model.velocities.u .- no_offset_view(Ux),
 #				   model.velocities.v .- no_offset_view(Uy),
 #			           model.velocities.w .- no_offset_view(Uz))
-
+#=
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
@@ -325,7 +325,7 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-
+=#
 ###################################
 # RUN VISUALIZATION, IF INDICATED #
 ###################################
@@ -356,7 +356,7 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, B_Field, Uφ_Field; 
+   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; 
 			    plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
