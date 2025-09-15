@@ -1,9 +1,7 @@
 using Adapt, CUDA
 using Dates: canonicalize, format, now
-using KernelAbstractions: @index, @kernel
 using NCDatasets
 using Oceananigans
-#using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
@@ -12,7 +10,6 @@ using Oceananigans.Operators
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceanostics
-using OffsetArrays: no_offset_view
 using Printf, Random
 
 #Numbers of gridpoints
@@ -44,7 +41,6 @@ const Δt_save = 1 * hour
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
-
 
 const use_GPU = false
 
@@ -95,8 +91,6 @@ fill_halo_regions!(Uz)
 
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
 
-#i, j, k = @index(Global, NTuple)
-   #@inbounds pKE[i, j, k] = (
 @inline @inbounds pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
                               ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
@@ -110,11 +104,9 @@ pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
 							 model.velocities.w,
 							 Ux, Uy, Uz)
 
-function compute_pKE()
+function compute_pKE(sim)
    compute!(pKE_op)
 end
-
-compute_pKE()
 
 #Perturb velocity components to trigger instability
 @inline u_perturbed(x, y, z) = (ū(x, y, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
@@ -124,7 +116,7 @@ fill_halo_regions!(model.velocities, model.tracers.b)
 
 simulation = Simulation(model, Δt = Δt, stop_time = tf)
 
-energy_diagnostics = (; pKE = compute_pKE)
+energy_diagnostics = (; pKE = compute_pKE(simulation))
 
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 mkpath(dirname(energyfilepath)) #Make path if nonexistent
