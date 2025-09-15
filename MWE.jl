@@ -91,7 +91,7 @@ fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 
-@kernel function pKE_ccc!(pKE, grid, u, v, w, Ux, Uy, Uz)
+function pKE_ccc!(pKE, grid, u, v, w, Ux, Uy, Uz)
    i, j, k = @index(Global, NTuple)
    @inbounds pKE[i, j, k] = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
@@ -100,10 +100,6 @@ fill_halo_regions!(Uz)
                              ) / 2
 end
 
-pKE = CenterField(model.grid)
-
-#pKE_ccc!(pKE, model.grid, model.velocities.u, model.velocities.v, model.velocities.w, Ux, Uy, Uz)
-
 pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc!, 
 							 grid, 
 							 model.velocities.u, 
@@ -111,8 +107,9 @@ pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc!,
 							 model.velocities.w,
 							 Ux, Uy, Uz)
 
-#pKE_field = Field(pKE_op)
-compute!(pKE_op)#field)
+function compute_pKE(sim)
+   compute!(pKE_op)
+end
 
 #Perturb velocity components to trigger instability
 @inline u_perturbed(x, y, z) = (ū(x, y, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
@@ -122,7 +119,8 @@ fill_halo_regions!(model.velocities, model.tracers.b)
 
 simulation = Simulation(model, Δt = Δt, stop_time = tf)
 
-energy_diagnostics = (; pKE = pKE_op)
+energy_diagnostics = (; pKE = compute_pKE)
+
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
