@@ -83,9 +83,10 @@ function visualize_energetics(datetime, grid)
    pKE_data = energetics_ds[:pKE][:, :, :, :]
 
    pKE_Field = CenterField(grid; data = pKE_data[:, :, :, end-1])
-   print(pKE_Field.data)
-   #pKE = adapt(CuArray, pKE_Field[:, :, :])
-   print(Field(Integral(pKE_Field)))
+   
+   integral = Field(Integral(pKE_Field))
+   compute!(integral)
+   print(integral)
 
    close(energetics_ds)
 end
