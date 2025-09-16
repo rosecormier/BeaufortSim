@@ -44,7 +44,7 @@ const Δt_save = 1 * hour
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
-const use_GPU = false
+const use_GPU = true
 
 use_GPU ? architecture = GPU() : architecture = CPU()
 
@@ -90,12 +90,6 @@ set!(Uz, model.velocities.w)
 fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
-
-#=
-@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
-
-@inline @inbounds pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
-=#
 
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
 
