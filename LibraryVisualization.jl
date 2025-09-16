@@ -214,7 +214,13 @@ function open_bkgd_dataset(bkgd_datetime)
 end
 
 function open_energetics_dataset(energeticsfilename)
+   
    energetics_ds = NCDataset(joinpath("./Output", energeticsfilename))
+   
+   t  = energetics_ds[:time][:] ./ 86400 #Convert to days for readability
+   Nt = length(t)
+
+   return energetics_ds, Nt
 end
 
 function open_scalars_dataset(scalarfilename)
