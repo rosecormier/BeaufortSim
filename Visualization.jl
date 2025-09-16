@@ -78,34 +78,22 @@ end
 
 function visualize_energetics(datetime, grid)
 
-   energetics_ds = open_energetics_dataset("energetics_$(datetimenow).nc")
+   energetics_ds, Nt = open_energetics_dataset("energetics_$(datetimenow).nc")
 
    pKE_data = energetics_ds[:pKE][:, :, :, :]
 
-   #pKE_Field = CenterField(grid; data = pKE_data[:, :, :, end-1])
-   
-   #integral = Field(Integral(pKE_Field))
-   #compute!(integral)
-   #print(integral)
-
    n = Observable(1)
 
-   pKE_Field_n = @lift CenterField(grid; data = pKE_data[:, :, :, $n])
-   integrated_pKE_n = @lift Field(Integral($pKE_Field_n))
+   pKE_Field_n = CenterField(grid)
+   @lift set!(pKE_Field_n, pKE_data[4:end-3, 4:end-3, 4:end-3, $n])
 
-   for i = 1:length(pKE_data[1,1,1,:])
+   for i = 1:Nt
+      integrated_pKE_n = Field(Integral(pKE_Field_n))
       compute!(integrated_pKE_n)
       yield()
       n[] = i
    end
 
-   #pKE_FTS = FieldTimeSeries{Center, Center, Center}(grid)
-   #print(typeof(energetics_ds[:pKE]))
-   #set!(pKE_FTS, energetics_ds[:pKE][:])
-  
-   #integral_FTS = Field(Integral(pKE_Field); dims = (1, 2, 3))
-   #compute!(integral_FTS)
-   #print(integral_FTS)
    close(energetics_ds)
 end
 
