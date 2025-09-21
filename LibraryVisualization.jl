@@ -220,7 +220,7 @@ function open_energetics_dataset(energeticsfilename)
    t  = energetics_ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
-   return energetics_ds, Nt
+   return energetics_ds, t, Nt
 end
 
 function open_scalars_dataset(scalarfilename)
