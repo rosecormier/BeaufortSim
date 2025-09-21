@@ -44,7 +44,7 @@ const Δt_save = 1 * hour
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
-const use_GPU = true
+const use_GPU = false
 
 use_GPU ? architecture = GPU() : architecture = CPU()
 
