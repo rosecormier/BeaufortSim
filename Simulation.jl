@@ -6,7 +6,6 @@ include("Visualization.jl")
 using Adapt
 using Dates: canonicalize, format, now
 using LinearAlgebra: norm
-using NCDatasets
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
@@ -16,7 +15,6 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Oceananigans.Utils
 using Oceanostics
-using OffsetArrays: no_offset_view
 using Printf, Random
 
 ######################
@@ -64,8 +62,8 @@ const d_ML = -50 * meter
 const Δti     = 10 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 2 * hour #20 * day #30 * day
-const Δt_save = 1 * hour #6 * hour
+const tf      = 40 * day
+const Δt_save = 6 * hour
 
 #Architecture
 const use_GPU = true
@@ -74,12 +72,12 @@ const use_GPU = true
 const max_u′ = 1e-8
 
 #Whether to run visualization functions
-const vis_const_x = false
-const vis_const_y = false
-const vis_const_z    = false
+const vis_const_x    = false
+const vis_const_y    = false
+const vis_const_z    = true
 const vis_norms      = true
-const vis_energetics = true
-const vis_z_grid  = false #Can only be done on CPU
+const vis_energetics = false #Currently can only be done on CPU
+const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
@@ -123,16 +121,21 @@ b̄, ū, v̄, ūφ_abs, b̄_BCs = bkgd_fields(f, σr, σz, U,
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :RungeKutta3,
-                            advection = UpwindBiasedFifthOrder(), 
+                            advection = WENO(),
+                            coriolis = fPlane,
+                            tracers = (:b),
+                            buoyancy = BuoyancyTracer(),
+                            boundary_conditions = (; b = b̄_BCs,))
+#=                           advection = UpwindBiasedFifthOrder(), 
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
 			    boundary_conditions = (; b = b̄_BCs,))#,
 #			    closure = closure)
-
+=#
 set!(model, u = ū, v = v̄)
-fill_halo_regions!(model.velocities, model.tracers.b)
 set!(model, b = b̄)
+fill_halo_regions!(model.velocities, model.tracers.b)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -152,23 +155,46 @@ Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
                                    model.velocities.v, model.grid)
 
 #Create fields to store background state
-const Ux_Field = XFaceField(model.grid; data = model.velocities.u.data)
-const Uy_Field = YFaceField(model.grid; data = model.velocities.v.data)
-const Ur_Field = CenterField(model.grid; data = Ur_vals.data)
-const Uφ_Field = CenterField(model.grid; data = Uφ_vals.data)
-const Uz_Field = ZFaceField(model.grid; data = model.velocities.w.data)
-const B_Field  = CenterField(model.grid; data = model.tracers.b.data)
 
-const Ux = adapt(CuArray, Ux_Field[1:Nx+1, 1:Ny, 1:Nz])
-const Uy = adapt(CuArray, Uy_Field[1:Nx, 1:Ny+1, 1:Nz])
-const Uz = adapt(CuArray, Uz_Field[1:Nx, 1:Ny, 1:Nz+1])
+Ux = XFaceField(model.grid)
+Uy = YFaceField(model.grid)
+Ur = CenterField(model.grid)
+Uφ = CenterField(model.grid)
+Uz = ZFaceField(model.grid)
+B  = CenterField(model.grid)
+
+set!(Ux, model.velocities.u)
+set!(Uy, model.velocities.v)
+set!(Ur, Ur_vals)
+set!(Uφ, Uφ_vals)
+set!(Uz, model.velocities.w)
+set!(B, model.tracers.b)
+
+fill_halo_regions!(Ux)
+fill_halo_regions!(Uy)
+fill_halo_regions!(Uz)
+fill_halo_regions!(B)
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
-perturbation_KE_op(model) = KineticEnergy(model, 
-				   model.velocities.u .- no_offset_view(Ux),
-				   model.velocities.v .- no_offset_view(Uy),
-			           model.velocities.w .- no_offset_view(Uz))
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
+
+@inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
+                              ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
+                              ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
+                              ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)
+                             ) / 2
+
+pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
+							 grid, 
+							 model.velocities.u, 
+							 model.velocities.v, 
+							 model.velocities.w,
+							 Ux, Uy, Uz)
+
+function compute_pKE(sim)
+   compute!(pKE_op)
+end
 
 #############################
 # SET UP AND RUN SIMULATION #
@@ -187,6 +213,7 @@ end
 				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 set!(model, u = u_perturbed, v = v_perturbed) #Update initial condition to trigger BCI
+fill_halo_regions!(model.velocities, model.tracers.b)
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
 
@@ -202,7 +229,6 @@ function progress(sim)
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
 		  umax, wmax, bmax)
    @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
-   #@info @sprintf("Total pKE = %.10e", Integral(no_offset_view(adapt(Array, pKE))))
    return nothing
 end
 
@@ -227,12 +253,12 @@ field_writer = NetCDFOutputWriter(model,
                                   schedule = TimeInterval(Δt_save),
 				  file_splitting = FileSizeLimit(30GiB))
 
-ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux_Field)
-uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy_Field)
-ur_perturbation_norm(model) = perturbation_norm(ur, Ur_Field)
-uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ_Field)
-uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz_Field)
-b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B_Field)
+ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
+uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
+ur_perturbation_norm(model) = perturbation_norm(ur, Ur)
+uφ_perturbation_norm(model) = perturbation_norm(uφ, Uφ)
+uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz)
+b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B)
 
 scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uy′_norm = uy_perturbation_norm,
@@ -256,18 +282,7 @@ scalar_writer = NetCDFOutputWriter(model,
 						 uz′_norm = (),
 						 b′_norm = ()))
 
-pKE = CenterField(model.grid)
-@inline function compute_pKE!(sim)
-   pKE = compute!(Field(perturbation_KE_op(model)))
-   fill_halo_regions!(pKE)
-   return nothing
-end
-
-add_callback!(simulation, compute_pKE!, TimeInterval(Δt_save))
-#simulation.callbacks[:energetics] = Callback(compute_pKE!)
-#energy_diagnostics = (; pKE = pKE,)
-#energy_diagnostics = (; pKE = compute!(perturbation_KE),)
-energy_diagnostics = (; pKE = perturbation_KE_op)
+energy_diagnostics = (; pKE = compute_pKE(simulation))
 
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 mkpath(dirname(energyfilepath)) #Make path if nonexistent
@@ -344,7 +359,7 @@ if vis_const_z
    #                   z_idx = z_idx,
    #		      plot_animation = true, 
    #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, B_Field, Uφ_Field; 
+   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; 
 			    plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
