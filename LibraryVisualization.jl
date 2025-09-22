@@ -180,9 +180,9 @@ end
 
 ####################
 
-function pad_filenames(datetime)
+function pad_filenames(datetime; prefix = "output")
 
-   outfile_paths = glob("./Output/output_$(datetime)_part*")
+   outfile_paths = glob("./Output/$(prefix)_$(datetime)_part*")
 
    if length(outfile_paths) > 9
       for file_path in outfile_paths
@@ -192,7 +192,7 @@ function pad_filenames(datetime)
       end
    end
    
-   return glob("./Output/output_$(datetime)*")
+   return glob("./Output/$(prefix)_$(datetime)*")
 end
 
 function open_dataset(outfilename)
@@ -202,7 +202,6 @@ function open_dataset(outfilename)
    x  = ds[:xC][:] ./ 1000 #Convert to km for readability
    y  = ds[:yC][:] ./ 1000 #Convert to km for readability
    z  = ds[:zC][:]
-
    t  = ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
@@ -215,8 +214,8 @@ end
 
 function open_energetics_dataset(energeticsfilename)
    
-   energetics_ds = NCDataset(joinpath("./Output", energeticsfilename))
-   
+   energetics_ds = NCDataset(energeticsfilename)
+
    t  = energetics_ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 

@@ -66,7 +66,7 @@ const tf      = 40 * day
 const Δt_save = 6 * hour
 
 #Architecture
-const use_GPU = true
+const use_GPU = false
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
@@ -74,9 +74,9 @@ const max_u′ = 1e-8
 #Whether to run visualization functions
 const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = true
-const vis_norms      = true
-const vis_energetics = false #Currently can only be done on CPU
+const vis_const_z    = false
+const vis_norms      = false
+const vis_energetics = true #Currently can only be done on CPU
 const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -303,6 +303,7 @@ run!(simulation)
 duration = canonicalize(now() - datetimestart)
 
 pad_filenames(datetimenow)
+pad_filenames(datetimenow; prefix = "energetics")
 
 ###############################
 # SAVE PARAMETERS TO LOG FILE #

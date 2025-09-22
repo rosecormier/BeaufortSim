@@ -78,7 +78,8 @@ end
 
 function visualize_energetics(datetime, grid)
 
-   energetics_ds, t, Nt = open_energetics_dataset("energetics_$(datetimenow).nc")
+   outfile_list         = glob("./Output/energetics_$(datetime)*")
+   energetics_ds, t, Nt = open_energetics_dataset(outfile_list)
 
    pKE_data = energetics_ds[:pKE][:, :, :, :]
 
