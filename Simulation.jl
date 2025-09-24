@@ -22,20 +22,14 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 1200
-const Ny = 1200
+const Nx = 400
+const Ny = 400
 const Nz = 12
 
 #Lengths of axes
 const Lx = 2.5e3 * kilometer
 const Ly = 2.5e3 * kilometer
 const Lz = 1 * kilometer
-
-#Eddy viscosities and diffusivities
-const νh = 0 * (meter^2/second)
-const νv = 0 * (meter^2/second)
-const κh = 0 * (meter^2/second)
-const κv = 0 * (meter^2/second)
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -59,14 +53,14 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 10 * second
+const Δti     = 2.5 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
 const tf      = 40 * day
 const Δt_save = 6 * hour
 
 #Architecture
-const use_GPU = false
+const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
@@ -76,7 +70,7 @@ const vis_const_x    = false
 const vis_const_y    = false
 const vis_const_z    = false
 const vis_norms      = false
-const vis_energetics = true #Currently can only be done on CPU
+const vis_energetics = false #Currently can only be done on CPU
 const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
@@ -102,16 +96,13 @@ use_GPU ? architecture = GPU() : architecture = CPU()
 #z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
 
 grid = RectilinearGrid(architecture,
-		       topology = (Bounded, Bounded, Bounded),
+		       topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lx/2, Lx/2), 
                        y = (-Ly/2, Ly/2), 
                        z = (-Lz, 0.0),
 		       halo = (3, 3, 3))
 #                       z = z_grid_spacing)
-
-closure = (HorizontalScalarDiffusivity(ν = νh, κ = κh), 
-	   VerticalScalarDiffusivity(ν = νv, κ = κv))
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
@@ -125,16 +116,9 @@ model = NonhydrostaticModel(;
                             coriolis = fPlane,
                             tracers = (:b),
                             buoyancy = BuoyancyTracer(),
-                            boundary_conditions = (; b = b̄_BCs,))
-#=                           advection = UpwindBiasedFifthOrder(), 
-                            coriolis = fPlane,
-                            tracers = (:b),
-                            buoyancy = BuoyancyTracer(),
-			    boundary_conditions = (; b = b̄_BCs,))#,
-#			    closure = closure)
-=#
-set!(model, u = ū, v = v̄)
-set!(model, b = b̄)
+                            boundary_conditions = (; b = b̄_BCs))
+
+set!(model, u = ū, v = v̄, b = b̄)
 fill_halo_regions!(model.velocities, model.tracers.b)
 
 #Prints warnings if the respective instabilities are present
@@ -299,7 +283,7 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 
 run!(simulation)
-
+#=
 duration = canonicalize(now() - datetimestart)
 
 pad_filenames(datetimenow)
@@ -375,3 +359,4 @@ end
 if vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
 end
+=#
