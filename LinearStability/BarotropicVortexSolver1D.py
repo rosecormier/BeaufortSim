@@ -134,7 +134,7 @@ def QG_Vortex_Stability():
         kz2 = kz**2
   
         for kp_idx in range(0, kps.shape[0]):
-
+            
             kp  = kps[kp_idx]
             kp2 = kp**2
     
