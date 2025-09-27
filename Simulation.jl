@@ -22,8 +22,8 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 400
-const Ny = 400
+const Nx = 12 #400
+const Ny = 12 #400
 const Nz = 12
 
 #Lengths of axes
@@ -56,11 +56,11 @@ const d_ML = -50 * meter
 const Δti     = 2.5 * second
 const Δt_max  = 3 * hour
 const CFL     = 0.2
-const tf      = 40 * day
+const tf      = 10 * second # 40 * day
 const Δt_save = 6 * hour
 
 #Architecture
-const use_GPU = true
+const use_GPU = false
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
@@ -119,7 +119,7 @@ model = NonhydrostaticModel(;
                             boundary_conditions = (; b = b̄_BCs))
 
 set!(model, u = ū, v = v̄, b = b̄)
-fill_halo_regions!(model.velocities, model.tracers.b)
+#fill_halo_regions!(model.velocities, model.tracers.b)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -208,6 +208,8 @@ function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
    wmax = maximum(abs, sim.model.velocities.w)
    bmax = maximum(abs, sim.model.tracers.b)
+   @info print("b slice = ", sim.model.tracers.b[1,1,:], "\n")
+   @info print("u slice = ", sim.model.velocities.u[1,1,:], "\n")
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
@@ -216,7 +218,7 @@ function progress(sim)
    return nothing
 end
 
-add_callback!(simulation, progress, TimeInterval(Δt_save))
+add_callback!(simulation, progress, IterationInterval(1)) #TimeInterval(Δt_save))
 
 ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
 
