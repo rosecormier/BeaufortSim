@@ -219,7 +219,7 @@ def QG_Vortex_Stability():
             ax_prop.set(xlabel = 'Vertical wavenumber (per 1 km)')
             axes[0, 0].legend()
             #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}_nondimensional.png")
+            fig.savefig(f"omega_vs_m_mode{jj}_nondimensionalBTgyre.png")
             plt.close(fig)
 
         ###########################################
@@ -247,7 +247,7 @@ def QG_Vortex_Stability():
                title = fr"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}} =$ {kphi}, $\tilde{{m}} =$ {kz}")
         ax.legend()
         #plt.show()
-        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_nondimensional.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_nondimensionalBTgyre.png")
         plt.close(fig)
         
         #################################################
@@ -298,7 +298,7 @@ def QG_Vortex_Stability():
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
         #plt.show()
-        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_nondimensional.png")
+        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_nondimensionalBTgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing

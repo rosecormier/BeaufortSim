@@ -237,7 +237,7 @@ def QG_Vortex_Stability():
             ax_prop.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
             axes[0, 0].legend()
             #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}_dimensional.png")
+            fig.savefig(f"omega_vs_m_mode{jj}_dimensionalBTgyre.png")
             plt.close(fig)
         
         """
@@ -301,7 +301,7 @@ def QG_Vortex_Stability():
                title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kphi}, $m =$ {kz}")
         ax.legend()
         #plt.show()
-        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_dimensional.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_dimensionalBTgyre.png")
         plt.close(fig)
         
         #Plot streamfunction structures in r-phi plane
@@ -348,7 +348,7 @@ def QG_Vortex_Stability():
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
         #plt.show()
-        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_dimensional.png")
+        fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_dimensionalBTgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
