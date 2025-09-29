@@ -3,26 +3,24 @@ import scipy.sparse as sp
 
 from math import e
 
-def rInterior(params, geom, discretize2D = False):
+def rInterior(params, geom, discretizeAzim = False):
     """
     Build array of those r-values at interior gridpoints that are physical.
     """
 
-    if discretize2D:
-
+    if discretizeAzim:
         halfNr, Np       = params.halfNr, params.Np
         [rInterior, phi] = np.meshgrid(geom.r[1:(halfNr + 1)],
                                        np.arange(1, (Np + 1)))
         rInterior        = np.hstack(np.stack(rInterior[:], axis = -1))
 
     else:
-
         halfNr    = params.halfNr
         rInterior = np.ravel(geom.r[1:(halfNr + 1)])
 
     return rInterior
 
-def BuildBkgdOperators(params, geom, discretize2D = False, 
+def BuildBkgdOperators(params, geom, discretizeAzim = False, 
                        dimensional_U = 1, dimensional_σr = 1):
     """
     Build array of (1/r) * (dPsi/dr) and array of (1/r) * (dQ/dr), each
@@ -47,7 +45,7 @@ def BuildBkgdOperators(params, geom, discretize2D = False,
 
     if sp.issparse(geom.Dr):
             
-        if discretize2D:
+        if discretizeAzim:
             opLength = params.halfNr * params.Np
         else:
             opLength = params.halfNr
@@ -59,4 +57,3 @@ def BuildBkgdOperators(params, geom, discretize2D = False,
         Ψ_op, Q_op = np.diag(Ψ_op), np.diag(Q_op)
 
     return Ψ_op, Q_op
-
