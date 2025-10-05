@@ -145,21 +145,21 @@ def QG_Vortex_Stability():
     paramsCheb         = Parameters()
     GeomCheb           = Geometry("cheb", paramsCheb)
     GeomCheb.Lap       = BuildLaplacian(paramsCheb, GeomCheb, 
-                                        discretizeAzim = True)
-    GeomCheb.rInterior = rInterior(paramsCheb, GeomCheb, discretizeAzim = True)
+                                        discretizeAzimuth = True)
+    GeomCheb.rInterior = rInterior(paramsCheb, GeomCheb, discretizeAzimuth = True)
 
     paramsFD         = Parameters()
     GeomFD           = Geometry("FD", paramsFD)
-    GeomFD.Lap       = BuildLaplacian(paramsFD, GeomFD, discretizeAzim = True)
-    GeomFD.rInterior = rInterior(paramsFD, GeomFD, discretizeAzim = True)
+    GeomFD.Lap       = BuildLaplacian(paramsFD, GeomFD, discretizeAzimuth = True)
+    GeomFD.rInterior = rInterior(paramsFD, GeomFD, discretizeAzimuth = True)
 
     #Discretize background-state-flow operators on Chebyshev and FD grids
 
     GeomCheb.Ψ_op, GeomCheb.Q_op = BuildBkgdOperators(paramsCheb, GeomCheb, 
-                                                      discretizeAzim = True)
+                                                      discretizeAzimuth = True)
 
     GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD, 
-                                                  discretizeAzim = True)
+                                                  discretizeAzimuth = True)
     
     #Information about wavenumbers and modes is the same for both solvers
     kps, kzs, nmodes = paramsFD.kps, paramsFD.kzs, paramsFD.nmodes
