@@ -1,7 +1,8 @@
 import numpy as np
 import scipy.sparse as sp
 
-def BuildLaplacian(params, geom, discretizeAzim = False):
+def BuildLaplacian(params, geom, 
+                   discretizeAzimuth = False, discretizeVertical = False):
     """
     Build discretized Laplacian operator.
     Note: we do not explicitly set zeroth indices because we impose zero
@@ -10,7 +11,7 @@ def BuildLaplacian(params, geom, discretizeAzim = False):
     
     Nr, halfNr, Np = params.Nr, params.halfNr, params.Np
 
-    if discretizeAzim:
+    if discretizeAzimuth:
         I, Z = np.eye(Np // 2), np.zeros(((Np // 2), (Np // 2)))
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
@@ -28,7 +29,7 @@ def BuildLaplacian(params, geom, discretizeAzim = False):
                        np.array([0]), halfNr, halfNr)
         
         #Build discretized Laplacian as done in Ch.11 of Trefethen
-        if discretizeAzim:
+        if discretizeAzimuth:
             Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Np))
                    + sp.kron((D2 + R.dot(E2)), np.block([[Z, I], [I, Z]])))
         else:
@@ -40,7 +41,7 @@ def BuildLaplacian(params, geom, discretizeAzim = False):
         R = np.diag(1 / np.ravel(geom.r[1:(halfNr + 1)]))
 
         #Build discretized Laplacian as done in Ch.11 of Trefethen
-        if discretizeAzim:
+        if discretizeAzimuth:
             Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
                    + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
         else:
