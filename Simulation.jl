@@ -161,7 +161,7 @@ fill_halo_regions!(B)
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
-@inline ψ′²(i, j, k, grid, ψ, ψ̄) = (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
 
 @inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
