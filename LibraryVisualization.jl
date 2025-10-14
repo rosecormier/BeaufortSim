@@ -174,7 +174,7 @@ module OutFileFormat
 end
 
 module VisFunctions
-   export open_dataset, open_bkgd_dataset, open_scalars_dataset, 
+   export open_dataset, open_energetics_dataset, open_scalars_dataset, 
 	  get_range_lims, get_2D_spatial_axis_kwargs
 end
 
@@ -195,22 +195,33 @@ function pad_filenames(datetime; prefix = "output")
    return glob("./Output/$(prefix)_$(datetime)*")
 end
 
-function open_dataset(outfilename)
+function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
 
    ds = NCDataset(outfilename)
 
-   x  = ds[:xC][:] ./ 1000 #Convert to km for readability
-   y  = ds[:yC][:] ./ 1000 #Convert to km for readability
-   z  = ds[:zC][:]
+   x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
+   
+   if length(ds[:xC][:]) > 1
+      x = ds[:xC][Hx+1:end-Hx] ./ 1000 #Convert to km for readability
+   end
+
+   if length(ds[:yC][:]) > 1
+      y = ds[:yC][Hy+1:end-Hy] ./ 1000 #Convert to km for readability
+   end
+   
+   if length(ds[:zC][:]) > 1
+      z = ds[:zC][Hz+1:end-Hz]
+   end
+
    t  = ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
    return ds, x, y, z, t, Nt
 end
 
-function open_bkgd_dataset(bkgd_datetime)
-   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
-end
+#function open_bkgd_dataset(bkgd_datetime)
+#   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
+#end
 
 function open_energetics_dataset(energeticsfilename)
    
@@ -234,17 +245,31 @@ end
 function get_2D_spatial_axis_kwargs(x, y, z;
                                     x_idx = nothing,
 				    y_idx = nothing,
-                                    z_idx = nothing)
+                                    z_idx = nothing,
+				    const_x = false,
+				    const_y = false,
+				    const_z = false)
+   nearest = 0
+
    if !isnothing(x_idx)
-      nearest     = round(Int, x[x_idx])
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
+      const_x = true
+      nearest = round(Int, x[x_idx])
    elseif !isnothing(y_idx)
-      nearest     = round(Int, y[y_idx])
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
+      const_y = true
+      nearest = round(Int, y[y_idx])
    elseif !isnothing(z_idx)
-      nearest     = round(Int, z[z_idx])
+      const_z = true
+      nearest = round(Int, z[z_idx])
+   end
+
+   if const_x
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
+   elseif const_y
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
+   elseif const_z
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
+   
    return nearest, axis_kwargs
 end
 
