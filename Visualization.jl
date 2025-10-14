@@ -624,136 +624,210 @@ function visualize_fields_const_x(datetime, x_idx;
    close(ds)
 end
 
-function visualize_fields_const_y(datetime, y_idx; 
-		                  plot_animation = false, t_idx_skip = 1)
+function visualize_fields_const_y(datetime, y_idx, B, Uφ; Hx = 3, Hz = 3,
+		                  plot_animation = true, t_idx_skip = 1)
+  
+   outfile_list             = glob("./Output/output_$(datetime)*")
+   ds_f, x, y, z, times, Nt = open_dataset(outfile_list[length(outfile_list)]; Hx = Hx, Hz = Hz)
    
-   ds, x, y, z, times, Nt = open_dataset(datetime)
-   bb, ub, vb, wb         = get_background_fields(ds)
+   z_plt = 1 #div(length(z), 2) #z-index to start plotting at
 
-   z_plt = div(length(z[:]), 2) #z-index to start plotting at
+   if isnothing(y_idx) #Grid is 2D with only x and z axes
+      xz_idcs = (1:length(x), 1, z_plt:length(z))
+   else #Grid is 3D
+      xz_idcs = (1:length(x), y_idx, z_plt:length(z))
+   end
 
-   b_total_f_xz = ds["b"][:, y_idx, z_plt:end, Nt]
-   u_total_f_xz = ds["u"][:, y_idx, z_plt:end, Nt]
-   v_total_f_xz = ds["v"][:, y_idx, z_plt:end, Nt]
-   w_total_f_xz = ds["w"][:, y_idx, z_plt:end-1, Nt]
+   B  = adapt(Array, B)[xz_idcs...]
+   Uφ = adapt(Array, Uφ)[xz_idcs...]
 
-   Δb_f_xz = b_total_f_xz .- bb[:, y_idx, z_plt:end]
-   Δu_f_xz = u_total_f_xz .- ub[:, y_idx, z_plt:end]
-   Δv_f_xz = v_total_f_xz .- vb[:, y_idx, z_plt:end]
-   Δw_f_xz = w_total_f_xz .- wb[:, y_idx, z_plt:end]
+   b_total_f_xz = adapt(Array, ds_f[:b])[xz_idcs..., Nt]
+   ur_total_f_xz = adapt(Array, ds_f[:ur])[xz_idcs..., Nt]
+   uφ_total_f_xz = adapt(Array, ds_f[:uφ])[xz_idcs..., Nt]
+   uz_total_f_xz = adapt(Array, ds_f[:uz])[xz_idcs..., Nt]
 
-   lims_b_total = get_range_lims(b_total_f_xz; max_fraction = 0.75)
-   lims_u_total = get_range_lims(u_total_f_xz; 
-				 max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_v_total = get_range_lims(v_total_f_xz; 
-				 max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_w_total = get_range_lims(w_total_f_xz; 
-				 max_fraction = 0.75, prescribed_max = 1e-16)
+   Δb_f_xz  = b_total_f_xz .- no_offset_view(B)
+   Δuφ_f_xz = uφ_total_f_xz .- no_offset_view(Uφ)
 
-   lims_Δb = get_range_lims(Δb_f_xz; 
-			    max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δu = get_range_lims(Δu_f_xz; 
-			    max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δv = get_range_lims(Δv_f_xz; 
-			    max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δw = get_range_lims(Δw_f_xz; 
-			    max_fraction = 0.75, prescribed_max = 1e-16)
+   lims_b_total = get_range_lims(b_total_f_xz; max_fraction = 1.0)
+   lims_ur       = get_range_lims(ur_total_f_xz;
+   			          max_fraction = 1.0, prescribed_max = 1e-16)
+   lims_uφ_total = get_range_lims(uφ_total_f_xz;
+				  max_fraction = 1.0, prescribed_max = 1e-16)
+   lims_uz       = get_range_lims(uz_total_f_xz;
+				  max_fraction = 1.0, prescribed_max = 1e-16)
+
+   lims_Δb  = get_range_lims(Δb_f_xz; 
+	        	     max_fraction = 1.0, prescribed_max = 1e-16)
+   lims_Δuφ = get_range_lims(Δuφ_f_xz; 
+			     max_fraction = 1.0, prescribed_max = 1e-16)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   y_nearest, axis_kwargs_xz = get_2D_spatial_axis_kwargs(x, y, z; y_idx = y_idx)
+   y_nearest, axis_kwargs_xz = get_2D_spatial_axis_kwargs(x, y, z; const_y = true)
+
+   #Plot static images (final frame, by default)
+
+   fig_total   = Figure(size = (1200, 800))
+   fig_perturb = Figure(size = (1200, 800))
+
+   ax_b_total = Axis(fig_total[2, 1];
+                     title = L"Total buoyancy ($b$)", axis_kwargs_xz...)
+   ax_ur_total = Axis(fig_total[2, 3];
+                     title = L"Total radial velocity ($u_r$)", axis_kwargs_xz...)
+   ax_uφ_total = Axis(fig_total[3, 1];
+		      title = L"Total azimuthal velocity ($u_{\phi}$)", axis_kwargs_xz...)
+   ax_uz_total = Axis(fig_total[3, 3];
+                     title = L"Total vertical velocity ($u_z$)", axis_kwargs_xz...)
+
+   ax_b_perturb = Axis(fig_perturb[2, 1];
+                       title = L"Buoyancy perturbation ($b'$)",
+                       axis_kwargs_xz...)
+   ax_ur_perturb = Axis(fig_perturb[2, 3];
+                       title = L"Radial velocity perturbation ($u_r'$)",
+                       axis_kwargs_xz...)
+   ax_uφ_perturb = Axis(fig_perturb[3, 1];
+		       title = L"Azimuthal velocity perturbation ($u_{\phi}'$)",
+                       axis_kwargs_xz...)
+   ax_uz_perturb = Axis(fig_perturb[3, 3];
+                       title = L"Vertical velocity perturbation ($u_z'$)",
+                       axis_kwargs_xz...)
+
+   hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_f_xz)#,
+			 #colorrange = lims_b_total, colormap = Reverse(:RdBu_5),
+			 #highclip = :red, lowclip = :blue)
+   hm_ur_total = heatmap!(ax_ur_total, x, z[z_plt:end], ur_total_f_xz)
+   hm_uφ_total = heatmap!(ax_uφ_total, x, z[z_plt:end], uφ_total_f_xz)
+   hm_uz_total = heatmap!(ax_uz_total, x, z[z_plt:end], uz_total_f_xz)
+
+   hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_f_xz)
+   hm_ur_perturb = heatmap!(ax_ur_perturb, x, z[z_plt:end], ur_total_f_xz)
+   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, z[z_plt:end], Δuφ_f_xz)
+   hm_uz_perturb = heatmap!(ax_uz_perturb, x, z[z_plt:end], uz_total_f_xz)
+
+   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 2], hm_uφ_total, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig_total[3, 4], hm_uz_total, tickformat = "{:.1e}", label = "m/s")
+
+   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
+            label = "m/s²")
+   Colorbar(fig_perturb[2, 4], hm_ur_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 2], hm_uφ_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+   Colorbar(fig_perturb[3, 4], hm_uz_perturb, tickformat = "{:.1e}",
+            label = "m/s")
+
+   title_total   = @sprintf("Fields at y = %i km; t = %.2f days",
+                            y_nearest, times[Nt])
+   title_perturb = @sprintf(
+                          "Perturbation fields at y = %i km; t = %.2f days",
+                            y_nearest, times[Nt])
+
+   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
+                               tellwidth = false)
+   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
+                               tellwidth = false)
+
+   save(joinpath("./Plots", "fields_y$(y_nearest)_tf_$(datetime).png"),
+                 fig_total)
+   save(joinpath("./Plots", "perturbs_y$(y_nearest)_tf_$(datetime).png"),
+                 fig_perturb)
+
+   close(ds_f)
 
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
-
-      n = Observable(1)
-
-      b_total_xz = @lift ds["b"][:, y_idx, z_plt:end, $n]
-      u_total_xz = @lift ds["u"][:, y_idx, z_plt:end, $n]
-      v_total_xz = @lift ds["v"][:, y_idx, z_plt:end, $n]
-      w_total_xz = @lift ds["w"][:, y_idx, z_plt:end-1, $n]
-
-      Δb_xz = @lift $b_total_xz .- bb[:, y_idx, z_plt:end]
-      Δu_xz = @lift $u_total_xz .- ub[:, y_idx, z_plt:end]
-      Δv_xz = @lift $v_total_xz .- vb[:, y_idx, z_plt:end]
-      Δw_xz = @lift $w_total_xz .- wb[:, y_idx, z_plt:end]
    
       fig_total   = Figure(size = (1200, 800))
       fig_perturb = Figure(size = (1200, 800))
 
       ax_b_total = Axis(fig_total[2, 1];
-                        title = "Total buoyancy (b)", axis_kwargs_xz...)
-      ax_w_total = Axis(fig_total[2, 3];
-                        title = "Total vertical velocity (w)", 
+                        title = L"Total buoyancy ($b$)", axis_kwargs_xz...)
+      ax_ur_total = Axis(fig_total[2, 3];
+                        title = L"Total radial velocity ($u_r$)", 
 			axis_kwargs_xz...)
-      ax_u_total = Axis(fig_total[3, 1];
-                        title = "Total zonal velocity (u)", axis_kwargs_xz...)
-      ax_v_total = Axis(fig_total[3, 3];
-                        title = "Total meridional velocity (v)", 
+      ax_uφ_total = Axis(fig_total[3, 1];
+			 title = L"Total azimuthal velocity ($u_{\phi}$)", axis_kwargs_xz...)
+      ax_uz_total = Axis(fig_total[3, 3];
+                        title = L"Total vertical velocity ($u_z$)", 
 			axis_kwargs_xz...)
 
       ax_b_perturb = Axis(fig_perturb[2, 1];
-                          title = "Buoyancy perturbation (b')", 
+                          title = L"Buoyancy perturbation ($b'$)", 
 			  axis_kwargs_xz...)
-      ax_w_perturb = Axis(fig_perturb[2, 3];
-                          title = "Vertical velocity perturbation (w')",
+      ax_ur_perturb = Axis(fig_perturb[2, 3];
+                          title = L"Radial velocity perturbation (w')",
                           axis_kwargs_xz...)
-      ax_u_perturb = Axis(fig_perturb[3, 1];
-                          title = "Zonal velocity perturbation (u')",
+      ax_uφ_perturb = Axis(fig_perturb[3, 1];
+			   title = L"Azimuthal velocity perturbation ($u_{\phi}'$)",
                           axis_kwargs_xz...)
-      ax_v_perturb = Axis(fig_perturb[3, 3];
-                          title = "Meridional velocity perturbation (v')",
+      ax_uz_perturb = Axis(fig_perturb[3, 3];
+                          title = L"Vertical velocity perturbation ($u_z'$)",
                           axis_kwargs_xz...)
 
-      hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_xz,
-                            colorrange = lims_b_total, 
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-      hm_w_total = heatmap!(ax_w_total, x, z[z_plt:end], w_total_xz,
-                            colorrange = lims_w_total,
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-      hm_u_total = heatmap!(ax_u_total, x, z[z_plt:end], u_total_xz,
-                            colorrange = lims_u_total, 
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-      hm_v_total = heatmap!(ax_v_total, x, z[z_plt:end], v_total_xz,
-                            colorrange = lims_v_total,
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
+      ds, x, y, z, times, Nt = open_dataset(outfile_list)
 
-      hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_xz,
-                              colorrange = lims_Δb, 
-			      colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
-      hm_w_perturb = heatmap!(ax_w_perturb, x, z[z_plt:end], Δw_xz,
-                              colorrange = lims_Δw, 
-			      colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
-      hm_u_perturb = heatmap!(ax_u_perturb, x, z[z_plt:end], Δu_xz,
-                              colorrange = lims_Δu, 
-			      colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
-      hm_v_perturb = heatmap!(ax_v_perturb, x, z[z_plt:end], Δv_xz,
-                              colorrange = lims_Δv,
-			      colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
+      n = Observable(1)
+
+      b_total_xz = @lift ds[:b][xz_idcs..., $n]
+      ur_total_xz = @lift ds[:ur][xz_idcs..., $n]
+      uφ_total_xz = @lift ds[:uφ][xz_idcs..., $n]
+      uz_total_xz = @lift ds[:uz][xz_idcs..., $n]
+
+      Δb_xz = @lift $b_total_xz .- no_offset_view(B)
+      Δuφ_xz = @lift $uφ_total_xz .- no_offset_view(Uφ)
+      
+      hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_xz)#,
+      #                      colorrange = lims_b_total, 
+      #			    colormap = Reverse(:RdBu_5),
+      #                      highclip = :red, lowclip = :blue)
+      hm_ur_total = heatmap!(ax_ur_total, x, z[z_plt:end], ur_total_xz)#,
+      #                      colorrange = lims_w_total,
+      #			    colormap = Reverse(:RdBu_5),
+      #                      highclip = :red, lowclip = :blue)
+      hm_uφ_total = heatmap!(ax_uφ_total, x, z[z_plt:end], uφ_total_xz)#,
+      #                      colorrange = lims_u_total, 
+      #			    colormap = Reverse(:RdBu_5),
+      #                      highclip = :red, lowclip = :blue)
+      hm_uz_total = heatmap!(ax_uz_total, x, z[z_plt:end], uz_total_xz)#,
+      #                      colorrange = lims_v_total,
+      #			    colormap = Reverse(:RdBu_5),
+      #                      highclip = :red, lowclip = :blue)
+
+      hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_xz)#,
+      #                        colorrange = lims_Δb, 
+      #			      colormap = Reverse(:RdBu_5),
+      #                        highclip = :red, lowclip = :blue)
+      hm_ur_perturb = heatmap!(ax_ur_perturb, x, z[z_plt:end], ur_total_xz)#,
+      #                        colorrange = lims_Δw, 
+      #			      colormap = Reverse(:RdBu_5),
+      #                        highclip = :red, lowclip = :blue)
+      hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, z[z_plt:end], Δuφ_xz)#,
+      #                        colorrange = lims_Δu, 
+      #	 		      colormap = Reverse(:RdBu_5),
+      #                        highclip = :red, lowclip = :blue)
+      hm_uz_perturb = heatmap!(ax_uz_perturb, x, z[z_plt:end], uz_total_xz)#,
+      #                        colorrange = lims_Δv,
+      #			      colormap = Reverse(:RdBu_5),
+      #                        highclip = :red, lowclip = :blue)
 
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", 
                label = "m/s²")
-      Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", 
+      Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", 
 	       label = "m/s")
-      Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", 
+      Colorbar(fig_total[3, 2], hm_uφ_total, tickformat = "{:.1e}", 
 	       label = "m/s")
-      Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", 
+      Colorbar(fig_total[3, 4], hm_uz_total, tickformat = "{:.1e}", 
 	       label = "m/s")
 
       Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
                label = "m/s²")
-      Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
+      Colorbar(fig_perturb[2, 4], hm_ur_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
+      Colorbar(fig_perturb[3, 2], hm_uφ_perturb, tickformat = "{:.1e}",
                label = "m/s")
-      Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
+      Colorbar(fig_perturb[3, 4], hm_uz_perturb, tickformat = "{:.1e}",
                label = "m/s")
 
       title_total   = @lift @sprintf("Fields at y = %i km; t = %.2f days",
@@ -784,107 +858,26 @@ function visualize_fields_const_y(datetime, y_idx;
       save(joinpath("./Plots", "perturbs_y$(y_nearest)_$(datetime).mp4"),
                     video_perturb)
    end
-
-   #Plot static images (final frame, by default)
-
-   fig_total   = Figure(size = (1200, 800))
-   fig_perturb = Figure(size = (1200, 800))
-
-   ax_b_total = Axis(fig_total[2, 1];
-                     title = "Total buoyancy (b)", axis_kwargs_xz...)
-   ax_w_total = Axis(fig_total[2, 3];
-                     title = "Total vertical velocity (w)", axis_kwargs_xz...)
-   ax_u_total = Axis(fig_total[3, 1];
-                     title = "Total zonal velocity (u)", axis_kwargs_xz...)
-   ax_v_total = Axis(fig_total[3, 3];
-                     title = "Total meridional velocity (v)", axis_kwargs_xz...)
-
-   ax_b_perturb = Axis(fig_perturb[2, 1];
-                       title = "Buoyancy perturbation (b')",
-                       axis_kwargs_xz...)
-   ax_w_perturb = Axis(fig_perturb[2, 3];
-                       title = "Vertical velocity perturbation (w')",
-                       axis_kwargs_xz...)
-   ax_u_perturb = Axis(fig_perturb[3, 1];
-                       title = "Zonal velocity perturbation (u')",
-                       axis_kwargs_xz...)
-   ax_v_perturb = Axis(fig_perturb[3, 3];
-                       title = "Meridional velocity perturbation (v')",
-                       axis_kwargs_xz...)
-
-   hm_b_total = heatmap!(ax_b_total, x, z[z_plt:end], b_total_f_xz,
-                         colorrange = lims_b_total, colormap = :balance)
-   hm_w_total = heatmap!(ax_w_total, x, z[z_plt:end], w_total_f_xz,
-                         colorrange = lims_w_total, colormap = :balance)
-   hm_u_total = heatmap!(ax_u_total, x, z[z_plt:end], u_total_f_xz,
-                         colorrange = lims_u_total, colormap = :balance)
-   hm_v_total = heatmap!(ax_v_total, x, z[z_plt:end], v_total_f_xz,
-                         colorrange = lims_v_total, colormap = :balance)
-
-   hm_b_perturb = heatmap!(ax_b_perturb, x, z[z_plt:end], Δb_f_xz,
-                           colorrange = lims_Δb, colormap = :balance)
-   hm_w_perturb = heatmap!(ax_w_perturb, x, z[z_plt:end], Δw_f_xz,
-                           colorrange = lims_Δw, colormap = :balance)
-   hm_u_perturb = heatmap!(ax_u_perturb, x, z[z_plt:end], Δu_f_xz,
-                           colorrange = lims_Δu, colormap = :balance)
-   hm_v_perturb = heatmap!(ax_v_perturb, x, z[z_plt:end], Δv_f_xz,
-                           colorrange = lims_Δv, colormap = :balance)
-
-   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_w_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 2], hm_u_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 4], hm_v_total, tickformat = "{:.1e}", label = "m/s")
-
-   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
-            label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_w_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-   Colorbar(fig_perturb[3, 2], hm_u_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-   Colorbar(fig_perturb[3, 4], hm_v_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-
-   title_total   = @sprintf("Fields at y = %i km; t = %.2f days",
-                            y_nearest, times[Nt])
-   title_perturb = @sprintf(
-                          "Perturbation fields at y = %i km; t = %.2f days",
-                            y_nearest, times[Nt])
-
-   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
-                               tellwidth = false)
-   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
-                               tellwidth = false)
-
-   save(joinpath("./Plots", "fields_y$(y_nearest)_tf_$(datetime).png"),
-                 fig_total)
-   save(joinpath("./Plots", "perturbs_y$(y_nearest)_tf_$(datetime).png"),
-                 fig_perturb)
    close(ds)
 end
 
 function visualize_fields_const_z(datetime, z_idx,
-		B, Uφ; plot_animation = true, t_idx_skip = 1)
-   #		                  bkgd_datetime = nothing,
-   #				  plot_animation = true, t_idx_skip = 1)
-   
-   #if isnothing(bkgd_datetime)
-   #   bkgd_datetime = datetime
-   #end
-
-   #bkgd_ds = open_bkgd_dataset(bkgd_datetime)
-   B       = adapt(Array, B)[:, :, z_idx] #bkgd_ds[:B][:, :, :, 1]
-   Uφ      = adapt(Array, Uφ)[:, :, z_idx]
+		B, Uφ; Hx = 3, Hy = 3, plot_animation = true, t_idx_skip = 1)
 
    outfile_list             = glob("./Output/output_$(datetime)*")
    ds_f, x, y, z, times, Nt = open_dataset(outfile_list[length(outfile_list)])
+   Nx, Ny                   = length(x), length(y)
+
+   B  = adapt(Array, B)[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx]
+   Uφ = adapt(Array, Uφ)[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx]
+
+   b_total_f_xy  = adapt(Array, ds_f[:b])[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, Nt]
+   ur_total_f_xy = adapt(Array, ds_f[:ur])[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, Nt]
+   uφ_total_f_xy = adapt(Array, ds_f[:uφ])[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, Nt]
+   uz_total_f_xy = adapt(Array, ds_f[:uz])[Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, Nt]
    
-   b_total_f_xy  = adapt(Array, ds_f[:b])[:, :, z_idx, Nt] #[1:length(x)-6, 1:length(y)-6, z_idx, Nt]
-   ur_total_f_xy = adapt(Array, ds_f[:ur])[:, :, z_idx, Nt]
-   uφ_total_f_xy = adapt(Array, ds_f[:uφ])[:, :, z_idx, Nt]
-   uz_total_f_xy = adapt(Array, ds_f[:uz])[:, :, z_idx, Nt]
-   
-   Δb_f_xy  = b_total_f_xy .- no_offset_view(B) # .- B[:, :, z_idx]
-   Δuφ_f_xy = uφ_total_f_xy .- no_offset_view(Uφ) #[:, :, z_idx]
+   Δb_f_xy  = b_total_f_xy .- no_offset_view(B)
+   Δuφ_f_xy = uφ_total_f_xy .- no_offset_view(Uφ)
 
    lims_b_total  = get_range_lims(b_total_f_xy; max_fraction = 1.0)
    lims_ur       = get_range_lims(ur_total_f_xy; 
@@ -933,36 +926,36 @@ function visualize_fields_const_z(datetime, z_idx,
                         title = L"Vertical velocity perturbation ($u_z'$)",
                         axis_kwargs_xy...)
 
-   hm_b_total  = heatmap!(ax_b_total, x, y, b_total_f_xy,
+   hm_b_total  = heatmap!(ax_b_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], b_total_f_xy,
                           colorrange = lims_b_total,
                           colormap = Reverse(:RdBu_5),
                           highclip = :red, lowclip = :blue)
-   hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy,
+   hm_ur_total = heatmap!(ax_ur_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], ur_total_f_xy,
                           colorrange = lims_ur,
                           colormap = Reverse(:RdBu_5),
                           highclip = :red, lowclip = :blue)
-   hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_f_xy,
+   hm_uφ_total = heatmap!(ax_uφ_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uφ_total_f_xy,
                           colorrange = lims_uφ_total,
                           colormap = Reverse(:RdBu_5),
                           highclip = :red, lowclip = :blue)
-   hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_f_xy,
+   hm_uz_total = heatmap!(ax_uz_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uz_total_f_xy,
                           colorrange = lims_uz,
                           colormap = Reverse(:RdBu_5),
                           highclip = :red, lowclip = :blue)
 
-   hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
+   hm_b_perturb  = heatmap!(ax_b_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], Δb_f_xy,
                             colorrange = lims_Δb,
                             colormap = Reverse(:RdBu_5),
                             highclip = :red, lowclip = :blue)
-   hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy,
+   hm_ur_perturb = heatmap!(ax_ur_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], ur_total_f_xy,
                             colorrange = lims_ur,
                             colormap = Reverse(:RdBu_5),
                             highclip = :red, lowclip = :blue)
-   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_f_xy,
+   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], Δuφ_f_xy,
                             colorrange = lims_Δuφ,
                             colormap = Reverse(:RdBu_5),
                             highclip = :red, lowclip = :blue)
-   hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_f_xy,
+   hm_uz_perturb = heatmap!(ax_uz_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uz_total_f_xy,
                             colorrange = lims_uz,
                             colormap = Reverse(:RdBu_5),
                             highclip = :red, lowclip = :blue)
@@ -1029,55 +1022,27 @@ function visualize_fields_const_z(datetime, z_idx,
                            title = L"Vertical velocity perturbation ($u_z'$)",
                            axis_kwargs_xy...)
 
-      video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
-      video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
-
-      
       ds, x, y, z, times, Nt = open_dataset(outfile_list)
 
       n = Observable(1)
 
-      b_total_xy  = @lift ds[:b][:, :, z_idx, $n]
-      ur_total_xy = @lift ds[:ur][:, :, z_idx, $n]
-      uφ_total_xy = @lift ds[:uφ][:, :, z_idx, $n]
-      uz_total_xy = @lift ds[:uz][:, :, z_idx, $n]
+      b_total_xy  = @lift ds[:b][Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, $n]
+      ur_total_xy = @lift ds[:ur][Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, $n]
+      uφ_total_xy = @lift ds[:uφ][Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, $n]
+      uz_total_xy = @lift ds[:uz][Hx+1:Nx-Hx, Hy+1:Ny-Hy, z_idx, $n]
 
-      Δb_xy  = @lift $b_total_xy .- no_offset_view(B) #[:, :, z_idx]
-      Δuφ_xy = @lift $uφ_total_xy .- no_offset_view(Uφ) #[:, :, z_idx]
+      Δb_xy  = @lift $b_total_xy .- no_offset_view(B)
+      Δuφ_xy = @lift $uφ_total_xy .- no_offset_view(Uφ)
       
-      hm_b_total  = heatmap!(ax_b_total, x, y, b_total_xy) #,
-      #                       colorrange = lims_b_total,
-      #			     colormap = Reverse(:RdBu_5),
-      #			     highclip = :red, lowclip = :blue)
-      hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_xy)#,
-      #                       colorrange = lims_ur, 
-      #			     colormap = Reverse(:RdBu_5),
-      #                       highclip = :red, lowclip = :blue)
-      hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_xy)#,
-      #                       colorrange = lims_uφ_total,
-      #		     colormap = Reverse(:RdBu_5),
-      #                       highclip = :red, lowclip = :blue)
-      hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_xy)#,
-      #                       colorrange = lims_uz,
-      #			     colormap = Reverse(:RdBu_5),
-      #                       highclip = :red, lowclip = :blue)
+      hm_b_total  = heatmap!(ax_b_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], b_total_xy) #, colorrange = lims_b_total, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_ur_total = heatmap!(ax_ur_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], ur_total_xy)#, colorrange = lims_ur, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_uφ_total = heatmap!(ax_uφ_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uφ_total_xy)#, colorrange = lims_uφ_total, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_uz_total = heatmap!(ax_uz_total, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uz_total_xy)#, colorrange = lims_uz, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
 
-      hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_xy) #,
-      #                         colorrange = lims_Δb, 
-      #			       colormap = Reverse(:RdBu_5),
-      #                         highclip = :red, lowclip = :blue)
-      hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_xy)#,
-      #                         colorrange = lims_ur,
-      #			       colormap = Reverse(:RdBu_5),
-      #                         highclip = :red, lowclip = :blue)
-      hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_xy)#,
-      #                         colorrange = lims_Δuφ,
-      #                         colormap = Reverse(:RdBu_5),
-      #                         highclip = :red, lowclip = :blue)
-      hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_xy)#,
-      #                         colorrange = lims_uz,
-      #			       colormap = Reverse(:RdBu_5),
-      #                         highclip = :red, lowclip = :blue)
+      hm_b_perturb  = heatmap!(ax_b_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], Δb_xy) #, colorrange = lims_Δb, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_ur_perturb = heatmap!(ax_ur_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], ur_total_xy)#, colorrange = lims_ur, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_uφ_perturb = heatmap!(ax_uφ_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], Δuφ_xy)#, colorrange = lims_Δuφ, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
+      hm_uz_perturb = heatmap!(ax_uz_perturb, x[Hx+1:Nx-Hx], y[Hy+1:Ny-Hy], uz_total_xy)#, colorrange = lims_uz, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
    
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
       Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
@@ -1121,109 +1086,14 @@ function visualize_fields_const_z(datetime, z_idx,
       save(joinpath("./Plots", "perturbs_z$(depth_nearest)_$(datetime).mp4"),
 	            video_perturb)
    end
-   
-   #=Plot static images (final frame, by default)
-
-   fig_total   = Figure(size = (1200, 800))
-   fig_perturb = Figure(size = (1200, 800))
-
-   ax_b_total  = Axis(fig_total[2, 1];
-                      title = L"Total buoyancy ($b$)", axis_kwargs_xy...)
-   ax_ur_total = Axis(fig_total[2, 3];
-                      title = L"Total radial velocity ($u_r$)", 
-		      axis_kwargs_xy...)
-   ax_uφ_total = Axis(fig_total[3, 1];
-		      title = L"Total azimuthal velocity ($u_{\phi}$)", axis_kwargs_xy...)
-   ax_uz_total = Axis(fig_total[3, 3];
-		      title = L"Total vertical velocity ($u_z$)",
-                      axis_kwargs_xy...)
-
-   ax_b_perturb  = Axis(fig_perturb[2, 1];
-                        title = L"Buoyancy perturbation ($b'$)",
-                        axis_kwargs_xy...)
-   ax_ur_perturb = Axis(fig_perturb[2, 3];
-                        title = L"Radial velocity perturbation ($u_r'$)",
-                        axis_kwargs_xy...)
-   ax_uφ_perturb = Axis(fig_perturb[3, 1];
-		 	title = L"Azimuthal velocity perturbation ($u_{\phi}'$)",
-                        axis_kwargs_xy...)
-   ax_uz_perturb = Axis(fig_perturb[3, 3];
-                        title = L"Vertical velocity perturbation ($u_z'$)",
-                        axis_kwargs_xy...)
-
-   hm_b_total  = heatmap!(ax_b_total, x, y, b_total_f_xy,
-                          colorrange = lims_b_total,
-			  colormap = Reverse(:RdBu_5),
-			  highclip = :red, lowclip = :blue)
-   hm_ur_total = heatmap!(ax_ur_total, x, y, ur_total_f_xy,
-                          colorrange = lims_ur,
-			  colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
-   hm_uφ_total = heatmap!(ax_uφ_total, x, y, uφ_total_f_xy,
-                          colorrange = lims_uφ_total,
-			  colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
-   hm_uz_total = heatmap!(ax_uz_total, x, y, uz_total_f_xy,
-                          colorrange = lims_uz,
-			  colormap = Reverse(:RdBu_5),
-                          highclip = :red, lowclip = :blue)
-
-   hm_b_perturb  = heatmap!(ax_b_perturb, x, y, Δb_f_xy,
-                            colorrange = lims_Δb, 
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-   hm_ur_perturb = heatmap!(ax_ur_perturb, x, y, ur_total_f_xy,
-                            colorrange = lims_ur,
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-   hm_uφ_perturb = heatmap!(ax_uφ_perturb, x, y, Δuφ_f_xy,
-                            colorrange = lims_Δuφ,
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-   hm_uz_perturb = heatmap!(ax_uz_perturb, x, y, uz_total_f_xy,
-                            colorrange = lims_uz,
-			    colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-
-   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 2], hm_uφ_total, tickformat = "{:.1e}", label = "m/s")
-   Colorbar(fig_total[3, 4], hm_uz_total, tickformat = "{:.1e}", label = "m/s")
-
-   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
-            label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_ur_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-   Colorbar(fig_perturb[3, 2], hm_uφ_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-   Colorbar(fig_perturb[3, 4], hm_uz_perturb, tickformat = "{:.1e}",
-            label = "m/s")
-
-   title_total   = @sprintf("Fields at %i-m depth; t = %.2f days",
-                            depth_nearest, times[Nt])
-   title_perturb = @sprintf(
-                          "Perturbation fields at %i-m depth; t = %.2f days",
-                            depth_nearest, times[Nt])
-
-   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
-                               tellwidth = false)
-   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
-                               tellwidth = false)
-
-   save(joinpath("./Plots", "fields_z$(depth_nearest)_tf_$(datetime).png"),
-        fig_total)
-   save(joinpath("./Plots", "perturbs_z$(depth_nearest)_tf_$(datetime).png"),
-        fig_perturb) =#
-   #close(bkgd_ds)
-   #close(ds)
+   close(ds)
 end
 
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    computed_file = joinpath("./Output", "computed_$(datetime).nc")
 
-   #Only do computations if file does not already exist
-   if !isfile(computed_file)
+   if !isfile(computed_file) #Only compute if file does not already exist
 
       ds, x, y, z, times, Nt = open_dataset(datetime)
 
