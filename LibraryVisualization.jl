@@ -210,13 +210,14 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
    end
    
    if length(ds[:zC][:]) > 1
-      z = ds[:zC][Hz+1:end-Hz]
+      zC = ds[:zC][Hz+1:end-Hz]
+      zF = ds[:zF][Hz+1:end-Hz]
    end
 
    t  = ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
-   return ds, x, y, z, t, Nt
+   return ds, x, y, zC, zF, t, Nt
 end
 
 #function open_bkgd_dataset(bkgd_datetime)
