@@ -22,8 +22,8 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 12 #400
-const Ny = 12 #400
+const Nx = 400
+const Ny = 400
 const Nz = 12
 
 #Lengths of axes
@@ -54,20 +54,18 @@ const d_ML = -50 * meter
 
 #Time-stepping parameters
 const Δti     = 2.5 * second
-const Δt_max  = 3 * hour
-const CFL     = 0.2
-const tf      = 10 * second # 40 * day
-const Δt_save = 6 * hour
+const tf      = 100 * day
+const Δt_save = 12 * hour
 
 #Architecture
-const use_GPU = false
+const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
 
 #Whether to run visualization functions
 const vis_const_x    = false
-const vis_const_y    = false
+const vis_const_y    = true
 const vis_const_z    = false
 const vis_norms      = false
 const vis_energetics = false #Currently can only be done on CPU
@@ -75,8 +73,8 @@ const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
-const y_idx      = 259
-const z_idx      = 8
+const y_idx      = nothing
+const z_idx      = 9
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
@@ -96,19 +94,18 @@ use_GPU ? architecture = GPU() : architecture = CPU()
 #z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
 
 grid = RectilinearGrid(architecture,
-		       topology = (Periodic, Bounded, Bounded),
-                       size = (Nx, Ny, Nz), 
+		       topology = (Bounded, Flat, Bounded),
+                       size = (Nx, Nz), 
                        x = (-Lx/2, Lx/2), 
-                       y = (-Ly/2, Ly/2), 
                        z = (-Lz, 0.0),
-		       halo = (3, 3, 3))
+		       halo = (3, 3))
 #                       z = z_grid_spacing)
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
-b̄, ū, v̄, ūφ_abs, b̄_BCs = bkgd_fields(f, σr, σz, U, 
-				     bkgd_N²_top, bkgd_N²_bot)
+b̄, ū, v̄, b̄_BCs = bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+
 model = NonhydrostaticModel(; 
                             grid = grid, 
                             timestepper = :RungeKutta3,
@@ -119,7 +116,6 @@ model = NonhydrostaticModel(;
                             boundary_conditions = (; b = b̄_BCs))
 
 set!(model, u = ū, v = v̄, b = b̄)
-#fill_halo_regions!(model.velocities, model.tracers.b)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -186,39 +182,36 @@ end
 
 #Perturb velocity components to trigger BCI
 
-@inline u_perturbed(x, y, z) = (ū(x, y, z) 
-				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline u_perturbed(x, y, z) = (ū(x, y, z)
+#                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
-				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
+#				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
-set!(model, u = u_perturbed, v = v_perturbed) #Update initial condition to trigger BCI
-fill_halo_regions!(model.velocities, model.tracers.b)
+#Update initial condition to trigger BCI
+set!(model, u = u_perturbed, v = v_perturbed)
 
 simulation = Simulation(model, Δt = Δti, stop_time = tf)
-
-#wizard = TimeStepWizard(cfl = CFL, max_Δt = Δt_max)
-#simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
    wmax = maximum(abs, sim.model.velocities.w)
    bmax = maximum(abs, sim.model.tracers.b)
-   @info print("b slice = ", sim.model.tracers.b[1,1,:], "\n")
-   @info print("u slice = ", sim.model.velocities.u[1,1,:], "\n")
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
-   @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
-		  umax, wmax, bmax)
-   @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
+   #@info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
+#		  umax, wmax, bmax)
+   #@info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
    return nothing
 end
 
-add_callback!(simulation, progress, IterationInterval(1)) #TimeInterval(Δt_save))
+add_callback!(simulation, progress, TimeInterval(Δt_save))
 
 ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
 
@@ -275,7 +268,6 @@ mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
 energy_writer = NetCDFOutputWriter(model, 
 				   energy_diagnostics,
-                                   with_halos = true,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
@@ -285,7 +277,7 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 
 run!(simulation)
-#=
+
 duration = canonicalize(now() - datetimestart)
 
 pad_filenames(datetimenow)
@@ -301,17 +293,13 @@ mkpath(dirname(logfilepath)) #Make path if nonexistent
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
-   write(file, "νh, νv, κh, κv = $(νh), $(νv), $(κh), $(κv) \n\n")
-   write(file, "lat = $(lat) \n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
    write(file, "Δt = $(Δti) \n")
-   write(file, "CFL = $(CFL) \n")
    write(file, "tf = $(tf) \n\n")
    write(file, "Total number of iterations = $(iteration(simulation)) \n")
-   write(file, "Δtf = $(prettytime(simulation.Δt)) \n\n")
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
@@ -333,11 +321,13 @@ if vis_const_x
 end
 
 if vis_const_y
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
-		      bkgd_datetime = bkgd_datetime,
-                      y_idx = y_idx, 
-		      plot_animation = true,
-                      t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
+   #		      bkgd_datetime = bkgd_datetime,
+   #                   y_idx = y_idx, 
+   #		      plot_animation = true,
+   #                   t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx, B, Uφ;
+                            plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
 if vis_const_z
@@ -361,4 +351,3 @@ end
 if vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
 end
-=#
