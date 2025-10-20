@@ -22,7 +22,7 @@ from matplotlib.colors import Normalize
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
-from Streamfunctions import GetStreamfunc
+from Streamfunctions import GetStreamfunc, EigenvelocityFromEigvec
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
@@ -250,9 +250,9 @@ def QG_Vortex_Stability():
         fig.savefig(f"eigvec_1Dstructure_k{kphi}_m{kz}_nondimensionalBTgyre.png")
         plt.close(fig)
         
-        #################################################
-        # PLOT STREAMFUNCTION STRUCTURES IN R-PHI PLANE #
-        #################################################
+        ########################################
+        # PLOT EIGEN-STRUCTURES IN R-PHI PLANE #
+        ########################################
 
         #Discretize phi-domain
         dphi      = 2 * pi / paramsCheb.Np
@@ -262,30 +262,43 @@ def QG_Vortex_Stability():
         phiVisCheb, rVisCheb = np.meshgrid(phiCoords, 
                                     GeomCheb.r[1:(paramsCheb.halfNr + 1)])
         
-        #Array to hold streamfunction values
-        psiCheb = np.zeros([paramsCheb.halfNr, paramsCheb.Np], 
-                           dtype = complex)
-        
-        #Evaluate streamfunction at (r, phi)-coordinate pairs
+        #Array to hold streamfunction and corresponding velocity values
+        psiCheb = np.zeros([paramsCheb.halfNr, paramsCheb.Np], dtype = complex)
+        urCheb  = np.zeros([paramsCheb.halfNr, paramsCheb.Np], dtype = complex)
+        uφCheb  = np.zeros([paramsCheb.halfNr, paramsCheb.Np], dtype = complex)
+
+        #Evaluate streamfunction and velocities at (r, phi)-coordinate pairs
         for phi_idx in range(paramsCheb.Np):
+            
             for r_idx in range(paramsCheb.halfNr - 1):
                 psiCheb[r_idx, phi_idx] = GetStreamfunc(
                                             eigvecChebNorm[r_idx + 1],
                                             k = kphi, phi = phiCoords[phi_idx])
 
+            ur_tmp, uφ_tmp = EigenvelocityFromEigvec(paramsCheb, GeomCheb, 
+                                                     eigvecChebNorm, kphi, 
+                                                     φ = phiCoords[phi_idx])
+            urCheb[:, phi_idx] = ur_tmp
+            uφCheb[:, phi_idx] = uφ_tmp
+
+        #Absolute maximum amplitudes of velocity components
+        urChebMax = np.max(np.abs(np.sqrt(urCheb.real**2 + urCheb.imag**2)))
+        uφChebMax = np.max(np.abs(np.sqrt(uφCheb.real**2 + uφCheb.imag**2)))
+
+        #Plot streamfunction in r-phi plane
+
         fig, axs = plt.subplots(1, 2, figsize = (11, 7),
-                                subplot_kw = dict(projection = "polar"))
+                                subplot_kw = {"projection": "polar"})
 
         for i in range(2):
             axs[i].grid(False) #Required for pcolormesh
 
         axs[0].pcolormesh(phiVisCheb, rVisCheb, psiCheb.real, 
                           cmap = "RdBu_r", vmin = -1, vmax = 1)
-        axs[0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
-
+        axs[0].set_title(f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
         axs[1].pcolormesh(phiVisCheb, rVisCheb, psiCheb.imag, 
                           cmap = "RdBu_r", vmin = -1, vmax = 1)
-        axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]; Cheb solver")
+        axs[1].set_title(f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
 
         for i in range(2):
             axs[i].grid(True) #Restore grid for final version
@@ -294,11 +307,54 @@ def QG_Vortex_Stability():
         fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n" 
                      + fr"for wavenumbers $k_{{\phi}} =$ {kphi}, $\tilde{{m}} =$ {kz}")
         fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1), 
-                                    cmap = "bwr"), 
+                                    cmap = "RdBu_r"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
         #plt.show()
         fig.savefig(f"streamfunc2D_k{kphi}_m{kz}_nondimensionalBTgyre.png")
+        plt.close(fig)
+
+        #Plot velocities in r-phi plane
+
+        fig, axs = plt.subplots(2, 2, figsize = (8, 6),
+                                subplot_kw = {"projection": "polar"})
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(False) #Required for pcolormesh
+
+        pcm_ur = axs[0, 0].pcolormesh(phiVisCheb, rVisCheb, urCheb.real,
+                                      cmap = "RdBu_r", vmin = -urChebMax, 
+                                      vmax = urChebMax)
+        axs[0, 0].set_title(f"Re[$u_r'(r, \phi)$]")
+        axs[0, 1].pcolormesh(phiVisCheb, rVisCheb, urCheb.imag,
+                             cmap = "RdBu_r", vmin = -urChebMax, 
+                             vmax = urChebMax)
+        axs[0, 1].set_title(f"Im[$u_r'(r, \phi)$]")
+        
+        pcm_uφ = axs[1, 0].pcolormesh(phiVisCheb, rVisCheb, uφCheb.real,
+                                      cmap = "RdBu_r", vmin = -uφChebMax, 
+                                      vmax = uφChebMax) 
+        axs[1, 0].set_title(f"Re[$u_{{\phi}}'(r,\phi)$]")
+        axs[1, 1].pcolormesh(phiVisCheb, rVisCheb, uφCheb.imag,
+                             cmap = "RdBu_r", vmin = -uφChebMax, 
+                             vmax = uφChebMax)
+        axs[1, 1].set_title(f"Im[$u_{{\phi}}'(r,\phi)$]")
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(True) #Restore grid for final version
+
+        fig.subplots_adjust(hspace = 0.4, wspace = 0.4)
+        fig.suptitle(f"Velocities derived from fastest-growing "
+                     + "eigen-streamfunction \n in $r\phi$-plane "
+                     + fr"for wavenumbers $k_{{\phi}} =$ {kphi}, $\tilde{{m}} =$ {kz}")
+        fig.colorbar(pcm_ur, ax = (axs[0, 0], axs[0, 1]), 
+                     location = "right", shrink = 0.6)
+        fig.colorbar(pcm_uφ, ax = (axs[1, 0], axs[1, 1]), 
+                     location = "right", shrink = 0.6)
+        plt.show()
+        fig.savefig(f"eigvelocities_k{kphi}_m{kz}_nondimensionalBTgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
