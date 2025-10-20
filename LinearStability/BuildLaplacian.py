@@ -9,10 +9,10 @@ def BuildLaplacian(params, geom,
      Dirichlet BCs.
     """
     
-    Nr, halfNr, Np = params.Nr, params.halfNr, params.Np
+    Nr, halfNr, Nφ = params.Nr, params.halfNr, params.Nφ
 
     if discretizeAzimuth:
-        I, Z = np.eye(Np // 2), np.zeros(((Np // 2), (Np // 2)))
+        I, Z = np.eye(Nφ // 2), np.zeros(((Nφ // 2), (Nφ // 2)))
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
     D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]              #(pos, pos)
@@ -30,7 +30,7 @@ def BuildLaplacian(params, geom,
         
         #Build discretized Laplacian as done in Ch.11 of Trefethen
         if discretizeAzimuth:
-            Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Np))
+            Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Nφ))
                    + sp.kron((D2 + R.dot(E2)), np.block([[Z, I], [I, Z]])))
         else:
             Lap = (D1 + R.dot(E1)) + (D2 + R.dot(E2))
@@ -42,7 +42,7 @@ def BuildLaplacian(params, geom,
 
         #Build discretized Laplacian as done in Ch.11 of Trefethen
         if discretizeAzimuth:
-            Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Np))
+            Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Nφ))
                    + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
         else:
             Lap = (D1 + np.dot(R, E1)) + (D2 + np.dot(R, E2))

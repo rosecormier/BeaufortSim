@@ -8,9 +8,9 @@ def rInterior(params, geom, discretizeAzim = False):
     """
 
     if discretizeAzim:
-        halfNr, Np       = params.halfNr, params.Np
-        [rInterior, phi] = meshgrid(geom.r[1:(halfNr + 1)], arange(1, (Np + 1)))
-        rInterior        = hstack(stack(rInterior[:], axis = -1))
+        halfNr, Nφ     = params.halfNr, params.Nφ
+        [rInterior, φ] = meshgrid(geom.r[1:(halfNr + 1)], arange(1, (Nφ + 1)))
+        rInterior      = hstack(stack(rInterior[:], axis = -1))
 
     else:
         halfNr    = params.halfNr
@@ -64,7 +64,7 @@ def BuildBkgdOperators(params, geom,
     if sp.issparse(geom.Dr):
             
         if discretizeAzimuth:
-            opLength = params.halfNr * params.Np
+            opLength = params.halfNr * params.Nφ
         else:
             opLength = params.halfNr
     
