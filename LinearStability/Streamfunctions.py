@@ -8,8 +8,8 @@ def GetStreamfunc(eigvec, **kwargs):
      φ, z, and t, where k, m, and omega, respectively, must be provided.
     """
 
-    k, m, omega = kwargs.get("k"), kwargs.get("m"), kwargs.get("omega")
-    φ, z, t     = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
+    k, m, ω = kwargs.get("k"), kwargs.get("m"), kwargs.get("ω")
+    φ, z, t = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
 
     psi = eigvec
 
@@ -19,8 +19,8 @@ def GetStreamfunc(eigvec, **kwargs):
     if m is not None:
         psi = psi * (cos(m*z) + 1j * sin(m*z))
 
-    if omega is not None:
-        psi = psi * (cos(omega*t) - 1j * sin(omega*t))
+    if ω is not None:
+        psi = psi * (cos(ω*t) - 1j * sin(ω*t))
 
     return psi
 
@@ -35,22 +35,22 @@ def EigenvelocityFromEigvec(params, geom, eigvec, k, **kwargs):
     r      = geom.r[1:(halfNr + 1)]
     Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
 
-    m, omega = kwargs.get("m"), kwargs.get("omega")
+    m, ω     = kwargs.get("m"), kwargs.get("ω")
     φ, z, t  = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
 
-    ur = np.dot((1j * k / r), eigvec)
+    ur = 1j * k * (eigvec / r)
     uφ = -np.dot(Dr, eigvec)
 
     if φ is not None:
-        ur = ur * (cos(k*φ) + 1j * sin(k*φ))
-        uφ = uφ * (cos(k*φ) + 1j * sin(k*φ))
+        ur = ur * (np.cos(k*φ) + 1j * np.sin(k*φ))
+        uφ = uφ * (np.cos(k*φ) + 1j * np.sin(k*φ))
 
     if m is not None:
-        ur = ur * (cos(m*z) + 1j * sin(m*z))
-        uφ = uφ * (cos(m*z) + 1j * sin(m*z))
+        ur = ur * (np.cos(m*z) + 1j * np.sin(m*z))
+        uφ = uφ * (np.cos(m*z) + 1j * np.sin(m*z))
 
-    if omega is not None:
-        ur = ur * (cos(omega*t) - 1j * sin(omega*t))
-        uφ = uφ * (cos(omega*t) - 1j * sin(omega*t))
+    if ω is not None:
+        ur = ur * (np.cos(ω*t) - 1j * np.sin(ω*t))
+        uφ = uφ * (np.cos(ω*t) - 1j * np.sin(ω*t))
 
     return ur, uφ
