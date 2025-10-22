@@ -2,7 +2,7 @@ import numpy as np
 
 from math import cos, sin
 
-def GetStreamfunc(eigvec, **kwargs):
+def Streamfunction(eigvec, **kwargs):
     """
     Evaluates streamfunction at a specified (discrete) eigenvector and any of
      φ, z, and t, where k, m, and omega, respectively, must be provided.

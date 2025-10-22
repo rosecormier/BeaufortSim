@@ -22,7 +22,7 @@ from matplotlib.colors import Normalize
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, rInterior
 from Chebyshev import Chebyshev
-from Streamfunctions import GetStreamfunc, EigenvelocityFromEigvec
+from Streamfunctions import Streamfunction, EigenvelocityFromEigvec
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
@@ -85,7 +85,7 @@ class Parameters:
         print(f"Nr = {self.Nr}")
         print(f"halfNr = {self.halfNr}")
         print(f"Np = {self.Np}")
-        print(f"kps = {self.kps}")
+        print(f"kps = {self.kφs}")
         print(f"kzs = {self.kzs}")
         print(f"nmodes = {self.nmodes}")
 
@@ -152,21 +152,21 @@ def QG_Vortex_Stability():
             t0 = timeit.timeit()
         
             #Compute eigvals c and eigvecs psi with direct solver
-            eigVal, eigVec = spalg.eig(A, B)
-            eigVal         = eigVal / params.Ro
+            eigVals, eigVecs = spalg.eig(A, B)
+            eigVals          = eigVals / params.Ro
 
             solveTime = timeit.timeit() - t0 #Time for direct solver
             
             #Indexing that sorts eigvals by ASCENDING Im(c)
-            indSort = np.argsort(eigVal.imag)
+            indSort = np.argsort(eigVals.imag)
             
-            eigVal = eigVal[indSort] #Sort eigvals
-            eigVec = eigVec[:, indSort] #Sort eigvecs in the same order
-            ω      = eigVal * kφ #Corresponding omegas for this k_φ
+            eigVals = eigVals[indSort] #Sort eigvals
+            eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
+            ωs      = eigVals * kφ #Corresponding ω values for this kφ
             
-            growth[kz_idx, kφ_idx, :]   = -ω[0:nmodes].imag
-            prop[kz_idx, kφ_idx, :]     = ω[0:nmodes].real
-            modes[kz_idx, kφ_idx, :, :] = eigVec[:, 0:nmodes]
+            growth[kz_idx, kφ_idx, :]   = -ωs[0:nmodes].imag
+            prop[kz_idx, kφ_idx, :]     = ωs[0:nmodes].real
+            modes[kz_idx, kφ_idx, :, :] = eigVecs[:, 0:nmodes]
 
     #################
     # VISUALIZATION #
@@ -252,14 +252,14 @@ def QG_Vortex_Stability():
         #Meshgrid of polar coordinates to plot
         φVis, rVis = np.meshgrid(φCoords, geom.r[1:(params.halfNr + 1)])
         
-        #Array to hold streamfunction and corresponding velocity values
+        #Array to hold streamfunction values
         ψ = np.zeros([params.halfNr, params.Nφ], dtype = complex)
 
-        #Evaluate streamfunction and velocities at (r, φ)-coordinate pairs
+        #Evaluate streamfunction at (r, φ)-coordinate pairs
         for φ_idx in range(params.Nφ):
             for r_idx in range(params.halfNr - 1):
-                ψ[r_idx, φ_idx] = GetStreamfunc(eigVecNorm[r_idx + 1],
-                                                k = kφ, φ = φCoords[φ_idx])
+                ψ[r_idx, φ_idx] = Streamfunction(eigVecNorm[r_idx + 1],
+                                                 k = kφ, φ = φCoords[φ_idx])
 
         #Evaluate components of eigen-velocity
         eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
