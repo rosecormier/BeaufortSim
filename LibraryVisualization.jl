@@ -220,10 +220,6 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
    return ds, x, y, zC, zF, t, Nt
 end
 
-#function open_bkgd_dataset(bkgd_datetime)
-#   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
-#end
-
 function open_energetics_dataset(energeticsfilename)
    
    energetics_ds = NCDataset(energeticsfilename)
