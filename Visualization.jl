@@ -630,7 +630,7 @@ function visualize_fields_const_y(datetime, y_idx, B, Uφ; Hx = 3, Hz = 3,
    outfile_list             = glob("./Output/output_$(datetime)*")
    ds_f, x, y, zC, zF, times, Nt = open_dataset(outfile_list[length(outfile_list)]; 
 						Hx = Hx, Hz = Hz)
-   
+
    if isnothing(y_idx) #Grid is 2D with only x and z axes
       xCzC_idcs = (Hx+1:length(x)+Hx, 1, Hz+1:length(zC)+Hz)
       xCzF_idcs = (Hx+1:length(x)+Hx, 1, Hz+1:length(zF)+Hz)
@@ -639,16 +639,16 @@ function visualize_fields_const_y(datetime, y_idx, B, Uφ; Hx = 3, Hz = 3,
       xCzF_idcs = (Hx+1:length(x)+Hx, y_idx, Hz+1:length(zF)+Hz)
    end
 
-   B  = adapt(Array, B)[xCzC_idcs...]
-   Uφ = adapt(Array, Uφ)[xCzC_idcs...]
+   B  = no_offset_view(adapt(Array, B))[xCzC_idcs...]
+   Uφ = no_offset_view(adapt(Array, Uφ))[xCzC_idcs...]
 
    b_total_f_xz = adapt(Array, ds_f[:b])[xCzC_idcs..., Nt]
    ur_total_f_xz = adapt(Array, ds_f[:ur])[xCzC_idcs..., Nt]
    uφ_total_f_xz = adapt(Array, ds_f[:uφ])[xCzC_idcs..., Nt]
    uz_total_f_xz = adapt(Array, ds_f[:uz])[xCzF_idcs..., Nt]
 
-   Δb_f_xz  = b_total_f_xz .- no_offset_view(B)
-   Δuφ_f_xz = uφ_total_f_xz .- no_offset_view(Uφ)
+   Δb_f_xz  = b_total_f_xz .- B
+   Δuφ_f_xz = uφ_total_f_xz .- Uφ
 
    lims_b_total = get_range_lims(b_total_f_xz; max_fraction = 1.0)
    lims_ur       = get_range_lims(ur_total_f_xz;
