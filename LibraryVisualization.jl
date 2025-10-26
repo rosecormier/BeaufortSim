@@ -1,11 +1,5 @@
-using Adapt, CUDA
+using Adapt, CUDA, Glob, LinearAlgebra, NCDatasets
 using Oceananigans.AbstractOperations, Oceananigans.Fields
-
-####################
-
-module CylindricalCoords
-   export compute_polar_coords, xy_vector_to_rφ
-end
 
 ####################
 
@@ -70,18 +64,6 @@ function xy_vector_to_rφ(vx, vy, grid)
    compute!(vφ)
    return vr, vφ
 end
-
-####################
-
-using LinearAlgebra
-
-####################
-
-module ComputeSecondaries
-   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm
-end
-
-####################
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
    
@@ -162,23 +144,6 @@ function field_norm(ψ, n; ψ_bkgd = 0)
    ψ_perturb_n   = ψ_n .- ψ_bkgd
    perturb_norm  = norm(ψ_perturb_n)
 end
-
-####################
-
-using Glob, NCDatasets
-
-####################
-
-module OutFileFormat
-   export pad_filenames
-end
-
-module VisFunctions
-   export open_dataset, open_energetics_dataset, open_scalars_dataset, 
-	  get_range_lims, get_2D_spatial_axis_kwargs
-end
-
-####################
 
 function pad_filenames(datetime; prefix = "output")
 

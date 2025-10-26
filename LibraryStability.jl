@@ -1,17 +1,10 @@
 include("LibraryVisualization.jl")
-using .VisFunctions
 
 using Adapt, CairoMakie
 using Oceananigans.AbstractOperations
 using Oceananigans.Fields
 using Oceananigans.Operators 
 using OffsetArrays, Printf
-
-####################
-
-module Stability
-   export check_inert_stability, check_grav_stability, compute_Bu
-end
 
 ####################
 
