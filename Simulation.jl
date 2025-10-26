@@ -22,7 +22,7 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 400
+const Nx = 40 #400
 const Ny = 400
 const Nz = 12
 
@@ -53,12 +53,12 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 2.5 * second
+const Δti     = 0.5 * second
 const tf      = 100 * day
 const Δt_save = 12 * hour
 
 #Architecture
-const use_GPU = true
+const use_GPU = false # true
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
@@ -115,7 +115,8 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
                             boundary_conditions = (; b = b̄_BCs))
 
-set!(model, u = ū, v = v̄, b = b̄)
+set!(model, b = b̄)
+#set!(model, u = ū, v = v̄, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -184,7 +185,7 @@ end
 
 #@inline u_perturbed(x, y, z) = (ū(x, y, z)
 #                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline u_perturbed(x, z) = (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)) #(ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
@@ -192,7 +193,7 @@ end
 
 #@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
 #				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline v_perturbed(x, z) = (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)) #(v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 #Update initial condition to trigger BCI
 set!(model, u = u_perturbed, v = v_perturbed)
