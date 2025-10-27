@@ -1,18 +1,17 @@
 import numpy as np
 import scipy.sparse as sp
 
-def BuildLaplacian(params, geom, 
-                   discretizeAzimuth = False, discretizeVertical = False):
+def BuildLaplacian(params, geom, discretizeVertical = False):
     """
     Build discretized Laplacian operator.
     Note: we do not explicitly set zeroth indices because we impose zero
      Dirichlet BCs.
     """
     
-    Nr, halfNr, Nφ = params.Nr, params.halfNr, params.Nφ
+    Nr, halfNr, Nz = params.Nr, params.halfNr, params.Nz
 
     if discretizeAzimuth:
-        I, Z = np.eye(Nφ // 2), np.zeros(((Nφ // 2), (Nφ // 2)))
+        I, Z = np.eye(Nz // 2), np.zeros(((Nz // 2), (Nz // 2)))
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
     D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]              #(pos, pos)
@@ -29,8 +28,8 @@ def BuildLaplacian(params, geom,
                        np.array([0]), halfNr, halfNr)
         
         #Build discretized Laplacian as done in Ch.11 of Trefethen
-        if discretizeAzimuth:
-            Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Nφ))
+        if discretizeVertical:
+            Lap = (sp.kron((D1 + R.dot(E1)), sp.eye(Nz))
                    + sp.kron((D2 + R.dot(E2)), np.block([[Z, I], [I, Z]])))
         else:
             Lap = (D1 + R.dot(E1)) + (D2 + R.dot(E2))
@@ -41,8 +40,8 @@ def BuildLaplacian(params, geom,
         R = np.diag(1 / np.ravel(geom.r[1:(halfNr + 1)]))
 
         #Build discretized Laplacian as done in Ch.11 of Trefethen
-        if discretizeAzimuth:
-            Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Nφ))
+        if discretizeVertical:
+            Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Nz))
                    + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
         else:
             Lap = (D1 + np.dot(R, E1)) + (D2 + np.dot(R, E2))
