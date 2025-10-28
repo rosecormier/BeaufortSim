@@ -47,10 +47,10 @@ b_background(x, z) = N²₀*z
 set!(model, u = u_perturbed, v = v_perturbed, b = b_background)
 
 #Prints warnings if the respective instabilities are present
-check_inert_stability(model.grid, model.coriolis.f, model.velocities.u, model.velocities.v;
-		      plot_ζz_abs = false, z_idx = 6)
-check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
-                     x_idx = 20)
+check_inert_stability(model.grid, model.coriolis.f, 
+		      model.velocities.u, model.velocities.v;
+		      z_idx = 6)
+check_grav_stability(model.tracers.b; grid = model.grid, x_idx = 20)
 
 datetimestart = now()
 datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
@@ -114,4 +114,4 @@ simulation.output_writers[:field_writer] = field_writer
 run!(simulation)
 
 visualize_fields_const_y(datetimenow, nothing, B, Uφ;
-                            plot_animation = true, t_idx_skip = 1)
+                         plot_animation = true, t_idx_skip = 1)

@@ -120,9 +120,8 @@ set!(model, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
-		      plot_ζz_abs = false, z_idx = z_idx)
-check_grav_stability(model.tracers.b; plot_∂b∂z = false, grid = model.grid,
-                     x_idx = x_idx)
+		      z_idx = z_idx)
+check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
 
 #########################################################
 # SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
