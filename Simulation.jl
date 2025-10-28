@@ -22,9 +22,9 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 833 #400
+const Nx = 40
 const Ny = 400
-const Nz = 5 #12
+const Nz = 12
 
 #Lengths of axes
 const Lx = 2.5e3 * kilometer
@@ -53,7 +53,7 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 100 * second #0.5 * second
+const Δti     = 10 * minute #0.5 * second
 const tf      = 100 * day
 const Δt_save = 12 * hour
 
