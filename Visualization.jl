@@ -773,8 +773,8 @@ function visualize_fields_const_y(datetime, y_idx, B, Uφ; Hx = 3, Hz = 3,
       uφ_total_xz = @lift adapt(Array, ds[:uφ])[xCzC_idcs..., $n]
       uz_total_xz = @lift ds[:uz][xCzF_idcs..., $n]
 
-      Δb_xz = @lift $b_total_xz .- no_offset_view(B)
-      Δuφ_xz = @lift $uφ_total_xz .- no_offset_view(Uφ)
+      Δb_xz = @lift $b_total_xz .- B
+      Δuφ_xz = @lift $uφ_total_xz .- Uφ
       
       hm_b_total = heatmap!(ax_b_total, x, zC, b_total_xz)#, colorrange = lims_b_total, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
       hm_ur_total = heatmap!(ax_ur_total, x, zC, ur_total_xz)#, colorrange = lims_ur, colormap = Reverse(:RdBu_5), highclip = :red, lowclip = :blue)
