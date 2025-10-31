@@ -22,9 +22,9 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 40
+const Nx = 640
 const Ny = 400
-const Nz = 12
+const Nz = 192
 
 #Lengths of axes
 const Lx = 2.5e3 * kilometer
@@ -43,7 +43,7 @@ const σr = 250 * kilometer
 const σz = "infinity" ##300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
-const U   = 1.5e-1 * (meter/second)
+const U   = 0 * (meter/second) #1.5e-1 * (meter/second)
 const N²₀ = 3e-3 * (second^(-2))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
@@ -53,7 +53,7 @@ const N²_max = 3e-3 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 10 * minute #0.5 * second
+const Δti     = 3 * minute #0.5 * second
 const tf      = 100 * day
 const Δt_save = 12 * hour
 
@@ -115,8 +115,8 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
                             boundary_conditions = (; b = b̄_BCs))
 
-set!(model, b = b̄)
-#set!(model, u = ū, v = v̄, b = b̄)
+#set!(model, b = b̄)
+set!(model, u = ū, v = v̄, b = b̄)
 
 #Prints warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
@@ -184,7 +184,8 @@ end
 
 #@inline u_perturbed(x, y, z) = (ū(x, y, z)
 #                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline u_perturbed(x, z) = (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)) #(ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline u_perturbed(x, z) = ((2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
@@ -192,7 +193,8 @@ end
 
 #@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
 #				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline v_perturbed(x, z) = (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)) #(v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline v_perturbed(x, z) = ((2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 #Update initial condition to trigger BCI
 set!(model, u = u_perturbed, v = v_perturbed)
@@ -205,8 +207,7 @@ function progress(sim)
    bmax = maximum(abs, sim.model.tracers.b)
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
-   #@info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e",
-#		  umax, wmax, bmax)
+   @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e", umax, wmax, bmax)
    #@info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
    return nothing
 end
