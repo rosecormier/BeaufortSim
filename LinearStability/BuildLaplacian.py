@@ -8,9 +8,10 @@ def BuildLaplacian(params, geom, discretizeVertical = False):
      Dirichlet BCs.
     """
     
-    Nr, halfNr, Nz = params.Nr, params.halfNr, params.Nz
+    Nr, halfNr = params.Nr, params.halfNr
 
-    if discretizeAzimuth:
+    if discretizeVertical:
+        Nz   = params.Nz
         I, Z = np.eye(Nz // 2), np.zeros(((Nz // 2), (Nz // 2)))
 
     #Quadrants of 2nd-order r-derivative matrix to be retained
