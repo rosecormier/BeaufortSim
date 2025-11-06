@@ -47,22 +47,22 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
    
    if σz == "infinity" #Barotropic case
   
-      #b̄ = (x, y, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-      #ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
-      #                  * exp((1/2) - (x^2 + y^2)/(σr^2)))
-      #v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
-      #                   * exp((1/2) - (x^2 + y^2)/(σr^2)))
+      b̄ = (x, y, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
+      ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
+                        * exp((1/2) - (x^2 + y^2)/(σr^2)))
+      v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
+                         * exp((1/2) - (x^2 + y^2)/(σr^2)))
 
-      b̄ = (x, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-      ū = (x, z) -> 0
-      v̄ = (x, z) -> -((sqrt(2)*U*x/σr)
-                         * exp((1/2) - (x^2)/(σr^2)))
+      #b̄ = (x, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
+      #ū = (x, z) -> 0
+      #v̄ = (x, z) -> -((sqrt(2)*U*x/σr)
+      #                   * exp((1/2) - (x^2)/(σr^2)))
 	
-      b̄z_top = (x, t) -> bkgd_N²_top
-      b̄z_bot = (x, t) -> bkgd_N²_bot
+      #b̄z_top = (x, t) -> bkgd_N²_top
+      #b̄z_bot = (x, t) -> bkgd_N²_bot
    
-      #b̄z_top = (x, y, t) -> bkgd_N²_top
-      #b̄z_bot = (x, y, t) -> bkgd_N²_bot
+      b̄z_top = (x, y, t) -> bkgd_N²_top
+      b̄z_bot = (x, y, t) -> bkgd_N²_bot
 
    else #Baroclinic case
       
