@@ -199,7 +199,7 @@ function open_scalars_dataset(scalarfilename)
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
 end
 
-function get_range_lims(final_field; max_fraction = 1, prescribed_max = 0)
+function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
