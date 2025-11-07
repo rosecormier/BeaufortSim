@@ -82,7 +82,7 @@ function visualize_energetics(datetime, grid)
    energetics_ds, t, Nt = open_energetics_dataset(outfile_list)
 
    pKE_data = energetics_ds[:pKE][:, :, :, :]
-
+   
    fig = Figure(size = (1200, 700))
    ax  = Axis(fig[2, 1]; xlabel = "Time [days]", ylabel = "Energy [m^5/s^2]",
                          yscale = log10)
@@ -90,7 +90,7 @@ function visualize_energetics(datetime, grid)
    n = Observable(1)
 
    pKE_Field_n = CenterField(grid)
-   @lift set!(pKE_Field_n, pKE_data[4:end-3, 4:end-3, 4:end-3, $n])
+   @lift set!(pKE_Field_n, pKE_data[:, :, :, $n])
 
    for i = 1:Nt
 
