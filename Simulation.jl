@@ -22,9 +22,9 @@ using Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 640
-const Ny = 400
-const Nz = 192
+const Nx = 640 #320
+const Ny = 640 #320
+const Nz = 192 #96
 
 #Lengths of axes
 const Lx = 2.5e3 * kilometer
@@ -43,22 +43,22 @@ const σr = 250 * kilometer
 const σz = "infinity" ##300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
-const U   = 0 * (meter/second) #1.5e-1 * (meter/second)
-const N²₀ = 3e-3 * (second^(-2))
+const U   = 1.5e-1 * (meter/second) #1.5e-1 * (meter/second)
+const N²₀ = 3e-4 * (second^(-2))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 3e-3 * (second^(-2))
+const N²_max = 3e-4 * (second^(-2))
 
 #Mixed-layer depth
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 3 * minute #0.5 * second
+const Δti     = 5 * minute #0.5 * second
 const tf      = 100 * day
 const Δt_save = 12 * hour
 
 #Architecture
-const use_GPU = false # true
+const use_GPU = true
 
 #Max. relative magnitude of initial u-perturbations
 const max_u′ = 1e-8
@@ -66,15 +66,15 @@ const max_u′ = 1e-8
 #Whether to run visualization functions
 const vis_const_x    = false
 const vis_const_y    = true
-const vis_const_z    = false
-const vis_norms      = false
+const vis_const_z    = true
+const vis_norms      = true
 const vis_energetics = false #Currently can only be done on CPU
 const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
-const y_idx      = nothing
-const z_idx      = 9
+const y_idx      = 83
+const z_idx      = 15
 const t_idx_skip = 1
 
 #Seeds for 2 random-number generators
@@ -94,11 +94,12 @@ use_GPU ? architecture = GPU() : architecture = CPU()
 #z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
 
 grid = RectilinearGrid(architecture,
-		       topology = (Bounded, Flat, Bounded),
-                       size = (Nx, Nz), 
-                       x = (-Lx/2, Lx/2), 
+		       topology = (Bounded, Bounded, Bounded),
+                       size = (Nx, Ny, Nz), 
+                       x = (-Lx/2, Lx/2),
+		       y = (-Ly/2, Ly/2),
                        z = (-Lz, 0.0),
-		       halo = (3, 3))
+		       halo = (3, 3, 3))
 #                       z = z_grid_spacing)
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
@@ -115,7 +116,6 @@ model = NonhydrostaticModel(;
                             buoyancy = BuoyancyTracer(),
                             boundary_conditions = (; b = b̄_BCs))
 
-#set!(model, b = b̄)
 set!(model, u = ū, v = v̄, b = b̄)
 
 #Prints warnings if the respective instabilities are present
@@ -182,19 +182,17 @@ end
 
 #Perturb velocity components to trigger BCI
 
-#@inline u_perturbed(x, y, z) = (ū(x, y, z)
-#                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-#@inline u_perturbed(x, z) = ((2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline u_perturbed(x, y, z) = (ū(x, y, z)
+                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-#@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
-#				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-#@inline v_perturbed(x, z) = ((2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
+				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+#@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
 
 #Update initial condition to trigger BCI
 set!(model, u = u_perturbed, v = v_perturbed)
