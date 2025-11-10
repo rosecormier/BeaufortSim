@@ -153,7 +153,6 @@ def QG_Vortex_Stability():
         
             #Compute eigvals c and eigvecs psi with direct solver
             eigVals, eigVecs = spalg.eig(A, B)
-            eigVals          = eigVals / params.Ro
 
             solveTime = timeit.timeit() - t0 #Time for direct solver
             
