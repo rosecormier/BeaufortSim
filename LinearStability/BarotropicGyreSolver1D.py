@@ -331,9 +331,9 @@ def QG_Vortex_Stability():
         fig.suptitle(f"Velocities derived from fastest-growing "
                      + "eigen-streamfunction \n in $r\phi$-plane "
                      + fr"for wavenumbers $k_{{\phi}} =$ {kφ}, $\tilde{{m}} =$ {kz}")
-        fig.colorbar(pcm_ur, ax = (axs[0, 0], axs[0, 1]), 
+        fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], 
                      location = "right", shrink = 0.6)
-        fig.colorbar(pcm_uφ, ax = (axs[1, 0], axs[1, 1]), 
+        fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
                      location = "right", shrink = 0.6)
         plt.show()
         fig.savefig(f"eigvelocities_k{kφ}_m{kz}_nondimensionalBTgyre.png")
