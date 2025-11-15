@@ -14,22 +14,21 @@ using Oceananigans.Fields
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Oceananigans.Utils
-using Oceanostics
-using Printf, Random
+using Oceanostics, Printf, Random
 
 ######################
 # SPECIFY PARAMETERS #
 ######################
 
 #Numbers of gridpoints
-const Nx = 640 #320
-const Ny = 640 #320
-const Nz = 192 #96
+const Nx = 200
+const Ny = 200
+const Nz = 100
 
 #Lengths of axes
-const Lx = 2.5e3 * kilometer
-const Ly = 2.5e3 * kilometer
-const Lz = 1 * kilometer
+const Lx = 1e3 * kilometer
+const Ly = 1e3 * kilometer
+const Lz = 6 * kilometer
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -39,23 +38,23 @@ fPlane  = FPlane(latitude = lat)
 const f = fPlane.f
 
 #Gyre scales
-const σr = 250 * kilometer
-const σz = "infinity" ##300 * meter
+const σr = 100 * kilometer
+const σz = "infinity"
 
 #Speed and buoyancy frequency at surface of gyre
-const U   = 1.5e-1 * (meter/second) #1.5e-1 * (meter/second)
-const N²₀ = 3e-4 * (second^(-2))
+const U   = 1 * (meter/second) #1.5e-1 * (meter/second)
+const N²₀ = 1e-4 * (second^(-2))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 3e-4 * (second^(-2))
+const N²_max = 1e-4 * (second^(-2))
 
 #Mixed-layer depth
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δti     = 5 * minute #0.5 * second
-const tf      = 100 * day
-const Δt_save = 12 * hour
+const Δt      = 2 * minute
+const tf      = 400 * day
+const Δt_save = 24 * hour
 
 #Architecture
 const use_GPU = true
@@ -73,9 +72,9 @@ const vis_z_grid     = false #Can only be done on CPU
 
 #Indices at which to plot fields
 const x_idx      = 259
-const y_idx      = 83
-const z_idx      = 15
-const t_idx_skip = 1
+const y_idx      = 103
+const z_idx      = 95
+const t_idx_skip = 2
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -105,7 +104,7 @@ grid = RectilinearGrid(architecture,
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
-b̄, ū, v̄, b̄_BCs = bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+b̄, ū, v̄, b̄_BCs = bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -128,7 +127,7 @@ check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
 #########################################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = "251114-113159" #format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
@@ -157,7 +156,7 @@ fill_halo_regions!(B)
 
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
-@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2 #from TurbulentKineticEnergyEquation
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
 
 @inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
                               ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
@@ -180,24 +179,20 @@ end
 # SET UP AND RUN SIMULATION #
 #############################
 
-#Perturb velocity components to trigger BCI
+#Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = (ū(x, y, z)
-                                + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-#@inline u_perturbed(x, z) = (ū(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline u_perturbed(x, y, z) = ū(x, y, z) + 2*(rand()-0.5) * max_u′/sqrt(2)
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = (v̄(x, y, z) 
-				+ (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
-#@inline v_perturbed(x, z) = (v̄(x, z) + (2 * (rand() - 0.5)) * (max_u′ / sqrt(2)))
+@inline v_perturbed(x, y, z) = v̄(x, y, z) + 2*(rand()-0.5) * max_u′/sqrt(2)
 
 #Update initial condition to trigger BCI
 set!(model, u = u_perturbed, v = v_perturbed)
 
-simulation = Simulation(model, Δt = Δti, stop_time = tf)
+simulation = Simulation(model, Δt = Δt, stop_time = tf)
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -206,7 +201,7 @@ function progress(sim)
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e", umax, wmax, bmax)
-   #@info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
+   @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
    return nothing
 end
 
@@ -265,8 +260,7 @@ energy_diagnostics = (; pKE = compute_pKE(simulation))
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 mkpath(dirname(energyfilepath)) #Make path if nonexistent
 
-energy_writer = NetCDFOutputWriter(model, 
-				   energy_diagnostics,
+energy_writer = NetCDFOutputWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
@@ -279,6 +273,7 @@ run!(simulation)
 
 duration = canonicalize(now() - datetimestart)
 
+#Append zeros to filenames so they can be accessed in chronological order
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 
@@ -296,7 +291,7 @@ open(logfilepath, "w") do file
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
-   write(file, "Δt = $(Δti) \n")
+   write(file, "Δt = $(Δt) \n")
    write(file, "tf = $(tf) \n\n")
    write(file, "Total number of iterations = $(iteration(simulation)) \n")
    write(file, "Simulation runtime = $(duration) \n")
@@ -308,35 +303,22 @@ end
 ###################################
 
 if vis_const_x
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
-		      bkgd_datetime = bkgd_datetime,
-		      x_idx = x_idx,
-		      plot_animation = true,
-                      t_idx_skip = t_idx_skip)
-   visualize_fields_const_x(datetimenow, x_idx; 
-			    bkgd_datetime = bkgd_datetime,
-                            plot_animation = true, 
-			    t_idx_skip = t_idx_skip)
-end
-
-if vis_const_y
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny;
-   #		      bkgd_datetime = bkgd_datetime,
-   #                   y_idx = y_idx, 
-   #		      plot_animation = true,
-   #                   t_idx_skip = t_idx_skip)
-   visualize_fields_const_y(datetimenow, y_idx, B, Uφ;
+   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime,
+		      x_idx = x_idx, plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_x(datetimenow, x_idx; bkgd_datetime = bkgd_datetime,
                             plot_animation = true, t_idx_skip = t_idx_skip)
 end
 
+if vis_const_y
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime,
+   #                   y_idx = y_idx, plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_y(datetimenow, y_idx, B, Uφ; t_idx_skip = t_idx_skip)
+end
+
 if vis_const_z
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; 
-   #		      bkgd_datetime = bkgd_datetime,
-   #                   z_idx = z_idx,
-   #		      plot_animation = true, 
-   #		      t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; 
-			    plot_animation = true, t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime, 
+   #                   z_idx = z_idx, plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
