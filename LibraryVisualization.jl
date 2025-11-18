@@ -140,9 +140,9 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
 end
 
 function field_norm(ψ, n; ψ_bkgd = 0)
-   ψ_n           = ψ[:, :, :, n]
-   ψ_perturb_n   = ψ_n .- ψ_bkgd
-   perturb_norm  = norm(ψ_perturb_n)
+   ψ_n          = ψ[:, :, :, n]
+   ψ_perturb_n  = ψ_n .- ψ_bkgd
+   perturb_norm = norm(ψ_perturb_n)
 end
 
 function pad_filenames(datetime; prefix = "output")
@@ -196,12 +196,61 @@ function open_energetics_dataset(energeticsfilename)
 end
 
 function open_scalars_dataset(scalarfilename)
+
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
+
+   t = scalars_ds[:time][2:end] ./ 86400 #Convert to days for readability
+   
+   return scalars_ds, t
 end
 
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
+end
+
+function get_2D_spatial_axis_idcs(const_dim;
+	                          Hx = 3, Hy = 3, Hz = 3,
+		                  x_idx = nothing, y_idx = nothing, z_idx = nothing,
+				  xC = nothing, yC = nothing, zC = nothing,
+				  zF = nothing)
+
+   if const_dim == "x"
+
+      if isnothing(x_idx) #Grid is 2D with only y and z axes
+	 yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCyF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
+      
+      else #Grid is 3D
+	 yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCyF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
+      end
+
+      return yCzC_idcs, yCzF_idcs
+
+   elseif const_dim == "y"
+
+      if isnothing(y_idx) #Grid is 2D with only x and z axes
+         xCzC_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zC)+Hz)
+         xCzF_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zF)+Hz)
+   
+      else #Grid is 3D
+         xCzC_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zC)+Hz)
+         xCzF_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zF)+Hz)
+      end
+
+      return xCzC_idcs, xCzF_idcs
+
+   elseif const_dim == "z"
+
+      if isnothing(z_idx) #Grid is 2D with only x and y axes
+         xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, 1)
+      else #Grid is 3D
+	 xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
+      end
+
+      return xCyC_idcs
+   end
 end
 
 function get_2D_spatial_axis_kwargs(x, y, z;
