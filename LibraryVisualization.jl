@@ -166,17 +166,19 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
 
    x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
    
+   #Load coords of non-Flat dimensions; convert them to km for readability
+
    if length(ds[:xC][:]) > 1
-      x = ds[:xC][Hx+1:end-Hx] ./ 1000 #Convert to km for readability
+      x = ds[:xC][Hx+1:end-Hx] ./ 1000
    end
 
    if length(ds[:yC][:]) > 1
-      y = ds[:yC][Hy+1:end-Hy] ./ 1000 #Convert to km for readability
+      y = ds[:yC][Hy+1:end-Hy] ./ 1000
    end
    
    if length(ds[:zC][:]) > 1
-      zC = ds[:zC][Hz+1:end-Hz]
-      zF = ds[:zF][Hz+1:end-Hz]
+      zC = ds[:zC][Hz+1:end-Hz] ./ 1000
+      zF = ds[:zF][Hz+1:end-Hz] ./ 1000
    end
 
    t  = ds[:time][:] ./ 86400 #Convert to days for readability
@@ -219,8 +221,7 @@ function get_2D_spatial_axis_idcs(const_dim;
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
 	 yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
-         yCyF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
-      
+         yCyF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
       else #Grid is 3D
 	 yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
          yCyF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
@@ -233,7 +234,6 @@ function get_2D_spatial_axis_idcs(const_dim;
       if isnothing(y_idx) #Grid is 2D with only x and z axes
          xCzC_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zC)+Hz)
          xCzF_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zF)+Hz)
-   
       else #Grid is 3D
          xCzC_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zC)+Hz)
          xCzF_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zF)+Hz)
@@ -249,35 +249,32 @@ function get_2D_spatial_axis_idcs(const_dim;
 	 xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
       end
 
-      return xCyC_idcs
+      return xCyC_idcs, xCyC_idcs
    end
 end
 
-function get_2D_spatial_axis_kwargs(x, y, z;
+function get_2D_spatial_axis_kwargs(x, y, z, const_dim;
                                     x_idx = nothing,
 				    y_idx = nothing,
-                                    z_idx = nothing,
-				    const_x = false,
-				    const_y = false,
-				    const_z = false)
+				    z_idx = nothing)
    nearest = 0
 
    if !isnothing(x_idx)
-      const_x = true
-      nearest = round(Int, x[x_idx])
+      const_dim = "x"
+      nearest   = round(Int, x[x_idx])
    elseif !isnothing(y_idx)
-      const_y = true
-      nearest = round(Int, y[y_idx])
+      const_dim = "y"
+      nearest   = round(Int, y[y_idx])
    elseif !isnothing(z_idx)
-      const_z = true
-      nearest = round(Int, z[z_idx])
+      const_dim = "z"
+      nearest   = round(z[z_idx], digits = 2)
    end
 
-   if const_x
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
-   elseif const_y
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
-   elseif const_z
+   if const_dim == "x"
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
+   elseif const_dim == "y"
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
+   elseif const_dim == "z"
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
    
