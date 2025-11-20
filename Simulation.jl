@@ -25,6 +25,11 @@ const Nx = 200
 const Ny = 200
 const Nz = 100
 
+#Numbers of halo cells
+const Hx = 3
+const Hy = 3
+const Hz = 3
+
 #Lengths of axes
 const Lx = 1e3 * kilometer
 const Ly = 1e3 * kilometer
@@ -39,7 +44,7 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 100 * kilometer
-const σz = "infinity"
+const σz = 3 * kilometer #"infinity"
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1 * (meter/second) #1.5e-1 * (meter/second)
@@ -66,7 +71,7 @@ const max_u′ = 1e-8
 const vis_const_x    = false
 const vis_const_y    = true
 const vis_const_z    = true
-const vis_norms      = true
+const vis_norms      = false
 const vis_energetics = false #Currently can only be done on CPU
 const vis_z_grid     = false #Can only be done on CPU
 
@@ -98,7 +103,7 @@ grid = RectilinearGrid(architecture,
                        x = (-Lx/2, Lx/2),
 		       y = (-Ly/2, Ly/2),
                        z = (-Lz, 0.0),
-		       halo = (3, 3, 3))
+		       halo = (Hx, Hy, Hz))
 #                       z = z_grid_spacing)
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
@@ -127,7 +132,7 @@ check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
 #########################################################
 
 datetimestart = now()
-datetimenow   = "251114-113159" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
@@ -303,22 +308,18 @@ end
 ###################################
 
 if vis_const_x
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime,
-		      x_idx = x_idx, plot_animation = true, t_idx_skip = t_idx_skip)
-   visualize_fields_const_x(datetimenow, x_idx; bkgd_datetime = bkgd_datetime,
-                            plot_animation = true, t_idx_skip = t_idx_skip)
+   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; x_idx = x_idx, t_idx_skip = t_idx_skip)
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip)
 end
 
 if vis_const_y
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime,
-   #                   y_idx = y_idx, plot_animation = true, t_idx_skip = t_idx_skip)
-   visualize_fields_const_y(datetimenow, y_idx, B, Uφ; t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; y_idx = y_idx, t_idx_skip = t_idx_skip)
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; bkgd_datetime = bkgd_datetime, 
-   #                   z_idx = z_idx, plot_animation = true, t_idx_skip = t_idx_skip)
-   visualize_fields_const_z(datetimenow, z_idx, B, Uφ; t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; z_idx = z_idx, t_idx_skip = t_idx_skip)
+   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
