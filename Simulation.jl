@@ -23,7 +23,7 @@ using Oceanostics, Printf, Random
 #Numbers of gridpoints
 const Nx = 200
 const Ny = 200
-const Nz = 100
+const Nz = 200
 
 #Numbers of halo cells
 const Hx = 3
@@ -44,7 +44,7 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 100 * kilometer
-const σz = 3 * kilometer #"infinity"
+const σz = 4 * kilometer #"infinity"
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1 * (meter/second) #1.5e-1 * (meter/second)
@@ -71,7 +71,7 @@ const max_u′ = 1e-8
 const vis_const_x    = false
 const vis_const_y    = true
 const vis_const_z    = true
-const vis_norms      = false
+const vis_norms      = true
 const vis_energetics = false #Currently can only be done on CPU
 const vis_z_grid     = false #Can only be done on CPU
 
