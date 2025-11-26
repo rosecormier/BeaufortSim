@@ -23,7 +23,7 @@ using Oceanostics, Printf, Random
 #Numbers of gridpoints
 const Nx = 200
 const Ny = 200
-const Nz = 200
+const Nz = 100
 
 #Numbers of halo cells
 const Hx = 3
@@ -44,7 +44,7 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 100 * kilometer
-const σz = 4 * kilometer #"infinity"
+const σz = 6 * kilometer
 
 #Speed and buoyancy frequency at surface of gyre
 const U   = 1 * (meter/second) #1.5e-1 * (meter/second)
@@ -59,7 +59,7 @@ const d_ML = -50 * meter
 #Time-stepping parameters
 const Δt      = 2 * minute
 const tf      = 400 * day
-const Δt_save = 24 * hour
+const Δt_save = 25 * day #24 * hour
 
 #Architecture
 const use_GPU = true
