@@ -20,7 +20,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 from BuildLaplacian import BuildLaplacian
-from BuildBkgdOperators import BuildBkgdOperators, rInterior
+from BuildBkgdOperators import BuildBkgdOperators, GridInterior
 from Chebyshev import Chebyshev
 from Streamfunctions import Streamfunction, EigenvelocityFromEigvec
 
@@ -114,7 +114,7 @@ def QG_Vortex_Stability():
     params         = Parameters()
     geom           = Geometry(params)
     geom.Lap       = BuildLaplacian(params, geom)
-    geom.rInterior = rInterior(params, geom)
+    geom.rInterior = GridInterior(params, geom)
     
     #Discretize background-state-flow operators on Chebyshev grid
     geom.Ψ_op, geom.Q_op = BuildBkgdOperators(params, geom, 
