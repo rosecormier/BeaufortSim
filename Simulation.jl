@@ -11,6 +11,7 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Coriolis
 using Oceananigans.Fields
+using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
 using Oceananigans.Utils
@@ -139,7 +140,6 @@ Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
                                    model.velocities.v, model.grid)
 
 #Create fields to store background state
-
 Ux = XFaceField(model.grid)
 Uy = YFaceField(model.grid)
 Ur = CenterField(model.grid)
@@ -147,13 +147,13 @@ Uφ = CenterField(model.grid)
 Uz = ZFaceField(model.grid)
 B  = CenterField(model.grid)
 
+#Store background state
 set!(Ux, model.velocities.u)
 set!(Uy, model.velocities.v)
 set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
 set!(B, model.tracers.b)
-
 fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
@@ -194,8 +194,7 @@ end
 
 @inline v_perturbed(x, y, z) = v̄(x, y, z) + 2*(rand()-0.5) * max_u′/sqrt(2)
 
-#Update initial condition to trigger BCI
-set!(model, u = u_perturbed, v = v_perturbed)
+set!(model, u = u_perturbed, v = v_perturbed) #Perturbed ICs
 
 simulation = Simulation(model, Δt = Δt, stop_time = tf)
 
@@ -221,8 +220,18 @@ outputs = (ur = ur,
 	   uz = model.velocities.w,
 	   b  = model.tracers.b)
 
-outfilepath = joinpath("./Output", "output_$(datetimenow).nc")
-mkpath(dirname(outfilepath)) #Make path if nonexistent
+#Define output filepaths
+outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
+scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
+energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
+logfilepath    = joinpath("./Logs", "log_$(datetimenow).txt")
+
+#Make required paths if nonexistent
+mkpath(dirname(outfilepath))
+mkpath(dirname(scalarfilepath))
+mkpath(dirname(energyfilepath))
+mkpath(dirname(logfilepath))
+mkpath("./Checkpoints")
 
 field_writer = NetCDFOutputWriter(model, 
 				  outputs,
@@ -245,9 +254,6 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uz′_norm = uz_perturbation_norm,
 		      b′_norm = b_perturbation_norm)
 
-scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
-mkpath(dirname(scalarfilepath)) #Make path if nonexistent
-
 scalar_writer = NetCDFOutputWriter(model, 
 				   scalar_diagnostics,
 				   filename = scalarfilepath, 
@@ -262,19 +268,24 @@ scalar_writer = NetCDFOutputWriter(model,
 
 energy_diagnostics = (; pKE = compute_pKE(simulation))
 
-energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
-mkpath(dirname(energyfilepath)) #Make path if nonexistent
-
 energy_writer = NetCDFOutputWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
 
-simulation.output_writers[:field_writer] = field_writer
+checkpointer = Checkpointer(model; 
+			    schedule = TimeInterval(2*minute),
+			    dir = "./Checkpoints", 
+			    prefix = "checkpoint_$(datetimenow)", 
+			    properties = [:grid, :clock, :timestepper, 
+					  :velocities, :tracers])
+
+simulation.output_writers[:field_writer]  = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
+simulation.output_writers[:checkpointer]  = checkpointer
 
-run!(simulation)
+run!(simulation; pickup = false)
 
 duration = canonicalize(now() - datetimestart)
 
@@ -282,13 +293,7 @@ duration = canonicalize(now() - datetimestart)
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 
-###############################
-# SAVE PARAMETERS TO LOG FILE #
-###############################
-
-logfilepath = joinpath("./Logs", "log_$(datetimenow).txt")
-mkpath(dirname(logfilepath)) #Make path if nonexistent
-
+#Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
    write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
@@ -296,8 +301,7 @@ open(logfilepath, "w") do file
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
-   write(file, "Δt = $(Δt) \n")
-   write(file, "tf = $(tf) \n\n")
+   write(file, "Δt, tf = $(Δt), $(tf) \n\n")
    write(file, "Total number of iterations = $(iteration(simulation)) \n")
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
