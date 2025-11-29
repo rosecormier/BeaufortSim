@@ -23,7 +23,9 @@ def GridInterior(params, geom, discretizeVertical = False):
         rInterior = kron(diag(geom.r[1:(halfNr+1)]), eye(Nz)) + kron(diag(geom.r[1:(halfNr+1)]), block([[halfNz_Z, halfNz_I], [halfNz_I, halfNz_Z]]))
         r2RecipInterior = kron(diag(1/geom.r[1:(halfNr+1)]**2), eye(Nz)) + kron(diag(1/geom.r[1:(halfNr+1)]**2), block([[halfNz_Z, halfNz_I], [halfNz_I, halfNz_Z]]))
 
-        quarterNr_I, quarterNr_Z = eye(halfNr // 2), zeros(((halfNr //2), (halfNr // 2)))
+        quarterNr_I, quarterNr_Z = eye(halfNr // 2), zeros(((halfNr // 2), (halfNr // 2)))
+        import numpy as np
+        print(np.shape(eye(halfNr)), np.shape(geom.z), np.shape(quarterNr_Z))
         zInterior = kron(eye(halfNr), diag(geom.z[1:(Nz+1)])) + kron(block([[quarterNr_Z, quarterNr_I], [quarterNr_I, quarterNr_Z]]), diag(geom.z[1:(Nz+1)]))
 
         #rInterior  = hstack(stack(rInterior[:], axis = -1))
@@ -81,7 +83,7 @@ def BuildBkgdOperators(params, geom,
                          * dimensional_U / dimensional_σr
                    )
             Q_op = (sqrt(8) 
-                         * (2 * (rTilde**2 - 2)
+                         * (2 * (rTilde**2 - 1)
                             - (1 / Bu) 
                               * (zTilde * matmul(Dz, N2RecipTilde) 
                                  + (1 - 2 * zTilde**2) * (N2RecipTilde**2)
