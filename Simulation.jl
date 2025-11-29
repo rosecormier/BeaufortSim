@@ -22,8 +22,8 @@ using Oceanostics, Printf, Random
 ######################
 
 #Numbers of gridpoints
-const Nx = 200
-const Ny = 200
+const Nx = 100
+const Ny = 100
 const Nz = 100
 
 #Numbers of halo cells
@@ -34,7 +34,7 @@ const Hz = 3
 #Lengths of axes
 const Lx = 1e3 * kilometer
 const Ly = 1e3 * kilometer
-const Lz = 6 * kilometer
+const Lz = 1 * kilometer
 
 #Latitude (deg. N)
 const lat = 74.0
@@ -45,10 +45,10 @@ const f = fPlane.f
 
 #Gyre scales
 const σr = 100 * kilometer
-const σz = 6 * kilometer
+const σz = 300 * meter
 
 #Speed and buoyancy frequency at surface of gyre
-const U   = 1 * (meter/second) #1.5e-1 * (meter/second)
+const U   = 1e-1 * (meter/second) #1.5e-1 * (meter/second)
 const N²₀ = 1e-4 * (second^(-2))
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
@@ -58,9 +58,9 @@ const N²_max = 1e-4 * (second^(-2))
 const d_ML = -50 * meter
 
 #Time-stepping parameters
-const Δt      = 2 * minute
+const Δt      = 1 * minute
 const tf      = 400 * day
-const Δt_save = 25 * day #24 * hour
+const Δt_save = 24 * hour
 
 #Architecture
 const use_GPU = true
@@ -110,7 +110,7 @@ grid = RectilinearGrid(architecture,
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
 
-b̄, ū, v̄, b̄_BCs = bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+b̄, ū, v̄, b̄_BCs = bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot, 0, -Lz)
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -274,7 +274,7 @@ energy_writer = NetCDFOutputWriter(model, energy_diagnostics,
 				   file_splitting = FileSizeLimit(30GiB))
 
 checkpointer = Checkpointer(model; 
-			    schedule = TimeInterval(2*minute),
+			    schedule = TimeInterval(Δt_save),
 			    dir = "./Checkpoints", 
 			    prefix = "checkpoint_$(datetimenow)", 
 			    properties = [:grid, :clock, :timestepper, 
