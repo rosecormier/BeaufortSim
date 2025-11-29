@@ -50,7 +50,7 @@ parser.add_argument('-Lz',
                     type = float, default = 4.0)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
-                    type = float, default = 4e-3)
+                    type = float, default = 0.1) #4e-3)
 parser.add_argument('-Bu', '--Burger',
                     help = 'Burger number of background flow',
                     type = float, default = 2.5e-3)
@@ -128,7 +128,7 @@ class Geometry:
             #Scale gridpoints and variables of differentiation to fit domain
             self.r, self.Dr = r * params.Lr, Dr / params.Lr
             self.z, self.Dz = ((z - 1) / 2) * params.Lz, Dz / params.Lz
-            
+            print(self.z) 
             self.Dr2 = np.matmul(self.Dr, self.Dr) #Second-order diff. matrix
         
      #   elif method == "FD":
