@@ -1,6 +1,6 @@
-def N2_profile(stratification_kw):
+def N2_profile(stratification_kw, dimensional_N2 = 1):
 
     if stratification_kw == "constant":
-        N2_function = lambda z : z
+        N2_function = lambda z : dimensional_N2 * z
 
     return N2_function
