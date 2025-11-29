@@ -35,10 +35,10 @@ from Streamfunctions import Streamfunction
 parser = argparse.ArgumentParser()
 parser.add_argument('--NrEig',
                     help = 'Number (must be ODD) of r-gridpoints for eig computations',
-                    type = int, default = 801)
+                    type = int, default = 101)
 parser.add_argument('--NzEig',
                     help = 'Number (must be EVEN) of z-gridpoints for eig computations',
-                    type = int, default = 800)
+                    type = int, default = 100)
 #parser.add_argument('--Neigs', 
 #                    help = 'Number of grid points for eigs computations',
 #                    type = int, default = 1001)
@@ -47,10 +47,10 @@ parser.add_argument('-Lr',
                     type = float, default = 8.0)
 parser.add_argument('-Lz',
                     help = 'DIMENSIONLESS depth of physical domain',
-                    type = float, default = 4.0)
+                    type = float, default = 6.0)
 parser.add_argument('-Ro', '--Rossby',
                     help = 'Rossby number of background flow', 
-                    type = float, default = 0.1) #4e-3)
+                    type = float, default = 1e-2) #4e-3)
 parser.add_argument('-Bu', '--Burger',
                     help = 'Burger number of background flow',
                     type = float, default = 2.5e-3)
@@ -110,7 +110,6 @@ class Parameters:
         print(f"Nz = {self.Nz}")
         print(f"Lz = {self.Lz}")
         print(f"kps = {self.kps}")
-        #print(f"kzs = {self.kzs}")
         print(f"nmodes = {self.nmodes}")
 
 class Geometry:
@@ -196,7 +195,7 @@ def QG_Vortex_Stability():
         B = (geom.Lap - np.diag(kφ2 * geom.r2Recip)
              + ((1 / params.Bu) * (geom.Dz * (geom.N2Recip * geom.Dz)))
             ) / params.Ro
-        A = params.Ro * np.matmul(geom.Ψ_op, B) - geom.Q_op
+        A = (np.matmul(geom.Ψ_op, (B * params.Ro)) - geom.Q_op)
 
         ############################
         # FIND EIGENSPACE DIRECTLY #
