@@ -14,73 +14,61 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.Units
-using Oceananigans.Utils
-using Oceanostics, Printf, Random
+using Oceananigans.Utils 
+using Printf, Random
 
 ######################
 # SPECIFY PARAMETERS #
 ######################
 
-#Numbers of gridpoints
-const Nx = 100
-const Ny = 100
-const Nz = 100
+const Nx = 100 #x-grid size
+const Ny = 100 #y-grid size
+const Nz = 100 #z-grid size
 
-#Numbers of halo cells
-const Hx = 3
-const Hy = 3
-const Hz = 3
+const Hx = 3 #Number of x halo cells per boundary
+const Hy = 3 #Number of y halo cells per boundary
+const Hz = 3 #Number of z halo cells per boundary
 
-#Lengths of axes
-const Lx = 1e3 * kilometer
-const Ly = 1e3 * kilometer
-const Lz = 1 * kilometer
+const Lx = 1e3 * kilometer #x-axis length
+const Ly = 1e3 * kilometer #y-axis length
+const Lz = 1 * kilometer   #z-axis length
 
-#Latitude (deg. N)
-const lat = 74.0
+const lat = 74.0     #Latitude (deg. N)
+fPlane    = FPlane(latitude = lat)
+const f   = fPlane.f #Coriolis frequency
 
-#f-plane and Coriolis frequency
-fPlane  = FPlane(latitude = lat)
-const f = fPlane.f
+const σr = 100 * kilometer #Radial gyre length scale
+const σz = 300 * meter     #Vertical gyre length scale
 
-#Gyre scales
-const σr = 100 * kilometer
-const σz = 300 * meter
-
-#Speed and buoyancy frequency at surface of gyre
-const U   = 1e-1 * (meter/second) #1.5e-1 * (meter/second)
-const N²₀ = 1e-4 * (second^(-2))
+const U   = 1e-1 * (meter/second) #Gyre velocity scale (at surface)
+const N²₀ = 1e-4 * (second^(-2))  #Surface buoyancy frequency
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
 const N²_max = 1e-4 * (second^(-2))
 
-#Mixed-layer depth
-const d_ML = -50 * meter
+const d_ML = -50 * meter #Mixed-layer depth
 
-#Time-stepping parameters
-const Δt      = 1 * minute
-const tf      = 400 * day
-const Δt_save = 24 * hour
+const Δt         = 10 * minute #Simulation timestep
+const tf         = 4000 * day  #Simulation stop time
+const Δt_save    = 240 * hour  #Save interval
+const Δt_checkpt = 250 * day   #Checkpoint interval
 
-#Architecture
-const use_GPU = true
+const use_GPU = true #Whether to use GPU
 
-#Max. relative magnitude of initial u-perturbations
-const max_u′ = 1e-8
+const max_u′ = 1e-8 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
 const vis_const_x    = false
 const vis_const_y    = true
 const vis_const_z    = true
 const vis_norms      = true
-const vis_energetics = false #Currently can only be done on CPU
-const vis_z_grid     = false #Can only be done on CPU
+const vis_energetics = false #Note: currently can only be done on CPU
+const vis_z_grid     = false #Note: currently can only be done on CPU
 
-#Indices at which to plot fields
-const x_idx      = 259
-const y_idx      = 103
-const z_idx      = 95
-const t_idx_skip = 2
+const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
+const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
+const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
+const t_idx_skip = 1      #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -163,18 +151,13 @@ fill_halo_regions!(B)
 
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
 
-@inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = (
-                              ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +
-                              ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
-                              ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)
-                             ) / 2
+@inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (
+     		      		ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) + 
+     		      		ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
+                      		ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
 
 pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
-							 grid, 
-							 model.velocities.u, 
-							 model.velocities.v, 
-							 model.velocities.w,
-							 Ux, Uy, Uz)
+   grid, model.velocities.u, model.velocities.v, model.velocities.w, Ux, Uy, Uz)
 
 function compute_pKE(sim)
    compute!(pKE_op)
@@ -196,7 +179,8 @@ end
 
 set!(model, u = u_perturbed, v = v_perturbed) #Perturbed ICs
 
-simulation = Simulation(model, Δt = Δt, stop_time = tf)
+simulation = Simulation(model; Δt = Δt, stop_time = tf, 
+			align_time_step = false, minimum_relative_step = 1e-9)
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -233,8 +217,7 @@ mkpath(dirname(energyfilepath))
 mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
 
-field_writer = NetCDFOutputWriter(model, 
-				  outputs,
+field_writer = NetCDFWriter(model, outputs,
                                   with_halos = true,
 		                  filename = outfilepath, 
                                   schedule = TimeInterval(Δt_save),
@@ -254,8 +237,7 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      uz′_norm = uz_perturbation_norm,
 		      b′_norm = b_perturbation_norm)
 
-scalar_writer = NetCDFOutputWriter(model, 
-				   scalar_diagnostics,
+scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 				   filename = scalarfilepath, 
 				   schedule = TimeInterval(Δt_save),
                                    file_splitting = FileSizeLimit(30GiB),
@@ -268,13 +250,13 @@ scalar_writer = NetCDFOutputWriter(model,
 
 energy_diagnostics = (; pKE = compute_pKE(simulation))
 
-energy_writer = NetCDFOutputWriter(model, energy_diagnostics,
+energy_writer = NetCDFWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
 				   schedule = TimeInterval(Δt_save),
 				   file_splitting = FileSizeLimit(30GiB))
 
 checkpointer = Checkpointer(model; 
-			    schedule = TimeInterval(Δt_save),
+			    schedule = TimeInterval(Δt_checkpt),
 			    dir = "./Checkpoints", 
 			    prefix = "checkpoint_$(datetimenow)", 
 			    properties = [:grid, :clock, :timestepper, 
@@ -313,17 +295,20 @@ end
 
 if vis_const_x
    visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; x_idx = x_idx, t_idx_skip = t_idx_skip)
-   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip)
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; 
+			     t_idx_skip = t_idx_skip)
 end
 
 if vis_const_y
    #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; y_idx = y_idx, t_idx_skip = t_idx_skip)
-   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip) 
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ, Hx, Hy, Hz; 
+			     t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
    #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; z_idx = z_idx, t_idx_skip = t_idx_skip)
-   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ, Hx, Hy, Hz; t_idx_skip = t_idx_skip)
+   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ, Hx, Hy, Hz; 
+			     t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
