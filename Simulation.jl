@@ -217,11 +217,10 @@ mkpath(dirname(energyfilepath))
 mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
 
-field_writer = NetCDFWriter(model, outputs,
-                                  with_halos = true,
-		                  filename = outfilepath, 
-                                  schedule = TimeInterval(Δt_save),
-				  file_splitting = FileSizeLimit(30GiB))
+field_writer = NetCDFWriter(model, outputs, with_halos = true,
+		                              filename = outfilepath, 
+                                              schedule = TimeInterval(Δt_save),
+				        file_splitting = FileSizeLimit(30GiB))
 
 ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
 uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
@@ -238,29 +237,28 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		      b′_norm = b_perturbation_norm)
 
 scalar_writer = NetCDFWriter(model, scalar_diagnostics,
-				   filename = scalarfilepath, 
+		                   filename = scalarfilepath, 
 				   schedule = TimeInterval(Δt_save),
-                                   file_splitting = FileSizeLimit(30GiB),
-				   dimensions = (ux′_norm = (),
-						 uy′_norm = (),
-						 ur′_norm = (),
-						 uφ′_norm = (),
-						 uz′_norm = (),
-						 b′_norm = ()))
+                             file_splitting = FileSizeLimit(30GiB),
+				 dimensions = (ux′_norm = (),
+					       uy′_norm = (),
+					       ur′_norm = (),
+					       uφ′_norm = (),
+					       uz′_norm = (),
+					       b′_norm  = ()))
 
 energy_diagnostics = (; pKE = compute_pKE(simulation))
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
-				   schedule = TimeInterval(Δt_save),
-				   file_splitting = FileSizeLimit(30GiB))
+			 	   schedule = TimeInterval(Δt_save),
+			     file_splitting = FileSizeLimit(30GiB))
 
-checkpointer = Checkpointer(model; 
-			    schedule = TimeInterval(Δt_checkpt),
-			    dir = "./Checkpoints", 
-			    prefix = "checkpoint_$(datetimenow)", 
-			    properties = [:grid, :clock, :timestepper, 
-					  :velocities, :tracers])
+checkpointer = Checkpointer(model; schedule = TimeInterval(Δt_checkpt),
+			    		dir = "./Checkpoints", 
+			    	     prefix = "checkpoint_$(datetimenow)", 
+			    	 properties = [:grid, :clock, :timestepper,
+					       :velocities, :tracers])
 
 simulation.output_writers[:field_writer]  = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
