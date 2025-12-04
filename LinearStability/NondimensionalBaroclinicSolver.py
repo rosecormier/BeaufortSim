@@ -63,15 +63,21 @@ parser.add_argument('-N2',
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
                     action = 'store_true')
-parser.add_argument('-Np', 
-                    help = 'Number of points for discretization of phi', 
-                    type = int, default = 50)
 parser.add_argument('-kp', '--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 2)
+parser.add_argument('-Np',
+                    help = 'Number of points for discretization of phi',
+                    type = int, default = 50)
+parser.add_argument('--z_idx',
+                    help = 'Constant z-index to plot 2D slices at',
+                    type = int, default = 0)
+parser.add_argument('--r_idx',
+                    help = 'Constant r-index to plot 2D slices at',
+                    type = int, default = 99)
 args = parser.parse_args()
                     
 class Parameters:
@@ -87,11 +93,13 @@ class Parameters:
     Nr     = args.NrEig #Number of computational gridpoints in r
     halfNr = args.NrEig // 2 #Number of physical r-gridpoints
 
-    Lz = args.Lz #Max. depth (i.e., -min(z)) in physical domain
+    Lz = args.Lz    #Max. depth (i.e., -min(z)) in physical domain
     Nz = args.NzEig #Number of computational gridpoints in z
     
-    Nφ = args.Np #Number of azimuthal gridpoints; for visualization only
-    
+    Nφ    = args.Np #Number of azimuthal gridpoints; for visualization only
+    z_idx = args.z_idx
+    r_idx = args.r_idx
+
     kφs    = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])        
     nmodes = args.modes
 
@@ -116,7 +124,7 @@ class Geometry:
         
         self.method = method
         
-        if method == "cheb":
+        if method == "Chebyshev":
            
             #Compute r- and z-diff. matrices and Chebyshev-spaced grids
             Dr, r = Chebyshev(params.Nr)
@@ -141,7 +149,7 @@ def QG_Vortex_Stability():
     #Initialize parameters and set up geometries for Chebyshev and FD solvers
 
     paramsCh   = Parameters()
-    geomCh     = Geometry("cheb", paramsCh)
+    geomCh     = Geometry("Chebyshev", paramsCh)
     geomCh.Lap = BuildLaplacian(paramsCh, geomCh, discretizeVertical = True)
     
     #Perform 2D discretization of grid
@@ -355,7 +363,7 @@ def QG_Vortex_Stability():
             ax_growth = axes[ii, 0]
             ax_growth.scatter(kφs, np.ravel(growthDimCh[:, ii]), 
                            color = "mediumpurple", label = "Cheb solver")
-            ax_growth.set(title = f"Growth rate; mode {ii}")
+            ax_growth.set(title = f"Growth rate; mode {ii}",
                           ylabel = "Growth rate ($s^{-1}$)")
                 
             ax_prop = axes[ii, 1]
@@ -434,6 +442,8 @@ def QG_Vortex_Stability():
                 # PLOT THE EIGEN-STREAMFUNCTIONS #
                 ##################################
 
+                r_idx, z_idx = paramsCh.r_idx, paramsCh.z_idx
+
                 #Need to reshape and re-normalize eigenvector
                 #Ideally, will figure out a way to combine this with previous
                 eigVecCh_F     = np.reshape(modesCh[kφ_idx, :, jj],
@@ -451,24 +461,30 @@ def QG_Vortex_Stability():
                                                     k = kφ,
                                                     φ = φCoords[φ_idx])
 
-                axsψ_rφ[0].pcolormesh(φVisCh[:, :, 0], rVisCh[:, :, 0], 
-                                      ψ[:, :, 0].real, cmap = "RdBu_r")#, 
-                                      #vmin = -1, vmax = 1)
+                #Max. magnitude of streamfunction on rφ-slice
+                ψ_rφ_max = np.max(np.abs(ψ[:, :, z_idx]))
+
+                axsψ_rφ[0].pcolormesh(φVisCh[:, :, z_idx], rVisCh[:, :, z_idx],
+                                      ψ[:, :, z_idx].real, cmap = "RdBu_r",
+                                      vmin = -ψ_rφ_max, vmax = ψ_rφ_max)
                 axsψ_rφ[0].set_title("Re[$\\hat{{\psi}}$]")
-                axsψ_rφ[1].pcolormesh(φVisCh[:, :, 0], rVisCh[:, :, 0],
-                                      ψ[:, :, 0].imag, cmap = "RdBu_r",
-                                      vmin = -1, vmax = 1)
+                axsψ_rφ[1].pcolormesh(φVisCh[:, :, z_idx], rVisCh[:, :, z_idx],
+                                      ψ[:, :, z_idx].imag, cmap = "RdBu_r",
+                                      vmin = -ψ_rφ_max, vmax = ψ_rφ_max)
                 axsψ_rφ[1].set_title("Im[$\\hat{{\psi}}$]")
 
-                axsψ_φz[0].pcolormesh(φVisCh[-1, :, :], zVisCh[-1, :, :],
-                                      ψ[-1, :, :].real, cmap = "RdBu_r")#,
-                                      #vmin = -1, vmax = 1)
+                #Max. magnitude of streamfunction on φz-slice
+                ψ_φz_max = np.max(np.abs(ψ[r_idx, :, :]))
+
+                axsψ_φz[0].pcolormesh(φVisCh[r_idx, :, :], zVisCh[r_idx, :, :],
+                                      ψ[-1, :, :].real, cmap = "RdBu_r",
+                                      vmin = -ψ_φz_max, vmax = ψ_φz_max)
                 axsψ_φz[0].set(xlabel = "$\\phi$",
                                ylabel = "$\\tilde{{z}}$",
                                title = "Re[$\\hat{{\psi}}$]")
-                axsψ_φz[1].pcolormesh(φVisCh[-1, :, :], zVisCh[-1, :, :],
-                                      ψ[-1, :, :].imag, cmap = "RdBu_r",
-                                      vmin = -1, vmax = 1)
+                axsψ_φz[1].pcolormesh(φVisCh[r_idx, :, :], zVisCh[r_idx, :, :],
+                                      ψ[r_idx, :, :].imag, cmap = "RdBu_r",
+                                      vmin = -ψ_φz_max, vmax = ψ_φz_max)
                 axsψ_φz[1].set(xlabel = "$\\phi$", 
                                title = "Im[$\\hat{{\psi}}$]")
 
@@ -497,22 +513,24 @@ def QG_Vortex_Stability():
                 plt.close(figEigVec)
 
                 figψ_rφ.subplots_adjust(hspace = 0.5, wspace = 0.75)
-                figψ_rφ.suptitle(f"Cross section (at $\\tilde{{z}} =$ {geomCh.z[0]:.2f}) of mode-{jj} eigen-streamfunction for $k =$ {kφ}")
+                figψ_rφ.suptitle(f"Cross section (at $\\tilde{{z}} =$ {geomCh.z[z_idx]:.2f}) of mode-{jj} eigen-streamfunction for $k =$ {kφ}")
                 figψ_rφ.colorbar(ScalarMappable(norm = 
-                        Normalize(vmin = -1, vmax = 1), cmap = "RdBu_r"),
+                        Normalize(vmin = -ψ_rφ_max, vmax = ψ_rφ_max), 
+                                                cmap = "RdBu_r"),
                                  ax = axsψ_rφ.ravel().tolist(),
                                  orientation = "horizontal", shrink = 0.8)
                 #plt.show()
-                figψ_rφ.savefig(f"streamfunc_rphi_k{kφ}_mode{jj}_nondimensionalBCgyre.png")
+                figψ_rφ.savefig(f"streamfunc_z{geomCh.z[z_idx]:.2f}_k{kφ}_mode{jj}_nondimensionalBCgyre.png")
                 plt.close(figψ_rφ)
 
-                figψ_φz.suptitle(f"Cross section (at $\\tilde{{r}} =$ {geomCh.r[(paramsCh.halfNr + 1) - 1]:.2f}) of mode-{jj} eigen-streamfunction for $k =$ {kφ}")
+                figψ_φz.suptitle(f"Cross section (at $\\tilde{{r}} =$ {geomCh.r[r_idx]:.2f}) of mode-{jj} eigen-streamfunction for $k =$ {kφ}")
                 figψ_φz.colorbar(ScalarMappable(norm = 
-                        Normalize(vmin = -1, vmax = 1), cmap = "RdBu_r"),
+                        Normalize(vmin = -ψ_φz_max, vmax = ψ_φz_max), 
+                                                cmap = "RdBu_r"),
                                  ax = axsψ_φz.ravel().tolist(),
                                  orientation = "horizontal", shrink = 0.8)
                 #plt.show()
-                figψ_φz.savefig(f"streamfunc_phiz_k{kφ}_mode{jj}_nondimensionalBCgyre.png")
+                figψ_φz.savefig(f"streamfunc_r{geomCh.r[r_idx]:.2f}_k{kφ}_mode{jj}_nondimensionalBCgyre.png")
                 plt.close(figψ_φz)
 
 if __name__ == '__main__': #For testing
