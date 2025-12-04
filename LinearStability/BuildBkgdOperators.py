@@ -16,7 +16,7 @@ def GridInterior(params, geom, discretizeVertical = False):
         halfNr, Nz  = params.halfNr, params.Nz
         N2_function = N2_profile(params.stratification_kw)
 
-        halfNz_I = eye(Nz // 2), 
+        halfNz_I = eye(Nz // 2) 
         halfNz_Z = zeros(((Nz // 2), (Nz // 2)))
         
         rInterior       = (kron(diag(geom.r[1:(halfNr + 1)]), eye(Nz)) 
