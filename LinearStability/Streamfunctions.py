@@ -24,7 +24,7 @@ def Streamfunction(eigvec, **kwargs):
 
     return psi
 
-def EigenvelocityFromEigvec(params, geom, eigvec, k, **kwargs):
+def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
     """
     Evaluates QG velocities corresponding to specified (discrete) eigenvector
      and azimuthal wavenumber, as well as any of φ, z, and t, (m and 
