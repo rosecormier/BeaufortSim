@@ -22,7 +22,7 @@ from matplotlib.colors import Normalize
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, GridInterior
 from Chebyshev import Chebyshev
-from Streamfunctions import Streamfunction, EigenvelocityFromEigvec
+from Streamfunctions import Streamfunction, EigenvelocityFrom1DEigvec
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
