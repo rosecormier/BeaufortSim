@@ -16,30 +16,44 @@ def GridInterior(params, geom, discretizeVertical = False):
         halfNr, Nz  = params.halfNr, params.Nz
         N2_function = N2_profile(params.stratification_kw)
 
-        #[rInterior, zInterior]  = meshgrid(geom.r[1:(halfNr + 1)], 
-        #                                   geom.z[1:(Nz + 1)])
-
-        halfNz_I, halfNz_Z = eye(Nz // 2), zeros(((Nz // 2), (Nz // 2)))
-        rInterior = kron(diag(geom.r[1:(halfNr+1)]), eye(Nz)) + kron(diag(geom.r[1:(halfNr+1)]), block([[halfNz_Z, halfNz_I], [halfNz_I, halfNz_Z]]))
-        r2RecipInterior = kron(diag(1/geom.r[1:(halfNr+1)]**2), eye(Nz)) + kron(diag(1/geom.r[1:(halfNr+1)]**2), block([[halfNz_Z, halfNz_I], [halfNz_I, halfNz_Z]]))
-
-        quarterNr_I, quarterNr_Z = eye(halfNr // 2), zeros(((halfNr // 2), (halfNr // 2)))
-        import numpy as np
-        print(np.shape(eye(halfNr)), np.shape(geom.z), np.shape(quarterNr_Z))
-        zInterior = kron(eye(halfNr), diag(geom.z[1:(Nz+1)])) + kron(block([[quarterNr_Z, quarterNr_I], [quarterNr_I, quarterNr_Z]]), diag(geom.z[1:(Nz+1)]))
-
-        #rInterior  = hstack(stack(rInterior[:], axis = -1))
-        #zInterior  = hstack(stack(zInterior[:], axis = 0))
+        halfNz_I = eye(Nz // 2), 
+        halfNz_Z = zeros(((Nz // 2), (Nz // 2)))
         
-        N2Recip = diag(1 / ravel(N2_function(geom.z[1:(Nz+1)])))
-        N2RecipInterior = kron(eye(halfNr), N2Recip) + kron(block([[quarterNr_Z, quarterNr_I], [quarterNr_I, quarterNr_Z]]), N2Recip)
+        rInterior       = (kron(diag(geom.r[1:(halfNr + 1)]), eye(Nz)) 
+                           + kron(diag(geom.r[1:(halfNr + 1)]), 
+                                  block([[halfNz_Z, halfNz_I], 
+                                        [halfNz_I, halfNz_Z]])
+                                 )
+                          )
+        r2RecipInterior = (kron(diag(1/geom.r[1:(halfNr+1)]**2), eye(Nz)) 
+                           + kron(diag(1 / geom.r[1:(halfNr + 1)]**2), 
+                                  block([[halfNz_Z, halfNz_I], 
+                                        [halfNz_I, halfNz_Z]])
+                                 )
+                          )
+
+        quarterNr_I = eye(halfNr // 2)
+        quarterNr_Z = zeros(((halfNr // 2), (halfNr // 2)))
+        zInterior   = (kron(eye(halfNr), diag(geom.z[1:(Nz+1)])) 
+                       + kron(block([[quarterNr_Z, quarterNr_I], 
+                                    [quarterNr_I, quarterNr_Z]]), 
+                              diag(geom.z[1:(Nz+1)]))
+                      )
+
+        N2Recip         = diag(1 / ravel(N2_function(geom.z[1:(Nz+1)])))
+        N2RecipInterior = (kron(eye(halfNr), N2Recip) 
+                           + kron(block([[quarterNr_Z, quarterNr_I], 
+                                        [quarterNr_I, quarterNr_Z]]), 
+                                  N2Recip)
+                          )
         
-        #Update Dz: take Kron. product of (Nr x Nr) identity matrix and Dz
+        #Update Dz: take Kron. product of (Nr x Nr) identity matrix with Dz
         geom.Dz = kron(eye(halfNr), geom.Dz[1:(Nz + 1), 1:(Nz + 1)])
 
-        geom.rInterior, geom.zInterior = rInterior, zInterior
-        geom.r2Recip = r2RecipInterior
-        geom.N2Recip = N2RecipInterior
+        geom.rInterior = rInterior
+        geom.zInterior = zInterior
+        geom.r2Recip   = r2RecipInterior
+        geom.N2Recip   = N2RecipInterior
 
     else:
        
