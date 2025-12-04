@@ -22,7 +22,7 @@ from matplotlib.colors import Normalize
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, GridInterior
 from Chebyshev import Chebyshev
-from Streamfunctions import Streamfunction, EigenvelocityFromEigvec
+from Streamfunctions import Streamfunction, EigenvelocityFrom1DEigvec
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--Neig', 
@@ -183,9 +183,9 @@ def QG_Vortex_Stability():
         
         if nkφ < 4:
 
-            ##############################################################
-            # VISUALIZE GROWTH RATES AND PROP. SPEEDS FOR DIFFERENT KPHI #
-            ##############################################################
+            ############################################################
+            # VISUALIZE GROWTH RATES AND PROP. SPEEDS FOR DIFFERENT kφ #
+            ############################################################
         
             fig, axes = plt.subplots(nkφ, 2, figsize = (13, 7), sharex = "col")
 
@@ -213,7 +213,7 @@ def QG_Vortex_Stability():
             plt.close(fig)
 
         ###########################################
-        # PLOT EIGENFUNCTION STRUCTURES AGAINST R #
+        # PLOT EIGENFUNCTION STRUCTURES AGAINST r #
         ###########################################
 
         kz_idx, kφ_idx = 8, 0 #0, 1
@@ -240,9 +240,9 @@ def QG_Vortex_Stability():
         fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_nondimensionalBTgyre.png")
         plt.close(fig)
         
-        ########################################
-        # PLOT EIGEN-STRUCTURES IN R-PHI PLANE #
-        ########################################
+        ######################################
+        # PLOT EIGEN-STRUCTURES IN r-φ PLANE #
+        ######################################
 
         #Discretize phi-domain
         dφ      = 2 * pi / params.Nφ
@@ -262,8 +262,8 @@ def QG_Vortex_Stability():
 
         #Evaluate components of eigen-velocity
         eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
-        ur, uφ            = EigenvelocityFromEigvec(params, geom, eigVecNorm, 
-                                                    kφ, φ = φMesh)
+        ur, uφ            = EigenvelocityFrom1DEigvec(params, geom, eigVecNorm,
+                                                      kφ, φ = φMesh)
 
         #Absolute maximum amplitudes of velocity components
         urMax = np.max(np.abs(np.sqrt(ur.real**2 + ur.imag**2)))
