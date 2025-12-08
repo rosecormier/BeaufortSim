@@ -57,8 +57,8 @@ parser.add_argument('-Bu', '--Burger',
 parser.add_argument('-f0', '--Coriolis',
                     help = 'Coriolis frequency f0 (Hz)',
                     type = float, default = 1.4e-4)
-parser.add_argument('-N2',
-                    help = 'Ambient squared buoyancy frequency profile',
+parser.add_argument('--strat_shape',
+                    help = 'Shape of ambient squared buoyancy frequency profile',
                     type = str, default = "constant")
 parser.add_argument('-p', '--PrintOutputs',
                     help = 'Flag to turn on display for each computation',
@@ -87,7 +87,7 @@ class Parameters:
     f0   = args.Coriolis
     bkgd = "BG"
 
-    stratification_kw = args.N2
+    stratification_kw = args.strat_shape
 
     Lr     = args.Lr #Max. r in physical space; half of computational domain
     Nr     = args.NrEig #Number of computational gridpoints in r
