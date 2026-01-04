@@ -221,10 +221,10 @@ function get_2D_spatial_axis_idcs(const_dim;
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
 	 yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
-         yCyF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
+         yCzF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
       else #Grid is 3D
 	 yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
-         yCyF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
+         yCzF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
       end
 
       return yCzC_idcs, yCzF_idcs
