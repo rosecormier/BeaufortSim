@@ -9,11 +9,13 @@ using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.OutputReaders
 using OffsetArrays: no_offset_view
+using Polynomials: fit
 using Printf
 
 ####################
 
-function visualize_norms(datetime)
+function visualize_norms(datetime; idxStartLinGrowth = 2, 
+				   idxEndLinGrowth = -1)
 
    scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc")
 
@@ -56,17 +58,65 @@ function visualize_norms(datetime)
    scatter!(ax_ur, times, ur′_norm, color = :black)
    scatter!(ax_uφ, times, uφ′_norm, color = :black)
    scatter!(ax_uz_cyl, times, uz′_norm, color = :black)
-   
+
    scatter!(ax_b_Cart, times, b′_norm, color = :black)
-   scatter!(ax_ux, times, ur′_norm, color = :black)
-   scatter!(ax_uy, times, uφ′_norm, color = :black)
+   scatter!(ax_ux, times, ux′_norm, color = :black)
+   scatter!(ax_uy, times, uy′_norm, color = :black)
    scatter!(ax_uz_Cart, times, uz′_norm, color = :black)
+
+   if idxEndLinGrowth > 0
+      growthIdcs = (idxStartLinGrowth, idxEndLinGrowth)
+   elseif idxEndLinGrowth < 0
+      growthIdcs = (idxStartLinGrowth, length(times) + idxEndLinGrowth)
+   end
+
+   tFitInterval       = times[growthIdcs[1]:growthIdcs[2]]
+   b′NormFitInterval  = b′_norm[growthIdcs[1]:growthIdcs[2]]
+   ur′NormFitInterval = ur′_norm[growthIdcs[1]:growthIdcs[2]]
+   uφ′NormFitInterval = uφ′_norm[growthIdcs[1]:growthIdcs[2]]
+   ux′NormFitInterval = ux′_norm[growthIdcs[1]:growthIdcs[2]]
+   uy′NormFitInterval = uy′_norm[growthIdcs[1]:growthIdcs[2]]
+   uz′NormFitInterval = uz′_norm[growthIdcs[1]:growthIdcs[2]]
+
+   b′NormLinearFitParams  = fit(tFitInterval, log.(b′NormFitInterval), 1,
+				var = :times)
+   ur′NormLinearFitParams = fit(tFitInterval, log.(ur′NormFitInterval), 1,
+				var = :times)
+   uφ′NormLinearFitParams = fit(tFitInterval, log.(uφ′NormFitInterval), 1,
+			      	var = :times)
+   ux′NormLinearFitParams = fit(tFitInterval, log.(ux′NormFitInterval), 1,
+				var = :times)
+   uy′NormLinearFitParams = fit(tFitInterval, log.(uy′NormFitInterval), 1,
+				var = :times)
+   uz′NormLinearFitParams = fit(tFitInterval, log.(uz′NormFitInterval), 1,
+				var = :times)
+   
+   @printf("Empirical growth rate:\n From b′-norm: %.2f per day\n From ur′-norm: %.2f per day\n From uφ′-norm: %.2f per day\n From ux′-norm: %.2f per day\n From uy′-norm: %.2f per day\n From uz′-norm: %.2f per day",
+	    b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
+	    uφ′NormLinearFitParams[1], ux′NormLinearFitParams[1],
+	    uy′NormLinearFitParams[1], uz′NormLinearFitParams[1])
+
+   @inline linearFunction(fitParams; offset = 2) = @. offset * exp(fitParams[0] 
+						+ fitParams[1] * tFitInterval
+								  )
+
+   lines!(ax_b_cyl, tFitInterval, linearFunction(b′NormLinearFitParams))
+   lines!(ax_ur, tFitInterval, linearFunction(ur′NormLinearFitParams))
+   lines!(ax_uφ, tFitInterval, linearFunction(uφ′NormLinearFitParams))
+   lines!(ax_uz_cyl, tFitInterval, linearFunction(uz′NormLinearFitParams))
+
+   lines!(ax_b_Cart, tFitInterval, linearFunction(b′NormLinearFitParams))
+   lines!(ax_ux, tFitInterval, linearFunction(ux′NormLinearFitParams))
+   lines!(ax_uy, tFitInterval, linearFunction(uy′NormLinearFitParams))
+   lines!(ax_uz_Cart, tFitInterval, linearFunction(uz′NormLinearFitParams))
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
-   fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields",
+   fig_cyl[1, 1:2]  = Label(fig_cyl, 
+			   "Norms of perturbation fields with best linear fits",
                            fontsize = 24, tellwidth = false)
-   fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields",
+   fig_Cart[1, 1:2] = Label(fig_Cart, 
+			   "Norms of perturbation fields with best linear fits",
                            fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
@@ -82,12 +132,14 @@ function visualize_energetics(datetime, grid)
    pKE_data = energetics_ds[:pKE][:, :, :, :]
    
    fig = Figure(size = (1200, 700))
-   ax  = Axis(fig[2, 1]; xlabel = "Time [days]", ylabel = "Energy [m^5/s^2]",
+   ax  = Axis(fig[2, 1]; xlabel = "Time [days]",
+	      		 ylabel = "Energy [m^5/s^2]",
                          yscale = log10)
 
    n = Observable(1)
 
    pKE_Field_n = CenterField(grid)
+
    @lift set!(pKE_Field_n, pKE_data[:, :, :, $n])
 
    for i = 1:Nt
