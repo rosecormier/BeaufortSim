@@ -48,7 +48,7 @@ const N²_max = 1e-4 * (second^(-2))
 const d_ML = -50 * meter #Mixed-layer depth
 
 const Δt         = 10 * minute #Simulation timestep
-const tf         = 20 * minute #3000 * day  #Simulation stop time
+const tf         = 40 * minute #3000 * day  #Simulation stop time
 const Δt_save    = 10 * minute #10 * day    #Save interval
 const Δt_checkpt = 250 * day   #Checkpoint interval
 
@@ -60,7 +60,7 @@ const max_u′ = 1e-8 #Max. relative magnitude of initial velocity perturbation
 const vis_const_x    = false
 const vis_const_y    = false
 const vis_const_z    = false
-const vis_norms      = false
+const vis_norms      = true
 const vis_energetics = false #Note: currently can only be done on CPU
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
@@ -299,7 +299,7 @@ end
 ###################################
 
 if vis_const_x
-   visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; x_idx = x_idx, t_idx_skip = t_idx_skip)
+   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; x_idx = x_idx, t_idx_skip = t_idx_skip)
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; 
 			     t_idx_skip = t_idx_skip)
 end
