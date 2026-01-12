@@ -8,7 +8,7 @@ import numpy as np
 
 from math import pi
 
-def Chebyshev(N):
+def Chebyshev(N, xTransform = None):
     """
     Computes the Chebyshev differentiation matrix on N+1 points 
      (i.e., N intervals).
@@ -24,6 +24,9 @@ def Chebyshev(N):
 
         #Create a vector of N+1 Chebyshev-spaced components from 1 to -1
         x = np.cos(pi * np.arange(0, (N+1)) / N)
+
+        if xTransform is not None:
+            x = xTransform(x)
 
         #Define the Chebyshev coeffs c_{ij}
         c = np.hstack([2, np.ones(N-1), 2]) * (-1)**np.arange(0, (N+1))
