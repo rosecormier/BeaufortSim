@@ -57,7 +57,7 @@ parser.add_argument('-kp', '--k_phi',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
-                    type = float, default = [0, 4e-4, 5e-6], nargs = 3)
+                    type = float, default = [0, 8e-4, 2e-5], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
@@ -186,9 +186,11 @@ def QG_Vortex_Stability():
         
         if nkφ < 4:
 
-            #Visualize growth rates and propagation speeds for different kphi
-        
-            fig, axes = plt.subplots(nkφ, 2, figsize = (15, 7), sharex = "col")
+            ############################################################
+            # VISUALIZE GROWTH RATES AND PROP. SPEEDS FOR DIFFERENT kφ #
+            ############################################################
+
+            fig, axes = plt.subplots(nkφ, 2, figsize = (13, 7), sharex = "col")
 
             for ii in range(0, nkφ):
                 
@@ -211,7 +213,12 @@ def QG_Vortex_Stability():
             ax_growth.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
             ax_prop.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
             #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}_dimensionalBTgyre.png")
+
+            if nmodes == 1:
+                fig.savefig(f"omega_vs_m_fastestgrowing_dimensionalBTgyre.png")
+            elif nmodes > 1:
+                fig.savefig(f"omega_vs_m_mode{jj}_dimensionalBTgyre.png")
+            
             plt.close(fig)
         
         """
@@ -252,9 +259,11 @@ def QG_Vortex_Stability():
             plt.title('Propagation speed (eig)')
         """
 
-        #Plot eigenfunction structures against r
+        ###########################################
+        # PLOT EIGENFUNCTION STRUCTURES AGAINST r #
+        ###########################################
 
-        kz_idx, kφ_idx = 0, 1 #8, 0
+        kz_idx, kφ_idx = 11, 0 #0, 1
         kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
 
         eigVec     = modes[kz_idx, kφ_idx, :, jj]
@@ -278,7 +287,9 @@ def QG_Vortex_Stability():
         fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
         plt.close(fig)
         
-        #Plot streamfunction structures in r-φ plane
+        ######################################
+        # PLOT EIGEN-STRUCTURES IN r-φ PLANE #
+        ######################################
         
         dφ      = 2 * pi / params.Nφ
         φCoords = dφ * np.arange(1, (params.Nφ + 1))
@@ -295,6 +306,17 @@ def QG_Vortex_Stability():
                 ψ[r_idx, φ_idx] = Streamfunction(eigVecNorm[r_idx + 1],
                                                  k = kφ, φ = φCoords[φ_idx])
 
+        #Evaluate components of eigen-velocity
+        eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
+        ur, uφ            = EigenvelocityFrom1DEigvec(params, geom, eigVecNorm,
+                                                      kφ, φ = φMesh)
+
+        #Absolute maxmimum amplitudes of velocity components
+        urMax = np.max(np.abs(np.sqrt(ur.real**2 + ur.imag**2)))
+        uφMax = np.max(np.abs(np.sqrt(uφ.real**2 + uφ.imag**2)))
+
+        #Plot streamfunction in r-φ plane
+
         fig, axs = plt.subplots(1, 2, figsize = (11, 7),
                                 subplot_kw = {"projection": "polar"})
 
@@ -304,7 +326,6 @@ def QG_Vortex_Stability():
         axs[0].pcolormesh(φVis, rVis, ψ.real, 
                              cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
-
         axs[1].pcolormesh(φVis, rVis, ψ.imag,
                              cmap = "RdBu_r", vmin = -1, vmax = 1)
         axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
@@ -320,6 +341,47 @@ def QG_Vortex_Stability():
                      shrink = 0.8)
         #plt.show()
         fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_dimensionalBTgyre.png")
+        plt.close(fig)
+
+        #Plot velocities in r-φ plane
+
+        fig, axs = plt.subplots(2, 2, figsize = (8, 9),
+                                subplot_kw = {"projection": "polar"})
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(False) #Required for pcolormesh
+
+        pcm_ur = axs[0, 0].pcolormesh(φVis, rVis, np.transpose(ur.real),
+                                      cmap = "RdBu_r", vmin = -urMax, 
+                                      vmax = urMax)
+        axs[0, 0].set_title(f"Re[$u_r'(r, \phi)$]")
+        axs[0, 1].pcolormesh(φVis, rVis, np.transpose(ur.imag),
+                             cmap = "RdBu_r", vmin = -urMax, vmax = urMax)
+        axs[0, 1].set_title(f"Im[$u_r'(r, \phi)$]")
+        
+        pcm_uφ = axs[1, 0].pcolormesh(φVis, rVis, np.transpose(uφ.real),
+                                      cmap = "RdBu_r", vmin = -uφMax, 
+                                      vmax = uφMax)
+        axs[1, 0].set_title(f"Re[$u_{{\phi}}'(r,\phi)$]")
+        axs[1, 1].pcolormesh(φVis, rVis, np.transpose(uφ.imag),
+                             cmap = "RdBu_r", vmin = -uφMax, vmax = uφMax)
+        axs[1, 1].set_title(f"Im[$u_{{\phi}}'(r,\phi)$]")
+
+        for i in range(2):
+            for j in range(2):
+                axs[i, j].grid(True) #Restore grid for final version
+
+        fig.subplots_adjust(hspace = 0.4, wspace = 0.8)
+        fig.suptitle(f"Velocities derived from fastest-growing "
+                     + "eigen-streamfunction \n in $r\phi$-plane "
+                     + fr"for wavenumbers $k_{{\phi}} =$ {kφ}, $\tilde{{m}} =$ {kz}")
+        fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], 
+                     location = "right", shrink = 0.6)
+        fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
+                     location = "right", shrink = 0.6)
+        plt.show()
+        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_dimensionalBTgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
