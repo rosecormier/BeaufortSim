@@ -174,8 +174,8 @@ def QG_Vortex_Stability():
     plt.rcParams.update({"text.usetex": True, "font.size": 17})
 
     #Dimensionalize eigenvalues for visualization
-    growthDim = growth * params.f0
-    propDim   = prop * params.f0
+    growthDim = growth * params.f0 * params.Ro
+    propDim   = prop * params.f0 * params.Ro
     
     nkφ, nkz = (np.ravel(kφs)).shape[0], (np.ravel(kzs)).shape[0]
 
@@ -206,17 +206,21 @@ def QG_Vortex_Stability():
                             ylabel = "Azimuthal speed ($s^{-1}$)")
                 ax_prop.grid(True)
 
-            ax_growth.set(xlabel = 'Vertical wavenumber (per 1 km)')
-            ax_prop.set(xlabel = 'Vertical wavenumber (per 1 km)')
-            #plt.show()
-            fig.savefig(f"omega_vs_m_mode{jj}_nondimensionalBTgyre.png")
+            ax_growth.set(xlabel = "Vertical wavenumber (per domain depth $H$)")
+            ax_prop.set(xlabel = "Vertical wavenumber (per domain depth $H$)")
+            
+            if nmodes == 1:
+                fig.savefig(f"omega_vs_m_fastestgrowing_nondimBTgyre.png")
+            elif nmodes > 1:
+                fig.savefig(f"omega_vs_m_mode{jj}_nondimBTgyre.png")
+
             plt.close(fig)
 
         ###########################################
         # PLOT EIGENFUNCTION STRUCTURES AGAINST r #
         ###########################################
 
-        kz_idx, kφ_idx = 8, 0 #0, 1
+        kz_idx, kφ_idx = 0, 1 #8, 0
         kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
 
         eigVec     = modes[kz_idx, kφ_idx, :, jj]
@@ -237,7 +241,7 @@ def QG_Vortex_Stability():
                title = fr"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}} =$ {kφ}, $\tilde{{m}} =$ {kz}")
         ax.legend()
         #plt.show()
-        fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_nondimensionalBTgyre.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_nondimBTgyre.png")
         plt.close(fig)
         
         ######################################
@@ -295,7 +299,7 @@ def QG_Vortex_Stability():
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
         #plt.show()
-        fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_nondimensionalBTgyre.png")
+        fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_nondimBTgyre.png")
         plt.close(fig)
 
         #Plot velocities in r-phi plane
@@ -336,7 +340,7 @@ def QG_Vortex_Stability():
         fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
                      location = "right", shrink = 0.6)
         plt.show()
-        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_nondimensionalBTgyre.png")
+        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_nondimBTgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
