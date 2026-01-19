@@ -53,5 +53,4 @@ def SaveToNetCDF(params, growth_rates, prop_speeds, eigVecs, φCoords):
                                                      k = k,
                                                      φ = φCoords[ell])
 
-    print(ncfile)
     ncfile.close()
