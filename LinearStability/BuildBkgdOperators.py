@@ -4,7 +4,7 @@ from numpy import arange, block, diag, exp, eye, hstack, kron, matmul, meshgrid,
 
 from Stratification import N2_profile
 
-def GridInterior(params, geom, discretizeVertical = False):
+def GridInterior(params, geom, discretizeVertical = False, dimensional_H = 1):
     """
     Build array of those r- or (r,z)-values at PHYSICAL interior gridpoints.
     If grid is 2D (r, z), also build array of N^2-values at physical interior
@@ -14,7 +14,7 @@ def GridInterior(params, geom, discretizeVertical = False):
     if discretizeVertical:
         
         halfNr, Nz  = params.halfNr, params.Nz
-        N2_function = N2_profile(params.stratification_kw)
+        N2_function = N2_profile(params.stratification_kw, dimensional_H)
 
         halfNr_I = eye(halfNr)
 

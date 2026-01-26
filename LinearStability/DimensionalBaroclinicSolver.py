@@ -96,7 +96,7 @@ class Parameters:
     Lz = args.Lz    #Max. depth (i.e., -min(z)) in physical domain
     Nz = args.NzEig #Number of computational gridpoints in z
    
-    σz = 3.3e3
+    σz = 3.3e2
 
     Nφ    = args.Np #Number of azimuthal gridpoints; for visualization only
     z_idx = args.z_idx

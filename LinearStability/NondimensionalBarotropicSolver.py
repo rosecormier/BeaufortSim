@@ -302,7 +302,7 @@ def QG_Vortex_Stability():
         fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_nondimBTgyre.png")
         plt.close(fig)
 
-        #Plot velocities in r-phi plane
+        #Plot velocities in r-φ plane
 
         fig, axs = plt.subplots(2, 2, figsize = (8, 9),
                                 subplot_kw = {"projection": "polar"})
