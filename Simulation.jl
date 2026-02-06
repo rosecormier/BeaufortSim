@@ -20,37 +20,37 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 150 #x-grid size
-const Ny = 150 #y-grid size
+const Nx = 252 #x-grid size
+const Ny = 252 #y-grid size
 const Nz = 100 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
 const Hz = 3 #Number of z halo cells per boundary
 
-const Lx = 1.5e3 * kilometer #x-axis length
-const Ly = 1.5e3 * kilometer #y-axis length
-const Lz = 1 * kilometer     #z-axis length
+const Lx = 2e3 * kilometer #x-axis length
+const Ly = 2e3 * kilometer #y-axis length
+const Lz = 32 * kilometer  #z-axis length
 
 const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const σr = 100 * kilometer #Radial gyre length scale
-const σz = 300 * meter     #Vertical gyre length scale
+const U   = 1.5e-1 *(meter/second) #Gyre velocity scale (at surface)
+const N²₀ = 1e-4 * (second^(-2))   #Buoyancy frequency squared (at surface)
 
-const U   = 1e-1 * (meter/second) #Gyre velocity scale (at surface)
-const N²₀ = 1e-4 * (second^(-2))  #Surface buoyancy frequency
+const σr = 250 * kilometer #Radial gyre length scale
+const σz = "infinity" 	   #Vertical gyre length scale
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
 const N²_max = 1e-4 * (second^(-2))
 
 const d_ML = -50 * meter #Mixed-layer depth
 
-const Δt         = 10 * minute #Simulation timestep
-const tf         = 40 * minute #3000 * day  #Simulation stop time
-const Δt_save    = 10 * minute #10 * day    #Save interval
-const Δt_checkpt = 250 * day   #Checkpoint interval
+const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt_save    = parse(Float64, ARGS[3]) #Save interval (s)
+const Δt_checkpt = 250 * day   		   #Checkpoint interval
 
 const useGPU = true #Whether to use GPU
 
@@ -317,7 +317,12 @@ if vis_const_z
 end
 
 if vis_norms
-   visualize_norms(datetimenow)
+   visualize_norms(datetimenow, idxStartLinGrowth_b = 20, idxEndLinGrowth_b = 32,
+                idxStartLinGrowth_ur = 20, idxEndLinGrowth_ur = 32,
+                idxStartLinGrowth_uφ = 20, idxEndLinGrowth_uφ = 32,
+                idxStartLinGrowth_ux = 21, idxEndLinGrowth_ux = 27,
+                idxStartLinGrowth_uy = 21, idxEndLinGrowth_uy = 27,
+                idxStartLinGrowth_uz = 20, idxEndLinGrowth_uz = 32)
 end
 
 if vis_energetics
