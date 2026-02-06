@@ -14,8 +14,13 @@ using Printf
 
 ####################
 
-function visualize_norms(datetime; idxStartLinGrowth = 2, 
-				   idxEndLinGrowth = -1)
+function visualize_norms(datetime; 
+		idxStartLinGrowth_b = 2, idxEndLinGrowth_b = -1,
+		idxStartLinGrowth_ur = nothing, idxEndLinGrowth_ur = nothing,
+		idxStartLinGrowth_uφ = nothing, idxEndLinGrowth_uφ = nothing,
+		idxStartLinGrowth_ux = nothing, idxEndLinGrowth_ux = nothing,
+		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
+		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing)
 
    scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc")
 
@@ -64,51 +69,76 @@ function visualize_norms(datetime; idxStartLinGrowth = 2,
    scatter!(ax_uy, times, uy′_norm, color = :black)
    scatter!(ax_uz_Cart, times, uz′_norm, color = :black)
 
-   if idxEndLinGrowth > 0
-      growthIdcs = (idxStartLinGrowth, idxEndLinGrowth)
-   elseif idxEndLinGrowth < 0
-      growthIdcs = (idxStartLinGrowth, length(times) + idxEndLinGrowth)
+   if idxEndLinGrowth_b > 0
+      growthIdcs_b = (idxStartLinGrowth_b, idxEndLinGrowth_b)
+   elseif idxEndLinGrowth_b < 0
+      growthIdcs_b = (idxStartLinGrowth_b, length(times) + idxEndLinGrowth_b)
    end
 
-   tFitInterval       = times[growthIdcs[1]:growthIdcs[2]]
-   b′NormFitInterval  = b′_norm[growthIdcs[1]:growthIdcs[2]]
-   ur′NormFitInterval = ur′_norm[growthIdcs[1]:growthIdcs[2]]
-   uφ′NormFitInterval = uφ′_norm[growthIdcs[1]:growthIdcs[2]]
-   ux′NormFitInterval = ux′_norm[growthIdcs[1]:growthIdcs[2]]
-   uy′NormFitInterval = uy′_norm[growthIdcs[1]:growthIdcs[2]]
-   uz′NormFitInterval = uz′_norm[growthIdcs[1]:growthIdcs[2]]
+   function updateGrowthIdcs!(idxStart, idxEnd)
+      
+      if isnothing(idxStart) #Default to the start index used for b
+         idxStart = growthIdcs_b[1]
+      end
 
-   b′NormLinearFitParams  = fit(tFitInterval, log.(b′NormFitInterval), 1,
-				var = :times)
-   ur′NormLinearFitParams = fit(tFitInterval, log.(ur′NormFitInterval), 1,
-				var = :times)
-   uφ′NormLinearFitParams = fit(tFitInterval, log.(uφ′NormFitInterval), 1,
-			      	var = :times)
-   ux′NormLinearFitParams = fit(tFitInterval, log.(ux′NormFitInterval), 1,
-				var = :times)
-   uy′NormLinearFitParams = fit(tFitInterval, log.(uy′NormFitInterval), 1,
-				var = :times)
-   uz′NormLinearFitParams = fit(tFitInterval, log.(uz′NormFitInterval), 1,
-				var = :times)
+      if isnothing(idxEnd) #Default to the end index used for b
+         idxEnd = growthIdcs_b[2]
+      end
+
+      return idxStart, idxEnd
+   end
+
+   idxStartLinGrowth_ur, idxEndLinGrowth_ur = updateGrowthIdcs!(idxStartLinGrowth_ur, idxEndLinGrowth_ur)
+   idxStartLinGrowth_uφ, idxEndLinGrowth_uφ = updateGrowthIdcs!(idxStartLinGrowth_uφ, idxEndLinGrowth_uφ)
+   idxStartLinGrowth_ux, idxEndLinGrowth_ux = updateGrowthIdcs!(idxStartLinGrowth_ux, idxEndLinGrowth_ux)
+   idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, idxEndLinGrowth_uy)
+   idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz, idxEndLinGrowth_uz)
+
+   b′NormFitInterval  = b′_norm[growthIdcs_b[1]:growthIdcs_b[2]]
+   ur′NormFitInterval = ur′_norm[idxStartLinGrowth_ur:idxEndLinGrowth_ur]
+   uφ′NormFitInterval = uφ′_norm[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]
+   ux′NormFitInterval = ux′_norm[idxStartLinGrowth_ux:idxEndLinGrowth_ux]
+   uy′NormFitInterval = uy′_norm[idxStartLinGrowth_uy:idxEndLinGrowth_uy]
+   uz′NormFitInterval = uz′_norm[idxStartLinGrowth_uz:idxEndLinGrowth_uz]
+
+   b′NormLinearFitParams  = fit(times[growthIdcs_b[1]:growthIdcs_b[2]], 
+				log.(b′NormFitInterval), 1, var = :times)
+   ur′NormLinearFitParams = fit(times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
+				log.(ur′NormFitInterval), 1, var = :times)
+   uφ′NormLinearFitParams = fit(times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
+				log.(uφ′NormFitInterval), 1, var = :times)
+   ux′NormLinearFitParams = fit(times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
+				log.(ux′NormFitInterval), 1, var = :times)
+   uy′NormLinearFitParams = fit(times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
+				log.(uy′NormFitInterval), 1, var = :times)
+   uz′NormLinearFitParams = fit(times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+				log.(uz′NormFitInterval), 1, var = :times)
    
-   @printf("Empirical growth rate:\n From b′-norm: %.2f per day\n From ur′-norm: %.2f per day\n From uφ′-norm: %.2f per day\n From ux′-norm: %.2f per day\n From uy′-norm: %.2f per day\n From uz′-norm: %.2f per day",
+   @printf("Empirical growth rate:\n From b′-norm: %.5f per day\n From ur′-norm: %.5f per day\n From uφ′-norm: %.5f per day\n From ux′-norm: %.5f per day\n From uy′-norm: %.5f per day\n From uz′-norm: %.5f per day\n",
 	    b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
 	    uφ′NormLinearFitParams[1], ux′NormLinearFitParams[1],
 	    uy′NormLinearFitParams[1], uz′NormLinearFitParams[1])
 
-   @inline linearFunction(fitParams; offset = 2) = @. offset * exp(fitParams[0] 
-						+ fitParams[1] * tFitInterval
-								  )
+   @inline linearFunction(fitParams, tFitInterval; offset = 2) = @. offset * 
+   				exp(fitParams[0] + fitParams[1] * tFitInterval)
 
-   lines!(ax_b_cyl, tFitInterval, linearFunction(b′NormLinearFitParams))
-   lines!(ax_ur, tFitInterval, linearFunction(ur′NormLinearFitParams))
-   lines!(ax_uφ, tFitInterval, linearFunction(uφ′NormLinearFitParams))
-   lines!(ax_uz_cyl, tFitInterval, linearFunction(uz′NormLinearFitParams))
+   lines!(ax_b_cyl, times[growthIdcs_b[1]:growthIdcs_b[2]],
+	  linearFunction(b′NormLinearFitParams, times[growthIdcs_b[1]:growthIdcs_b[2]]))
+   lines!(ax_ur, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
+	  linearFunction(ur′NormLinearFitParams, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur]))
+   lines!(ax_uφ, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
+	  linearFunction(uφ′NormLinearFitParams, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]))
+   lines!(ax_uz_cyl, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+	  linearFunction(uz′NormLinearFitParams, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz]))
 
-   lines!(ax_b_Cart, tFitInterval, linearFunction(b′NormLinearFitParams))
-   lines!(ax_ux, tFitInterval, linearFunction(ux′NormLinearFitParams))
-   lines!(ax_uy, tFitInterval, linearFunction(uy′NormLinearFitParams))
-   lines!(ax_uz_Cart, tFitInterval, linearFunction(uz′NormLinearFitParams))
+   lines!(ax_b_Cart, times[growthIdcs_b[1]:growthIdcs_b[2]], 
+	  linearFunction(b′NormLinearFitParams, times[growthIdcs_b[1]:growthIdcs_b[2]]))
+   lines!(ax_ux, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
+	  linearFunction(ux′NormLinearFitParams, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux]))
+   lines!(ax_uy, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
+	  linearFunction(uy′NormLinearFitParams, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy]))
+   lines!(ax_uz_Cart, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+	  linearFunction(uz′NormLinearFitParams, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz]))
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
@@ -584,10 +614,10 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ,
       hm_uφ_total = heatmap!(ax_uφ_total, axis1, axis2_zC, uφ_total, colorrange = lims_uφ_total, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
       hm_uz_total = heatmap!(ax_uz_total, axis1, axis2_zF, uz_total, colorrange = lims_uz, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
 
-      hm_b_pert  = heatmap!(ax_b_pert, axis1, axis2_zC, Δb, colorrange = lims_Δb, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
-      hm_ur_pert = heatmap!(ax_ur_pert, axis1, axis2_zC, ur_total, colorrange = lims_ur, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
-      hm_uφ_pert = heatmap!(ax_uφ_pert, axis1, axis2_zC, Δuφ, colorrange = lims_Δuφ, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
-      hm_uz_pert = heatmap!(ax_uz_pert, axis1, axis2_zF, uz_total, colorrange = lims_uz, colormap = Reverse(:RdBu_5))#, highclip = :red, lowclip = :blue)
+      hm_b_pert  = heatmap!(ax_b_pert, axis1, axis2_zC, Δb, colormap = Reverse(:RdBu_5))#, colorrange = lims_Δb, highclip = :red, lowclip = :blue)
+      hm_ur_pert = heatmap!(ax_ur_pert, axis1, axis2_zC, ur_total, colormap = Reverse(:RdBu_5))#, colorrange = lims_ur, highclip = :red, lowclip = :blue)
+      hm_uφ_pert = heatmap!(ax_uφ_pert, axis1, axis2_zC, Δuφ, colormap = Reverse(:RdBu_5))#, colorrange = lims_Δuφ, highclip = :red, lowclip = :blue)
+      hm_uz_pert = heatmap!(ax_uz_pert, axis1, axis2_zF, uz_total, colormap = Reverse(:RdBu_5))#, colorrange = lims_uz, highclip = :red, lowclip = :blue)
 
       Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
       Colorbar(fig_total[2, 4], hm_ur_total, tickformat = "{:.1e}", label = "m/s")
