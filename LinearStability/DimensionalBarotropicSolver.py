@@ -207,7 +207,7 @@ def QG_Vortex_Stability():
                              ".-", color = "mediumpurple")
                 ax_prop.set(title = 
                         f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
-                            ylabel = "Azimuthal speed (s$^{{-1}}$)")
+                            ylabel = "Angular velocity (s$^{{-1}}$)")
                 ax_prop.grid(True)
 
             ax_growth.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
