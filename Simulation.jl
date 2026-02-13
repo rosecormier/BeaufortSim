@@ -28,16 +28,16 @@ const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
 const Hz = 3 #Number of z halo cells per boundary
 
-const Lx = 2e3 * kilometer #x-axis length
-const Ly = 2e3 * kilometer #y-axis length
-const Lz = 32 * kilometer  #z-axis length
+const Lx = 2.5e3 * kilometer #x-axis length
+const Ly = 2.5e3 * kilometer #y-axis length
+const Lz = 32 * kilometer    #z-axis length
 
 const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const U   = 1.5e-1 *(meter/second) #Gyre velocity scale (at surface)
-const N²₀ = 1e-4 * (second^(-2))   #Buoyancy frequency squared (at surface)
+const U   = 3.5 * (meter/second) #Gyre velocity scale (at surface)
+const N²₀ = 1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
 
 const σr = 250 * kilometer #Radial gyre length scale
 const σz = "infinity" 	   #Vertical gyre length scale
@@ -60,8 +60,8 @@ const max_u′ = 1e-8 #Max. relative magnitude of initial velocity perturbation
 const vis_const_x    = false
 const vis_const_y    = false
 const vis_const_z    = false
-const vis_norms      = true
-const vis_energetics = false #Note: currently can only be done on CPU
+const vis_norms      = false
+const vis_energetics = true #Note: currently can only be done on CPU
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -134,7 +134,7 @@ Uφ = CenterField(model.grid)
 Uz = ZFaceField(model.grid)
 B  = CenterField(model.grid)
 
-#Store background state
+#Prescribe background values to those fields
 set!(Ux, model.velocities.u)
 set!(Uy, model.velocities.v)
 set!(Ur, Ur_vals)
@@ -146,6 +146,13 @@ fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 fill_halo_regions!(B)
 
+∂z_Uφ = CenterField(model.grid)
+set!(∂z_Uφ, ∂z(Uφ))
+
+@inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
+
+@inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
+
 @inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
@@ -155,11 +162,42 @@ fill_halo_regions!(B)
      		      		ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
                       		ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
 
-pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
+pointwise_pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
    grid, model.velocities.u, model.velocities.v, model.velocities.w, Ux, Uy, Uz)
 
-function compute_pKE(sim)
-   compute!(pKE_op)
+function compute_integrated_pKE(sim)
+   compute!(Integral(Field(pointwise_pKE_op)))
+end
+
+@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (
+		  (b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
+
+pAPE_to_pKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc,
+   grid, model.tracers.b, model.velocities.w, B, Uz)
+
+function compute_integrated_pAPE_to_pKE(sim)
+   compute!(Integral(Field(pAPE_to_pKE_op)))
+end
+
+function ∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂z_Uφ)
+
+   φ = atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())), ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center())))
+
+   ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
+   uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
+   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ)) 
+
+   uφ′_ccc = uφ′(i, j, k, grid, uφ_ccc, Uφ)
+   uz′_ccc = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz) 
+   ∂z_Uφ_ccc = @inbounds ∂z_Uφ[i, j, k]
+
+   return @inbounds ∂z_Uφ_ccc * uφ′_ccc * uz′_ccc
+end
+
+BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, grid, model.velocities.u, model.velocities.v, model.velocities.w, Uφ, Uz, ∂z_Uφ)
+
+function compute_BCI_transfer(sim)
+   compute!(Integral(Field(BCI_transfer_op)))
 end
 
 #############################
@@ -210,7 +248,6 @@ outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
 scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 logfilepath    = joinpath("./Logs", "log_$(datetimenow).txt")
-finalfilepath  = joinpath("./Output", "final_$(datetimenow).nc")
 
 #Make required paths if nonexistent
 mkpath(dirname(outfilepath))
@@ -218,15 +255,11 @@ mkpath(dirname(scalarfilepath))
 mkpath(dirname(energyfilepath))
 mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
-mkpath(dirname(finalfilepath))
 
 field_writer = NetCDFWriter(model, outputs, with_halos = true,
 		                              filename = outfilepath, 
                                               schedule = TimeInterval(Δt_save),
 					file_splitting = FileSizeLimit(30GiB))
-
-final_writer = NetCDFWriter(model, outputs, with_halos = true,
-			    filename = finalfilepath, schedule = SpecifiedTimes(tf))
 
 ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
 uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
@@ -253,7 +286,9 @@ scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 					       uz′_norm = (),
 					       b′_norm  = ()))
 
-energy_diagnostics = (; pKE = compute_pKE(simulation))
+energy_diagnostics = (; integrated_pKE = compute_integrated_pKE(simulation),
+	integrated_pAPE_to_pKE = compute_integrated_pAPE_to_pKE(simulation),
+	integrated_BCI_transfer = compute_BCI_transfer(simulation))
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
@@ -270,7 +305,6 @@ simulation.output_writers[:field_writer]  = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
-simulation.output_writers[:final_writer]  = final_writer
 
 run!(simulation; pickup = false)
 
@@ -317,12 +351,12 @@ if vis_const_z
 end
 
 if vis_norms
-   visualize_norms(datetimenow, idxStartLinGrowth_b = 20, idxEndLinGrowth_b = 32,
-                idxStartLinGrowth_ur = 20, idxEndLinGrowth_ur = 32,
-                idxStartLinGrowth_uφ = 20, idxEndLinGrowth_uφ = 32,
-                idxStartLinGrowth_ux = 21, idxEndLinGrowth_ux = 27,
-                idxStartLinGrowth_uy = 21, idxEndLinGrowth_uy = 27,
-                idxStartLinGrowth_uz = 20, idxEndLinGrowth_uz = 32)
+   visualize_norms(datetimenow, idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
+                idxStartLinGrowth_ur = 24, idxEndLinGrowth_ur = 37,
+                idxStartLinGrowth_uφ = 24, idxEndLinGrowth_uφ = 37,
+                idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
+                idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
+                idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37)
 end
 
 if vis_energetics
