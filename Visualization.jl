@@ -159,36 +159,36 @@ function visualize_energetics(datetime, grid)
    outfile_list         = glob("./Output/energetics_$(datetime)*")
    energetics_ds, t, Nt = open_energetics_dataset(outfile_list)
 
-   pKE_data = energetics_ds[:pKE][:, :, :, :]
-   
-   fig = Figure(size = (1200, 700))
-   ax  = Axis(fig[2, 1]; xlabel = "Time [days]",
-	      		 ylabel = "Energy [m^5/s^2]",
+   pKE_total = energetics_ds[:integrated_pKE][:]
+   pAPE_to_pKE = energetics_ds[:integrated_pAPE_to_pKE][:]
+
+   fig_pKEtotal = Figure(size = (1200, 700))
+   ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
+	      		 ylabel = "pKE per unit mass [m^2/s^2]",
                          yscale = log10)
 
-   n = Observable(1)
+   scatter!(ax_pKEtotal, t, pKE_total, color = :black)
 
-   pKE_Field_n = CenterField(grid)
-
-   @lift set!(pKE_Field_n, pKE_data[:, :, :, $n])
-
-   for i = 1:Nt
-
-      integrated_pKE_n = Field(Integral(pKE_Field_n))
-      
-      compute!(integrated_pKE_n)
-      scatter!(ax, t[i], integrated_pKE_n[1], color = :black)
-      yield()
-      
-      n[] = i
-   end
-
+   fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
+			      "Volume-integrated perturbation kinetic energy",
+                     	      fontsize = 24, tellwidth = false)
+ 
    mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
+   
+   fig_budget = Figure(size = (1200, 700))
+   ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
+		     ylabel = "[m^5/s^3]")#,
+		   # yscale = log10)
 
-   fig[1, 1] = Label(fig, "Volume-integrated perturbation kinetic energy",
-                     fontsize = 24, tellwidth = false)
+   scatter!(ax_budget, t, pAPE_to_pKE)
 
-   save(joinpath("./Plots", "pKE_$(datetime).png"), fig)
+   fig_budget[1, 1] = Label(fig_budget,
+			    "Terms in pKE budget",
+			    fontsize = 24, tellwidth = false)
+
+   save(joinpath("./Plots", "pKEbudget_$(datetime).png"), fig_budget)
+
    close(energetics_ds)
 end
 
