@@ -61,7 +61,7 @@ const vis_const_x    = false
 const vis_const_y    = false
 const vis_const_z    = false
 const vis_norms      = false
-const vis_energetics = true #Note: currently can only be done on CPU
+const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -149,6 +149,14 @@ fill_halo_regions!(B)
 ∂z_Uφ = CenterField(model.grid)
 set!(∂z_Uφ, ∂z(Uφ))
 
+φcoords = CenterField(model.grid)
+set!(φcoords, compute_polar_coords(grid)[2])
+
+∂r_Uφ = CenterField(model.grid)
+set!(∂r_Uφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
+
+@inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
+
 @inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
 
 @inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
@@ -167,6 +175,28 @@ pointwise_pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
 
 function compute_integrated_pKE(sim)
    compute!(Integral(Field(pointwise_pKE_op)))
+end
+
+function ∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂r_Uφ)
+
+   φ = atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())), ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center())))
+
+   ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
+   uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
+   ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
+   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
+
+   ur′_ccc = ur′(i, j, k, grid, ur_ccc, Ur)
+   uφ′_ccc = uφ′(i, j, k, grid, uφ_ccc, Uφ)
+   ∂r_Uφ_ccc = @inbounds ∂r_Uφ[i, j, k]
+
+   return @inbounds -(∂r_Uφ_ccc * ur′_ccc * uφ′_ccc)
+end
+
+BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, grid, model.velocities.u, model.velocities.v, Ur, Uφ, ∂r_Uφ)
+
+function compute_BTI_transfer(sim)
+   compute!(Integral(Field(BTI_transfer_op)))
 end
 
 @inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (
@@ -191,7 +221,7 @@ function ∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂z_Uφ)
    uz′_ccc = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz) 
    ∂z_Uφ_ccc = @inbounds ∂z_Uφ[i, j, k]
 
-   return @inbounds ∂z_Uφ_ccc * uφ′_ccc * uz′_ccc
+   return @inbounds -(∂z_Uφ_ccc * uφ′_ccc * uz′_ccc)
 end
 
 BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, grid, model.velocities.u, model.velocities.v, model.velocities.w, Uφ, Uz, ∂z_Uφ)
@@ -288,6 +318,7 @@ scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 
 energy_diagnostics = (; integrated_pKE = compute_integrated_pKE(simulation),
 	integrated_pAPE_to_pKE = compute_integrated_pAPE_to_pKE(simulation),
+	integrated_BTI_transfer = compute_BTI_transfer(simulation),
 	integrated_BCI_transfer = compute_BCI_transfer(simulation))
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
