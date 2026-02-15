@@ -161,6 +161,8 @@ function visualize_energetics(datetime, grid)
 
    pKE_total = energetics_ds[:integrated_pKE][:]
    pAPE_to_pKE = energetics_ds[:integrated_pAPE_to_pKE][:]
+   BTI_transfer = energetics_ds[:integrated_BTI_transfer][:]
+   BCI_transfer = energetics_ds[:integrated_BCI_transfer][:]
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
@@ -182,6 +184,8 @@ function visualize_energetics(datetime, grid)
 		   # yscale = log10)
 
    scatter!(ax_budget, t, pAPE_to_pKE)
+   scatter!(ax_budget, t, BTI_transfer)
+   scatter!(ax_budget, t, BCI_transfer)
 
    fig_budget[1, 1] = Label(fig_budget,
 			    "Terms in pKE budget",
