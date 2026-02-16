@@ -381,7 +381,7 @@ def QG_Vortex_Stability():
         ax_prop.scatter(kφs, np.ravel(propDimCh[:, 0]), 
                          color = "mediumpurple", label = "Cheb solver")
         ax_prop.set(title = f"Propagation speed; fastest-growing mode",
-                        ylabel = "Azimuthal speed ($s^{-1}$)")
+                        ylabel = "Angular velocity ($s^{-1}$)")
 
         ax_growth.set(xlabel = r"Azimuthal wavenumber $k_{\phi}$")
         ax_prop.set(xlabel = r"Azimuthal wavenumber $k_{\phi}$")
