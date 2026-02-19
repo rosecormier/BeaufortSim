@@ -87,16 +87,8 @@ function bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot, zmax, zmin)
 					  )
 				      )
 
-
       b̄z_top = (x, y, t) -> b̄z(x, y, zmax, bkgd_N²_top)
-                            #    .+ (sqrt(2)*f*U*σr/(σz^2)
-                            #       * exp(1/2)
-                            #       * (1 - exp(-(x^2 + y^2)/(σr^2)))))
       b̄z_bot = (x, y, t) -> b̄z(x, y, zmin, bkgd_N²_bot)
-                            #    .+ (sqrt(2)*f*U*σr/(σz^2)
-                            #       * exp((1/2) - (Lz/σz)^2)
-                            #       * (1 - exp(-(x^2 + y^2)/(σr^2)))
-                            #       * (1 - 2 * (Lz/σz)^2)))
    end
 
    b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
