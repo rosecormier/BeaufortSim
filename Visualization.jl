@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
-using Adapt, CairoMakie 
-using CommonDataModel, CUDA, DataStructures, Glob, LaTeXStrings, NCDatasets
+using Adapt, CairoMakie, CommonDataModel
+using CUDA, DataStructures, Dierckx, Glob, LaTeXStrings, NCDatasets
 
 update_theme!(fontsize = 16)
 
@@ -159,10 +159,14 @@ function visualize_energetics(datetime, grid)
    outfile_list         = glob("./Output/energetics_$(datetime)*")
    energetics_ds, t, Nt = open_energetics_dataset(outfile_list)
 
+   finer_t_grid = LinRange(t[1], t[end], Nt*4)
+
    pKE_total    = energetics_ds[:integrated_pKE][:]
    pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][:]
    BTI_transfer = energetics_ds[:integrated_BTI_transfer][:]
    BCI_transfer = energetics_ds[:integrated_BCI_transfer][:]
+
+   pKE_total_spline = ParametricSpline(t, reshape(pKE_total, (1, :)))
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
@@ -170,6 +174,7 @@ function visualize_energetics(datetime, grid)
                          yscale = log10)
 
    scatter!(ax_pKEtotal, t, pKE_total, color = :black)
+   lines!(ax_pKEtotal, finer_t_grid, pKE_total_spline(finer_t_grid)[1, :], color = :grey50)
 
    fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
 			      "Volume-integrated perturbation kinetic energy",
@@ -178,13 +183,16 @@ function visualize_energetics(datetime, grid)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
    
+   dt_pKE_total = derivative(pKE_total_spline, t)
+   
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
 		     ylabel = "[m^5/s^3]")
 
+   lines!(ax_budget, t, dt_pKE_total[1, :], label = "Time derivative of total pKE", color = :yellowgreen)
    scatter!(ax_budget, t, pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
    scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", color = :hotpink)
-   scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", color = :mediumseagreen)
+   scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", color = :darkgreen)
    axislegend(ax_budget)
 
    fig_budget[1, 1] = Label(fig_budget,
