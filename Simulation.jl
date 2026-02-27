@@ -20,47 +20,53 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 252 #x-grid size
-const Ny = 252 #y-grid size
-const Nz = 100 #z-grid size
+const Nx = 900 #x-grid size
+const Ny = 900 #y-grid size
+const Nz = 30  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
 const Hz = 3 #Number of z halo cells per boundary
 
-const Lx = 2.5e3 * kilometer #x-axis length
-const Ly = 2.5e3 * kilometer #y-axis length
-const Lz = 32 * kilometer    #z-axis length
+const Lr = 5e3 * kilometer #[Minimum] domain radius
+const Lz = 1 * kilometer    #z-axis length
 
 const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
 const U   = 3.5 * (meter/second) #Gyre velocity scale (at surface)
-const N²₀ = 1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
+const N²₀ = 1e-2 * (second^(-2)) #1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
 
 const σr = 250 * kilometer #Radial gyre length scale
-const σz = "infinity" 	   #Vertical gyre length scale
+const σz = 300 * meter 	   #Vertical gyre length scale
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 1e-4 * (second^(-2))
+const N²_max = 1e-2 * (second^(-2)) #1e-4 * (second^(-2))
 
 const d_ML = -50 * meter #Mixed-layer depth
 
 const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
 const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
-const Δt_save    = parse(Float64, ARGS[3]) #Save interval (s)
 const Δt_checkpt = 250 * day   		   #Checkpoint interval
+
+#Set save interval
+if parse(Float64, ARGS[3]) < tf / 200
+   print("Save interval too small for given duration. Using tf/200 instead.")
+   const Δt_save = tf / 200
+else
+   const Δt_save = parse(Float64, ARGS[3])
+end
 
 const useGPU = true #Whether to use GPU
 
 const max_u′ = 1e-8 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = false
+const vis_const_x    = true
 const vis_const_y    = false
-const vis_const_z    = false
-const vis_norms      = false
+const vis_const_z    = true
+const vis_norms      = true
 const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
@@ -88,8 +94,8 @@ useGPU ? architecture = GPU() : architecture = CPU()
 grid = RectilinearGrid(architecture,
 		       topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
-                       x = (-Lx/2, Lx/2),
-		       y = (-Ly/2, Ly/2),
+                       x = (-Lr, Lr),
+		       y = (-Lr, Lr),
                        z = (-Lz, 0.0),
 		       halo = (Hx, Hy, Hz))
 #                       z = z_grid_spacing)
@@ -236,13 +242,13 @@ end
 
 #Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = ū(x, y, z) + 2*(rand()-0.5) * max_u′/sqrt(2)
+@inline u_perturbed(x, y, z) = ū(x, y, z) + 2*(rand()-0.5) * max_u′/(U*sqrt(2))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = v̄(x, y, z) + 2*(rand()-0.5) * max_u′/sqrt(2)
+@inline v_perturbed(x, y, z) = v̄(x, y, z) + 2*(rand()-0.5) * max_u′/(U*sqrt(2))
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
@@ -337,7 +343,7 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
-run!(simulation; pickup = false)
+run!(simulation)#; pickup = joinpath("./Checkpoints", "checkpoint_260217-161706_iteration360000.jld2"))
 
 duration = canonicalize(now() - datetimestart)
 
@@ -348,7 +354,7 @@ pad_filenames(datetimenow; prefix = "energetics")
 #Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
-   write(file, "Lx, Ly, Lz = $(Lx), $(Ly), $(Lz) \n\n")
+   write(file, "Lr, Lz = $(Lr), $(Lz) \n\n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U, N²₀ = $(U), $(N²₀) \n")
    write(file, "Max. u' = $(max_u′) \n")
@@ -359,24 +365,21 @@ open(logfilepath, "w") do file
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
 
-###################################
-# RUN VISUALIZATION, IF INDICATED #
-###################################
+#####################
+# RUN VISUALIZATION #
+#####################
 
 if vis_const_x
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; x_idx = x_idx, t_idx_skip = t_idx_skip)
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; 
 			     t_idx_skip = t_idx_skip)
 end
 
 if vis_const_y
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; y_idx = y_idx, t_idx_skip = t_idx_skip)
    visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ, Hx, Hy, Hz; 
 			     t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
-   #visualize_b_and_ωz(datetimenow, Lx/Nx, Ly/Ny; z_idx = z_idx, t_idx_skip = t_idx_skip)
    visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ, Hx, Hy, Hz; 
 			     t_idx_skip = t_idx_skip)
 end
