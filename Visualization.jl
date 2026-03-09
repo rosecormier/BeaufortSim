@@ -156,25 +156,32 @@ end
 
 function visualize_energetics(datetime, grid)
 
-   outfile_list         = glob("./Output/energetics_$(datetime)*")
-   energetics_ds, t, Nt = open_energetics_dataset(outfile_list)
+   outfile_list                 = glob("./Output/energetics_$(datetime)*")
+   energetics_ds, tUnsorted, Nt = open_energetics_dataset(outfile_list)
+
+   #Sort times (essential if sim has ever been picked up from a checkpoint)
+   sortIdcs = sortperm(tUnsorted)
+   t        = tUnsorted[sortIdcs]
 
    finer_t_grid = LinRange(t[1], t[end], Nt*4)
 
-   pKE_total    = energetics_ds[:integrated_pKE][:]
-   pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][:]
-   BTI_transfer = energetics_ds[:integrated_BTI_transfer][:]
-   BCI_transfer = energetics_ds[:integrated_BCI_transfer][:]
+   pKE_total    = energetics_ds[:integrated_pKE][sortIdcs]
+   pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][sortIdcs]
+   BTI_transfer = energetics_ds[:integrated_BTI_transfer][sortIdcs]
+   BCI_transfer = energetics_ds[:integrated_BCI_transfer][sortIdcs]
 
-   pKE_total_spline = ParametricSpline(t, reshape(pKE_total, (1, :)))
+   #Fit total pKE with B-spline
+   pKE_total_spline = ParametricSpline(t[2:end], 
+				       reshape(pKE_total[2:end], (1, :)))
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
-	      		 ylabel = "pKE per unit mass [m^2/s^2]",
-                         yscale = log10)
+	      		                   ylabel = "pKE per density [m^2/s^2]",
+                                           yscale = log10)
 
-   scatter!(ax_pKEtotal, t, pKE_total, color = :black)
-   lines!(ax_pKEtotal, finer_t_grid, pKE_total_spline(finer_t_grid)[1, :], color = :grey50)
+   scatter!(ax_pKEtotal, t[2:end], pKE_total[2:end], color = :black)
+   lines!(ax_pKEtotal, finer_t_grid[2:end], 
+	  pKE_total_spline(finer_t_grid)[1, 2:end], color = :grey50)
 
    fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
 			      "Volume-integrated perturbation kinetic energy",
@@ -189,10 +196,13 @@ function visualize_energetics(datetime, grid)
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
 		     ylabel = "[m^5/s^3]")
 
-   lines!(ax_budget, t, dt_pKE_total[1, :], label = "Time derivative of total pKE", color = :yellowgreen)
+   lines!(ax_budget, t, dt_pKE_total[1, :], 
+	  label = "Time derivative of total pKE", color = :yellowgreen)
    scatter!(ax_budget, t, pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
-   scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", color = :hotpink)
-   scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", color = :darkgreen)
+   scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", 
+	    color = :hotpink)
+   scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", 
+	    color = :darkgreen)
    axislegend(ax_budget)
 
    fig_budget[1, 1] = Label(fig_budget,
