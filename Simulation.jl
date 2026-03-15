@@ -20,15 +20,15 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 900 #x-grid size
-const Ny = 900 #y-grid size
-const Nz = 30  #z-grid size
+const Nx = 252 #x-grid size
+const Ny = 252 #y-grid size
+const Nz = 50  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
 const Hz = 3 #Number of z halo cells per boundary
 
-const Lr = 5e3 * kilometer #[Minimum] domain radius
+const Lr = 2.5e3 * kilometer #[Minimum] domain radius
 const Lz = 1 * kilometer    #z-axis length
 
 const lat = 74.0     #Latitude (deg. N)
@@ -36,13 +36,13 @@ fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
 const U   = 3.5 * (meter/second) #Gyre velocity scale (at surface)
-const N²₀ = 1e-2 * (second^(-2)) #1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
+const N²₀ = 4e-3 * (second^(-2)) #1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
 
 const σr = 250 * kilometer #Radial gyre length scale
 const σz = 300 * meter 	   #Vertical gyre length scale
 
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 1e-2 * (second^(-2)) #1e-4 * (second^(-2))
+const N²_max = 4e-3 * (second^(-2)) #1e-4 * (second^(-2))
 
 const d_ML = -50 * meter #Mixed-layer depth
 
@@ -60,14 +60,14 @@ end
 
 const useGPU = true #Whether to use GPU
 
-const max_u′ = 1e-8 #Max. relative magnitude of initial velocity perturbation
+const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
 const vis_const_x    = true
 const vis_const_y    = false
 const vis_const_z    = true
 const vis_norms      = true
-const vis_energetics = true
+const vis_energetics = false
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -242,13 +242,13 @@ end
 
 #Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = ū(x, y, z) + 2*(rand()-0.5) * max_u′/(U*sqrt(2))
+@inline u_perturbed(x, y, z) = ū(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = v̄(x, y, z) + 2*(rand()-0.5) * max_u′/(U*sqrt(2))
+@inline v_perturbed(x, y, z) = v̄(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
@@ -313,7 +313,7 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 
 scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 		                   filename = scalarfilepath, 
-				   schedule = TimeInterval(Δt_save),
+				   schedule = TimeInterval(1*hour),
                              file_splitting = FileSizeLimit(30GiB),
 				 dimensions = (ux′_norm = (),
 					       uy′_norm = (),
@@ -343,7 +343,7 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
-run!(simulation)#; pickup = joinpath("./Checkpoints", "checkpoint_260217-161706_iteration360000.jld2"))
+run!(simulation)#; pickup = joinpath("./Checkpoints", "checkpoint_260306-200453_iteration360000.jld2"))
 
 duration = canonicalize(now() - datetimestart)
 
@@ -386,8 +386,8 @@ end
 
 if vis_norms
    visualize_norms(datetimenow, idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
-                idxStartLinGrowth_ur = 24, idxEndLinGrowth_ur = 37,
-                idxStartLinGrowth_uφ = 24, idxEndLinGrowth_uφ = 37,
+                idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
+                idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
                 idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
                 idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
                 idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37)
