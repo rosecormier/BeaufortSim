@@ -1,7 +1,7 @@
 include("LibraryVisualization.jl")
 
-using Adapt, CairoMakie, CommonDataModel
-using CUDA, DataStructures, Dierckx, Glob, LaTeXStrings, NCDatasets
+using Adapt, CairoMakie, CommonDataModel, CUDA, DataStructures
+using Dierckx, Glob, LaTeXStrings, NCDatasets, Printf
 
 update_theme!(fontsize = 16)
 
@@ -10,7 +10,6 @@ using Oceananigans.Fields
 using Oceananigans.OutputReaders
 using OffsetArrays: no_offset_view
 using Polynomials: fit
-using Printf
 
 ####################
 
@@ -20,16 +19,18 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_uφ = nothing, idxEndLinGrowth_uφ = nothing,
 		idxStartLinGrowth_ux = nothing, idxEndLinGrowth_ux = nothing,
 		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
-		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing)
+		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
+		idxStartPlot = 2)
 
-   scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc")
+   scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc";
+					    idxStart = idxStartPlot)
 
-   b′_norm  = scalars_ds[:b′_norm][2:end]
-   ux′_norm = scalars_ds[:ux′_norm][2:end]
-   uy′_norm = scalars_ds[:uy′_norm][2:end]
-   ur′_norm = scalars_ds[:ur′_norm][2:end]
-   uφ′_norm = scalars_ds[:uφ′_norm][2:end]
-   uz′_norm = scalars_ds[:uz′_norm][2:end]
+   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:end]
+   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:end]
+   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:end]
+   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:end]
+   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:end]
+   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:end]
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
@@ -169,10 +170,12 @@ function visualize_energetics(datetime, grid)
    pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][sortIdcs]
    BTI_transfer = energetics_ds[:integrated_BTI_transfer][sortIdcs]
    BCI_transfer = energetics_ds[:integrated_BCI_transfer][sortIdcs]
-
-   #Fit total pKE with B-spline
+   print(typeof(t[2:end]))
+   print(t[2:end])
+   #Fit total pKE with P-spline
    pKE_total_spline = ParametricSpline(t[2:end], 
-				       reshape(pKE_total[2:end], (1, :)))
+				       reshape(pKE_total[2:end], (1, :)),
+				       s = 1e5)
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
