@@ -197,11 +197,11 @@ function open_energetics_dataset(energeticsfilename)
    return energetics_ds, t, Nt
 end
 
-function open_scalars_dataset(scalarfilename)
+function open_scalars_dataset(scalarfilename; idxStart = 2)
 
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
 
-   t = scalars_ds[:time][2:end] ./ 86400 #Convert to days for readability
+   t = scalars_ds[:time][idxStart:end] ./ 86400 #Convert to days for readability
    
    return scalars_ds, t
 end
