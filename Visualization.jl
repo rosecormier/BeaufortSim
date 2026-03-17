@@ -170,12 +170,6 @@ function visualize_energetics(datetime, grid)
    pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][sortIdcs]
    BTI_transfer = energetics_ds[:integrated_BTI_transfer][sortIdcs]
    BCI_transfer = energetics_ds[:integrated_BCI_transfer][sortIdcs]
-   print(typeof(t[2:end]))
-   print(t[2:end])
-   #Fit total pKE with P-spline
-   pKE_total_spline = ParametricSpline(t[2:end], 
-				       reshape(pKE_total[2:end], (1, :)),
-				       s = 1e5)
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
@@ -183,8 +177,6 @@ function visualize_energetics(datetime, grid)
                                            yscale = log10)
 
    scatter!(ax_pKEtotal, t[2:end], pKE_total[2:end], color = :black)
-   lines!(ax_pKEtotal, finer_t_grid[2:end], 
-	  pKE_total_spline(finer_t_grid)[1, 2:end], color = :grey50)
 
    fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
 			      "Volume-integrated perturbation kinetic energy",
@@ -193,14 +185,14 @@ function visualize_energetics(datetime, grid)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
    
-   dt_pKE_total = derivative(pKE_total_spline, t)
+   dt_pKE_total = order1_forward_difference(t, pKE_total)
    
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
 		     ylabel = "[m^5/s^3]")
 
-   lines!(ax_budget, t, dt_pKE_total[1, :], 
-	  label = "Time derivative of total pKE", color = :yellowgreen)
+   scatter!(ax_budget, t[1:end-1], dt_pKE_total, 
+	    label = "Time derivative of total pKE", color = :yellowgreen)
    scatter!(ax_budget, t, pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
    scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", 
 	    color = :hotpink)

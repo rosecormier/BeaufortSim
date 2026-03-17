@@ -206,6 +206,10 @@ function open_scalars_dataset(scalarfilename; idxStart = 2)
    return scalars_ds, t
 end
 
+function order1_forward_difference(t, u)
+   return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
+end
+
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
