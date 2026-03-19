@@ -63,11 +63,11 @@ const useGPU = true #Whether to use GPU
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = true
+const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = true
-const vis_norms      = true
-const vis_energetics = false
+const vis_const_z    = false
+const vis_norms      = false
+const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -252,6 +252,12 @@ end
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
+initial_KE = CenterField(model.grid)
+set!(initial_KE, (model.velocities.u^2 + model.velocities.v^2
+                  + model.velocities.w^2) / 2)
+total_initial_KE = Field(Integral(initial_KE))
+compute!(total_initial_KE)
+
 simulation = Simulation(model; Δt = Δt,
 			stop_time = tf, 
 		  align_time_step = false, 
@@ -394,7 +400,7 @@ if vis_norms
 end
 
 if vis_energetics
-   visualize_energetics(datetimenow, model.grid)
+   visualize_energetics(datetimenow, model.grid, total_initial_KE.data)
 end
 
 if vis_z_grid

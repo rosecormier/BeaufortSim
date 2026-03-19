@@ -155,31 +155,31 @@ function visualize_norms(datetime;
    close(scalars_ds)
 end
 
-function visualize_energetics(datetime, grid)
+function visualize_energetics(datetime, grid, initialKE)
 
-   outfile_list                 = glob("./Output/energetics_$(datetime)*")
-   energetics_ds, tUnsorted, Nt = open_energetics_dataset(outfile_list)
+   outfile_list      = glob("./Output/energetics_$(datetime)*")
+   ds, tUnsorted, Nt = open_energetics_dataset(outfile_list)
 
    #Sort times (essential if sim has ever been picked up from a checkpoint)
    sortIdcs = sortperm(tUnsorted)
    t        = tUnsorted[sortIdcs]
+   
+   initialKE = no_offset_view(adapt(Array, initialKE))
 
-   finer_t_grid = LinRange(t[1], t[end], Nt*4)
-
-   pKE_total    = energetics_ds[:integrated_pKE][sortIdcs]
-   pAPE_to_pKE  = energetics_ds[:integrated_pAPE_to_pKE][sortIdcs]
-   BTI_transfer = energetics_ds[:integrated_BTI_transfer][sortIdcs]
-   BCI_transfer = energetics_ds[:integrated_BCI_transfer][sortIdcs]
+   pKE_total    = ds[:integrated_pKE][sortIdcs] / initialKE[1]
+   pAPE_to_pKE  = ds[:integrated_pAPE_to_pKE][sortIdcs] / initialKE[1]
+   BTI_transfer = ds[:integrated_BTI_transfer][sortIdcs] / initialKE[1]
+   BCI_transfer = ds[:integrated_BCI_transfer][sortIdcs] / initialKE[1]
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
-	      		                   ylabel = "pKE per density [m^2/s^2]",
+	      		                   ylabel = "pKE per initial KE",
                                            yscale = log10)
 
    scatter!(ax_pKEtotal, t[2:end], pKE_total[2:end], color = :black)
 
    fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
-			      "Volume-integrated perturbation kinetic energy",
+	"Ratio of volume-integrated perturbation kinetic energy to volume-integrated initial kinetic energy",
                      	      fontsize = 24, tellwidth = false)
  
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -189,7 +189,7 @@ function visualize_energetics(datetime, grid)
    
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
-		     ylabel = "[m^5/s^3]")
+		     ylabel = L"[s$^{-1}$]")
 
    scatter!(ax_budget, t[1:end-1], dt_pKE_total, 
 	    label = "Time derivative of total pKE", color = :yellowgreen)
@@ -206,7 +206,7 @@ function visualize_energetics(datetime, grid)
 
    save(joinpath("./Plots", "pKEbudget_$(datetime).png"), fig_budget)
 
-   close(energetics_ds)
+   close(ds)
 end
 
 function visualize_b_and_ωz(datetime, Δx, Δy; 
