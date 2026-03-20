@@ -5,7 +5,7 @@ from netCDF4 import Dataset
 
 from Streamfunctions import Streamfunction
 
-def SaveToNetCDF(params, growth_rates, prop_speeds, eigVecs, φCoords):
+def SaveToNetCDF(params, modes, growth_rates, prop_speeds, eigVecs, rCoords, φCoords, zCoords):
 
     Ro = params.Ro
     Bu = params.Bu
@@ -32,6 +32,18 @@ def SaveToNetCDF(params, growth_rates, prop_speeds, eigVecs, φCoords):
     φ_dim    = ncfile.createDimension("φ", Nφ)
     z_dim    = ncfile.createDimension("z", Nz)
 
+    mode_var = ncfile.createVariable("mode", float, ("mode",))
+    kφ_var   = ncfile.createVariable("kφ", float, ("kφ",))
+    r_var    = ncfile.createVariable("r", float, ("r",))
+    φ_var    = ncfile.createVariable("φ", float, ("φ",))
+    z_var    = ncfile.createVariable("z", float, ("z",))
+
+    mode_var[:] = modes
+    kφ_var[:]   = kφs
+    r_var[:]    = rCoords
+    φ_var[:]    = φCoords
+    z_var[:]    = zCoords
+    
     growth_rate = ncfile.createVariable("growth_rate", float, (kφ_dim, mode_dim))
     prop_speed  = ncfile.createVariable("prop_speed", float, (kφ_dim, mode_dim))
 
