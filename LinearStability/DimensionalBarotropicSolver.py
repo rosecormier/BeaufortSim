@@ -114,7 +114,7 @@ def QG_Vortex_Stability():
     params         = Parameters()
     geom           = Geometry(params)
     geom.Lap       = BuildLaplacian(params, geom)
-    geom.rInterior = GridInterior(params, geom)
+    geom.rInterior = GridInterior(params, geom, None)
     
     #Discretize background-state-flow operators on Chebyshev grid
     geom.Ψ_op, geom.Q_op = BuildBkgdOperators(params, geom, 

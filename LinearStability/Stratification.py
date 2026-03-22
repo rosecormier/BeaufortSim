@@ -1,6 +1,7 @@
 import numpy as np
 
-def N2_profile(stratification_kw, dimensional_N2 = 1, dimensional_H = 1):
+def N2_profile(stratification_kw, 
+               dimensional_N2 = 1, dimensional_σz = 1):
 
     if stratification_kw == "barotropic":
         N2_function = lambda z : dimensional_N2 * np.ones_like(z)
