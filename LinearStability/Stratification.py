@@ -8,4 +8,6 @@ def N2_profile(stratification_kw, dimensional_N2 = 1):
     elif stratification_kw == "barotropic":
         N2_function = lambda z : dimensional_N2 * z 
 
+    #elif stratification_kw == "baroclinicthermalwind":
+
     return N2_function

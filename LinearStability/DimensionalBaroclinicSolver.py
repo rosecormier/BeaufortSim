@@ -2,12 +2,10 @@
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
-All variables are assumed to be dimensionless.
+All variables are assumed to be dimensional.
 """
 
 import argparse
-import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.linalg as spalg
 #Note: I think we should aim to switch from matrix objects (e.g. built by sp.spdiags) to array objects, as the matrix functionality is now deprecated
@@ -15,20 +13,12 @@ import sys
 import time
 import timeit
 
-matplotlib.use("Agg")
-
 from math import pi
-from matplotlib.cm import ScalarMappable
-from matplotlib.colors import Normalize
-#from scipy.sparse.linalg import eigs
-#from scipy.interpolate import interp1d
 
 from BuildLaplacian import BuildLaplacian
 from BuildBkgdOperators import BuildBkgdOperators, GridInterior
 from Chebyshev import Chebyshev
-#from FiniteDiff import FiniteDiff
 from SaveToNetCDF import SaveToNetCDF
-from Streamfunctions import Streamfunction
 
 #Parse command-line inputs
 
@@ -43,20 +33,26 @@ parser.add_argument('--NzEig',
 #                    help = 'Number of grid points for eigs computations',
 #                    type = int, default = 1001)
 parser.add_argument('-Lr', 
-                    help = 'DIMENSIONLESS radius of physical domain',
-                    type = float, default = 8.0) #5.0)
+                    help = 'Radius of physical domain (km)',
+                    type = float, default = 2.5e3)
 parser.add_argument('-Lz',
-                    help = 'DIMENSIONLESS depth (> 0) of physical domain',
-                    type = float, default = 3.3)
-parser.add_argument('-Ro', '--Rossby',
-                    help = 'Rossby number of background flow', 
-                    type = float, default = 4e-3)
-parser.add_argument('-Bu', '--Burger',
-                    help = 'Burger number of background flow',
-                    type = float, default = 2.5e-3) #5e-2)
+                    help = 'Depth (> 0) of physical domain (km)',
+                    type = float, default = 1.0)
+parser.add_argument('--sigmar',
+                    help = 'Horizontal decay scale of gyre (km)',
+                    type = float, default = 250)
+parser.add_argument('--sigmaz',
+                    help = 'Vertical decay scale of gyre (km)',
+                    type = float, default = 3e-1)
+parser.add_argument('Umax',
+                    help = 'Maximum background velocity (m/s)',
+                    type = float, default = 3.5)
 parser.add_argument('-f0', '--Coriolis',
-                    help = 'Coriolis frequency f0 (Hz)',
+                    help = 'Coriolis frequency (Hz)',
                     type = float, default = 1.4e-4)
+parser.add_argument('--Nmax',
+                    help = 'Maximum buoyancy frequency (Hz)',
+                    type = float, default = 1e-2)
 parser.add_argument('--strat_shape',
                     help = 'Shape of ambient squared buoyancy frequency profile',
                     type = str, default = "constant")
@@ -68,7 +64,7 @@ parser.add_argument('-kp', '--k_phi',
                     type = float, default = [1, 10, 1], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
-                    type = int, default = 1) #2)
+                    type = int, default = 1)
 parser.add_argument('-Np',
                     help = 'Number of points for discretization of phi',
                     type = int, default = 50)
@@ -79,12 +75,14 @@ parser.add_argument('--z_idx',
 #                    help = 'Constant r-index to plot 2D slices at',
 #                    type = int, default = args.Nr // 2 - args.Nr // (2 * args.Lr))
 args = parser.parse_args()
-                    
+               
 class Parameters:
     
-    Ro   = args.Rossby
-    Bu   = args.Burger
+    σr   = args.sigmar * 1000 #Convert to m
+    σz   = args.sigmaz * 1000 #Convert to m
+    Umax = args.Umax
     f0   = args.Coriolis
+    Nmax = args.Nmax
     bkgd = "BG"
 
     stratification_kw = args.strat_shape
@@ -93,12 +91,11 @@ class Parameters:
     Nr     = args.NrEig      #Number of computational gridpoints in r
     halfNr = args.NrEig // 2 #Number of physical r-gridpoints
 
+    Nφ = args.Np #Number of azimuthal gridpoints; for visualization only
+
     Lz = args.Lz    #Max. depth (i.e., -min(z)) in physical domain
     Nz = args.NzEig #Number of computational gridpoints in z
    
-    σz = 3.3e2
-
-    Nφ    = args.Np #Number of azimuthal gridpoints; for visualization only
     z_idx = args.z_idx
     r_idx = int(halfNr - halfNr // Lr)
 
@@ -141,53 +138,30 @@ class Geometry:
  
             self.Dr2 = np.matmul(self.Dr, self.Dr) #Second-order diff. matrix
 
-     #   elif method == "FD":
-     #       dr = 2 * params.Lr / params.Nr #Uniform r-interval size
-     #       #Discretized domain with gridpoints listed in descending order 
-     #       self.r = np.arange(params.Lr, (-params.Lr - dr), -dr)
-     #       #Compute (sparse) diff. matrix using 8th-order stencil
-     #       self.Dr = FiniteDiff(self.r, 8, True, True)
-     #       self.Dr2 = np.dot(self.Dr, self.Dr) #Second-order diff. matrix
- 
 def QG_Vortex_Stability():
  
-    #Initialize parameters and set up geometries for Chebyshev and FD solvers
-
+    #Initialize parameters and set up geometry for Chebyshev solver
     paramsCh   = Parameters()
     geomCh     = Geometry("Chebyshev", paramsCh)
     geomCh.Lap = BuildLaplacian(paramsCh, geomCh, discretizeVertical = True)
 
-    #paramsFD         = Parameters()
-    #GeomFD           = Geometry("FD", paramsFD)
-    #GeomFD.Lap       = BuildLaplacian(paramsFD, GeomFD, discretize2D = True)
-    #GeomFD.rInterior = rInterior(paramsFD, GeomFD, discretize2D = True)
-
     #Perform 2D discretization of grids
-
-    GridInterior(paramsCh, geomCh, discretizeVertical = True, dimensional_H = paramsCh.Lz)
+    GridInterior(paramsCh, geomCh, discretizeVertical = True, 
+                 dimensional_σz = paramsCh.σz)
 
     #Discretize background-state-flow operators
     geomCh.Ψ_op, geomCh.Q_op = BuildBkgdOperators(paramsCh, geomCh, 
-                                                  discretizeVertical = True, dimensional_σz = paramsCh.σz)
-    #GeomFD.Ψ_op, GeomFD.Q_op = BuildBkgdOperators(paramsFD, GeomFD, 
-    #                                              discretize2D = True)
+                                                  discretizeVertical = True,
+                                                  dimensional_σz = paramsCh.σz)
 
-
-    #Information about wavenumbers and modes is the same for both solvers
-
+    #Information about wavenumbers and modes
     kφs, nmodes = paramsCh.kφs, paramsCh.nmodes
 
     #Initialize arrays to store results of eigen-computations
-    
     growthCh = np.zeros([kφs.shape[0], nmodes])
     propCh   = np.zeros([kφs.shape[0], nmodes])
     modesCh  = np.zeros([kφs.shape[0], (paramsCh.halfNr * paramsCh.Nz), 
                          nmodes], dtype = complex)
-    #growthFD = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-    #propFD   = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-    #modesFD  = np.zeros([kzs.shape[0], kφs.shape[0],
-    #                     (paramsFD.halfNr * paramsFD.Nφ), nmodes],
-    #                    dtype = complex)
 
     ########################################
     # SOLVE GENERALIZED EIGENVALUE PROBLEM #
@@ -233,135 +207,20 @@ def QG_Vortex_Stability():
         propCh[kφ_idx, :]     = ωsCh[0:nmodes].real
         modesCh[kφ_idx, :, :] = eigVecsCh[:, 0:nmodes]
 
-    SaveToNetCDF(paramsCh, growthCh, propCh, modesCh, (2 * pi / paramsCh.Nφ) * np.arange(1, (paramsCh.Nφ + 1)))
-    """
-            t0FD = timeit.timeit()
-
-            #Compute eigvals c and eigvecs psi with direct solver ('eig')
-            eigValFD, eigVecFD = sp.linalg.eigs(A_FD, nmodes, B_FD)
-
-            timeFD = timeit.timeit() - t0FD #Time for direct FD solver
-
-            #Indexing that sorts eigvals by ASCENDING Im(c)
-            indFD = np.argsort(eigValFD.imag)
-
-            eigValFD = eigValFD[indFD] #Sort eigvals
-            eigVecFD = eigVecFD[indFD, :] #Sort eigvecs in the same order
-            omegaFD  = eigValFD * kp #Corresponding omegas for this k_phi
-
-            #Store results of direct FD solve
-
-            growthFD[kz_idx, kp_idx, :]   = -omegaFD[0:nmodes].imag
-            propFD[kz_idx, kp_idx, :]     = omegaFD[0:nmodes].real
-            modesFD[kz_idx, kp_idx, :, :] = eigVecFD[0:nmodes]
-
-        ##############################
-        # FIND EIGENSPACE INDIRECTLY #
-        ##############################
-
-            for ii in range(0, nmodes): #Loop over modes
-            
-                growth = omegaCheb[ii].imag
-                freq   = omegaCheb[ii].real
-
-                sig0 = eigValCheb[ii]
-
-                X = np.hstack([np.array([paramsCheb.Lr]),
-                               np.ravel(GeomCheb.r[1:paramsCheb.halfNr+1]),
-                               np.array([0])])[::-1]
-                Y = np.hstack([np.array([0]), 
-                               eigVecCheb[:, ii], 
-                               np.array([0])])[::-1]
-
-                Y_normalization = (-np.abs(Y)).argsort()
-                Y               = Y / Y[Y_normalization[0]]
-                
-                Xnew = np.ravel(GeomFD.r[1:(paramsFD.halfNr + 1)])[1:-1]
-
-                interp_fcn = interp1d(X, Y, kind = "cubic")
-                chebvec    = interp_fcn(Xnew)
-                chebvec    = chebvec[::-1]
-                
-                Xnew = Xnew[::-1]
-
-                tmp           = chebvec
-                tmp[tmp == 0] = 1
-                tmp           = tmp.conj()
-                
-                T    = np.diag(np.ravel(tmp))
-                Tinv = nlg.inv(T)
-
-                t0 = timeit.timeit()
-                
-                try:
-
-                    sig1, vec1 = eigs(np.dot(A_FD, Tinv), 1, np.dot(B_FD, Tinv),
-                                      sigma = sig0, v0 = np.dot(T, chebvec))
-
-                    vec1_normalization = (-np.abs(vec1)).argsort(axis = None)
-                    vec1               = vec1 / vec1[vec1_normalization[0]]
-
-                    #plt.subplot(3,2,1)
-                    #plt.plot(Xnew,chebvec.real,'-b', Xnew,chebvec.imag,'-r')
-                    #plt.title('Original Eig Vector')
-
-                    #plt.subplot(3,2,2)
-                    #plt.plot(Xnew, np.dot(T,chebvec).real, '-b', Xnew, np.dot(T,chebvec).imag, '-r')
-                    #plt.title('Transformed Eig Vector')
-                    
-                    #plt.subplot(3,2,3)
-                    #plt.plot(Xnew, vec1.real, '-b', Xnew, vec1.imag, '-r')
-                    #plt.title('Original Eigs Vector')
-                    
-                    #vec1 = np.dot(Tinv, vec1)
-                    #plt.subplot(3,2,4)
-                    #plt.plot(Xnew, vec1.real, '-b', Xnew, vec1.imag, '-r')
-                    #plt.title('Inverse Transformed Eigs Vector')
-
-                    #plt.subplot(3,2,5)
-                    #plt.plot(Xnew, np.abs(np.ravel(vec1)-np.ravel(chebvec)))
-                    #plt.title('Absolute difference')
-                    
-                    #plt.show()
-
-                except:
-                    
-                    sig1 = [np.nan + 1j * np.nan]
-
-                    print('Eigs failed for mode {0:.2f}, k_phi = {1:.2f}, kz = {2:.4f}.\n'.format(ii, kp, kz))
-                    sys.stdout.flush()
-                
-                timeFD = timeit.timeit() - t0
-                
-                omegaFD  = kp * sig1[0]
-
-                growthFD_temp = omegaFD.imag
-                freqFD_temp   = omegaFD.real
-
-                growthFD[kz_idx, kp_idx, ii] = growthFD_temp
-                freqFD[kz_idx, kp_idx, ii]   = freqFD_temp
-        
-                if paramsCheb.printout: #Display results
-                    print('----------')
-                    print('kz =i {0:4f}, kp = {1:2f}'.format(kz, kp))
-                    print('eig : growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growth, freq, timeCheb))
-                    print('eigs: growth rate = {0:+4e}, frequency = {1:+4e}, cputime = {2:+4e}'.format(growthFD_temp, freqFD_temp, timeFD))
-                    sys.stdout.flush()
-    """
-
+    SaveToNetCDF(paramsCh, np.arange(0, nmodes), growthCh, propCh, modesCh, 
+                 paramsCh.Lr * np.arange(paramsCh.halfNr, 0, -1), 
+                 (2 * pi / paramsCh.Nφ) * np.arange(1, (paramsCh.Nφ + 1)), 
+                 paramsCh.Lz * np.arange(0, paramsCh.Nz))
+"""
     #################
     # VISUALIZATION #
     #################
 
     plt.rcParams.update({"text.usetex": True, "font.size": 12})
 
-    #Dimensionalize eigenvalues for visualization 
-    growthDimCh = growthCh * paramsCh.f0 * paramsCh.Ro
-    propDimCh   = propCh * paramsCh.f0 * paramsCh.Ro
-
     nkφ = (np.ravel(kφs)).shape[0]
 
-    if nmodes == 1: #2:
+    if nmodes == 1:
 
         ############################################################
         # VISUALIZE GROWTH RATES AND PROP. SPEEDS FOR DIFFERENT kφ #
@@ -543,6 +402,6 @@ def QG_Vortex_Stability():
                 #plt.show()
             figψ_φz.savefig(f"streamfunc_r{geomCh.r[r_idx]:.2f}_fastestgrowingk{kφ}_nondimBCgyre.png")
             plt.close(figψ_φz)
-
+"""
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
