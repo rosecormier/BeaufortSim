@@ -136,8 +136,7 @@ def QG_Vortex_Stability():
     geomCh.Lap = BuildLaplacian(paramsCh, geomCh, discretizeVertical = True)
 
     #Perform 2D discretization of grid
-    GridInterior(paramsCh, geomCh, paramsCh.Lz, 
-                 discretizeVertical = True)
+    GridInterior(paramsCh, geomCh, discretizeVertical = True)
 
     #Discretize background-state-flow operators
     geomCh.Ψ_op, geomCh.Q_op = BuildBkgdOperators(paramsCh, geomCh, 
