@@ -14,13 +14,10 @@ def BuildLaplacian(params, geom, discretizeVertical = False):
         Nz   = params.Nz
         I, Z = np.eye(Nz // 2), np.zeros(((Nz // 2), (Nz // 2)))
 
-    #Quadrants of 2nd-order r-derivative matrix to be retained
-    D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]              #(pos, pos)
-    D2 = geom.Dr2[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
-
-    #Quadrants of 1st-order r-derivative matrix to be retained
-    #E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]              #(pos, pos)
-    #E2 = geom.Dr[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+    #Quadrants of 2nd-order r-derivative matrix to retain
+    D1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
+    D2 = geom.Dr2[1:(halfNr + 1), 
+                  np.arange(Nr-1, halfNr, -1)]    #(pos, neg)
 
     if sp.issparse(geom.Dr):
         
@@ -39,9 +36,10 @@ def BuildLaplacian(params, geom, discretizeVertical = False):
             #       + sp.kron((D2 + R.dot(E2)), np.block([[Z, I], [I, Z]])))
         else:
             
-            #Quadrants of 1st-order r-derivative matrix to be retained
-            E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]              #(pos, pos)
-            E2 = geom.Dr[1:(halfNr + 1), np.arange(Nr-1, halfNr, -1)] #(pos, neg)
+            #Quadrants of 1st-order r-derivative matrix to retain
+            E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
+            E2 = geom.Dr[1:(halfNr + 1), 
+                         np.arange(Nr-1, halfNr, -1)]    #(pos, neg)
             
             Lap = (D1 + R.dot(E1)) + (D2 + R.dot(E2))
 
@@ -60,6 +58,12 @@ def BuildLaplacian(params, geom, discretizeVertical = False):
             #Lap = (np.kron((D1 + np.dot(R, E1)), np.eye(Nz))
             #       + np.kron((D2 + np.dot(R, E2)), np.block([[Z, I], [I, Z]])))
         else:
+
+            #Quadrants of 1st-order r-derivative matrix to retain
+            E1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
+            E2 = geom.Dr[1:(halfNr + 1), 
+                         np.arange(Nr-1, halfNr, -1)]    #(pos, neg)
+
             Lap = (D1 + np.dot(R, E1)) + (D2 + np.dot(R, E2))
-    print("all good")
+
     return Lap

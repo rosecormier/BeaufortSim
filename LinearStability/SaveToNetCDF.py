@@ -13,7 +13,7 @@ def SaveToNetCDF(params, modes, growth_rates, prop_speeds, eigVecs, rCoords, φC
     Lr = params.Lr
     Nr = params.Nr
 
-    Nφ = params.Nφ
+    φ = params.φ
 
     Lz = params.Lz
     Nz = params.Nz
@@ -29,7 +29,7 @@ def SaveToNetCDF(params, modes, growth_rates, prop_speeds, eigVecs, rCoords, φC
     mode_dim = ncfile.createDimension("mode", nmodes)
     kφ_dim   = ncfile.createDimension("kφ", len(kφs))
     r_dim    = ncfile.createDimension("r", Nr // 2)
-    φ_dim    = ncfile.createDimension("φ", Nφ)
+    φ_dim    = ncfile.createDimension("φ", len(φ))
     z_dim    = ncfile.createDimension("z", Nz)
 
     mode_var = ncfile.createVariable("mode", float, ("mode",))
@@ -40,12 +40,15 @@ def SaveToNetCDF(params, modes, growth_rates, prop_speeds, eigVecs, rCoords, φC
 
     mode_var[:] = modes
     kφ_var[:]   = kφs
-    r_var[:]    = rCoords
+    r_var[:]    = rCoords[0:Nr//2]
     φ_var[:]    = φCoords
-    z_var[:]    = zCoords
+    z_var[:]    = zCoords[0:Nz]
     
     growth_rate = ncfile.createVariable("growth_rate", float, (kφ_dim, mode_dim))
     prop_speed  = ncfile.createVariable("prop_speed", float, (kφ_dim, mode_dim))
+
+    growth_rate.units = "per second"
+    prop_speed.units  = "per second"
 
     eigVec = ncfile.createVariable("eigVec", complex, (kφ_dim, r_dim, z_dim, mode_dim))
     eigStreamfn   = ncfile.createVariable("eigStreamfn", complex, (kφ_dim, r_dim, φ_dim, z_dim, mode_dim))
@@ -58,7 +61,7 @@ def SaveToNetCDF(params, modes, growth_rates, prop_speeds, eigVecs, rCoords, φC
             eigVec[k, :, :, mode] = np.reshape(eigVecs[k, :, mode], 
                                                (params.halfNr, Nz), 
                                                order = "C")
-            for ell in range(Nφ):
+            for ell in range(len(φ)):
                 eigStreamfn[k, :, ell, :, mode] = Streamfunction(np.reshape(eigVecs[k, :, mode],
                                                      (params.halfNr, Nz),
                                                      order = "F"),
