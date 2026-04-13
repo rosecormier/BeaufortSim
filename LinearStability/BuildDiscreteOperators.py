@@ -1,6 +1,6 @@
 import numpy as np
 
-from math import e
+from math import e, pi
 
 def N2_profile(stratification_kw, dimensional_N2 = 1):
 
@@ -12,58 +12,35 @@ def N2_profile(stratification_kw, dimensional_N2 = 1):
     return N2_function
 
 def DiscretizeGrid(params, geom, discretizeVertical = False):
+    geom.rRecip = np.diag(1 / geom.r[1:params.halfNr+1])
 
-    #if not discretizeVertical:
-    geom.rRecip  = np.diag(1 / geom.r)
-    geom.r2Recip = np.diag(1 / geom.r**2)
-
-    if discretizeVertical:
-    
-        #Nr, Nz = params.Nr, params.Nz
-        
-        N2_function  = N2_profile(params.stratification_kw, 
-                                 dimensional_N2 = params.Nmax**2)
-        geom.N2Recip = (N2_function(geom.z))**(-2)
-
-        #r_2D       = kron(diag(geom.r), eye(Nz + 1))
-        #r2Recip_2D = kron(diag(geom.r**(-2)), eye(Nz + 1))
-
-        #z_2D  = kron(eye(Nr + 1), diag(geom.z))
-
-        #N2Recip_2D = kron(eye(Nr + 1), N2Recip)
-
-        #geom.r_2D       = r_2D
-        #geom.r2Recip_2D = r2Recip_2D
-
-def BuildFullBkgdOperators(params, geom, discretizeVertical = False,
-                           nondimensional = False):
+def BuildBkgdOperators(params, geom, discretizeVertical = False,
+                       nondimensional = False):
 
     if nondimensional:
         dimensional_U, dimensional_σr = 1, 1
     else:
         dimensional_U, dimensional_σr = params.Umax, params.σr
-        
+
+    rTilde = np.ravel(geom.r[1:params.halfNr+1]) / dimensional_σr
+
     if params.bkgd == "GM":
-    
-        Ψ_op = np.ravel(-0.5 * np.exp(-rTilde**2) * dimensional_U
-                        / dimensional_σr)
-        Q_op = np.ravel(-2 * np.exp(-rTilde**2) * (rTilde**2 - 2)
+
+        Ψ_op = -0.5 * np.exp(-rTilde**2) * dimensional_U / dimensional_σr
+        Q_op = (-2 * np.exp(-rTilde**2) * (rTilde**2 - 2)
                         * dimensional_U / dimensional_σr**3)
-                        
+
         geom.Ψ_op, geom.Q_op = np.diag(Ψ_op), np.diag(Q_op)
 
     elif params.bkgd == "BG":
-    
-        rTilde = np.diag(geom.r / dimensional_σr)
     
         Ψ_opRadialFactor = (np.sqrt(2 * e) * np.exp(-rTilde**2) 
                             * dimensional_U / dimensional_σr)
 
         if not discretizeVertical:
             
-            Q_op = (-np.sqrt(8 * e) * (dimensional_U / dimensional_σr)
-                    * np.exp(-rTilde**2) 
-                    * (2 * (2 - rTilde**2) / dimensional_σr**2))
+            Q_op = -6*(2*e)**0.5 * (dimensional_U / dimensional_σr**3) * np.exp(-rTilde**2)
+            ###(np.sqrt(32 * e) * (dimensional_U / dimensional_σr**3) * np.exp(-rTilde**2) * (rTilde**2 - 2))
                     
             geom.Ψ_op, geom.Q_op = Ψ_opRadialFactor, Q_op
                     
@@ -93,71 +70,88 @@ def BuildFullBkgdOperators(params, geom, discretizeVertical = False,
                                    )
                    )
             
-            Ψ_op = (np.kron(Ψ_opRadialFactor, Iz)
+            Ψ_op = (np.kron(Ψ_opRadialFactor, Iz) 
                     + np.kron(Ir, Ψ_opVerticalFactor))
 
             geom.Ψ_op, geom.Q_op = Ψ_op, Q_op
 
-def BuildFullLaplacian(params, geom, discretizeVertical = False):
+def ConvertQuadsToBlock(Q1, Q2, Q3, Q4):
+    """
+    Given 4 blocks of a matrix, each indexed from outside to inside of its 
+     respective quadrant of the computational domain, re-index and assemble as
+     a block matrix, with the result indexed in the global ordering of the 
+     computational domain.
+    """
+    
+    block1 = Q1[:, :]
+    block2 = Q2[:, ::-1]
+    block3 = Q3[::-1, :]
+    block4 = Q4[::-1, ::-1]
+    
+    return np.block([[block1, block2], [block3, block4]])
+
+def BuildHorizontalLaplacian(params, geom):
 
     halfNr, Nr = params.halfNr, params.Nr
 
+    testfunction         = np.cos(geom.r * pi/(2*params.Lr))
+    testfunction1stDeriv = -(pi/(2*params.Lr)) * np.sin(geom.r * pi/(2*params.Lr))
+    testfunction2ndDeriv = -(pi/(2*params.Lr))**2 * np.cos(geom.r * pi/(2*params.Lr))
+    
+    print("Maximum error in discretized first-order r-derivative applied to test function on computational domain:", np.max(np.abs(np.matmul(geom.Dr[1:-1, 1:-1], testfunction[1:-1]) - testfunction1stDeriv[1:-1])))
+    
+    #Quadrants of 1st-order r-derivative matrix
+    Dr_quad1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
+    Dr_quad2 = geom.Dr[1:(halfNr + 1), (Nr - 1):halfNr:-1]
+    Dr_quad3 = geom.Dr[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    Dr_quad4 = geom.Dr[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
+
+    print("Maximum error in discretized first-order r-derivative applied to test function on physical domain:", np.max(np.abs(np.matmul(Dr_quad1 + Dr_quad2, testfunction[1:(halfNr+1)]) - testfunction1stDeriv[1:(halfNr+1)])))
+
+    #Quadrants of 2nd-order r-derivative matrix
+    Dr2_quad1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]
+    Dr2_quad2 = geom.Dr2[1:(halfNr + 1), (Nr - 1):halfNr:-1]
+    Dr2_quad3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    Dr2_quad4 = geom.Dr2[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
+    
+    print("Maximum error in discretized second-order r-derivative applied to test function on physical domain:", np.max(np.abs(np.matmul(Dr2_quad1 + Dr2_quad2, testfunction[1:halfNr+1]) - testfunction2ndDeriv[1:halfNr+1])))
+
+    #Quadrants of the full horizontal Laplacian
+    geom.Lap_quad1 = (Dr2_quad1 + np.matmul(geom.rRecip, Dr_quad1))
+    geom.Lap_quad2 = (Dr2_quad2 + np.matmul(geom.rRecip, Dr_quad2))
+    geom.Lap_quad3 = (Dr2_quad3 + np.matmul(geom.rRecip, Dr_quad3))
+    geom.Lap_quad4 = (Dr2_quad4 + np.matmul(geom.rRecip, Dr_quad4))
+
+    print("Maximum error in discretized horizontal Laplacian applied to test function on computational domain:", np.max(np.abs(np.matmul(ConvertQuadsToBlock(geom.Lap_quad1, geom.Lap_quad2, geom.Lap_quad3, geom.Lap_quad4), testfunction[1:-1])[:halfNr] - (testfunction2ndDeriv[1:(halfNr+1)] + np.matmul(geom.rRecip, testfunction1stDeriv[1:(halfNr+1)])))))
+    
+def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
+
+    kφ2 = kφ**2
+    
+    Nr, halfNr, f0 = params.Nr, params.halfNr, params.f0
+    
+    r2Recip = geom.rRecip**2
+    
     if not discretizeVertical:
-
-        #Quadrants of 2nd-order r-derivative matrix to retain
-        Dr2_quad1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
-        Dr2_quad2 = geom.Dr2[1:(halfNr + 1), 
-                            np.arange(Nr-1, halfNr, -1)]     #(pos, neg)
-
-        #Quadrants of 1st-order r-derivative matrix to retain
-        Dr_quad1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #(pos, pos)
-        Dr_quad2 = geom.Dr[1:(halfNr + 1),
-                           np.arange(Nr-1, halfNr, -1)]    #(pos, neg)
-
-        rRecip_quad1 = geom.rRecip[1:(halfNr + 1), 1:(halfNr + 1)]
-        rRecip_quad2 = geom.rRecip[1:(halfNr + 1),
-                np.arange(Nr-1, halfNr, -1)]
-        #Quad 2 is just zeros, but I build it explicitly to be consistent
-
-        geom.Lap_quad1 = (Dr2_quad1 + np.matmul(rRecip_quad1, Dr_quad1))
-        geom.Lap_quad2 = (Dr2_quad2 + np.matmul(rRecip_quad2, Dr_quad2))
     
-def BuildMatrixB(params, geom, kφ, kz, discretizeVertical = False):
-
-    kφ2, kz2 = kφ**2, kz**2
+        kz2 = kz**2
     
-    halfNr, f0, N2max = params.halfNr, params.f0, params.Nmax**2
+        N2max = params.Nmax**2
     
-    B_quad1 = (geom.Lap_quad1 
-               - (kφ2
-                  * geom.r2Recip[1:(halfNr + 1), 1:(halfNr + 1)])
-               - kz2 * (f0 / N2max) * np.eye(halfNr))
-    B_quad2 = (geom.Lap_quad2 
-               - (kφ2
-                  * geom.r2Recip[1:(halfNr + 1), (halfNr + 1):-1])
-               - kz2 * (f0 / N2max) * np.eye(halfNr))
+        geom.B_quad1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
+                        - geom.Lap_quad1)
+        geom.B_quad2 = -geom.Lap_quad2
+        geom.B_quad3 = -geom.Lap_quad3
+        geom.B_quad4 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
+                        - geom.Lap_quad4)
 
-    geom.B_quad1, geom.B_quad2 = B_quad1, B_quad2
-    
-    Z = np.zeros((halfNr, halfNr))
-
-    #Assemble and return square matrix
-    return (np.block([[B_quad1, Z], [Z, B_quad1[::-1, ::-1]]]) 
-            + np.block([[Z, B_quad2], [B_quad2[::-1, ::-1], Z]]))
+        #Assemble square matrix to be used in gen. eig. solver
+        geom.B = geom.B_quad1 + geom.B_quad2
+        
+        return geom.B
 
 def BuildMatrixA(params, geom, discretizeVertical = False):
 
-    halfNr = params.halfNr
+    geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
 
-    A_quad1 = (np.matmul(geom.Ψ_op[1:(halfNr + 1), 1:(halfNr + 1)],
-                        geom.B_quad1) 
-               - geom.Q_op[1:(halfNr + 1), 1:(halfNr + 1)])
-    A_quad2 = (np.matmul(geom.Ψ_op[1:(halfNr + 1), (halfNr + 1):-1], 
-                         geom.B_quad1)
-               - geom.Q_op[1:(halfNr + 1), (halfNr + 1):-1])
-    
-    Z = np.zeros((halfNr, halfNr))
-    
-    #Assemble and return square matrix
-    return (np.block([[A_quad1, Z], [Z, A_quad1[::-1, ::-1]]]) 
-            + np.block([[Z, A_quad2], [A_quad2[::-1, ::-1], Z]]))
+    return geom.A
