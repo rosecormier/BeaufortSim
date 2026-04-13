@@ -39,10 +39,10 @@ def BuildBkgdOperators(params, geom, discretizeVertical = False,
 
         if not discretizeVertical:
             
-            Q_op = -6*(2*e)**0.5 * (dimensional_U / dimensional_σr**3) * np.exp(-rTilde**2)
-            ###(np.sqrt(32 * e) * (dimensional_U / dimensional_σr**3) * np.exp(-rTilde**2) * (rTilde**2 - 2))
-                    
-            geom.Ψ_op, geom.Q_op = Ψ_opRadialFactor, Q_op
+            Q_op = (np.sqrt(32 * e) * ((rTilde**2 - 2) * np.exp(-rTilde**2)
+                    * dimensional_U / dimensional_σr**3))
+
+            geom.Ψ_op, geom.Q_op = np.diag(Ψ_opRadialFactor), np.diag(Q_op)
                     
         elif discretizeVertical:
             
