@@ -52,7 +52,7 @@ parser.add_argument('-kp', '--k_phi',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
-                    type = float, default = [0, 1e-5, 2e-7], nargs = 3)
+                    type = float, default = [0, 1e-3, 1e-5], nargs = 3)
 parser.add_argument('--modes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
@@ -65,8 +65,6 @@ class Parameters:
     Umax = args.bkgdU
     σr   = args.sigmar
     bkgd = args.bkgd
-
-    #Ro = Umax / (σr * f0) #Rossby number
 
     Lr     = args.Lr #Max. r in physical space; half of computational domain
     Nr     = args.Neig #Number (odd) of gridpoints in computational domain
@@ -150,9 +148,9 @@ def QG_Vortex_Stability():
             modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
 
             if (kφ == 1 and abs(kz - 2.6e-6) < 1e-7):
-                #np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+                np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
             elif (kφ == 2 and kz == 0):
-                #np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+                np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
 
     #Run visualization
 
@@ -197,7 +195,7 @@ def QG_Vortex_Stability():
 
         #Plot spatial structures of eigenmodes
         
-        kz_idx, kφ_idx = 0, 1 #19, 0
+        kz_idx, kφ_idx = 22, 0 #0, 1
         kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
 
         eigVec     = modes[kz_idx, kφ_idx, :, jj]
