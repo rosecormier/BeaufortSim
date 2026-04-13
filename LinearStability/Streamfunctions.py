@@ -32,14 +32,17 @@ def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
     """
 
     halfNr = params.halfNr
-    r      = geom.r[1:(halfNr + 1)]
+    r      = geom.r[0:(halfNr + 1)]
     Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
 
     m, ω     = kwargs.get("m"), kwargs.get("ω")
     φ, z, t  = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
 
-    ur = 1j * k * (eigvec / r)
-    uφ = -np.dot(Dr, eigvec)
+    ur = np.zeros((halfNr + 1), dtype = complex)
+    uφ = np.zeros((halfNr + 1), dtype = complex)
+
+    ur[1:] = 1j * k * (eigvec[1:] / r[1:])
+    uφ[1:] = -np.matmul(Dr, eigvec[1:])
 
     if φ is not None:
         ur = ur * (np.cos(k*φ) + 1j * np.sin(k*φ))
