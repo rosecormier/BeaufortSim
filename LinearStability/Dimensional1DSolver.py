@@ -87,7 +87,7 @@ class Geometry:
                         
         #Scale gridpoints and variable of differentiation to fit domain
         self.r, self.Dr = r * params.Lr, Dr / params.Lr
-            
+
         #Second-order differentiation matrix
         self.Dr2 = np.matmul(self.Dr, self.Dr)
 
@@ -99,8 +99,8 @@ def QG_Vortex_Stability():
 
     #Build discrete operators
     DiscretizeGrid(params, geom)
-    BuildFullBkgdOperators(params, geom)
-    BuildFullLaplacian(params, geom)
+    BuildBkgdOperators(params, geom)
+    BuildHorizontalLaplacian(params, geom)
      
     #Information about wavenumbers and modes
     kφs, kzs, nmodes = params.kφs, params.kzs, params.nmodes
@@ -121,13 +121,12 @@ def QG_Vortex_Stability():
         for kφ_idx in range(0, kφs.shape[0]):
 
             kφ  = kφs[kφ_idx]
-            kφ2 = kφ**2
     
-            print("Solving for kφ, =", kφ, ", kz =", kz)
+            print("Solving for kφ =", kφ, ", kz =", kz)
 
             #Build matrices "A" and "B"
             
-            B = BuildMatrixB(params, geom, kφ, kz)
+            B = BuildMatrixB(params, geom, kφ, kz = kz)
             A = BuildMatrixA(params, geom)
 
             #Find eigenspace (directly)
@@ -148,15 +147,12 @@ def QG_Vortex_Stability():
            
             growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
             prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
-            modes[kz_idx, kφ_idx, 1:, :] = eigVecs[1:(params.halfNr + 1),
-                                                   0:nmodes]
+            modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
 
             if (kφ == 1 and abs(kz - 2.6e-6) < 1e-7):
-                print("First eigval =", eigVals[0])
-                np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+                #np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
             elif (kφ == 2 and kz == 0):
-                print("First eigval =", eigVals[0])
-                np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+                #np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
 
     #Run visualization
 
@@ -201,7 +197,7 @@ def QG_Vortex_Stability():
 
         #Plot spatial structures of eigenmodes
         
-        kz_idx, kφ_idx = 10, 0 #0, 1
+        kz_idx, kφ_idx = 0, 1 #19, 0
         kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
 
         eigVec     = modes[kz_idx, kφ_idx, :, jj]
@@ -226,12 +222,10 @@ def QG_Vortex_Stability():
         
         fig, ax = plt.subplots()
         ax.plot(geom.r[1:(params.halfNr + 1)],
-                np.matmul(B[:, 1:(params.halfNr + 1)], 
-                          eigVecNorm[1:]).real[1:(params.halfNr + 1)],
+                np.matmul(B, eigVecNorm[1:]).real,
                 "-", color = "green", label = "Re[$B\hat{\psi}$]")
         ax.plot(geom.r[1:(params.halfNr + 1)], 
-                np.matmul(B[:, 1:(params.halfNr + 1)],
-                          eigVecNorm[1:]).imag[1:(params.halfNr + 1)],
+                np.matmul(B, eigVecNorm[1:]).imag,
                 "--", color = "green", label = "Im[$B\hat{\psi}$]")
         ax.set(xlabel = "$r$ (m)", ylabel = "$B$ times normalized $\hat{\psi}$",
                title = f"Components of $B$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
@@ -240,15 +234,16 @@ def QG_Vortex_Stability():
         plt.close(fig)
         
         fig, ax = plt.subplots()
-        ax.plot(geom.r[1:(params.halfNr+1)], np.matmul(A[:, 1:(params.halfNr + 1)], eigVecNorm[1:]).real[1:(params.halfNr + 1)], "-",
-                color = "blue",
-                label = "Re[$A\hat{\psi}$]")
-        ax.plot(geom.r[1:(params.halfNr + 1)], np.matmul(A[:, 1:(params.halfNr + 1)], eigVecNorm[1:]).imag[1:(params.halfNr + 1)],
-                "--", color = "blue",
-                label = "Im[$A\hat{\psi}$]")
+        #ax.plot(geom.r[1:(params.halfNr+1)], np.matmul(A, eigVecNorm[1:]).real, "-",
+        #        color = "blue",
+        #        label = "Re[$A\hat{\psi}$]")
+        ax.plot(geom.r[1:(params.halfNr+1)], A[0,:].real, "-", color = "blue", label = "Re[$A$]")
+        #ax.plot(geom.r[1:(params.halfNr + 1)], np.matmul(A, eigVecNorm[1:]).imag,
+        #        "--", color = "blue",
+        #        label = "Im[$A\hat{\psi}$]")
 
         ax.set(xlabel = "$r$ (m)", ylabel = "$A$ times normalized $\hat{\psi}$",
-               title = f"Components of $B$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
+               title = f"Components of $A$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
         ax.legend()
         fig.savefig(f"Apsi_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
         plt.close(fig)
