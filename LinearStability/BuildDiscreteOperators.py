@@ -11,7 +11,7 @@ def N2_profile(stratification_kw, dimensional_N2 = 1):
 
     return N2_function
 
-def DiscretizeGrid(params, geom, discretizeVertical = False):
+def Compute_rRecip(params, geom):
     geom.rRecip = np.diag(1 / geom.r[1:params.halfNr+1])
 
 def BuildBkgdOperators(params, geom, discretizeVertical = False,

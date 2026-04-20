@@ -78,7 +78,7 @@ class Geometry:
 
     def __init__(self, params):
         
-        self.method = "cheb"
+        self.method = "Chebyshev"
            
         #Compute differentiation matrix and Chebyshev-spaced grid
         Dr, r = Chebyshev(params.Nr)
@@ -96,7 +96,7 @@ def QG_Vortex_Stability():
     geom   = Geometry(params)
 
     #Build discrete operators
-    DiscretizeGrid(params, geom)
+    Compute_rRecip(params, geom)
     BuildBkgdOperators(params, geom)
     BuildHorizontalLaplacian(params, geom)
      
