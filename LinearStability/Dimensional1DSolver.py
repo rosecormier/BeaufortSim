@@ -96,7 +96,7 @@ def QG_Vortex_Stability():
     geom   = Geometry(params)
 
     #Build discrete operators
-    Compute_rRecip(params, geom)
+    ComputeRecips(params, geom)
     BuildBkgdOperators(params, geom)
     BuildHorizontalLaplacian(params, geom)
      
