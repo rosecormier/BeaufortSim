@@ -3,6 +3,9 @@ import numpy as np
 from math import e, pi
 
 def N2_profile(stratification_kw, dimensional_N2 = 1):
+    """
+    Return a function to compute N^2 at discrete values of z.
+    """
 
     if stratification_kw == "constant":
         N2_function = lambda z : dimensional_N2 * np.ones_like(z)
@@ -30,6 +33,10 @@ def ComputeRecips(params, geom, discretizeVertical = False,
 
 def BuildBkgdOperators(params, geom, discretizeVertical = False,
                        nondimensional = False):
+    """
+    Build discrete representations of operators Ψ_op := (1/r) * (∂Ψ/∂r) and
+     Q_op := (1/r) * (∂Q/∂r) for the prescribed background flow.
+    """
 
     if nondimensional:
         dimensional_U, dimensional_σr = 1, 1
@@ -130,6 +137,11 @@ def ConvertQuadsToBlock(Q1, Q2, Q3, Q4):
     return np.block([[block1, block2], [block3, block4]])
 
 def BuildHorizontalLaplacian(params, geom):
+    """
+    Build discrete representation of horizontal Laplacian in cylindrical
+     coordinates, assuming azimuthal symmetry (i.e., neglecting derivatives 
+     w.r.t. φ).
+    """
 
     halfNr, Nr = params.halfNr, params.Nr
 
@@ -164,6 +176,10 @@ def BuildHorizontalLaplacian(params, geom):
     print("Maximum error in discretized horizontal Laplacian applied to test function on computational domain:", np.max(np.abs(np.matmul(ConvertQuadsToBlock(geom.Lap_quad1, geom.Lap_quad2, geom.Lap_quad3, geom.Lap_quad4), testfunction[1:-1])[:halfNr] - (testfunction2ndDeriv[1:(halfNr+1)] + np.matmul(geom.rRecip, testfunction1stDeriv[1:(halfNr+1)])))))
     
 def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
+    """
+    Build discrete representation of 'B' operator in generalized eigenvalue 
+     problem.
+    """
 
     kφ2 = kφ**2
     
@@ -190,6 +206,10 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         return geom.B
 
 def BuildMatrixA(params, geom, discretizeVertical = False):
+    """
+    Build discrete representation of 'A' operator in generalized eigenvalue 
+     problem.
+    """
 
     geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
 
