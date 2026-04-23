@@ -20,13 +20,10 @@ def ComputeRecips(params, geom, discretizeVertical = False,
     Compute and save values of 1/r and 1/N^2 at grid points.
     """
 
-    if not discretizeVertical:
-        geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
+    geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
     
-    elif discretizeVertical:
-    
-        geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])#-1])
-    
+    if discretizeVertical:
+
         if nondimensional:
             dimensional_N2 = 1
         else:
