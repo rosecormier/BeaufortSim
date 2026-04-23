@@ -162,27 +162,21 @@ def BuildHorizontalLaplacian(params, geom, discretizeVertical = False):
     geom.Dr2_Q2 = geom.Dr2[1:(halfNr + 1), (Nr - 1):halfNr:-1]
     geom.Dr2_Q3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
     geom.Dr2_Q4 = geom.Dr2[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
-    
-    if not discretizeVertical:
 
-        #Quadrants of the full horizontal Laplacian
-        geom.LapH_Q1 = geom.Dr2_Q1 + np.matmul(geom.rRecip, geom.Dr_Q1)
-        geom.LapH_Q2 = geom.Dr2_Q2 + np.matmul(geom.rRecip, geom.Dr_Q2)
-        geom.LapH_Q3 = geom.Dr2_Q3 + np.matmul(geom.rRecip, geom.Dr_Q3)
-        geom.LapH_Q4 = geom.Dr2_Q4 + np.matmul(geom.rRecip, geom.Dr_Q4)
+    #Quadrants of the full horizontal Laplacian
+    geom.LapH_Q1 = geom.Dr2_Q1 + np.matmul(geom.rRecip, geom.Dr_Q1)
+    geom.LapH_Q2 = geom.Dr2_Q2 + np.matmul(geom.rRecip, geom.Dr_Q2)
+    geom.LapH_Q3 = geom.Dr2_Q3 + np.matmul(geom.rRecip, geom.Dr_Q3)
+    geom.LapH_Q4 = geom.Dr2_Q4 + np.matmul(geom.rRecip, geom.Dr_Q4)
+    
+    geom.LapH = ConvertQuadsToBlock(geom.LapH_Q1, geom.LapH_Q2, 
+                                    geom.LapH_Q3, geom.LapH_Q4)
       
-    elif discretizeVertical:
+    if discretizeVertical:
     
-        Dr2 = np.block([[geom.Dr2_Q1, geom.Dr2_Q2], [geom.Dr2_Q3, geom.Dr2_Q4]])
-        Dr  = np.block([[geom.Dr_Q1, geom.Dr_Q2], [geom.Dr_Q3, geom.Dr_Q4]])
-
         Iz = np.eye(params.Nz - 1)
-        
-        rRecipBlock = np.block([[geom.rRecip, geom.rRecip],
-                                [geom.rRecip, geom.rRecip]])
-        
-        geom.LapH = (np.matmul(np.kron(rRecipBlock, Iz), np.kron(Dr, Iz))
-                     + np.kron(np.matmul(Dr2, Dr2), Iz))
+
+        geom.LapH_2D = np.kron(geom.LapH, Iz)
     
 def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
     """
