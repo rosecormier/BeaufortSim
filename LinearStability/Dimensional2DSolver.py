@@ -19,14 +19,14 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 from BuildDiscreteOperators import *
-from Chebyshev import Chebyshev
+from Chebyshev import Parameters, ChebyshevGeometry
 from Streamfunctions import Streamfunction#, EigenvelocityFrom2DEigvec
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--NrEig', 
+parser.add_argument('-Nr', 
                     help = 'Number (must be ODD) of r-grid points for eig computations',
                     type = int, default = 201)
-parser.add_argument('--NzEig', 
+parser.add_argument('-Nz', 
                     help = 'Number of z-grid points for eig computations',
                     type = int, default = 20)
 parser.add_argument('-Lr', 
@@ -47,26 +47,23 @@ parser.add_argument('-f0', '--Coriolis',
 parser.add_argument('-U', '--bkgdU',
                     help = 'Characteristic scale for background velocity (m/s)',
                     type = float, default = 3.5)
-parser.add_argument('-σr', '--sigmar',
+parser.add_argument('--sigmar',
                     help = 'Radial length scale of gyre (m)',
                     type = float, default = 2.5e5)
-parser.add_argument('-σz', '--sigmaz',
+parser.add_argument('--sigmaz',
                     help = 'Vertical length scale of gyre (m)',
                     type = float, default = 3e2)
 parser.add_argument('-Np', 
                     help = 'Number of points for discretization of phi', 
                     type = int, default = 50)
-parser.add_argument('-kp', '--k_phi', 
+parser.add_argument('--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
                     type = float, default = [1, 3, 1], nargs = 3)
-parser.add_argument('-kz', '--k_z', 
-                    help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
-                    type = float, default = [0, 1e-3, 1e-5], nargs = 3)
-parser.add_argument('--modes', 
+parser.add_argument('--nmodes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
-args = parser.parse_args()
-                    
+args = vars(parser.parse_args())
+"""                    
 class Parameters:
     
     stratification_kw = args.strat_shape
@@ -85,7 +82,6 @@ class Parameters:
     kφs    = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
     Lz     = args.Lz    #Max. depth (i.e., -min(z)) in physical domain
     Nz     = args.NzEig #Number of computational gridpoints in z
-    kzs    = np.arange(args.k_z[0], args.k_z[1], args.k_z[2])
     nmodes = args.modes
 
 def zTransform():
@@ -108,69 +104,59 @@ class Geometry:
         #Second-order r- and z-differentiation matrices
         self.Dr2 = np.matmul(self.Dr, self.Dr)
         self.Dz2 = np.matmul(self.Dz, self.Dz)
-
+"""
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
-    params = Parameters()
-    geom   = Geometry(params)
+    params = Parameters(args, discretizeVertical = True)
+    geom   = ChebyshevGeometry(params)
 
     #Build discrete operators
     ComputeRecips(params, geom, discretizeVertical = True)
     BuildBkgdOperators(params, geom, discretizeVertical = True)
-    BuildHorizontalLaplacian(params, geom)
+    BuildHorizontalLaplacian(params, geom, discretizeVertical = True)
      
     #Information about wavenumbers and modes
-    kφs, kzs, nmodes = params.kφs, params.kzs, params.nmodes
+    kφs, nmodes = params.kps, params.nmodes
 
     #Initialize arrays to store results of eigen-computation
-    growth = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-    prop   = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-    modes  = np.zeros([kzs.shape[0], kφs.shape[0], params.halfNr + 1, nmodes],
+    growth = np.zeros([kφs.shape[0], nmodes])
+    prop   = np.zeros([kφs.shape[0], nmodes])
+    modes  = np.zeros([kφs.shape[0], params.halfNr + 1, nmodes],
                       dtype = complex)
 
     #Solve generalized eigenvalue problem
+
+    for kφ_idx in range(0, kφs.shape[0]):
+
+        kφ  = kφs[kφ_idx]
     
-    for kz_idx in range(0, kzs.shape[0]):
+        print("Solving for kφ =", kφ)
 
-        kz  = kzs[kz_idx]
-        kz2 = kz**2
-  
-        for kφ_idx in range(0, kφs.shape[0]):
-
-            kφ  = kφs[kφ_idx]
-    
-            print("Solving for kφ =", kφ, ", kz =", kz)
-
-            #Build matrices "A" and "B"
+        #Build matrices "A" and "B"
             
-            B = BuildMatrixB(params, geom, kφ, kz = kz)
-            A = BuildMatrixA(params, geom)
+        B = BuildMatrixB(params, geom, kφ, discretizeVertical = True)
+        A = BuildMatrixA(params, geom, discretizeVertical = True)
 
-            #Find eigenspace (directly)
+        #Find eigenspace (directly)
             
-            t0 = timeit.timeit()
+        t0 = timeit.timeit()
         
-            #Compute eigvals c and eigvecs psi with direct solver
-            eigVals, eigVecs = spalg.eig(A, B)
+        #Compute eigvals c and eigvecs psi with direct solver
+        eigVals, eigVecs = spalg.eig(A, B)
 
-            solveTime = timeit.timeit() - t0 #Time for direct solver
+        solveTime = timeit.timeit() - t0 #Time for direct solver
             
-            #Indexing that sorts eigvals by ASCENDING Im(c)
-            indSort = np.argsort(eigVals.imag)
+        #Indexing that sorts eigvals by ASCENDING Im(c)
+        indSort = np.argsort(eigVals.imag)
 
-            eigVals = eigVals[indSort]    #Sort eigvals
-            eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
-            ωs      = eigVals * kφ        #Corresponding ω values for this kφ
+        eigVals = eigVals[indSort]    #Sort eigvals
+        eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
+        ωs      = eigVals * kφ        #Corresponding ω values for this kφ
            
-            growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
-            prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
-            modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
-
-            if (kφ == 1 and abs(kz - 2.6e-6) < 1e-7):
-                np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
-            elif (kφ == 2 and kz == 0):
-                np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+        growth[kφ_idx, :]    = -ωs[0:nmodes].imag
+        prop[kφ_idx, :]      = ωs[0:nmodes].real
+        modes[kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
 
     #Run visualization
 
