@@ -180,11 +180,10 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
     Build discrete representation of 'B' operator in generalized eigenvalue 
      problem.
     """
-
-    kφ2 = kφ**2
     
     Nr, halfNr, f0 = params.Nr, params.halfNr, params.f0
     
+    kφ2     = kφ**2
     r2Recip = geom.rRecip**2
     
     if not discretizeVertical:
@@ -193,15 +192,15 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
     
         N2max = params.Nmax**2
     
-        geom.B_quad1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                        - geom.Lap_quad1)
-        geom.B_quad2 = -geom.Lap_quad2
-        geom.B_quad3 = -geom.Lap_quad3
-        geom.B_quad4 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                        - geom.Lap_quad4)
+        geom.B_Q1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
+                        - geom.LapH_Q1)
+        geom.B_Q2 = -geom.LapH_Q2
+        geom.B_Q3 = -geom.LapH_Q3
+        geom.B_Q4 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
+                        - geom.LapH_Q4)
 
         #Assemble square matrix to be used in gen. eig. solver
-        geom.B = geom.B_quad1 + geom.B_quad2
+        geom.B = geom.B_Q1 + geom.B_Q2
         
         return geom.B
         

@@ -19,11 +19,11 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 from BuildDiscreteOperators import *
-from Chebyshev import Chebyshev
+from Chebyshev import Parameters, ChebyshevGeometry
 from Streamfunctions import Streamfunction, EigenvelocityFrom1DEigvec
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--Neig', 
+parser.add_argument('-Nr', 
                     help = 'Number (must be ODD) of grid points for eig computations',
                     type = int, default = 501)
 parser.add_argument('-Lr', 
@@ -38,7 +38,7 @@ parser.add_argument('-f0', '--Coriolis',
 parser.add_argument('-U', '--bkgdU',
                     help = 'Characteristic scale for background velocity (m/s)',
                     type = float, default = 3.5)
-parser.add_argument('-σr', '--sigmar',
+parser.add_argument('--sigmar',
                     help = 'Radial length scale of gyre (m)',
                     type = float, default = 2.5e5)
 parser.add_argument('--bkgd',
@@ -47,17 +47,17 @@ parser.add_argument('--bkgd',
 parser.add_argument('-Np', 
                     help = 'Number of points for discretization of phi', 
                     type = int, default = 50)
-parser.add_argument('-kp', '--k_phi', 
+parser.add_argument('--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('-kz', '--k_z', 
                     help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
                     type = float, default = [0, 1e-3, 1e-5], nargs = 3)
-parser.add_argument('--modes', 
+parser.add_argument('--nmodes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
-args = parser.parse_args()
-                    
+args = vars(parser.parse_args())
+"""
 class Parameters:
     
     Nmax = args.buoyancyfreq
@@ -88,12 +88,12 @@ class Geometry:
 
         #Second-order differentiation matrix
         self.Dr2 = np.matmul(self.Dr, self.Dr)
-
+"""
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
-    params = Parameters()
-    geom   = Geometry(params)
+    params = Parameters(args)
+    geom   = ChebyshevGeometry(params)
 
     #Build discrete operators
     ComputeRecips(params, geom)
@@ -101,7 +101,7 @@ def QG_Vortex_Stability():
     BuildHorizontalLaplacian(params, geom)
      
     #Information about wavenumbers and modes
-    kφs, kzs, nmodes = params.kφs, params.kzs, params.nmodes
+    kφs, kzs, nmodes = params.kps, params.kzs, params.nmodes
 
     #Initialize arrays to store results of eigen-computation
     growth = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
@@ -248,15 +248,15 @@ def QG_Vortex_Stability():
 
         #Set up to plot eigen-structures in r-φ plane
         
-        dφ         = 2 * pi / params.Nφ
-        φCoords    = dφ * np.arange(1, (params.Nφ + 1))
+        dφ         = 2 * pi / params.Np
+        φCoords    = dφ * np.arange(1, (params.Np + 1))
         φVis, rVis = np.meshgrid(φCoords, geom.r[0:(params.halfNr + 1)])
         
         #Array to hold streamfunction values
-        ψ = np.zeros([(params.halfNr + 1), params.Nφ], dtype = complex)
+        ψ = np.zeros([(params.halfNr + 1), params.Np], dtype = complex)
         
         #Evaluate streamfunction at (r, φ)-coordinate pairs  
-        for φ_idx in range(params.Nφ):
+        for φ_idx in range(params.Np):
             for r_idx in range(params.halfNr + 1):
                 ψ[r_idx, φ_idx] = Streamfunction(eigVecNorm[r_idx],
                                                  k = kφ, φ = φCoords[φ_idx])
