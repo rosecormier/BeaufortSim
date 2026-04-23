@@ -193,19 +193,62 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         N2max = params.Nmax**2
     
         geom.B_Q1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                        - geom.LapH_Q1)
+                     - geom.LapH_Q1)
         geom.B_Q2 = -geom.LapH_Q2
         geom.B_Q3 = -geom.LapH_Q3
         geom.B_Q4 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                        - geom.LapH_Q4)
+                     - geom.LapH_Q4)
 
         #Assemble square matrix to be used in gen. eig. solver
         geom.B = geom.B_Q1 + geom.B_Q2
         
         return geom.B
         
-    #elif discretizeVertical:
-
+    elif discretizeVertical:
+    
+        #Quadrants of terms depending on r, discretized on r-grid
+        horizontalB_Q1 = (kφ2 * r2Recip) - geom.LapH_Q1
+        horizontalB_Q2 = -geom.LapH_Q2
+        horizontalB_Q3 = -geom.LapH_Q3
+        horizontalB_Q4 = (kφ2 * r2Recip) - geom.LapH_Q4
+        
+        #Terms depending on r, discretized on r-grid
+        horizontalB = ConvertQuadsToBlock(horizontalB_Q1, horizontalB_Q2,
+                                          horizontalB_Q3, horizontalB_Q4)
+        
+        Iz = np.eye(params.Nz - 1)
+        
+        #Terms depending on r, discretized on rz-grid
+        horizontalB_2D = np.kron(horizontalB, Iz)
+        
+        N2Recip = np.diag(geom.N2Recip[1:-1])
+        Dz = geom.Dz[1:-1, 1:-1]
+        Dz2 = geom.Dz2[1:-1, 1:-1]
+        
+        #Terms depending on z, discretized on z-grid
+        verticalB = -(np.matmul((f0**2 * N2Recip), Dz2)
+                      + np.matmul(np.matmul(f0**2 * Dz, N2Recip), Dz)
+                     )
+        
+        Ir = np.eye(params.Nr - 1)
+        
+        #Terms depending on z, discretized on rz-grid
+        verticalB_2D = np.kron(Ir, verticalB)
+        
+        geom.B_Q1 = (horizontalB_2D + verticalB_2D)[:(params.halfNr
+                                                      * (params.Nz - 1)),
+                                                    :(params.halfNr
+                                                      * (params.Nz - 1))]
+        geom.B_Q2 = (horizontalB_2D + verticalB_2D)[(params.halfNr
+                                                     * (params.Nz - 1)):,
+                                                    :(params.halfNr
+                                                      * (params.Nz - 1))]
+        
+        #Assemble square matrix to be used in gen. eig. solver
+        geom.B = geom.B_Q1 + geom.B_Q2
+        
+        return geom.B
+        
 def BuildMatrixA(params, geom, discretizeVertical = False):
     """
     Build discrete representation of 'A' operator in generalized eigenvalue 
