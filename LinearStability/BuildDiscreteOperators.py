@@ -242,6 +242,14 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
                                                      * (params.Nz - 1)):,
                                                     :(params.halfNr
                                                       * (params.Nz - 1))]
+        geom.B_Q3 = (horizontalB_2D + verticalB_2D)[:(params.halfNr
+                                                      * (params.Nz - 1)),
+                                                    (params.halfNr
+                                                     * (params.Nz - 1)):]
+        geom.B_Q4 = (horizontalB_2D + verticalB_2D)[(params.halfNr
+                                                     * (params.Nz - 1)):,
+                                                    (params.halfNr
+                                                     * (params.Nz - 1)):]
         
         #Assemble square matrix to be used in gen. eig. solver
         geom.B = geom.B_Q1 + geom.B_Q2
@@ -254,6 +262,15 @@ def BuildMatrixA(params, geom, discretizeVertical = False):
      problem.
     """
 
-    geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
+    if not discretizeVertical:
+      geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
+    
+    elif discretizeVertical:
+        geom.A = (np.matmul(geom.Ψ_op[:(params.halfNr * (params.Nz - 1)),
+                                     :(params.halfNr * (params.Nz - 1))],
+                           geom.B)
+                  + geom.Q_op[:(params.halfNr * (params.Nz - 1)),
+                              :(params.halfNr * (params.Nz - 1))]
+                 )
 
     return geom.A
