@@ -63,48 +63,7 @@ parser.add_argument('--nmodes',
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
 args = vars(parser.parse_args())
-"""                    
-class Parameters:
-    
-    stratification_kw = args.strat_shape
-    
-    Nmax = args.buoyancyfreq
-    f0   = args.Coriolis
-    Umax = args.bkgdU
-    σr   = args.sigmar
-    σz   = args.sigmaz
-    bkgd = "BG"
 
-    Lr     = args.Lr #Max. r in physical space; half of computational domain
-    Nr     = args.NrEig #Number (odd) of gridpoints in computational domain
-    halfNr = args.NrEig // 2   
-    Nφ     = args.Np #Number of azimuthal gridpoints; for visualization only
-    kφs    = np.arange(args.k_phi[0], args.k_phi[1], args.k_phi[2])
-    Lz     = args.Lz    #Max. depth (i.e., -min(z)) in physical domain
-    Nz     = args.NzEig #Number of computational gridpoints in z
-    nmodes = args.modes
-
-def zTransform():
-    return lambda z : (z - 1) / 2
-
-class Geometry:
-
-    def __init__(self, params):
-        
-        self.method = "Chebyshev"
-           
-        #Compute differentiation matrices and Chebyshev-spaced grids
-        Dr, r = Chebyshev(params.Nr)
-        Dz, z = Chebyshev(params.Nz, xTransform = zTransform())
-                        
-        #Scale gridpoints and variables of differentiation to fit domain
-        self.r, self.Dr = r * params.Lr, Dr / params.Lr
-        self.z, self.Dz = z * params.Lz, Dz / params.Lz
-
-        #Second-order r- and z-differentiation matrices
-        self.Dr2 = np.matmul(self.Dr, self.Dr)
-        self.Dz2 = np.matmul(self.Dz, self.Dz)
-"""
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
