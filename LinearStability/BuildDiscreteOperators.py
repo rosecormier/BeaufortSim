@@ -188,8 +188,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
     
     if not discretizeVertical:
     
-        kz2 = kz**2
-    
+        kz2   = kz**2
         N2max = params.Nmax**2
     
         geom.B_Q1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
@@ -222,8 +221,8 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         horizontalB_2D = np.kron(horizontalB, Iz)
         
         N2Recip = np.diag(geom.N2Recip[1:-1])
-        Dz = geom.Dz[1:-1, 1:-1]
-        Dz2 = geom.Dz2[1:-1, 1:-1]
+        Dz      = geom.Dz[1:-1, 1:-1]
+        Dz2     = geom.Dz2[1:-1, 1:-1]
         
         #Terms depending on z, discretized on z-grid
         verticalB = -(np.matmul((f0**2 * N2Recip), Dz2)
