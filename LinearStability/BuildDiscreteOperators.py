@@ -16,10 +16,16 @@ def N2_profile(stratification_kw, dimensional_N2 = 1):
 
 def ComputeRecips(params, geom, discretizeVertical = False,
                   nondimensional = False):
+    """
+    Compute and save values of 1/r and 1/N^2 at grid points.
+    """
 
-    geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
+    if not discretizeVertical:
+        geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
     
-    if discretizeVertical:
+    elif discretizeVertical:
+    
+        geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])#-1])
     
         if nondimensional:
             dimensional_N2 = 1
@@ -41,7 +47,7 @@ def BuildBkgdOperators(params, geom, discretizeVertical = False,
     if nondimensional:
         dimensional_U, dimensional_σr = 1, 1
     else:
-        dimensional_U, dimensional_σr = params.Umax, params.σr
+        dimensional_U, dimensional_σr = params.Umax, params.sigmar
 
     if not discretizeVertical:
         rTilde = np.ravel(geom.r[1:(params.halfNr + 1)]) / dimensional_σr
@@ -70,7 +76,7 @@ def BuildBkgdOperators(params, geom, discretizeVertical = False,
                     
         elif discretizeVertical:
         
-            f0, dimensional_σz = params.f0, params.σz
+            f0, dimensional_σz = params.f0, params.sigmaz
         
             r       = geom.r[1:-1]
             rTilde  = np.ravel(r) / dimensional_σr
@@ -136,7 +142,7 @@ def ConvertQuadsToBlock(Q1, Q2, Q3, Q4):
     
     return np.block([[block1, block2], [block3, block4]])
 
-def BuildHorizontalLaplacian(params, geom):
+def BuildHorizontalLaplacian(params, geom, discretizeVertical = False):
     """
     Build discrete representation of horizontal Laplacian in cylindrical
      coordinates, assuming azimuthal symmetry (i.e., neglecting derivatives 
@@ -144,36 +150,39 @@ def BuildHorizontalLaplacian(params, geom):
     """
 
     halfNr, Nr = params.halfNr, params.Nr
-
-    testfunction         = np.cos(geom.r * pi/(2*params.Lr))
-    testfunction1stDeriv = -(pi/(2*params.Lr)) * np.sin(geom.r * pi/(2*params.Lr))
-    testfunction2ndDeriv = -(pi/(2*params.Lr))**2 * np.cos(geom.r * pi/(2*params.Lr))
-    
-    print("Maximum error in discretized first-order r-derivative applied to test function on computational domain:", np.max(np.abs(np.matmul(geom.Dr[1:-1, 1:-1], testfunction[1:-1]) - testfunction1stDeriv[1:-1])))
     
     #Quadrants of 1st-order r-derivative matrix
-    Dr_quad1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
-    Dr_quad2 = geom.Dr[1:(halfNr + 1), (Nr - 1):halfNr:-1]
-    Dr_quad3 = geom.Dr[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
-    Dr_quad4 = geom.Dr[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
-
-    print("Maximum error in discretized first-order r-derivative applied to test function on physical domain:", np.max(np.abs(np.matmul(Dr_quad1 + Dr_quad2, testfunction[1:(halfNr+1)]) - testfunction1stDeriv[1:(halfNr+1)])))
+    geom.Dr_Q1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
+    geom.Dr_Q2 = geom.Dr[1:(halfNr + 1), (Nr - 1):halfNr:-1]
+    geom.Dr_Q3 = geom.Dr[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    geom.Dr_Q4 = geom.Dr[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
 
     #Quadrants of 2nd-order r-derivative matrix
-    Dr2_quad1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]
-    Dr2_quad2 = geom.Dr2[1:(halfNr + 1), (Nr - 1):halfNr:-1]
-    Dr2_quad3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
-    Dr2_quad4 = geom.Dr2[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
+    geom.Dr2_Q1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]
+    geom.Dr2_Q2 = geom.Dr2[1:(halfNr + 1), (Nr - 1):halfNr:-1]
+    geom.Dr2_Q3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    geom.Dr2_Q4 = geom.Dr2[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
     
-    print("Maximum error in discretized second-order r-derivative applied to test function on physical domain:", np.max(np.abs(np.matmul(Dr2_quad1 + Dr2_quad2, testfunction[1:halfNr+1]) - testfunction2ndDeriv[1:halfNr+1])))
+    if not discretizeVertical:
 
-    #Quadrants of the full horizontal Laplacian
-    geom.Lap_quad1 = (Dr2_quad1 + np.matmul(geom.rRecip, Dr_quad1))
-    geom.Lap_quad2 = (Dr2_quad2 + np.matmul(geom.rRecip, Dr_quad2))
-    geom.Lap_quad3 = (Dr2_quad3 + np.matmul(geom.rRecip, Dr_quad3))
-    geom.Lap_quad4 = (Dr2_quad4 + np.matmul(geom.rRecip, Dr_quad4))
+        #Quadrants of the full horizontal Laplacian
+        geom.LapH_Q1 = geom.Dr2_Q1 + np.matmul(geom.rRecip, geom.Dr_Q1)
+        geom.LapH_Q2 = geom.Dr2_Q2 + np.matmul(geom.rRecip, geom.Dr_Q2)
+        geom.LapH_Q3 = geom.Dr2_Q3 + np.matmul(geom.rRecip, geom.Dr_Q3)
+        geom.LapH_Q4 = geom.Dr2_Q4 + np.matmul(geom.rRecip, geom.Dr_Q4)
+      
+    elif discretizeVertical:
+    
+        Dr2 = np.block([[geom.Dr2_Q1, geom.Dr2_Q2], [geom.Dr2_Q3, geom.Dr2_Q4]])
+        Dr  = np.block([[geom.Dr_Q1, geom.Dr_Q2], [geom.Dr_Q3, geom.Dr_Q4]])
 
-    print("Maximum error in discretized horizontal Laplacian applied to test function on computational domain:", np.max(np.abs(np.matmul(ConvertQuadsToBlock(geom.Lap_quad1, geom.Lap_quad2, geom.Lap_quad3, geom.Lap_quad4), testfunction[1:-1])[:halfNr] - (testfunction2ndDeriv[1:(halfNr+1)] + np.matmul(geom.rRecip, testfunction1stDeriv[1:(halfNr+1)])))))
+        Iz = np.eye(params.Nz - 1)
+        
+        rRecipBlock = np.block([[geom.rRecip, geom.rRecip],
+                                [geom.rRecip, geom.rRecip]])
+        
+        geom.LapH = (np.matmul(np.kron(rRecipBlock, Iz), np.kron(Dr, Iz))
+                     + np.kron(np.matmul(Dr2, Dr2), Iz))
     
 def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
     """
@@ -204,6 +213,8 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         geom.B = geom.B_quad1 + geom.B_quad2
         
         return geom.B
+        
+    #elif discretizeVertical:
 
 def BuildMatrixA(params, geom, discretizeVertical = False):
     """
