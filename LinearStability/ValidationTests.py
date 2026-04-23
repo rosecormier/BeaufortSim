@@ -3,30 +3,12 @@ import numpy as np
 from math import pi
 from numpy import inf
 
+from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 
-def ConvertQuadsToBlock(Q1, Q2, Q3, Q4):
-    """
-    Helper function.
-    Given 4 blocks of a matrix, each indexed from outside to inside of its 
-     respective quadrant of the computational domain, re-index and assemble as
-     a block matrix, with the result indexed in the global ordering of the 
-     computational domain.
-    """
-    
-    block1 = Q1[:, :]
-    block2 = Q2[:, ::-1]
-    block3 = Q3[::-1, :]
-    block4 = Q4[::-1, ::-1]
-    
-    return np.block([[block1, block2], [block3, block4]])
-
-
-def Validate1DHorizontalLaplacian():
+def ErrorsInDiscreteHorizontalLaplacians():
 
     from numpy.linalg import norm
-
-    from BuildDiscreteOperators import BuildHorizontalLaplacian, ComputeRecips
     
     testArgs = {"Nr": 201, "Lr": 1, "bkgd": "BG",
                 "buoyancyfreq": 1, "Coriolis": None, "bkgdU": None, 
@@ -109,14 +91,13 @@ def Validate1DHorizontalLaplacian():
               "\n"
              )
         
-        blockLap = ConvertQuadsToBlock(geom.LapH_Q1, geom.LapH_Q2,
-                                       geom.LapH_Q3, geom.LapH_Q4)
-        testLap  = np.matmul(blockLap, testFunction[1:-1])[:params.halfNr]
+        testLapH = np.matmul(geom.LapH, testFunction[1:-1])[:params.halfNr]
         
         print("Max. error in horizontal Laplacian applied to test function on physical 1D domain:", 
-              norm(testLap - testHorizontalLapExact, ord = inf),
+              norm(testLapH - testHorizontalLapExact, ord = inf),
               "\nL2-error in horizontal Laplacian applied to test function on physical 1D domain:",
-              norm(testLap - testHorizontalLapExact)
+              norm(testLapH - testHorizontalLapExact),
+              "\n"
              )
              
         testArgs.update({"Nz": 20, "Lz": 1, "strat_shape": "constant",
@@ -128,19 +109,20 @@ def Validate1DHorizontalLaplacian():
         ComputeRecips(params2D, geom2D, discretizeVertical = True)
         BuildHorizontalLaplacian(params2D, geom2D, discretizeVertical = True)
 
-        Iz = np.eye(params2D.Nz - 1)
+        iz = np.ones(params2D.Nz - 1)
         
-        test2DFunction = np.kron(np.diag(testFunction[1:-1]), Iz)
-        
-        test2DLap = np.matmul(geom2D.LapH, 
-                              test2DFunction)[:(params2D.halfNr
-                                                * (params2D.Nz - 1)),
-                                              :(params2D.halfNr
-                                                * (params2D.Nz - 1))]
-                                              
-        print(test2DLap - np.kron((np.diag(test2ndDerivExact[1:(params2D.halfNr+1)]) + np.matmul(geom2D.rRecip, np.diag(test1stDerivExact[1:(params2D.halfNr+1)]))), Iz))
+        test2DFunction = np.kron(testFunction[1:-1], iz)
+
+        test2DLapH = np.matmul(geom2D.LapH_2D, 
+                               test2DFunction)[:(params2D.halfNr
+                                                 * (params2D.Nz - 1))]
+        print("Max. error in horizontal Laplacian applied to test function on physical 2D domain:", 
+              norm(test2DLapH - np.kron(testLapH, iz), ord = inf),
+              "\nL2-error in horizontal Laplacian applied to test function on physical 2D domain:",
+              norm(test2DLapH - np.kron(testLapH, iz))
+             )
 
 #def Validate2DBkgdOpsInBarotropicLimit():
 
 if __name__ == '__main__': #For testing
-    Validate1DHorizontalLaplacian()
+    ErrorsInDiscreteHorizontalLaplacians()
