@@ -81,7 +81,7 @@ def QG_Vortex_Stability():
     #Initialize arrays to store results of eigen-computation
     growth = np.zeros([kφs.shape[0], nmodes])
     prop   = np.zeros([kφs.shape[0], nmodes])
-    modes  = np.zeros([kφs.shape[0], params.halfNr + 1, nmodes],
+    modes  = np.zeros([kφs.shape[0], ((params.halfNr + 1) * (params.Nz + 1)), nmodes],
                       dtype = complex)
 
     #Solve generalized eigenvalue problem
@@ -112,10 +112,18 @@ def QG_Vortex_Stability():
         eigVals = eigVals[indSort]    #Sort eigvals
         eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
         ωs      = eigVals * kφ        #Corresponding ω values for this kφ
-           
-        growth[kφ_idx, :]    = -ωs[0:nmodes].imag
-        prop[kφ_idx, :]      = ωs[0:nmodes].real
-        modes[kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
+        
+        #Save growth rates and propagation speeds
+        growth[kφ_idx, 0:nmodes] = -ωs[0:nmodes].imag
+        prop[kφ_idx, 0:nmodes]   = ωs[0:nmodes].real
+        
+        #Save eigenvectors (only update interior-point values)
+        modesSize = modes[kφ_idx, (params.Nz + 1):, 0:nmodes].size
+        modes[kφ_idx, (params.Nz + 1):,
+              0:nmodes][(np.mod(np.arange(modesSize), (params.Nz + 1)) != 0)
+                        & (np.mod(np.arange(modesSize), (params.Nz + 1))
+                           != params.Nz)
+                       ] = eigVecs[:, 0:nmodes]
 
     #Run visualization
 
