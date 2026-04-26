@@ -92,11 +92,10 @@ def QG_Vortex_Stability():
             print("Solving for kφ =", kφ, ", kz =", kz)
 
             #Build matrices "A" and "B"
-            
             B = BuildMatrixB(params, geom, kφ, kz = kz)
             A = BuildMatrixA(params, geom)
 
-            #Find eigenspace (directly)
+            #Find generalized eigenspace (directly)
             
             t0 = timeit.timeit()
         
@@ -156,9 +155,9 @@ def QG_Vortex_Stability():
             ax_prop.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
 
             if nmodes == 1:
-                fig.savefig(f"omega_vs_m_fastestgrowing_dimensionalBTgyre.png")
+                fig.savefig(f"omega_vs_m_fastestgrowing_dimensional1Dgyre.png")
             elif nmodes > 1:
-                fig.savefig(f"omega_vs_m_mode{jj}_dimensionalBTgyre.png")
+                fig.savefig(f"omega_vs_m_mode{jj}_dimensional1Dgyre.png")
             
             plt.close(fig)
 
@@ -182,39 +181,9 @@ def QG_Vortex_Stability():
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
         ax.legend()
-        fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
+        fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_dimensional1Dgyre.png")
         plt.close(fig)
         
-        #The following two figures are just for testing: plots of B*psi and A*psi, respectively
-        
-        fig, ax = plt.subplots()
-        ax.plot(geom.r[1:(params.halfNr + 1)],
-                np.matmul(B, eigVecNorm[1:]).real,
-                "-", color = "green", label = "Re[$B\hat{\psi}$]")
-        ax.plot(geom.r[1:(params.halfNr + 1)], 
-                np.matmul(B, eigVecNorm[1:]).imag,
-                "--", color = "green", label = "Im[$B\hat{\psi}$]")
-        ax.set(xlabel = "$r$ (m)", ylabel = "$B$ times normalized $\hat{\psi}$",
-               title = f"Components of $B$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
-        ax.legend()
-        fig.savefig(f"Bpsi_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
-        plt.close(fig)
-        
-        fig, ax = plt.subplots()
-        #ax.plot(geom.r[1:(params.halfNr+1)], np.matmul(A, eigVecNorm[1:]).real, "-",
-        #        color = "blue",
-        #        label = "Re[$A\hat{\psi}$]")
-        ax.plot(geom.r[1:(params.halfNr+1)], A[0,:].real, "-", color = "blue", label = "Re[$A$]")
-        #ax.plot(geom.r[1:(params.halfNr + 1)], np.matmul(A, eigVecNorm[1:]).imag,
-        #        "--", color = "blue",
-        #        label = "Im[$A\hat{\psi}$]")
-
-        ax.set(xlabel = "$r$ (m)", ylabel = "$A$ times normalized $\hat{\psi}$",
-               title = f"Components of $A$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
-        ax.legend()
-        fig.savefig(f"Apsi_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
-        plt.close(fig)
-
         #Set up to plot eigen-structures in r-φ plane
         
         dφ         = 2 * pi / params.Np
@@ -263,7 +232,7 @@ def QG_Vortex_Stability():
                                     cmap = "RdBu_r"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
-        fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_dimensionalBTgyre.png")
+        fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_dimensional1Dgyre.png")
         plt.close(fig)
 
         #Plot eigen-velocities in r-φ plane
@@ -303,7 +272,7 @@ def QG_Vortex_Stability():
                      shrink = 0.6)
         fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], location = "right",
                      shrink = 0.6)
-        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_dimensionalBTgyre.png")
+        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_dimensional1Dgyre.png")
         plt.close(fig)
 
 if __name__ == '__main__': #For testing
