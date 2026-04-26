@@ -33,7 +33,7 @@ def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
 
     halfNr = params.halfNr
     r      = geom.r[0:(halfNr + 1)]
-    Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
+    Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #I need to double-check whether I should be adding quadrants instead
 
     m, ω     = kwargs.get("m"), kwargs.get("ω")
     φ, z, t  = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
@@ -45,15 +45,49 @@ def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
     uφ[1:] = -np.matmul(Dr, eigvec[1:])
 
     if φ is not None:
-        ur = ur * (np.cos(k*φ) + 1j * np.sin(k*φ))
-        uφ = uφ * (np.cos(k*φ) + 1j * np.sin(k*φ))
+        ur = ur * (np.cos(k * φ) + 1j * np.sin(k * φ))
+        uφ = uφ * (np.cos(k * φ) + 1j * np.sin(k * φ))
 
     if m is not None:
-        ur = ur * (np.cos(m*z) + 1j * np.sin(m*z))
-        uφ = uφ * (np.cos(m*z) + 1j * np.sin(m*z))
+        ur = ur * (np.cos(m * z) + 1j * np.sin(m * z))
+        uφ = uφ * (np.cos(m * z) + 1j * np.sin(m * z))
 
     if ω is not None:
-        ur = ur * (np.cos(ω*t) - 1j * np.sin(ω*t))
-        uφ = uφ * (np.cos(ω*t) - 1j * np.sin(ω*t))
+        ur = ur * (np.cos(ω * t) - 1j * np.sin(ω * t))
+        uφ = uφ * (np.cos(ω * t) - 1j * np.sin(ω * t))
+
+    return ur, uφ
+
+def EigenvelocityFrom2DEigmode(params, geom, eigmode, k, **kwargs):
+    """
+    Evaluates QG velocities corresponding to specified (discrete) eigenvector
+     and azimuthal wavenumber, as well as either of φ and t, (omega must be
+     provided for the latter).
+    """
+
+    halfNr = params.halfNr
+    Nz     = params.Nz
+   
+    iz = np.ones(params.Nz + 1) 
+    Iz = np.eye(params.Nz + 1)
+    
+    r     = geom.r[0:(halfNr + 1)]
+    Dr_2D = np.kron(geom.Dr[:(halfNr + 1), :(halfNr + 1)], Iz)
+    
+    ω, φ, t     = kwargs.get("ω"), kwargs.get("φ"), kwargs.get("t")
+    
+    ur = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
+    uφ = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
+   
+    ur = 1j * k * (eigmode / np.kron(r, iz))
+    uφ = -np.matmul(Dr_2D, eigmode)
+
+    if φ is not None:
+        ur = ur * (np.cos(k * φ) + 1j * np.sin(k * φ))
+        uφ = uφ * (np.cos(k * φ) + 1j * np.sin(k * φ))
+
+    if ω is not None:
+        ur = ur * (np.cos(ω * t) - 1j * np.sin(ω * t))
+        uφ = uφ * (np.cos(ω * t) - 1j * np.sin(ω * t))
 
     return ur, uφ
