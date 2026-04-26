@@ -20,7 +20,7 @@ from matplotlib.colors import Normalize
 
 from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
-from Streamfunctions import Streamfunction#, EigenvelocityFrom2DEigvec
+from Streamfunctions import Streamfunction, EigenvelocityFrom2DEigmode
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-Nr', 
@@ -58,7 +58,7 @@ parser.add_argument('-Np',
                     type = int, default = 50)
 parser.add_argument('--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
-                    type = float, default = [1, 3, 1], nargs = 3)
+                    type = float, default = [1, 10, 1], nargs = 3)
 parser.add_argument('--nmodes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
@@ -88,16 +88,15 @@ def QG_Vortex_Stability():
 
     for kφ_idx in range(0, kφs.shape[0]):
 
-        kφ  = kφs[kφ_idx]
+        kφ = kφs[kφ_idx]
     
         print("Solving for kφ =", kφ)
 
         #Build matrices "A" and "B"
-            
         B = BuildMatrixB(params, geom, kφ, discretizeVertical = True)
         A = BuildMatrixA(params, geom, discretizeVertical = True)
 
-        #Find eigenspace (directly)
+        #Find generalized eigenspace (directly)
             
         t0 = timeit.timeit()
         
@@ -117,7 +116,7 @@ def QG_Vortex_Stability():
         growth[kφ_idx, 0:nmodes] = -ωs[0:nmodes].imag
         prop[kφ_idx, 0:nmodes]   = ωs[0:nmodes].real
         
-        #Save eigenvectors (only update interior-point values)
+        #Save eigenvectors at interior points (they vanish at boundary points)
         modesSize = modes[kφ_idx, (params.Nz + 1):, 0:nmodes].size
         modes[kφ_idx, (params.Nz + 1):,
               0:nmodes][(np.mod(np.arange(modesSize), (params.Nz + 1)) != 0)
@@ -129,121 +128,117 @@ def QG_Vortex_Stability():
 
     plt.rcParams.update({"text.usetex": True, "font.size": 17})
     
-    nkφ, nkz = (np.ravel(kφs)).shape[0], (np.ravel(kzs)).shape[0]
+    nkφ = (np.ravel(kφs)).shape[0]
 
-    for jj in range(0, nmodes):
-        
-        if nkφ < 4:
+    for mode in range(0, nmodes):
 
-            #Visualize growth rates and propagation speeds for different kφ
+        #Visualize growth rates and propagation speeds for different kφ
 
-            fig, axes = plt.subplots(nkφ, 2, figsize = (13, 7), sharex = "col")
+        fig, axs = plt.subplots(1, 2, figsize = (13, 5))
 
-            for ii in range(0, nkφ):
-                
-                ax_growth = axes[ii, 0]
-                ax_growth.plot(kzs, np.ravel(growth[:, ii, jj]), ".-",
-                               color = "mediumpurple")
-                ax_growth.set(title = f"Growth rate; $k_{{\phi}}$ = {kφs[ii]}",
-                              ylabel = "Growth rate (s$^{{-1}}$)")
-                ax_growth.grid(True)
+        ax_growth = axs[0]
+        ax_growth.plot(kφs, np.ravel(growth[:, mode]), ".-", 
+                       color = "mediumpurple")
+        ax_growth.set(title = "Growth rate", xlabel = "Azimuthal wavenumber",
+                      ylabel = "Growth rate (s$^{{-1}}$)")
+        ax_growth.grid(True)
 
-                ax_prop = axes[ii, 1]
-                ax_prop.plot(kzs, np.ravel(prop[:, ii, jj]), ".-",
-                             color = "mediumpurple")
-                ax_prop.set(title = 
-                                f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
-                            ylabel = "Angular velocity (s$^{{-1}}$)")
-                ax_prop.grid(True)
+        ax_prop = axs[1]
+        ax_prop.plot(kφs, np.ravel(prop[:, mode]), ".-", color = "mediumpurple")
+        ax_prop.set(title = "Propagation speed", 
+                    xlabel = "Azimuthal wavenumber",
+                    ylabel = "Angular velocity (s$^{{-1}}$)")
+        ax_prop.grid(True)
 
-            ax_growth.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
-            ax_prop.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
+        if nmodes == 1:
+            fig.savefig(f"omega_vs_k_fastestgrowing_dimensional2Dgyre.png")
+        elif nmodes > 1:
+            fig.savefig(f"omega_vs_k_mode{jj}_dimensional2Dgyre.png")
 
-            if nmodes == 1:
-                fig.savefig(f"omega_vs_m_fastestgrowing_dimensionalBTgyre.png")
-            elif nmodes > 1:
-                fig.savefig(f"omega_vs_m_mode{jj}_dimensionalBTgyre.png")
-            
-            plt.close(fig)
+        plt.close(fig)
 
         #Plot spatial structures of eigenmodes
         
-        kz_idx, kφ_idx = 22, 0 #0, 1
-        kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
+        for kφ_idx in range(len(kφs)):
+        
+            kφ = kφs[kφ_idx] #Wavenumber to plot for
+    
+            eigVec     = modes[kφ_idx, :, mode]
+            eigVecAmp  = np.sqrt(eigVec.real**2 + eigVec.imag**2)
+            eigVecNorm = eigVec / max(eigVecAmp) #Normalize eigenvector
+         
+            eigMode_rz = np.reshape(eigVecNorm, ((params.halfNr + 1),
+                                                 (params.Nz + 1))
+                                   )
+         
+            zVis_rz, rVis_rz = np.meshgrid(geom.z, geom.r[:(params.halfNr + 1)])
+         
+            fig, axs = plt.subplots(1, 2, figsize = (12, 7), sharey = "row")
+            
+            for i in range(2):
+                axs[i].grid(False) #Required for pcolormesh
+                
+            axs[0].pcolormesh(rVis_rz, zVis_rz, eigMode_rz.real, 
+                              cmap = "RdBu_r", vmin = -1, vmax = 1)
+            axs[0].set(xlabel = "$r$ [m]", ylabel = "$z$ [m]",
+                       title = "Re[$\hat{\psi} (r,z)$]")
+            axs[1].pcolormesh(rVis_rz, zVis_rz, eigMode_rz.imag,
+                              cmap = "RdBu_r", vmin = -1, vmax = 1)
+            axs[1].set(xlabel = "$r$ [m]",
+                       title = "Im[$\hat{\psi} (r,z)$]")
+    
+            for i in range(2):
+                
+                #Indicate gyre length scales
+                axs[i].axvline(params.sigmar, color = "k", ls = "--")
+                axs[i].axhline(-params.sigmaz, color = "k", ls = "--")
+                
+                axs[i].grid(True) #Restore grids for final version
+                
+            fig.suptitle(f"Components of fastest-growing eigenmode in $rz$-plane for wavenumber $k_{{\phi}}= {kφ}$\n\n")
+            fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
+                                        cmap = "RdBu_r"), 
+                         ax = axs.ravel().tolist(), orientation = "horizontal",
+                         shrink = 0.8,
+                         label = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$")
+            
+            if nmodes == 1:
+                fig.savefig(f"eigmode_structure_k{kφ}_fastestgrowing_dimensional2Dgyre.png")
+            elif nmodes > 1:
+                fig.savefig(f"eigmode_structure_k{kφ}_mode{jj}_dimensional2Dgyre.png")
 
-        eigVec     = modes[kz_idx, kφ_idx, :, jj]
-        eigVecAmp  = np.sqrt(eigVec.real**2 + eigVec.imag**2)
-        eigVecNorm = eigVec / max(eigVecAmp) #Normalize eigenvector
-     
-        fig, ax = plt.subplots(figsize = (10, 8))
+            plt.close(fig)
 
-        ax.plot(geom.r[0:(params.halfNr + 1)], eigVecNorm.real, "-",
-                color = "mediumpurple", label = "Re[$\hat{\psi}$]")
-        ax.plot(geom.r[0:(params.halfNr + 1)], eigVecNorm.imag, "--",
-                color = "mediumpurple", label = "Im[$\hat{\psi}$]")
+        #Set up to plot eigen-structures in r-φ and φ-z planes
         
-        ax.set(xlabel = "$r$ (m)", 
-               ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
-               title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
-        ax.legend()
-        fig.savefig(f"eigvec_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
-        plt.close(fig)
-        
-        #The following two figures are just for testing: plots of B*psi and A*psi, respectively
-        
-        fig, ax = plt.subplots()
-        ax.plot(geom.r[1:(params.halfNr + 1)],
-                np.matmul(B, eigVecNorm[1:]).real,
-                "-", color = "green", label = "Re[$B\hat{\psi}$]")
-        ax.plot(geom.r[1:(params.halfNr + 1)], 
-                np.matmul(B, eigVecNorm[1:]).imag,
-                "--", color = "green", label = "Im[$B\hat{\psi}$]")
-        ax.set(xlabel = "$r$ (m)", ylabel = "$B$ times normalized $\hat{\psi}$",
-               title = f"Components of $B$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
-        ax.legend()
-        fig.savefig(f"Bpsi_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
-        plt.close(fig)
-        
-        fig, ax = plt.subplots()
-        #ax.plot(geom.r[1:(params.halfNr+1)], np.matmul(A, eigVecNorm[1:]).real, "-",
-        #        color = "blue",
-        #        label = "Re[$A\hat{\psi}$]")
-        ax.plot(geom.r[1:(params.halfNr+1)], A[0,:].real, "-", color = "blue", label = "Re[$A$]")
-        #ax.plot(geom.r[1:(params.halfNr + 1)], np.matmul(A, eigVecNorm[1:]).imag,
-        #        "--", color = "blue",
-        #        label = "Im[$A\hat{\psi}$]")
-
-        ax.set(xlabel = "$r$ (m)", ylabel = "$A$ times normalized $\hat{\psi}$",
-               title = f"Components of $A$ times fastest-growing eigenvector \nfor wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
-        ax.legend()
-        fig.savefig(f"Apsi_1Dstructure_k{kφ}_m{kz}_dimensionalBTgyre.png")
-        plt.close(fig)
-
-        #Set up to plot eigen-structures in r-φ plane
-        
-        dφ         = 2 * pi / params.Nφ
-        φCoords    = dφ * np.arange(1, (params.Nφ + 1))
-        φVis, rVis = np.meshgrid(φCoords, geom.r[0:(params.halfNr + 1)])
+        dφ               = 2 * pi / params.Np
+        φCoords          = dφ * np.arange(1, (params.Np + 1))
+        φVis_rφ, rVis_rφ = np.meshgrid(φCoords, geom.r[:(params.halfNr + 1)])
+        zVis_φz, φVis_φz = np.meshgrid(geom.z, φCoords)
         
         #Array to hold streamfunction values
-        ψ = np.zeros([(params.halfNr + 1), params.Nφ], dtype = complex)
+        ψ = np.zeros([(params.halfNr + 1), params.Np, (params.Nz + 1)],
+                     dtype = complex)
         
-        #Evaluate streamfunction at (r, φ)-coordinate pairs  
-        for φ_idx in range(params.Nφ):
-            for r_idx in range(params.halfNr + 1):
-                ψ[r_idx, φ_idx] = Streamfunction(eigVecNorm[r_idx],
+        #Evaluate streamfunction at (r, φ, z)-coordinate triples  
+        for z_idx in range(params.Nz + 1):
+            for φ_idx in range(params.Np):
+                for r_idx in range(params.halfNr + 1):
+                    ψ[r_idx, φ_idx, z_idx] = Streamfunction(eigMode_rz[r_idx, z_idx],
                                                  k = kφ, φ = φCoords[φ_idx])
-
+        
         #Evaluate components of eigen-velocity
-        eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
-        ur, uφ            = EigenvelocityFrom1DEigvec(params, geom, eigVecNorm,
-                                                      kφ, φ = φMesh)
+        #eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
+        ur, uφ            = EigenvelocityFrom2DEigmode(params, geom, eigVecNorm,
+                                                      kφ)#, φ = φMesh)
 
         #Absolute maxmimum amplitudes of velocity components
         urMax = np.max(np.abs(np.sqrt(ur.real**2 + ur.imag**2)))
         uφMax = np.max(np.abs(np.sqrt(uφ.real**2 + uφ.imag**2)))
-
+        
         #Plot streamfunction in r-φ plane
+        
+        z_idx_plt = 7
 
         fig, axs = plt.subplots(1, 2, figsize = (11, 7),
                                 subplot_kw = {"projection": "polar"})
@@ -251,64 +246,107 @@ def QG_Vortex_Stability():
         for i in range(2):
             axs[i].grid(False) #Required for pcolormesh
 
-        axs[0].pcolormesh(φVis, rVis, ψ.real, cmap = "RdBu_r", vmin = -1,
-                          vmax = 1)
-        axs[0].set(title = f"Re[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
-        axs[1].pcolormesh(φVis, rVis, ψ.imag, cmap = "RdBu_r", vmin = -1,
-                          vmax = 1)
-        axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
+        axs[0].pcolormesh(φVis_rφ, rVis_rφ, ψ[:, :, z_idx_plt].real,
+                          cmap = "RdBu_r", vmin = -1, vmax = 1)
+        axs[0].set(title = f"Re[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+        axs[1].pcolormesh(φVis_rφ, rVis_rφ, ψ[:, :, z_idx_plt].imag,
+                          cmap = "RdBu_r", vmin = -1, vmax = 1)
+        axs[1].set(title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
 
         for i in range(2):
+        
+            axs[i].plot(np.linspace(0, 2*pi, params.Np), params.sigmar * np.ones(params.Np), color = "k", ls = "--")
+        
             axs[i].grid(True) #Restore grids for final version of plot
 
-        fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
-        fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz} m$^{{-1}}$\n\n")
+        fig.subplots_adjust(hspace = 0.75, wspace = 0.5)
+        fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $z=$ {geom.z[z_idx_plt]:.0f} m\n\n\n")
         fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
                                     cmap = "RdBu_r"), 
                      ax = axs.ravel().tolist(), orientation = "horizontal",
                      shrink = 0.8)
-        fig.savefig(f"streamfunc2D_k{kφ}_m{kz}_dimensionalBTgyre.png")
+        fig.savefig(f"streamfunc_z{geom.z[z_idx_plt]:.0f}_k{kφ}_dimensional2Dgyre.png")
         plt.close(fig)
+        
+        #Plot streamfunction in φ-z plane
+        
+        fig, axs = plt.subplots(1, 2, figsize = (12, 7), sharey = "row")
+        
+        r_idx_plt = params.halfNr - 2
+        
+        for i in range(2):
+            axs[i].grid(False) #Required for pcolormesh
 
-        #Plot eigen-velocities in r-φ plane
+        axs[0].pcolormesh(φVis_φz, zVis_φz, ψ[r_idx_plt, :, :].real,
+                          cmap = "RdBu_r", vmin = -1, vmax = 1)
+        axs[0].set(title = f"Re[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+        axs[1].pcolormesh(φVis_φz, zVis_φz, ψ[r_idx_plt, :, :].imag,
+                          cmap = "RdBu_r", vmin = -1, vmax = 1)
+        axs[1].set(title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
 
-        fig, axs = plt.subplots(2, 2, figsize = (8, 9),
-                                subplot_kw = {"projection": "polar"})
+        for i in range(2):
+        
+            #Indicate gyre length scale
+            axs[i].axhline(-params.sigmaz, color = "k", ls = "--")
+        
+            axs[i].grid(True) #Restore grids for final version of plot
+
+        fig.subplots_adjust(hspace = 0.75)
+        fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {geom.r[r_idx_plt]:.0f} m\n\n\n")
+        fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
+                                    cmap = "RdBu_r"), 
+                     ax = axs.ravel().tolist(), orientation = "horizontal",
+                     shrink = 0.8)
+        fig.savefig(f"streamfunc_r{geom.r[r_idx_plt]:.0f}_k{kφ}_dimensional2Dgyre.png")
+        plt.close(fig)
+        
+        
+        #Plot eigen-velocities in r-z plane
+
+        fig, axs = plt.subplots(2, 2, figsize = (12, 9), sharex = "col",
+                                sharey = "row")
 
         for i in range(2):
             for j in range(2):
                 axs[i, j].grid(False) #Required for pcolormesh
+                
+        ur_rz = np.reshape(ur, ((params.halfNr + 1), (params.Nz + 1)))
+        uφ_rz = np.reshape(uφ, ((params.halfNr + 1), (params.Nz + 1)))
 
-        pcm_ur = axs[0, 0].pcolormesh(φVis, rVis, np.transpose(ur.real),
+        pcm_ur = axs[0, 0].pcolormesh(rVis_rz, zVis_rz, ur_rz.real,
                                       cmap = "RdBu_r", vmin = -urMax, 
                                       vmax = urMax)
-        axs[0, 0].set_title(f"Re[$u_r'(r, \phi)$]")
-        axs[0, 1].pcolormesh(φVis, rVis, np.transpose(ur.imag),
+        axs[0, 0].set_title(f"Re[$u_r'(r, z)$]")
+        axs[0, 1].pcolormesh(rVis_rz, zVis_rz, ur_rz.imag,
                              cmap = "RdBu_r", vmin = -urMax, vmax = urMax)
-        axs[0, 1].set_title(f"Im[$u_r'(r, \phi)$]")
+        axs[0, 1].set_title(f"Im[$u_r'(r, z)$]")
         
-        pcm_uφ = axs[1, 0].pcolormesh(φVis, rVis, np.transpose(uφ.real),
+        pcm_uφ = axs[1, 0].pcolormesh(rVis_rz, zVis_rz, uφ_rz.real,
                                       cmap = "RdBu_r", vmin = -uφMax, 
                                       vmax = uφMax)
-        axs[1, 0].set_title(f"Re[$u_{{\phi}}'(r,\phi)$]")
-        axs[1, 1].pcolormesh(φVis, rVis, np.transpose(uφ.imag),
+        axs[1, 0].set_title(f"Re[$u_{{\phi}}'(r,z)$]")
+        axs[1, 1].pcolormesh(rVis_rz, zVis_rz, uφ_rz.imag,
                              cmap = "RdBu_r", vmin = -uφMax, vmax = uφMax)
-        axs[1, 1].set_title(f"Im[$u_{{\phi}}'(r,\phi)$]")
+        axs[1, 1].set_title(f"Im[$u_{{\phi}}'(r,z)$]")
 
         for i in range(2):
             for j in range(2):
+            
+                #Indicate gyre length scales
+                axs[i, j].axvline(params.sigmar, color = "k", ls = "--")
+                axs[i, j].axhline(-params.sigmaz, color = "k", ls = "--")
+            
                 axs[i, j].grid(True) #Restore grids for final version
 
-        fig.subplots_adjust(hspace = 0.4, wspace = 0.8)
-        fig.suptitle(f"Velocities derived from fastest-growing "
-                     + "eigen-streamfunction \n in $r\phi$-plane "
-                     + fr"for wavenumbers $k_{{\phi}} =$ {kφ}, $\tilde{{m}} =$ {kz}")
+        fig.subplots_adjust(hspace = 0.4, wspace = 1)
+        fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction for $k_{{\phi}} =$ {kφ}\n in $rz$-plane")
         fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], location = "right",
-                     shrink = 0.6)
+                     shrink = 0.8, label = "m/s")
         fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], location = "right",
-                     shrink = 0.6)
-        fig.savefig(f"eigvelocities_k{kφ}_m{kz}_dimensionalBTgyre.png")
+                     shrink = 0.8, label = "m/s")
+        fig.savefig(f"eigvelocities_k{kφ}_dimensional2Dgyre.png")
+        plt.show()
         plt.close(fig)
-
+        
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
