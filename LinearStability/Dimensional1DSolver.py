@@ -115,10 +115,8 @@ def QG_Vortex_Stability():
             prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
             modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
 
-            if (kφ == 1 and abs(kz - 2.6e-6) < 1e-7):
-                np.savetxt("BT_eigvec_k1_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
-            elif (kφ == 2 and kz == 0):
-                np.savetxt("BT_eigvec_k2_Nr501.out", modes[kz_idx, kφ_idx, :, 0])
+            if (kφ == 2 and kz == 0):
+                np.savetxt(f"BT_eigvec_k2_Nr{params.Nr}.out", modes[kz_idx, kφ_idx, :, 0])
 
     #Run visualization
 
@@ -163,7 +161,7 @@ def QG_Vortex_Stability():
 
         #Plot spatial structures of eigenmodes
         
-        kz_idx, kφ_idx = 22, 0 #0, 1
+        kz_idx, kφ_idx = 0, 1 #22, 0
         kz, kφ         = kzs[kz_idx], kφs[kφ_idx] #Wavenumbers to plot for
 
         eigVec     = modes[kz_idx, kφ_idx, :, jj]
@@ -176,6 +174,8 @@ def QG_Vortex_Stability():
                 color = "mediumpurple", label = "Re[$\hat{\psi}$]")
         ax.plot(geom.r[0:(params.halfNr + 1)], eigVecNorm.imag, "--",
                 color = "mediumpurple", label = "Im[$\hat{\psi}$]")
+
+        ax.axvline(params.sigmar, color = "k", ls = "--") #Gyre length scale
         
         ax.set(xlabel = "$r$ (m)", 
                ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
@@ -224,6 +224,11 @@ def QG_Vortex_Stability():
         axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
 
         for i in range(2):
+        
+            axs[i].plot(np.linspace(0, (2 * pi), params.Np), 
+                        params.sigmar * np.ones(params.Np), color = "k", 
+                        ls = "--") #Gyre length scale        
+        
             axs[i].grid(True) #Restore grids for final version of plot
 
         fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
@@ -262,6 +267,11 @@ def QG_Vortex_Stability():
 
         for i in range(2):
             for j in range(2):
+            
+                axs[i, j].plot(np.linspace(0, (2 * pi), params.Np), 
+                               params.sigmar * np.ones(params.Np), color = "k",
+                               ls = "--") #Gyre length scale
+            
                 axs[i, j].grid(True) #Restore grids for final version
 
         fig.subplots_adjust(hspace = 0.4, wspace = 0.8)
