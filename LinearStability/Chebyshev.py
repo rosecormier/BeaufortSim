@@ -28,9 +28,7 @@ class Parameters:
         self.discretizeVertical = discretizeVertical
         
         if not discretizeVertical:
-        
             self.bkgd = args["bkgd"]
-        
             self.kzs  = np.arange(args["k_z"][0], args["k_z"][1], args["k_z"][2])
         
         elif discretizeVertical:
@@ -38,10 +36,10 @@ class Parameters:
             self.bkgd = "BG"
         
             self.stratification_kw = args["strat_shape"]
-            self.sigmaz   = args["sigmaz"]
+            self.sigmaz            = args["sigmaz"]
 
-            self.Lz     = args["Lz"]    #Max. depth (i.e., -min(z)) in physical domain
-            self.Nz     = args["Nz"] #Number of computational gridpoints in z
+            self.Lz = args["Lz"] #Max. depth (i.e., -min(z)) in physical domain
+            self.Nz = args["Nz"] #Number of computational gridpoints in z
     
 def Chebyshev(N, xTransform = None):
     """
@@ -100,7 +98,7 @@ class ChebyshevGeometry:
                 
             #Compute differentiation matrix and Chebyshev-spaced grid
             Dz, z = Chebyshev(params.Nz, xTransform = zTransform())
-                        
+
             #Scale gridpoints and variable of differentiation to fit domain
             self.z, self.Dz = z * params.Lz, Dz / params.Lz
 
