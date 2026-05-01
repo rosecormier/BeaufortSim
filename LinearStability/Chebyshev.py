@@ -56,23 +56,24 @@ def Chebyshev(N, xTransform = None):
     else:
 
         #Create a vector of N+1 Chebyshev-spaced components from 1 to -1
-        x = np.cos(pi * np.arange(0, (N+1)) / N)
-
-        if xTransform is not None:
-            x = xTransform(x)
+        x = np.cos(pi * np.arange(0, (N + 1)) / N)
 
         #Define the Chebyshev coeffs c_{ij}
-        c = np.hstack([2, np.ones(N-1), 2]) * (-1)**np.arange(0, (N+1))
-        
-        X  = np.tile(x, (N+1, 1))
+        c = np.hstack([2, np.ones(N - 1), 2]) * (-1)**np.arange(0, (N + 1))
+            
+        X  = np.tile(x, ((N + 1), 1))
         dX = X.T - X.conj()
-
+    
         #Initialize D with off-diag entries computed by eq. 6.5 (Trefethen)
         D = ((c[:, np.newaxis] * (1.0 / c.conj())[np.newaxis, :])
-             / (dX + (np.eye(N+1))))
-
+                 / (dX + (np.eye(N + 1))))
+    
         #Update diagonal entries (currently = 0) using identity 6.6 (Trefethen)
         D = D - np.diag(D.sum(axis = 1))
+
+        #Shift entries of x (note: important to do this AFTER building D)
+        if xTransform is not None:
+            x = xTransform(x)
         
     return D, x
     
