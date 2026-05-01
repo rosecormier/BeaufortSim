@@ -52,13 +52,13 @@ parser.add_argument('--sigmar',
                     type = float, default = 2.5e5)
 parser.add_argument('--sigmaz',
                     help = 'Vertical length scale of gyre (m)',
-                    type = float, default = 3e2)
+                    type = float, default = 1e20)
 parser.add_argument('-Np', 
                     help = 'Number of points for discretization of phi', 
                     type = int, default = 50)
 parser.add_argument('--k_phi', 
                     help = 'Azimuthal wavenumbers; enter as -kp start stop step',
-                    type = float, default = [1, 10, 1], nargs = 3)
+                    type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument('--nmodes', 
                     help = 'Number of modes of instability to be considered',
                     type = int, default = 1)
@@ -117,12 +117,6 @@ def QG_Vortex_Stability():
         prop[kφ_idx, 0:nmodes]   = ωs[0:nmodes].real
         
         #Save eigenvectors at interior points (they vanish at boundary points)
-        #modesSize = modes[kφ_idx, (params.Nz + 1):, 0:nmodes].size
-        #modes[kφ_idx, (params.Nz + 1):,
-        #      0:nmodes][(np.mod(np.arange(modesSize), (params.Nz + 1)) != 0)
-        #                & (np.mod(np.arange(modesSize), (params.Nz + 1))
-        #                   != params.Nz)
-        #               ] = eigVecs[:, 0:nmodes]
         modesLen = len(modes[kφ_idx, :, 0:nmodes])
         modes[kφ_idx, 
               ((np.mod(np.arange(modesLen), (params.Nz + 1)) != 0)
@@ -147,32 +141,28 @@ def QG_Vortex_Stability():
     
         #Output from 1D solver - for testing
         testeigvec1D = np.loadtxt(f"BT_eigvec_k2_Nr{params.Nr}.out", dtype = "complex")
-        testeigvec2D = np.kron(np.diag(testeigvec1D[1:]), np.eye(params.Nz-1))
+        testeigvec2D = np.kron(testeigvec1D[1:].reshape((-1, 1)), np.ones((params.Nz-1, 1)))
+    
+        testBpsi = np.matmul(B, testeigvec2D)
+        testApsi = np.matmul(A, testeigvec2D)
     
         #The following figure is just for testing: plots of B*psi and A*psi
 
-        testBpsi = np.matmul(B, testeigvec2D)
-        testApsi = np.matmul(A, testeigvec2D)
-
         fig, axs = plt.subplots(2, 1, sharex = "col")
         
-        axs[0].plot(geom.r[1:(params.halfNr + 1)],
-                np.diag(testBpsi)[:(params.halfNr + 1) * (params.Nz - 1):(params.Nz - 1)].real, "-", color = "green", label = "Re[$B\hat{\psi}$]")
-        axs[0].plot(geom.r[1:(params.halfNr + 1)], 
-                np.diag(testBpsi)[:(params.halfNr + 1) * (params.Nz - 1):(params.Nz - 1)].imag, "--", color = "green", label = "Im[$B\hat{\psi}$]")
+        axs[0].plot(geom.r[1:(params.halfNr+1)], testBpsi[::(params.Nz-1)].real, "-", color = "green", label = "Re[$B\hat{\psi}$]")
+        axs[0].plot(geom.r[1:(params.halfNr + 1)], testBpsi[::(params.Nz-1)].imag, "--", color = "green", label = "Im[$B\hat{\psi}$]")
         axs[0].set(ylabel = "$B \hat{\psi}$", title = "Components of $B$ times fastest-growing (1D) eigenmode for $k_{{\phi}} = 2; z=0$")
         axs[0].legend()
         
-        axs[1].plot(geom.r[1:(params.halfNr+1)], 
-                np.diag(testApsi)[:(params.halfNr + 1) * (params.Nz - 1):(params.Nz - 1)].real, "-", color = "blue", label = "Re[$A\hat{\psi}$]")
-        axs[1].plot(geom.r[1:(params.halfNr + 1)], 
-                np.diag(testBpsi)[:(params.halfNr + 1) * (params.Nz - 1):(params.Nz - 1)].imag, "--", color = "blue", label = "Im[$A\hat{\psi}$]")
+        axs[1].plot(geom.r[1:(params.halfNr+1)], testApsi[::(params.Nz-1)].real, "-", color = "blue", label = "Re[$A\hat{\psi}$]")
+        axs[1].plot(geom.r[1:(params.halfNr + 1)], testApsi[::(params.Nz-1)].imag, "--", color = "blue", label = "Im[$A\hat{\psi}$]")
         axs[1].set(xlabel = "$r$ (m)", ylabel = "$A\hat{\psi}$", title = "Components of $A$ times fastest-growing (1D) eigenmode for $k_{{\phi}} =2; z=0$")
         axs[1].legend()
 
         plt.show()
         plt.close(fig)
-
+        
         #Visualize growth rates and propagation speeds for different kφ
 
         fig, axs = plt.subplots(1, 2, figsize = (13, 5))
