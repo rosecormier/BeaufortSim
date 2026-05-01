@@ -23,38 +23,38 @@ from Chebyshev import Parameters, ChebyshevGeometry
 from Streamfunctions import Streamfunction, EigenvelocityFrom1DEigvec
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-Nr', 
-                    help = 'Number (must be ODD) of grid points for eig computations',
+parser.add_argument("-Nr", 
+                    help = "Number (must be ODD) of grid points for direct computation",
                     type = int, default = 501)
-parser.add_argument('-Lr', 
-                    help = 'DIMENSIONAL radius of the physical domain (m)',
+parser.add_argument("-Lr", 
+                    help = "DIMENSIONAL radius of the physical domain (m)",
                     type = float, default = 2.5e6)
-parser.add_argument('-N', '--buoyancyfreq',
-                    help = 'Buoyancy frequency (Hz)',
+parser.add_argument("-N", "--buoyancyfreq",
+                    help = "Buoyancy frequency (Hz)",
                     type = float, default = 1e-2)
-parser.add_argument('-f0', '--Coriolis',
-                    help = 'Coriolis frequency f0 (Hz)',
+parser.add_argument("-f0", "--Coriolis",
+                    help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
-parser.add_argument('-U', '--bkgdU',
-                    help = 'Characteristic scale for background velocity (m/s)',
+parser.add_argument("-U", "--bkgdU",
+                    help = "Characteristic scale for background velocity (m/s)",
                     type = float, default = 3.5)
-parser.add_argument('--sigmar',
-                    help = 'Radial length scale of gyre (m)',
+parser.add_argument("--sigmar",
+                    help = "Radial length scale of gyre (m)",
                     type = float, default = 2.5e5)
-parser.add_argument('--bkgd',
-                    help = 'Background flow to use ("GM" or "BG")',
+parser.add_argument("--bkgd",
+                    help = "Background flow to use ('GM' or 'BG')",
                     type = str, default = "BG")
-parser.add_argument('-Np', 
-                    help = 'Number of points for discretization of phi', 
+parser.add_argument("-Np", 
+                    help = "Number of phi-points for visualization", 
                     type = int, default = 50)
-parser.add_argument('--k_phi', 
-                    help = 'Azimuthal wavenumbers; enter as -kp start stop step',
+parser.add_argument("--k_phi", 
+                    help = "Azimuthal wavenumbers; enter as --k_phi start stop step",
                     type = float, default = [1, 3, 1], nargs = 3)
-parser.add_argument('-kz', '--k_z', 
-                    help = 'DIMENSIONAL vertical wavenumbers (m^{-1}); enter as -kz start stop step',
+parser.add_argument("--k_z", 
+                    help = "DIMENSIONAL vertical wavenumbers (m^{-1}); enter as --k_z start stop step",
                     type = float, default = [0, 1e-3, 1e-5], nargs = 3)
-parser.add_argument('--nmodes', 
-                    help = 'Number of modes of instability to be considered',
+parser.add_argument("--nmodes", 
+                    help = "Number of modes of instability to be considered",
                     type = int, default = 1)
 args = vars(parser.parse_args())
 
@@ -80,14 +80,14 @@ def QG_Vortex_Stability():
 
     #Solve generalized eigenvalue problem
     
-    for kz_idx in range(0, kzs.shape[0]):
+    for kz_idx in range(kzs.shape[0]):
 
         kz  = kzs[kz_idx]
         kz2 = kz**2
   
-        for kφ_idx in range(0, kφs.shape[0]):
+        for kφ_idx in range(kφs.shape[0]):
 
-            kφ  = kφs[kφ_idx]
+            kφ = kφs[kφ_idx]
     
             print("Solving for kφ =", kφ, ", kz =", kz)
 
@@ -109,14 +109,11 @@ def QG_Vortex_Stability():
 
             eigVals = eigVals[indSort]    #Sort eigvals
             eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
-            ωs      = eigVals * kφ        #Corresponding ω values for this kφ
+            ωs      = eigVals * kφ        #Corresponding ω-values for this kφ
            
             growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
             prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
             modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
-
-            if (kφ == 2 and kz == 0):
-                np.savetxt(f"BT_eigvec_k2_Nr{params.Nr}.out", modes[kz_idx, kφ_idx, :, 0])
 
     #Run visualization
 
@@ -132,7 +129,7 @@ def QG_Vortex_Stability():
 
             fig, axes = plt.subplots(nkφ, 2, figsize = (13, 7), sharex = "col")
 
-            for ii in range(0, nkφ):
+            for ii in range(nkφ):
                 
                 ax_growth = axes[ii, 0]
                 ax_growth.plot(kzs, np.ravel(growth[:, ii, jj]), ".-",

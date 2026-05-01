@@ -23,44 +23,44 @@ from Chebyshev import Parameters, ChebyshevGeometry
 from Streamfunctions import Streamfunction, EigenvelocityFrom2DEigmode
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-Nr', 
-                    help = 'Number (must be ODD) of r-grid points for eig computations',
+parser.add_argument("-Nr", 
+                    help = "Number (must be ODD) of r-grid points for direct computation",
                     type = int, default = 201)
-parser.add_argument('-Nz', 
-                    help = 'Number of z-grid points for eig computations',
+parser.add_argument("-Nz", 
+                    help = "Number of z-grid points for direct computation",
                     type = int, default = 20)
-parser.add_argument('-Lr', 
-                    help = 'DIMENSIONAL radius of the physical domain (m)',
+parser.add_argument("-Lr", 
+                    help = "DIMENSIONAL radius of the physical domain (m)",
                     type = float, default = 2.5e6)
-parser.add_argument('-Lz',
-                    help = 'DIMENSIONAL depth (> 0) of physical domain (m)',
+parser.add_argument("-Lz",
+                    help = "DIMENSIONAL depth (> 0) of physical domain (m)",
                     type = float, default = 3e4)
-parser.add_argument('--strat_shape',
-                    help = 'Shape of ambient squared buoyancy frequency profile',
+parser.add_argument("--strat_shape",
+                    help = "Shape of ambient squared buoyancy frequency profile",
                     type = str, default = "constant")
-parser.add_argument('-N', '--buoyancyfreq',
-                    help = 'Maximum buoyancy frequency (Hz)',
+parser.add_argument("-N", "--buoyancyfreq",
+                    help = "Maximum buoyancy frequency (Hz)",
                     type = float, default = 1e-2)
-parser.add_argument('-f0', '--Coriolis',
-                    help = 'Coriolis frequency f0 (Hz)',
+parser.add_argument("-f0", "--Coriolis",
+                    help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
-parser.add_argument('-U', '--bkgdU',
-                    help = 'Characteristic scale for background velocity (m/s)',
+parser.add_argument("-U", "--bkgdU",
+                    help = "Characteristic scale for background velocity (m/s)",
                     type = float, default = 3.5)
-parser.add_argument('--sigmar',
-                    help = 'Radial length scale of gyre (m)',
+parser.add_argument("--sigmar",
+                    help = "Radial length scale of gyre (m)",
                     type = float, default = 2.5e5)
-parser.add_argument('--sigmaz',
-                    help = 'Vertical length scale of gyre (m)',
+parser.add_argument("--sigmaz",
+                    help = "Vertical length scale of gyre (m)",
                     type = float, default = 1e20)
-parser.add_argument('-Np', 
-                    help = 'Number of points for discretization of phi', 
+parser.add_argument("-Np", 
+                    help = "Number of phi-points for visualization", 
                     type = int, default = 50)
-parser.add_argument('--k_phi', 
-                    help = 'Azimuthal wavenumbers; enter as -kp start stop step',
+parser.add_argument("--k_phi", 
+                    help = "Azimuthal wavenumbers; enter as -kp start stop step",
                     type = float, default = [1, 3, 1], nargs = 3)
-parser.add_argument('--nmodes', 
-                    help = 'Number of modes of instability to be considered',
+parser.add_argument("--nmodes", 
+                    help = "Number of modes of instability to be considered",
                     type = int, default = 1)
 args = vars(parser.parse_args())
 
@@ -81,12 +81,13 @@ def QG_Vortex_Stability():
     #Initialize arrays to store results of eigen-computation
     growth = np.zeros([kφs.shape[0], nmodes])
     prop   = np.zeros([kφs.shape[0], nmodes])
-    modes  = np.zeros([kφs.shape[0], ((params.halfNr + 1) * (params.Nz + 1)), nmodes],
+    modes  = np.zeros([kφs.shape[0], ((params.halfNr + 1) * (params.Nz + 1)),
+                       nmodes],
                       dtype = complex)
 
     #Solve generalized eigenvalue problem
 
-    for kφ_idx in range(0, kφs.shape[0]):
+    for kφ_idx in range(kφs.shape[0]):
 
         kφ = kφs[kφ_idx]
     
@@ -110,7 +111,7 @@ def QG_Vortex_Stability():
 
         eigVals = eigVals[indSort]    #Sort eigvals
         eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
-        ωs      = eigVals * kφ        #Corresponding ω values for this kφ
+        ωs      = eigVals * kφ        #Corresponding ω-values for this kφ
         
         #Save growth rates and propagation speeds
         growth[kφ_idx, 0:nmodes] = -ωs[0:nmodes].imag
@@ -123,8 +124,21 @@ def QG_Vortex_Stability():
                & (np.mod(np.arange(modesLen), (params.Nz + 1)) != params.Nz)
                & (np.arange(modesLen) > params.Nz)),
               0:nmodes] = eigVecs[:, 0:nmodes]
-
-    #Run visualization
+    
+    def plot_sigmar_polarGrid(ax, params):
+        """
+        Plot indication of radial gyre length scale, if it is within domain.
+        """
+        if params.sigmar < params.Lr:
+            ax.plot(np.linspace(0, (2 * pi), params.Np), 
+                    params.sigmar * np.ones(params.Np), color = "k", ls = "--")
+                    
+    def plot_sigmar_CartesianGrid(ax, params):
+        """
+        Plot indication of radial gyre length scale, if it is within domain.
+        """
+        if params.sigmar < params.Lr:
+            ax.axvline(params.sigmar, color = "k", ls = "--")
     
     def plot_sigmaz(ax, params):
         """
@@ -133,49 +147,27 @@ def QG_Vortex_Stability():
         if params.sigmaz < params.Lz:
             ax.axhline(-params.sigmaz, color = "k", ls = "--")
 
+    #Run visualization
+
     plt.rcParams.update({"text.usetex": True, "font.size": 17})
     
     nkφ = (np.ravel(kφs)).shape[0]
 
-    for mode in range(0, nmodes):
-    
-        #Output from 1D solver - for testing
-        testeigvec1D = np.loadtxt(f"BT_eigvec_k2_Nr{params.Nr}.out", dtype = "complex")
-        testeigvec2D = np.kron(testeigvec1D[1:].reshape((-1, 1)), np.ones((params.Nz-1, 1)))
-    
-        testBpsi = np.matmul(B, testeigvec2D)
-        testApsi = np.matmul(A, testeigvec2D)
-    
-        #The following figure is just for testing: plots of B*psi and A*psi
-
-        fig, axs = plt.subplots(2, 1, sharex = "col")
-        
-        axs[0].plot(geom.r[1:(params.halfNr+1)], testBpsi[::(params.Nz-1)].real, "-", color = "green", label = "Re[$B\hat{\psi}$]")
-        axs[0].plot(geom.r[1:(params.halfNr + 1)], testBpsi[::(params.Nz-1)].imag, "--", color = "green", label = "Im[$B\hat{\psi}$]")
-        axs[0].set(ylabel = "$B \hat{\psi}$", title = "Components of $B$ times fastest-growing (1D) eigenmode for $k_{{\phi}} = 2; z=0$")
-        axs[0].legend()
-        
-        axs[1].plot(geom.r[1:(params.halfNr+1)], testApsi[::(params.Nz-1)].real, "-", color = "blue", label = "Re[$A\hat{\psi}$]")
-        axs[1].plot(geom.r[1:(params.halfNr + 1)], testApsi[::(params.Nz-1)].imag, "--", color = "blue", label = "Im[$A\hat{\psi}$]")
-        axs[1].set(xlabel = "$r$ (m)", ylabel = "$A\hat{\psi}$", title = "Components of $A$ times fastest-growing (1D) eigenmode for $k_{{\phi}} =2; z=0$")
-        axs[1].legend()
-
-        plt.show()
-        plt.close(fig)
+    for mode in range(nmodes):
         
         #Visualize growth rates and propagation speeds for different kφ
 
         fig, axs = plt.subplots(1, 2, figsize = (13, 5))
 
         ax_growth = axs[0]
-        ax_growth.plot(kφs, np.ravel(growth[:, mode]), ".-", 
-                       color = "mediumpurple")
+        ax_growth.scatter(kφs, np.ravel(growth[:, mode]),
+                          color = "mediumpurple")
         ax_growth.set(title = "Growth rate", xlabel = "Azimuthal wavenumber",
                       ylabel = "Growth rate (s$^{{-1}}$)")
         ax_growth.grid(True)
 
         ax_prop = axs[1]
-        ax_prop.plot(kφs, np.ravel(prop[:, mode]), ".-", color = "mediumpurple")
+        ax_prop.scatter(kφs, np.ravel(prop[:, mode]), color = "mediumpurple")
         ax_prop.set(title = "Propagation speed", 
                     xlabel = "Azimuthal wavenumber",
                     ylabel = "Angular velocity (s$^{{-1}}$)")
@@ -185,7 +177,7 @@ def QG_Vortex_Stability():
             fig.savefig(f"omega_vs_k_fastestgrowing_dimensional2Dgyre.png")
         elif nmodes > 1:
             fig.savefig(f"omega_vs_k_mode{jj}_dimensional2Dgyre.png")
-        plt.show()
+        
         plt.close(fig)
 
         #Plot spatial structures of eigenmodes
@@ -220,8 +212,8 @@ def QG_Vortex_Stability():
     
             for i in range(2):
                 
-                #Indicate gyre length scales
-                axs[i].axvline(params.sigmar, color = "k", ls = "--")
+                #Show gyre length scales
+                plot_sigmar_CartesianGrid(axs[i], params)
                 plot_sigmaz(axs[i], params)
                 
                 axs[i].grid(True) #Restore grids for final version
@@ -237,14 +229,15 @@ def QG_Vortex_Stability():
                 fig.savefig(f"eigmode_structure_k{kφ}_fastestgrowing_dimensional2Dgyre.png")
             elif nmodes > 1:
                 fig.savefig(f"eigmode_structure_k{kφ}_mode{jj}_dimensional2Dgyre.png")
-            plt.show()
+            
             plt.close(fig)
 
             #Set up to plot eigen-structures in r-φ and φ-z planes
             
             dφ               = 2 * pi / params.Np
             φCoords          = dφ * np.arange(1, (params.Np + 1))
-            φVis_rφ, rVis_rφ = np.meshgrid(φCoords, geom.r[:(params.halfNr + 1)])
+            φVis_rφ, rVis_rφ = np.meshgrid(φCoords,
+                                           geom.r[:(params.halfNr + 1)])
             zVis_φz, φVis_φz = np.meshgrid(geom.z, φCoords)
             
             #Array to hold streamfunction values
@@ -255,13 +248,11 @@ def QG_Vortex_Stability():
             for z_idx in range(params.Nz + 1):
                 for φ_idx in range(params.Np):
                     for r_idx in range(params.halfNr + 1):
-                        ψ[r_idx, φ_idx, z_idx] = Streamfunction(eigMode_rz[r_idx, z_idx],
-                                                     k = kφ, φ = φCoords[φ_idx])
+                        ψ[r_idx, φ_idx, z_idx] = Streamfunction(
+                           eigMode_rz[r_idx, z_idx], k = kφ, φ = φCoords[φ_idx])
             
             #Evaluate components of eigen-velocity
-            #eigVecMesh, φMesh = np.meshgrid(eigVecNorm, φCoords)
-            ur, uφ            = EigenvelocityFrom2DEigmode(params, geom, eigVecNorm,
-                                                          kφ)#, φ = φMesh)
+            ur, uφ = EigenvelocityFrom2DEigmode(params, geom, eigVecNorm, kφ)
     
             #Absolute maxmimum amplitudes of velocity components
             urMax = np.max(np.abs(np.sqrt(ur.real**2 + ur.imag**2)))
@@ -285,11 +276,7 @@ def QG_Vortex_Stability():
             axs[1].set(title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
     
             for i in range(2):
-            
-                axs[i].plot(np.linspace(0, (2 * pi), params.Np), 
-                            params.sigmar * np.ones(params.Np), color = "k", 
-                            ls = "--") #Gyre length scale
-            
+                plot_sigmar_polarGrid(axs[i], params) #Show gyre length scale
                 axs[i].grid(True) #Restore grids for final version of plot
     
             fig.subplots_adjust(hspace = 0.75, wspace = 0.5)
@@ -321,7 +308,7 @@ def QG_Vortex_Stability():
                        title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
     
             for i in range(2):
-                plot_sigmaz(axs[i], params) #Indicate gyre length scale
+                plot_sigmaz(axs[i], params) #Show gyre length scale
                 axs[i].grid(True) #Restore grids for final version of plot
                 
             fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {geom.r[r_idx_plt]:.0f} m\n\n\n")
@@ -368,8 +355,8 @@ def QG_Vortex_Stability():
             for i in range(2):
                 for j in range(2):
                 
-                    #Indicate gyre length scales
-                    axs[i, j].axvline(params.sigmar, color = "k", ls = "--")
+                    #Show gyre length scales
+                    plot_sigmar_CartesianGrid(axs[i, j], params)
                     plot_sigmaz(axs[i, j], params)
                 
                     axs[i, j].grid(True) #Restore grids for final version
