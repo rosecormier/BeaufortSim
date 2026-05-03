@@ -14,17 +14,16 @@ def N2_profile(stratification_kw, dimensional_N2 = 1):
 
     return N2_function
 
-def ComputeRecips(params, geom, discretizeVertical = False,
-                  nondimensional = False):
+def ComputeRecips(params, geom):
     """
     Compute and save values of 1/r and 1/N^2 at grid points.
     """
 
     geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
     
-    if discretizeVertical:
+    if params.discretizeVertical:
 
-        if nondimensional:
+        if params.nondimensional:
             dimensional_N2 = 1
         else:
             dimensional_N2 = params.Nmax**2
@@ -34,19 +33,18 @@ def ComputeRecips(params, geom, discretizeVertical = False,
         geom.N2      = N2_function(geom.z)
         geom.N2Recip = 1 / geom.N2
 
-def BuildBkgdOperators(params, geom, discretizeVertical = False,
-                       nondimensional = False):
+def BuildBkgdOperators(params, geom):
     """
     Build discrete representations of operators Ψ_op := (1/r) * (∂Ψ/∂r) and
      Q_op := (1/r) * (∂Q/∂r) for the prescribed background flow.
     """
 
-    if nondimensional:
+    if params.nondimensional:
         dimensional_U, dimensional_σr = 1, 1
     else:
         dimensional_U, dimensional_σr = params.Umax, params.sigmar
 
-    if not discretizeVertical:
+    if not params.discretizeVertical:
         rTilde = np.ravel(geom.r[1:(params.halfNr + 1)]) / dimensional_σr
 
     if params.bkgd == "GM":
@@ -59,7 +57,7 @@ def BuildBkgdOperators(params, geom, discretizeVertical = False,
 
     elif params.bkgd == "BG":
 
-        if not discretizeVertical:
+        if not params.discretizeVertical:
             
             Ψ_op = (np.sqrt(2 * e) * np.exp(-rTilde**2) 
                     * dimensional_U / dimensional_σr)
@@ -71,7 +69,7 @@ def BuildBkgdOperators(params, geom, discretizeVertical = False,
 
             geom.Ψ_op, geom.Q_op = np.diag(Ψ_op), np.diag(Q_op)
                     
-        elif discretizeVertical:
+        elif params.discretizeVertical:
         
             f0, dimensional_σz = params.f0, params.sigmaz
         
@@ -139,7 +137,7 @@ def ConvertQuadsToBlock(Q1, Q2, Q3, Q4):
     
     return np.block([[block1, block2], [block3, block4]])
 
-def BuildHorizontalLaplacian(params, geom, discretizeVertical = False):
+def BuildHorizontalLaplacian(params, geom):
     """
     Build discrete representation of horizontal Laplacian in cylindrical
      coordinates, assuming azimuthal symmetry (i.e., neglecting derivatives 
@@ -169,41 +167,50 @@ def BuildHorizontalLaplacian(params, geom, discretizeVertical = False):
     geom.LapH = ConvertQuadsToBlock(geom.LapH_Q1, geom.LapH_Q2, 
                                     geom.LapH_Q3, geom.LapH_Q4)
       
-    if discretizeVertical:
+    if params.discretizeVertical:
     
         Iz = np.eye(params.Nz - 1)
 
         geom.LapH_2D = np.kron(geom.LapH, Iz)
     
-def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
+def BuildMatrixB(params, geom, kφ, kz = None):
     """
     Build discrete representation of 'B' operator in generalized eigenvalue 
      problem.
     """
     
-    Nr, halfNr, f0 = params.Nr, params.halfNr, params.f0
+    Nr, halfNr = params.Nr, params.halfNr
     
     kφ2     = kφ**2
     r2Recip = geom.rRecip**2
     
-    if not discretizeVertical:
+    if not params.discretizeVertical:
     
-        kz2   = kz**2
-        N2max = params.Nmax**2
-    
-        geom.B_Q1 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                     - geom.LapH_Q1)
+        kz2 = kz**2
+        
         geom.B_Q2 = -geom.LapH_Q2
         geom.B_Q3 = -geom.LapH_Q3
-        geom.B_Q4 = ((kφ2 * r2Recip) + kz2 * (f0**2 / N2max) * np.eye(halfNr)
-                     - geom.LapH_Q4)
+        
+        if params.nondimensional:
+            geom.B_Q1 = (kφ2 * r2Recip + kz2 * (1 / params.Bu) * np.eye(halfNr)
+                         - geom.LapH_Q1)
+            geom.B_Q4 = (kφ2 * r2Recip + kz2 * (1 / params.Bu) * np.eye(halfNr)
+                         - geom.LapH_Q4)
+            
+        else:
+            geom.B_Q1 = (kφ2 * r2Recip
+                         + kz2 * (params.f0 / params.Nmax)**2 * np.eye(halfNr)
+                         - geom.LapH_Q1)
+            geom.B_Q4 = (kφ2 * r2Recip
+                         + kz2 * (params.f0 / params.Nmax)**2 * np.eye(halfNr)
+                         - geom.LapH_Q4)
 
         #Assemble square matrix to be used in gen. eig. solver
         geom.B = geom.B_Q1 + geom.B_Q2
         
         return geom.B
         
-    elif discretizeVertical:
+    elif params.discretizeVertical:
     
         #Quadrants of terms depending on r, discretized on r-grid
         horizontalB_Q1 = (kφ2 * r2Recip) - geom.LapH_Q1
@@ -225,8 +232,8 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         Dz2     = geom.Dz2[1:-1, 1:-1]
         
         #Terms depending on z, discretized on z-grid
-        verticalB = -(np.matmul((f0**2 * N2Recip), Dz2)
-                      + np.matmul(np.matmul(f0**2 * Dz, N2Recip), Dz)
+        verticalB = -(np.matmul((params.f0**2 * N2Recip), Dz2)
+                      + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
                      )
         
         Ir = np.eye(params.Nr - 1)
@@ -256,16 +263,16 @@ def BuildMatrixB(params, geom, kφ, kz = None, discretizeVertical = False):
         
         return geom.B
         
-def BuildMatrixA(params, geom, discretizeVertical = False):
+def BuildMatrixA(params, geom):
     """
     Build discrete representation of 'A' operator in generalized eigenvalue 
      problem.
     """
 
-    if not discretizeVertical:
-      geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
+    if not params.discretizeVertical:
+        geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
     
-    elif discretizeVertical:
+    elif params.discretizeVertical:
         geom.A = (np.matmul(geom.Ψ_op[:(params.halfNr * (params.Nz - 1)),
                                      :(params.halfNr * (params.Nz - 1))],
                            geom.B)
