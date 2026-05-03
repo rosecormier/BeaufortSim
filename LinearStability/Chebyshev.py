@@ -10,26 +10,35 @@ from math import pi
 
 class Parameters:
     
-    def __init__(self, args, discretizeVertical = False):
+    def __init__(self, args, discretizeVertical = False,
+                 nondimensional = False):
+                 
+        self.f0 = args["Coriolis"]
     
-        self.Nmax   = args["buoyancyfreq"]
-        self.f0     = args["Coriolis"]
-        self.Umax   = args["bkgdU"]
-        self.sigmar = args["sigmar"]
+        if nondimensional:
+            self.Ro = args["Ro"] #Rossby number
+            self.Bu = args["Bu"] #Burger number
+            
+        else:
+            self.Nmax   = args["buoyancyfreq"] #Max. buoyancy frequency
+            self.Umax   = args["bkgdU"]        #Background velocity scale
+            self.sigmar = args["sigmar"]       #Radial background length scale
     
         self.Lr     = args["Lr"] #Max. r in phys. space; half of comp. domain
         self.Nr     = args["Nr"] #No. (odd) of radial points in comp. domain
         self.halfNr = self.Nr // 2   
         self.Np     = args["Np"] #No. of azimuthal points (visualization only)
-        self.kps    = np.arange(args["k_phi"][0], args["k_phi"][1], args["k_phi"][2])
-        
+        self.kps    = np.arange(args["k_phi"][0], args["k_phi"][1],
+                                args["k_phi"][2])
         self.nmodes = args["nmodes"]
         
         self.discretizeVertical = discretizeVertical
+        self.nondimensional     = nondimensional
         
         if not discretizeVertical:
             self.bkgd = args["bkgd"]
-            self.kzs  = np.arange(args["k_z"][0], args["k_z"][1], args["k_z"][2])
+            self.kzs  = np.arange(args["k_z"][0], args["k_z"][1],
+                                  args["k_z"][2])
         
         elif discretizeVertical:
         
