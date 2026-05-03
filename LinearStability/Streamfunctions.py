@@ -74,7 +74,7 @@ def EigenvelocityFrom2DEigmode(params, geom, eigmode, k, **kwargs):
     r     = geom.r[0:(halfNr + 1)]
     Dr_2D = np.kron(geom.Dr[:(halfNr + 1), :(halfNr + 1)], Iz)
     
-    ω, φ, t     = kwargs.get("ω"), kwargs.get("φ"), kwargs.get("t")
+    ω, φ, t = kwargs.get("ω"), kwargs.get("φ"), kwargs.get("t")
     
     ur = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
     uφ = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
