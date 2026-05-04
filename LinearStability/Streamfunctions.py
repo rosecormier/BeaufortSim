@@ -24,7 +24,7 @@ def Streamfunction(eigvec, **kwargs):
 
     return psi
 
-def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
+def EigvelFrom1DEigvec(params, geom, eigvec, k, **kwargs):
     """
     Evaluates QG velocities corresponding to specified (discrete) eigenvector
      and azimuthal wavenumber, as well as any of φ, z, and t, (m and 
@@ -58,7 +58,7 @@ def EigenvelocityFrom1DEigvec(params, geom, eigvec, k, **kwargs):
 
     return ur, uφ
 
-def EigenvelocityFrom2DEigmode(params, geom, eigmode, k, **kwargs):
+def EigvelFrom2DEigmode(params, geom, eigMode, k, **kwargs):
     """
     Evaluates QG velocities corresponding to specified (discrete) eigenvector
      and azimuthal wavenumber, as well as either of φ and t, (omega must be
@@ -70,7 +70,7 @@ def EigenvelocityFrom2DEigmode(params, geom, eigmode, k, **kwargs):
    
     iz = np.ones(params.Nz + 1) 
     Iz = np.eye(params.Nz + 1)
-    
+
     r     = geom.r[0:(halfNr + 1)]
     Dr_2D = np.kron(geom.Dr[:(halfNr + 1), :(halfNr + 1)], Iz)
     
@@ -79,8 +79,8 @@ def EigenvelocityFrom2DEigmode(params, geom, eigmode, k, **kwargs):
     ur = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
     uφ = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
    
-    ur = 1j * k * (eigmode / np.kron(r, iz))
-    uφ = -np.matmul(Dr_2D, eigmode)
+    ur = 1j * k * (eigMode / np.kron(r, iz))
+    uφ = -np.matmul(Dr_2D, eigMode)
 
     if φ is not None:
         ur = ur * (np.cos(k * φ) + 1j * np.sin(k * φ))
