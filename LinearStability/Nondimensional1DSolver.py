@@ -2,7 +2,7 @@
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
-All variables should be specified in SI base units.
+All variables should dimensionless unless otherwise specified.
 """
 
 import argparse
@@ -23,20 +23,17 @@ parser.add_argument("-Nr",
                     help = "Number (must be ODD) of grid points for direct computation",
                     type = int, default = 501)
 parser.add_argument("-Lr", 
-                    help = "DIMENSIONAL radius of the physical domain (m)",
-                    type = float, default = 2.5e6)
-parser.add_argument("-N", "--buoyancyfreq",
-                    help = "Buoyancy frequency (Hz)",
-                    type = float, default = 1e-2)
+                    help = "DIMENSIONLESS radius of the physical domain (i.e., as a multiple of sigma_r)",
+                    type = float, default = 10)
+parser.add_argument("-Ro",
+                    help = "Rossby number of background flow", 
+                    type = float, default = 1e-1)
+parser.add_argument("-Bu",
+                    help = 'Burger number of background flow',
+                    type = float, default = 2.5e-3)
 parser.add_argument("-f0", "--Coriolis",
-                    help = "Coriolis frequency f0 (Hz)",
+                    help = "DIMENSIONAL Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
-parser.add_argument("-U", "--bkgdU",
-                    help = "Characteristic scale for background velocity (m/s)",
-                    type = float, default = 3.5)
-parser.add_argument("--sigmar",
-                    help = "Radial length scale of gyre (m)",
-                    type = float, default = 2.5e5)
 parser.add_argument("--bkgd",
                     help = "Background flow to use ('GM' or 'BG')",
                     type = str, default = "BG")
@@ -47,8 +44,8 @@ parser.add_argument("--k_phi",
                     help = "Azimuthal wavenumbers; enter as --k_phi start stop step",
                     type = float, default = [1, 3, 1], nargs = 3)
 parser.add_argument("--k_z", 
-                    help = "DIMENSIONAL vertical wavenumbers (m^{-1}); enter as --k_z start stop step",
-                    type = float, default = [0, 1e-3, 2e-5], nargs = 3)
+                    help = "DIMENSIONLESS vertical wavenumbers (i.e., as a multiple of sigma_z^{-1}); enter as --k_z start stop step",
+                    type = float, default = [0, 2e-1, 3e-3], nargs = 3)
 parser.add_argument("--nmodes", 
                     help = "Number of modes of instability to be considered",
                     type = int, default = 1)
@@ -60,9 +57,9 @@ args = vars(parser.parse_args())
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
-    params = Parameters(args)
+    params = Parameters(args, nondimensional = True)
     geom   = ChebyshevGeometry(params)
-
+    
     if args["useSaved"]:
         #Skip solving gen. eig. problem; visualize previously saved data
         RunVisFromSavedData(params, geom)
@@ -119,12 +116,17 @@ def QG_Vortex_Stability():
                 growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
                 prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
                 modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
-                
+    
+        #Dimensionalize eigenvalues before saving
+        growthDim = growth * params.f0 * params.Ro
+        propDim   = prop * params.f0 * params.Ro
+    
         #Save results to nc file
-        SaveToNetCDF(params, geom, growth, prop, modes)
+        SaveToNetCDF(params, geom, growthDim, propDim, modes)
     
         #Run visualization
     
+
 
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
