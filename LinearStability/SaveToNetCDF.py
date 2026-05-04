@@ -4,7 +4,7 @@ from math import pi
 from netCDF4 import Dataset
 from os import makedirs
 
-from Streamfunctions import Streamfunction
+from Streamfunctions import *
 
 def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                  eigVecs):
@@ -58,7 +58,7 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
             Bu, gridString = "Inf", f"Lr{Lr:.1E}_Nr{Nr}"
         
         ncfile = Dataset(f"./Data/dimensional_{gridString}_Ro{Ro:.1E}_Bu{Bu}_f{f0:.1E}.nc",
-                     mode = "w", auto_complex = True)
+                         mode = "w", auto_complex = True)
 
     kφs    = params.kps
     nmodes = params.nmodes
@@ -107,10 +107,20 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         prop_speed  = ncfile.createVariable("prop_speed", float,
                                             (kz_dim, kφ_dim, mode_dim))
                                             
-        #Create variables for eigenmodes and corresponding streamfunctions
+        #Save growth-rate and propagation-speed data
+        growth_rate[:, :, :] = dimensionalGrowthRates[:, :, :]
+        prop_speed[:, :, :]  = dimensionalPropSpeeds[:, :, :]
+                                            
+        #Create vars for eigenmodes, corresponding streamfunctions/velocities
         eigMode     = ncfile.createVariable("eigMode", complex,
                                             (kz_dim, kφ_dim, r_dim, mode_dim))
         eigStreamfn = ncfile.createVariable("eigStreamfn", complex,
+                                            (kz_dim, kφ_dim, r_dim, φ_dim,
+                                             mode_dim))
+        eig_ur      = ncfile.createVariable("eig_ur", complex,
+                                            (kz_dim, kφ_dim, r_dim, φ_dim, 
+                                             mode_dim))
+        eig_uφ      = ncfile.createVariable("eig_uφ", complex,
                                             (kz_dim, kφ_dim, r_dim, φ_dim,
                                              mode_dim))
 
@@ -132,20 +142,26 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         prop_speed  = ncfile.createVariable("prop_speed", float,
                                             (kφ_dim, mode_dim))
                                             
+        #Save growth-rate and propagation-speed data
+        growth_rate[:, :] = dimensionalGrowthRates[:, :]
+        prop_speed[:, :]  = dimensionalPropSpeeds[:, :]
+        
         #Create variables for eigenmodes and corresponding streamfunctions
         eigMode     = ncfile.createVariable("eigMode", complex,
                                             (kφ_dim, r_dim, z_dim, mode_dim))
         eigStreamfn = ncfile.createVariable("eigStreamfn", complex,
                                             (kφ_dim, r_dim, φ_dim, z_dim, 
                                              mode_dim))
+        eig_ur      = ncfile.createVariable("eig_ur", complex,
+                                            (kφ_dim, r_dim, φ_dim, z_dim,
+                                             mode_dim))
+        eig_uφ      = ncfile.createVariable("eig_uφ", complex,
+                                            (kφ_dim, r_dim, φ_dim, z_dim,
+                                             mode_dim))
         
     #Store units -- always dimensional version
     growth_rate.units = "per second"
     prop_speed.units  = "per second"
-    
-    #Save growth-rate and propagation-speed data
-    growth_rate[:, :] = dimensionalGrowthRates[:, :]
-    prop_speed[:, :]  = dimensionalPropSpeeds[:, :]
 
     for kφ in kφs:
 
@@ -154,7 +170,17 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         for mode in range(nmodes):
             
             if discretizeVertical:
-                #Save eigenmode data
+                                                        
+                #Evaluate and save eigen-velocities at discrete grid points
+                for ell in range(len(φ)):
+                
+                    eigVel = EigvelFrom2DEigmode(params, geom, 
+                                                 eigVecs[kφ_idx, :, mode], kφ)
+                                                 
+                    eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
+                    eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
+                    
+                #Reshape and save eigenmode data
                 eigMode[kφ_idx, :, :, mode] = np.reshape(eigVecs[kφ_idx, :, 
                                                                  mode],
                                                          ((halfNr + 1), 
@@ -162,7 +188,7 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                                                          )
                                                         )
                                                         
-                #Evaluate streamfunction at discrete grid points and save result
+                #Evaluate and save eigen-streamfunction at discrete grid points
                 for ell in range(len(φ)):
                     eigStreamfn[kφ_idx, :, 
                                 ell, :, mode] = Streamfunction(eigMode[kφ_idx,
@@ -181,8 +207,9 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                     eigMode[kz_idx, kφ_idx, :, mode] = eigVecs[kz_idx, kφ_idx,
                                                                :, mode]
             
-                    #Evaluate streamfunction at discrete grid points and save result
+                    #Evaluate streamfunction and velocities at discrete grid points
                     for ell in range(len(φ)):
+                    
                         eigStreamfn[kz_idx,
                                     kφ_idx,
                                     :, ell, 
@@ -191,5 +218,13 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                                                                      mode],
                                                              k = kφ,
                                                              φ = φ[ell])
+                                                             
+                        eigVels = EigvelFrom1DEigvec(params, geom, 
+                                                     eigVecs[kz_idx, kφ_idx, :,
+                                                             mode], 
+                                                     kφ)
+
+                        eig_ur[kz_idx, kφ_idx, :, ell, mode] = eigVels[0]
+                        eig_uφ[kz_idx, kφ_idx, :, ell, mode] = eigVels[1]
 
     ncfile.close()
