@@ -115,7 +115,7 @@ def QG_Vortex_Stability():
                 eigVals = eigVals[indSort]    #Sort eigvals
                 eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
                 ωs      = eigVals * kφ        #Corresponding ω-values
-               
+                
                 growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
                 prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
                 modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
