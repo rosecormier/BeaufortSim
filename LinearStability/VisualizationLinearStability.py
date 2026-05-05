@@ -164,18 +164,18 @@ def PlotEigvals(discretizeVertical, fromNondimensional, nmodes, kφs, kzs,
         
             fig, (axGrowth, axProp) = plt.subplots(1, 2, figsize = (13, 5))
     
+            axGrowth.grid(True)
             axGrowth.scatter(kφs, np.ravel(dimensionalGrowthRates[:, mode]),
                               color = "mediumpurple")
             axGrowth.set(title = "Growth rate", xlabel = "Azimuthal wavenumber",
                          ylabel = "Growth rate (s$^{{-1}}$)")
-            axGrowth.grid(True)
     
+            axProp.grid(True)
             axProp.scatter(kφs, np.ravel(dimensionalPropSpeeds[:, mode]),
                            color = "mediumpurple")
             axProp.set(title = "Propagation speed", 
                        xlabel = "Azimuthal wavenumber",
                        ylabel = "Angular velocity (s$^{{-1}}$)")
-            axProp.grid(True)
             
         elif not discretizeVertical:
         
@@ -190,19 +190,19 @@ def PlotEigvals(discretizeVertical, fromNondimensional, nmodes, kφs, kzs,
             for ii in range(len(kφs)):
                 
                 axGrowth = axs[ii, 0]
-                axGrowth.plot(kzs, np.ravel(dimensionalGrowthRates[:, ii, mode]), ".-",
-                               color = "mediumpurple")
+                axGrowth.grid(True)
+                axGrowth.plot(kzs, 
+                              np.ravel(dimensionalGrowthRates[:, ii, mode]),
+                              ".-", color = "mediumpurple")
                 axGrowth.set(title = f"Growth rate; $k_{{\phi}}$ = {kφs[ii]}",
                               ylabel = "Growth rate (s$^{{-1}}$)")
-                axGrowth.grid(True)
 
                 axProp = axs[ii, 1]
-                axProp.plot(kzs, np.ravel(dimensionalPropSpeeds[:, ii, mode]), ".-",
-                             color = "mediumpurple")
-                axProp.set(title = 
-                                f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
-                            ylabel = "Angular velocity (s$^{{-1}}$)")
                 axProp.grid(True)
+                axProp.plot(kzs, np.ravel(dimensionalPropSpeeds[:, ii, mode]),
+                            ".-", color = "mediumpurple")
+                axProp.set(title = f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
+                           ylabel = "Angular velocity (s$^{{-1}}$)")
             
             #Set x-labels on lowest axes
             axGrowth.set(xlabel = r'Vertical wavenumber (m$^{{-1}}$)')
