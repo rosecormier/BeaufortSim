@@ -1,4 +1,3 @@
-#import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -8,7 +7,7 @@ from matplotlib.colors import Normalize
 from netCDF4 import Dataset
 from os import makedirs
 
-from Streamfunctions import EigvelFrom2DEigmode
+#To do: functions to label units for dimensional case
 
 def LoadCommonVariables(ds):
     """
@@ -252,11 +251,11 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     
                 axs[0].pcolormesh(rMesh, zMesh, eigModeRealNorm_rz, 
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
-                axs[0].set(xlabel = "$r$ [m]", ylabel = "$z$ [m]",
+                axs[0].set(xlabel = "$r$ (m)", ylabel = "$z$ (m)",
                            title = "Re[$\hat{\psi} (r,z)$]")
                 axs[1].pcolormesh(rMesh, zMesh, eigModeImagNorm_rz,
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
-                axs[1].set(xlabel = "$r$ [m]",
+                axs[1].set(xlabel = "$r$ (m)",
                            title = "Im[$\hat{\psi} (r,z)$]")
         
                 for i in range(2):
@@ -282,6 +281,11 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                 for kz_idx in range(len(kzs)):
             
                     kz = kzs[kz_idx] #Wavenumber to plot for
+                    
+                    if params.nondimensional:
+                        kz_units = "per $\sigma_z$"
+                    else:
+                        kz_units = "m$^{-1}$"
         
                     #Normalize eigenvector components
                     eigModeReal     = eigModesReal[kz_idx, kφ_idx, :, mode]
@@ -299,9 +303,9 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
         
                     plot_sigmar_CartesianGrid(ax, params) #Gyre length scale
                 
-                    ax.set(xlabel = "$r$ (m)", 
+                    ax.set(xlabel = "$r$ (m)",
                            ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
-                           title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz}")
+                           title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz} {kz_units}")
                     ax.legend()
                     fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_m{kz:.4E}_{modeString}_{dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
@@ -328,12 +332,12 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
             
                 eigStreamfnReal = eigStreamfnsReal[kφ_idx, :, :, :, mode]
                 eigStreamfnImag = eigStreamfnsImag[kφ_idx, :, :, :, mode]
-            
-                #Plot eigen-streamfunction in rφ-plane at z = 0
+                
+                z_idx = 1
                 
                 φMesh, rMesh = np.meshgrid(φ, r)
                 
-                z_idx = 0
+                #Plot eigen-streamfunction on constant-z surface
                 
                 fig, axs = plt.subplots(1, 2, figsize = (11, 7),
                                         subplot_kw = {"projection": "polar"})
@@ -343,10 +347,10 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
 
                 axs[0].pcolormesh(φMesh, rMesh, eigStreamfnReal[:, :, z_idx],
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
-                axs[0].set(title = f"Re[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+                axs[0].set(title = f"Re[$\hat{{\psi}}$ exp($ik\phi$)]")
                 axs[1].pcolormesh(φMesh, rMesh, eigStreamfnImag[:, :, z_idx],
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
-                axs[1].set(title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+                axs[1].set(title = f"Im[$\hat{{\psi}}$ exp($ik\phi$)]")
     
                 for i in range(2):
                     plot_sigmar_polarGrid(axs[i], params) #Gyre length scale
@@ -362,7 +366,63 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                 fig.savefig(f"./Graphs/streamfn_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
-                #Plot eigen-streamfunction in φz-plane at r = sigma_r
+                #Eigen-velocity components on constant-z surface
+                urReal_z0 = eig_urReal[kφ_idx, :, :, z_idx, mode]
+                urImag_z0 = eig_urImag[kφ_idx, :, :, z_idx, mode]
+                uφReal_z0 = eig_uφReal[kφ_idx, :, :, z_idx, mode]
+                uφImag_z0 = eig_uφImag[kφ_idx, :, :, z_idx, mode]
+                
+                #Abs. max. of eigen-velocity components on constant-z surface
+                urMax_z0 = np.max(np.abs(np.sqrt(urReal_z0**2 + urImag_z0**2)))
+                uφMax_z0 = np.max(np.abs(np.sqrt(uφReal_z0**2 + uφImag_z0**2)))
+        
+                #Plot eigen-velocity on constant-z surface
+                
+                fig, axs = plt.subplots(2, 2, figsize = (8, 8),
+                                        subplot_kw = {"projection": "polar"})
+
+                for i in range(2):
+                    for j in range(2):
+                        axs[i, j].grid(False) #Required for pcolormesh
+                            
+                pcm_ur = axs[0, 0].pcolormesh(φMesh, rMesh, urReal_z0,
+                                      cmap = "RdBu_r", vmin = -urMax_z0, 
+                                      vmax = urMax_z0)
+                axs[0, 0].set_title(f"Re[$u_r'$]")
+                axs[0, 1].pcolormesh(φMesh, rMesh, urImag_z0,
+                                         cmap = "RdBu_r", vmin = -urMax_z0, 
+                                         vmax = urMax_z0)
+                axs[0, 1].set_title(f"Im[$u_r'$]")
+                    
+                pcm_uφ = axs[1, 0].pcolormesh(φMesh, rMesh, uφReal_z0,
+                                                  cmap = "RdBu_r", 
+                                                  vmin = -uφMax_z0, vmax = uφMax_z0)
+                axs[1, 0].set_title(f"Re[$u_{{\phi}}'$]")
+                axs[1, 1].pcolormesh(φMesh, rMesh, uφImag_z0,
+                                         cmap = "RdBu_r", vmin = -uφMax_z0, 
+                                         vmax = uφMax_z0)
+                axs[1, 1].set_title(f"Im[$u_{{\phi}}'$]")
+                    
+                for i in range(2):
+                    for j in range(2):
+                        
+                        #Gyre length scale
+                        plot_sigmar_polarGrid(axs[i, j], params)
+                        
+                        axs[i, j].grid(True) #Restore grids for final version
+
+                fig.subplots_adjust(hspace = 0.2, wspace = 0.8)
+                fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n in plane $z =$ {z[z_idx]:.1E} for $k_{{\phi}} =$ {kφ}")
+                fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], 
+                                 location = "right", shrink = 0.6,
+                                 label = "m/s", pad = 0.1)
+                fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
+                                 location = "right", shrink = 0.6,
+                                 label = "m/s", pad = 0.1)
+                fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                plt.close(fig)
+                
+                #Plot eigen-streamfunction on constant-r surface (r ~ sigma_r)
                 
                 zMesh, φMesh = np.meshgrid(z, φ)
                 
@@ -380,12 +440,12 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
         
                 axs[0].pcolormesh(φMesh, zMesh, eigStreamfnReal[r_idx, :, :],
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
-                axs[0].set(xlabel = "$\phi$", ylabel = "$z$ [m]",
-                           title = f"Re[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+                axs[0].set(xlabel = "$\phi$", ylabel = "$z$ (m)",
+                           title = "Re[$\hat{{\psi}}$ exp($ik\phi$)]")
                 axs[1].pcolormesh(φMesh, zMesh, eigStreamfnImag[r_idx, :, :],
                                   cmap = "RdBu_r", vmin = -1, vmax = 1)
                 axs[1].set(xlabel = "$\phi$",
-                           title = f"Im[$\hat{{\psi}}(r,z)$ exp($ik\phi$)]")
+                           title = "Im[$\hat{{\psi}}$ exp($ik\phi$)]")
         
                 for i in range(2):
                     plot_sigmaz(axs[i], params) #Gyre length scale
@@ -393,28 +453,81 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     
                 fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {r[r_idx]:.1E} m\n\n\n")
                 fig.subplots_adjust(hspace = 0.8)
-                fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
+                fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1,
+                                                             vmax = 1),
                                             cmap = "RdBu_r"), 
-                             ax = axs.ravel().tolist(), orientation = "horizontal",
-                             shrink = 0.8)
+                             ax = axs.ravel().tolist(),
+                             orientation = "horizontal", shrink = 0.8)
                 fig.savefig(f"./Graphs/streamfn_r{r[r_idx]:.1E}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
-                #Evaluate eigen-velocity components
-                #ur, uφ = EigvelFrom2DEigmode(params, geom, 
-                #                             (eigModesReal[kφ_idx, :, :, mode] 
-                #                              + 1j * eigModesImag[kφ_idx, :, :,
-                #                                                  mode]
-                #                             ), kφ)
+                #Eigen-velocity components on constant-r surface
+                urReal_r0 = eig_urReal[kφ_idx, r_idx, :, :, mode]
+                urImag_r0 = eig_urImag[kφ_idx, r_idx, :, :, mode]
+                uφReal_r0 = eig_uφReal[kφ_idx, r_idx, :, :, mode]
+                uφImag_r0 = eig_uφImag[kφ_idx, r_idx, :, :, mode]
+                
+                #Abs. max. of eigen-velocity components on constant-r surface
+                urMax_r0 = np.max(np.abs(np.sqrt(urReal_r0**2 + urImag_r0**2)))
+                uφMax_r0 = np.max(np.abs(np.sqrt(uφReal_r0**2 + uφImag_r0**2)))
+        
+                #Plot eigen-velocity on constant-r surface
+                
+                fig, axs = plt.subplots(2, 2, figsize = (8, 8), sharey = "row",
+                                        sharex = "col")
+
+                for i in range(2):
+                    for j in range(2):
+                        axs[i, j].grid(False) #Required for pcolormesh
+                            
+                pcm_ur = axs[0, 0].pcolormesh(φMesh, zMesh, urReal_r0,
+                                      cmap = "RdBu_r", vmin = -urMax_r0,
+                                      vmax = urMax_r0)
+                axs[0, 0].set(ylabel = "$z$ (m)", title = "Re[$u_r'$]")
+                axs[0, 1].pcolormesh(φMesh, zMesh, urImag_r0, cmap = "RdBu_r",
+                                     vmin = -urMax_r0, vmax = urMax_r0)
+                axs[0, 1].set(title = "Im[$u_r'$]")
+                    
+                pcm_uφ = axs[1, 0].pcolormesh(φMesh, zMesh, uφReal_r0,
+                                              cmap = "RdBu_r", vmin = -uφMax_r0,
+                                              vmax = uφMax_r0)
+                axs[1, 0].set(xlabel = "$\phi$", ylabel = "$z$ (m)", 
+                              title = "Re[$u_{{\phi}}'$]")
+                axs[1, 1].pcolormesh(φMesh, zMesh, uφImag_r0, cmap = "RdBu_r",
+                                     vmin = -uφMax_r0, vmax = uφMax_r0)
+                axs[1, 1].set(xlabel = "$\phi$", title = "Im[$u_{{\phi}}'$]")
+                    
+                for i in range(2):
+                    for j in range(2):
+                        plot_sigmaz(axs[i, j], params) #Gyre length scale
+                        axs[i, j].grid(True) #Restore grids for final version
+
+                fig.subplots_adjust(hspace = 0.3, wspace = 0.8)
+                fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n on surface $r =$ {r[r_idx]:.1E} for $k_{{\phi}} =$ {kφ}")
+                fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], 
+                             location = "right", shrink = 0.6, label = "m/s",
+                             pad = 0.1)
+                fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
+                             location = "right", shrink = 0.6, label = "m/s", 
+                             pad = 0.1)
+                fig.savefig(f"./Graphs/velocities_r{r[r_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                plt.close(fig)
             
             elif not params.discretizeVertical:
             
                 for kz_idx in range(len(kzs)):
                 
                     kz = kzs[kz_idx] #Wavenumber to plot for
+                    
+                    if params.nondimensional:
+                        kz_units = "per $\sigma_z$"
+                    else:
+                        kz_units = "m$^{-1}$"
 
-                    eigStreamfnReal = eigStreamfnsReal[kz_idx, kφ_idx, :, :, mode]
-                    eigStreamfnImag = eigStreamfnsImag[kz_idx, kφ_idx, :, :, mode]
+                    eigStreamfnReal = eigStreamfnsReal[kz_idx, kφ_idx, :, :, 
+                                                       mode]
+                    eigStreamfnImag = eigStreamfnsImag[kz_idx, kφ_idx, :, :, 
+                                                       mode]
 
                     #Plot eigen-streamfunction in rφ-plane
                     
@@ -439,11 +552,12 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                         axs[i].grid(True) #Restore grids for final version of plot
             
                     fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
-                    fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz} m$^{{-1}}$\n\n")
-                    fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, vmax = 1),
+                    fig.suptitle(f"Components of fastest-growing eigen-streamfunction in $r\phi$-plane\n for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz:.4E} {kz_units}\n\n")
+                    fig.colorbar(ScalarMappable(norm = Normalize(vmin = -1, 
+                                                                 vmax = 1),
                                                 cmap = "RdBu_r"), 
-                                 ax = axs.ravel().tolist(), orientation = "horizontal",
-                                 shrink = 0.8)
+                                 ax = axs.ravel().tolist(), 
+                                 orientation = "horizontal", shrink = 0.8)
                     fig.savefig(f"./Graphs/streamfn_k{int(kφ)}_m{kz:.4E}_{modeString}_{dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
                     
@@ -452,12 +566,13 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     uφReal = eig_uφReal[kz_idx, kφ_idx, :, :, mode]
                     uφImag = eig_uφImag[kz_idx, kφ_idx, :, :, mode]
                     
-                    #Absolute maxmimum amplitudes of eigen-velocity components
+                    #Absolute maxmimum of eigen-velocity components
                     urMax = np.max(np.abs(np.sqrt(urReal**2 + urImag**2)))
                     uφMax = np.max(np.abs(np.sqrt(uφReal**2 + uφImag**2)))
         
-                    #Plot eigen-velocity in r-φ plane
-                    fig, axs = plt.subplots(2, 2, figsize = (8, 9),
+                    #Plot eigen-velocity in rφ-plane
+                    
+                    fig, axs = plt.subplots(2, 2, figsize = (8, 8),
                                             subplot_kw = {"projection": 
                                                           "polar"})
 
@@ -470,15 +585,17 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                                       vmax = urMax)
                     axs[0, 0].set_title(f"Re[$u_r'(r, \phi)$]")
                     axs[0, 1].pcolormesh(φMesh, rMesh, urImag,
-                                         cmap = "RdBu_r", vmin = -urMax, vmax = urMax)
+                                         cmap = "RdBu_r", vmin = -urMax, 
+                                         vmax = urMax)
                     axs[0, 1].set_title(f"Im[$u_r'(r, \phi)$]")
                     
                     pcm_uφ = axs[1, 0].pcolormesh(φMesh, rMesh, uφReal,
-                                                  cmap = "RdBu_r", vmin = -uφMax, 
-                                                  vmax = uφMax)
+                                                  cmap = "RdBu_r", 
+                                                  vmin = -uφMax, vmax = uφMax)
                     axs[1, 0].set_title(f"Re[$u_{{\phi}}'(r,\phi)$]")
                     axs[1, 1].pcolormesh(φMesh, rMesh, uφImag,
-                                         cmap = "RdBu_r", vmin = -uφMax, vmax = uφMax)
+                                         cmap = "RdBu_r", vmin = -uφMax, 
+                                         vmax = uφMax)
                     axs[1, 1].set_title(f"Im[$u_{{\phi}}'(r,\phi)$]")
                     
                     for i in range(2):
@@ -489,14 +606,14 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                         
                             axs[i, j].grid(True) #Restore grids for final version
 
-                    fig.subplots_adjust(hspace = 0.4, wspace = 0.8)
-                    fig.suptitle(f"Velocities derived from fastest-growing "
-                                 + "eigen-streamfunction \n in $r\phi$-plane "
-                                 + fr"for wavenumbers $k_{{\phi}} =$ {kφ}, $\tilde{{m}} =$ {kz}")
-                    fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], location = "right",
-                                 shrink = 0.6)
-                    fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], location = "right",
-                                 shrink = 0.6)
+                    fig.subplots_adjust(hspace = 0.2, wspace = 0.8)
+                    fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n in $r\phi$-plane for wavenumbers $k_{{\phi}} =$ {kφ}, $m =$ {kz:.4E} {kz_units}")
+                    fig.colorbar(pcm_ur, ax = [axs[0, 0], axs[0, 1]], 
+                                 location = "right", shrink = 0.6,
+                                 label = "m/s", pad = 0.1)
+                    fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
+                                 location = "right", shrink = 0.6,
+                                 label = "m/s", pad = 0.1)
                     fig.savefig(f"./Graphs/velocities_k{int(kφ)}_m{kz:.4E}_{modeString}_{dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
 
