@@ -13,17 +13,6 @@ class Parameters:
     def __init__(self, args, discretizeVertical = False,
                  nondimensional = False):
                  
-        self.f0 = args["Coriolis"]
-    
-        if nondimensional:
-            self.Ro = args["Ro"] #Rossby number
-            self.Bu = args["Bu"] #Burger number
-            
-        else:
-            self.Nmax   = args["buoyancyfreq"] #Max. buoyancy frequency
-            self.Umax   = args["bkgdU"]        #Background velocity scale
-            self.sigmar = args["sigmar"]       #Radial background length scale
-    
         self.Lr     = args["Lr"] #Max. r in phys. space; half of comp. domain
         self.Nr     = args["Nr"] #No. (odd) of radial points in comp. domain
         self.halfNr = self.Nr // 2   
@@ -31,10 +20,7 @@ class Parameters:
         self.kps    = np.arange(args["k_phi"][0], args["k_phi"][1],
                                 args["k_phi"][2])
         self.nmodes = args["nmodes"]
-        
-        self.discretizeVertical = discretizeVertical
-        self.nondimensional     = nondimensional
-        
+                 
         if not discretizeVertical:
             self.bkgd = args["bkgd"]
             self.kzs  = np.arange(args["k_z"][0], args["k_z"][1],
@@ -42,13 +28,49 @@ class Parameters:
         
         elif discretizeVertical:
         
+            self.Lz = args["Lz"] #Max. depth (i.e., -min(z)) in physical domain
+            self.Nz = args["Nz"] #Number of computational gridpoints in z
+        
             self.bkgd = "BG"
         
             self.stratification_kw = args["strat_shape"]
             self.sigmaz            = args["sigmaz"]
-
-            self.Lz = args["Lz"] #Max. depth (i.e., -min(z)) in physical domain
-            self.Nz = args["Nz"] #Number of computational gridpoints in z
+                 
+        self.f0 = args["Coriolis"]
+    
+        if nondimensional:
+        
+            #Nondimensional parameters are explicitly set
+            self.Ro = args["Ro"] #Rossby number
+            self.Bu = args["Bu"] #Burger number
+            
+            #"Dimensional" length scales are set to unity
+            if discretizeVertical:
+                self.sigmaz = 1
+            self.sigmar = 1
+            
+        else:
+            
+            #Dimensional parameters are explicitly set
+            self.Nmax   = args["buoyancyfreq"] #Max. buoyancy frequency
+            self.Umax   = args["bkgdU"]        #Background velocity scale
+            self.sigmar = args["sigmar"]       #Radial background length scale
+            
+            #Rossby number is computed
+            self.Ro = self.Umax / (self.sigmar * self.f0)
+            
+            if discretizeVertical:
+                #Burger number is also computed
+                self.Bu = (self.Nmax * self.sigmaz / (self.f0 * self.sigmar))**2
+            
+        self.discretizeVertical = discretizeVertical
+        self.nondimensional     = nondimensional
+        
+        #String, representing dimensionality, to be used in output filenames
+        if self.nondimensional:
+            self.dimString = "nondimensional"
+        else:
+            self.dimString = "dimensional"
     
 def Chebyshev(N, xTransform = None):
     """

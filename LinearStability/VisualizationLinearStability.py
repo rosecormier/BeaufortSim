@@ -7,7 +7,16 @@ from matplotlib.colors import Normalize
 from netCDF4 import Dataset
 from os import makedirs
 
-#To do: functions to label units for dimensional case
+#To do: functions to label units for dimensional case; normalize streamfunctions before plotting; function to run visualization immediately after eig solver (i.e., not from saved data)
+        
+def GetModeString(nmodes, mode):
+    """
+    String, representing mode, to be incorporated into filename.
+    """
+    if nmodes == 1:
+        return "fastestgrowing"
+    else:
+        return f"mode{mode}"
 
 def LoadCommonVariables(ds):
     """
@@ -36,12 +45,7 @@ def LoadSavedData1D(params, geom):
     Load results of 1D gen. eig. solver from nc file.
     """
 
-    if params.nondimensional:
-        Ro, dimString = params.Ro, "nondimensional"
-    else:
-        Ro, dimString = params.Umax / (params.sigmar * params.f0), "dimensional"
-        
-    ds = Dataset(f"./Data/{dimString}_Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{Ro:.1E}_BuInf_f{params.f0:.1E}.nc")
+    ds = Dataset(f"./Data/{params.dimString}_Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}.nc")
     
     #Load variables
     commonVariables = LoadCommonVariables(ds)
@@ -57,17 +61,8 @@ def LoadSavedData2D(params, geom):
     """
     Load results of 2D gen. eig. solver from nc file.
     """
-
-    if params.nondimensional:
-        Ro, Bu, dimString = params.Ro, params.Bu, "nondimensional"
-
-    else:
-        Ro        = params.Umax / (params.sigmar * params.f0)
-        Bu        = (params.Nmax * params.sigmaz
-                     / (params.f0 * params.sigmar))**2
-        dimString = "dimensional"
-
-    ds = Dataset(f"./Data/{dimString}_Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{Ro:.1E}_Bu{Bu:.1E}_f{params.f0:.1E}.nc")
+    
+    ds = Dataset(f"./Data/{params.dimString}_Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
 
     #Load variables
     commonVariables = LoadCommonVariables(ds)
@@ -84,83 +79,39 @@ def plot_sigmar_polarGrid(ax, params):
     Plot indication of radial gyre length scale, if it is within domain, on 
      polar rφ-grid.
     """
-    
-    if params.nondimensional:
-        sigmar = 1
-    else:
-        sigmar = params.sigmar
-        
-    if sigmar < params.Lr:
+    if params.sigmar < params.Lr:
         ax.plot(np.linspace(0, (2 * pi), params.Np), 
-                sigmar * np.ones(params.Np), color = "k", ls = "--")
+                params.sigmar * np.ones(params.Np), color = "k", ls = "--")
                     
 def plot_sigmar_CartesianGrid(ax, params):
     """
     Plot indication of radial gyre length scale, if it is within domain, on 
      Cartesian grid with horizontal axis r.
     """
-    
-    if params.nondimensional:
-        sigmar = 1
-    else:
-        sigmar = params.sigmar
-    
-    if sigmar < params.Lr:
-        ax.axvline(sigmar, color = "k", ls = "--")
+    if params.sigmar < params.Lr:
+        ax.axvline(params.sigmar, color = "k", ls = "--")
     
 def plot_sigmaz(ax, params):
     """
     Plot indication of vertical gyre length scale, if it is within domain.
     """
-    
-    if params.nondimensional:
-        sigmaz = 1
-    else:
-        sigmaz = params.sigmaz
-    
-    if sigmaz < params.Lz:
-        ax.axhline(-sigmaz, color = "k", ls = "--")
-        
-def GetDimString(fromNondimensional):
-    """
-    String, representing dimensionality, to be incorporated into filename.
-    """
-    
-    if fromNondimensional:
-        dimString = "nondimensional"
-    else:
-        dimString = "dimensional"
-        
-    return dimString
-        
-def GetModeString(nmodes, mode):
-    """
-    String, representing mode, to be incorporated into filename.
-    """
-    
-    if nmodes == 1:
-        modeString = "fastestgrowing"
-    else:
-        modeString = f"mode{mode}"
-        
-    return modeString
+    if params.sigmaz < params.Lz:
+        ax.axhline(-params.sigmaz, color = "k", ls = "--")
 
-def PlotEigvals(discretizeVertical, fromNondimensional, nmodes, kφs, kzs,
-                dimensionalGrowthRates, dimensionalPropSpeeds, setupString):
+def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
+                dimensionalPropSpeeds, setupString):
     """
     Visualize growth rates and propagation speeds for different wavenumbers.
     """
-    
-    dimString = GetDimString(fromNondimensional)
   
     for mode in range(nmodes):
     
         modeString = GetModeString(nmodes, mode)
         
-        if discretizeVertical:
+        if params.discretizeVertical:
         
-            dimString += "2D"
-            xVariable  = "k" 
+            dimString = params.dimString + "2D"
+            xVariable = "k" 
         
             fig, (axGrowth, axProp) = plt.subplots(1, 2, figsize = (13, 5))
     
@@ -177,10 +128,10 @@ def PlotEigvals(discretizeVertical, fromNondimensional, nmodes, kφs, kzs,
                        xlabel = "Azimuthal wavenumber",
                        ylabel = "Angular velocity (s$^{{-1}}$)")
             
-        elif not discretizeVertical:
+        elif not params.discretizeVertical:
         
-            dimString += "1D"
-            xVariable  = "m"
+            dimString = params.dimString + "1D"
+            xVariable = "m"
 
             nRows = min(len(kφs), 4)
 
@@ -216,8 +167,6 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
     """
     Visualize spatial structures of eigenmodes.
     """
-    
-    dimString = GetDimString(params.nondimensional)
     
     for mode in range(nmodes):
     
@@ -260,7 +209,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
         
                 for i in range(2):
                     
-                    #Plot gyre length scales
+                    #Gyre length scales
                     plot_sigmar_CartesianGrid(axs[i], params)
                     plot_sigmaz(axs[i], params)
                     
@@ -273,7 +222,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                              ax = axs.ravel().tolist(),
                              orientation = "horizontal", shrink = 0.8,
                              label = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$")
-                fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
             elif not params.discretizeVertical:
@@ -307,7 +256,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                            ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                            title = f"Components of fastest-growing eigenvector for wavenumbers $k_{{\phi}}$ = {kφ}, $m =$ {kz} {kz_units}")
                     ax.legend()
-                    fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_m{kz:.4E}_{modeString}_{dimString}1Dgyre_{setupString}.png")
+                    fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_m{kz:.4E}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
                     
 def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z, 
@@ -318,8 +267,6 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
     Visualize spatial structures of eigen-streamfunctions and velocities.
     """
     
-    dimString = GetDimString(params.nondimensional)
-
     for mode in range(nmodes):
     
         modeString = GetModeString(nmodes, mode)
@@ -363,7 +310,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                                             cmap = "RdBu_r"), 
                              ax = axs.ravel().tolist(), 
                              orientation = "horizontal", shrink = 0.8)
-                fig.savefig(f"./Graphs/streamfn_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/streamfn_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
                 #Eigen-velocity components on constant-z surface
@@ -419,19 +366,15 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                 fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
                                  location = "right", shrink = 0.6,
                                  label = "m/s", pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.0f}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
                 #Plot eigen-streamfunction on constant-r surface (r ~ sigma_r)
                 
                 zMesh, φMesh = np.meshgrid(z, φ)
                 
-                if params.nondimensional:
-                    sigmar = 1
-                else:
-                    sigmar = params.sigmar
-                    
-                r_idx = np.abs(r - sigmar).argmin() #Get index of r ~ sigma_r
+                #Get index of r closest ot sigma_r
+                r_idx = np.abs(r - params.sigmar).argmin()
                 
                 fig, axs = plt.subplots(1, 2, figsize = (11, 7), sharey = "row")
                 
@@ -458,7 +401,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                                             cmap = "RdBu_r"), 
                              ax = axs.ravel().tolist(),
                              orientation = "horizontal", shrink = 0.8)
-                fig.savefig(f"./Graphs/streamfn_r{r[r_idx]:.1E}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/streamfn_r{r[r_idx]:.1E}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
                 #Eigen-velocity components on constant-r surface
@@ -510,7 +453,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                 fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
                              location = "right", shrink = 0.6, label = "m/s", 
                              pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_r{r[r_idx]:.0f}_k{int(kφ)}_{modeString}_{dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/velocities_r{r[r_idx]:.0f}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
             
             elif not params.discretizeVertical:
@@ -614,7 +557,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     fig.colorbar(pcm_uφ, ax = [axs[1, 0], axs[1, 1]], 
                                  location = "right", shrink = 0.6,
                                  label = "m/s", pad = 0.1)
-                    fig.savefig(f"./Graphs/velocities_k{int(kφ)}_m{kz:.4E}_{modeString}_{dimString}1Dgyre_{setupString}.png")
+                    fig.savefig(f"./Graphs/velocities_k{int(kφ)}_m{kz:.4E}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
 
 def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z, 
@@ -628,7 +571,7 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
 
     makedirs("./Graphs", exist_ok = True) #Make folder if nonexistent
     
-    PlotEigvals(params.discretizeVertical, params.nondimensional, len(modes), 
+    PlotEigvals(params, len(modes), 
                 kφs, kzs, dimensionalGrowthRates, dimensionalPropSpeeds, 
                 setupString)
      
@@ -639,6 +582,8 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
                                eigModesReal, eigModesImag,
                                eigStreamfnsReal, eigStreamfnsImag, eig_urReal,
                                eig_urImag, eig_uφReal, eig_uφImag, setupString)
+                               
+#def RunVisFromEigSolver(params, geom)
 
 def RunVisFromSavedData(params, geom):
 
@@ -647,25 +592,14 @@ def RunVisFromSavedData(params, geom):
         commonVariables, z, growthDim, propDim = LoadSavedData2D(params, geom)
         kzs                                    = None
         
-        if params.nondimensional:
-            Ro, Bu = params.Ro, params.Bu
-        else:
-            Ro = params.Umax / (params.sigmar * params.f0)
-            Bu = (params.Nmax * params.sigmaz / (params.f0 * params.sigmar))**2
-        
-        setupString = f"Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{Ro:.1E}_Bu{Bu:.1E}_f{params.f0:.1E}"
+        setupString = f"Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
         
     elif not params.discretizeVertical:
     
         commonVariables, kzs, growthDim, propDim = LoadSavedData1D(params, geom)
         z                                        = None
         
-        if params.nondimensional:
-            Ro = params.Ro
-        else:
-            Ro = params.Umax / (params.sigmar * params.f0)
-        
-        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{Ro:.1E}_BuInf_f{params.f0:.1E}"
+        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}"
         
     modes, kφs = commonVariables[0], commonVariables[1]
     r, φ       = commonVariables[2], commonVariables[3]
