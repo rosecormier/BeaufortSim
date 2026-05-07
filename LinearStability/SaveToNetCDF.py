@@ -59,10 +59,7 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         kz_var    = ncfile.createVariable("kz", float, ("kz",))
         kz_var[:] = kzs
         
-        if params.nondimensional:
-            kz_var.units = "per σ_z"
-        else:
-            kz_var.units = "per metre"
+        kz_var.units = params.units["kz"]
             
         #Create variables for dimensional growth rates and propagation speeds
         growth_rate = ncfile.createVariable("growth_rate", float,
@@ -94,10 +91,8 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         z_var    = ncfile.createVariable("z", float, ("z",))
         z_var[:] = geom.z[0:(Nz + 1)]
         
-        if params.nondimensional:
-            z_var.units = "times σ_z"
-        else:
-            z_var.units = "metres"
+        
+        z_var.units = params.units["z"]
     
         #Create variables for dimensional growth rates and propagation speeds
         growth_rate = ncfile.createVariable("growth_rate", float,
@@ -189,5 +184,10 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
 
                         eig_ur[kz_idx, kφ_idx, :, ell, mode] = eigVels[0]
                         eig_uφ[kz_idx, kφ_idx, :, ell, mode] = eigVels[1]
+
+    #Store units (depending on dimensionality of problem)
+    eigStreamfn.units = params.units["psi"]
+    eig_ur.units      = params.units["u"]
+    eig_uφ.units      = params.units["u"]
 
     ncfile.close()
