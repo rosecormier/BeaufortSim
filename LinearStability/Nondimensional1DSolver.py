@@ -59,12 +59,8 @@ def QG_Vortex_Stability():
     #Initialize parameters and set up geometry for Chebyshev solver
     params = Parameters(args, nondimensional = True)
     geom   = ChebyshevGeometry(params)
-    
-    if args["useSaved"]:
-        #Skip solving gen. eig. problem; visualize previously saved data
-        RunVisFromSavedData(params, geom)
-        
-    else:
+
+    if not args["useSaved"]:
 
         #Build discrete operators
         ComputeRecips(params, geom)
@@ -124,9 +120,7 @@ def QG_Vortex_Stability():
         #Save results to nc file
         SaveToNetCDF(params, geom, growthDim, propDim, modes)
     
-        #Run visualization
-    
-
+    RunVisFromSavedData(params, geom)
 
 if __name__ == '__main__': #For testing
    QG_Vortex_Stability()
