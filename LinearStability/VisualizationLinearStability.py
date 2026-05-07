@@ -490,7 +490,9 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                                                                      mode],
                                                     eigStreamfnsImag[kz_idx, 
                                                                      kφ_idx, 
-                                                                     :, :, 
+                                                                     :, :,
+                                                                     mode]
+                                                   ) 
 
                     #Plot eigen-streamfunction in rφ-plane
                     
