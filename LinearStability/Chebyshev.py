@@ -44,9 +44,11 @@ class Parameters:
             self.Ro = args["Ro"] #Rossby number
             self.Bu = args["Bu"] #Burger number
             
-            #"Dimensional" length scales are set to unity
+            #"Dimensional" length scales are set (for compatibility) to unity
+            
             if discretizeVertical:
                 self.sigmaz = 1
+                
             self.sigmar = 1
             
         else:
@@ -62,15 +64,34 @@ class Parameters:
             if discretizeVertical:
                 #Burger number is also computed
                 self.Bu = (self.Nmax * self.sigmaz / (self.f0 * self.sigmar))**2
-            
-        self.discretizeVertical = discretizeVertical
-        self.nondimensional     = nondimensional
+                
+        #Specify units of various variables
         
+        units = {}
+        
+        if nondimensional:
+            units["r"]   = "times $\sigma_r$"
+            units["z"]   = "times $\sigma_z$"
+            units["kz"]  = "per $\sigma_z$"
+            units["psi"] = "times $f_0$ per Ro"
+            units["u"]   = "times $\sigma_r f_0$ per Ro"
+        else:
+            units["r"]   = "m"
+            units["z"]   = "m"
+            units["kz"]  = "m$^{{-1}}$"
+            units["psi"] = "s$^{{-1}}$"
+            units["u"]   = "m/s"
+            
+        self.units = units
+            
         #String, representing dimensionality, to be used in output filenames
-        if self.nondimensional:
+        if nondimensional:
             self.dimString = "nondimensional"
         else:
-            self.dimString = "dimensional"
+            self.dimString = "dimensional"    
+        
+        self.discretizeVertical = discretizeVertical
+        self.nondimensional     = nondimensional
     
 def Chebyshev(N, xTransform = None):
     """
