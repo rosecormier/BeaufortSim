@@ -2,13 +2,12 @@ import numpy as np
 
 from math import pi
 from numpy import inf
+from numpy.linalg import norm
 
 from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 
 def ErrorsInDiscreteHorizontalLaplacians():
-
-    from numpy.linalg import norm
     
     testArgs = {"Nr": 201, "Lr": 1, "bkgd": "BG",
                 "buoyancyfreq": 1, "Coriolis": None, "bkgdU": None, 
@@ -146,7 +145,7 @@ def ErrorsInDiscreteHorizontalLaplacians():
                    / np.kron(testLapH, iz)
                   )
              )
-
+             
 #def Validate2DBkgdOpsInBarotropicLimit():
 
 if __name__ == '__main__': #For testing
