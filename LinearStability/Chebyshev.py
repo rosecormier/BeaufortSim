@@ -101,7 +101,7 @@ class Parameters:
         self.discretizeVertical = discretizeVertical
         self.nondimensional     = nondimensional
     
-def Chebyshev(N, xTransform = None):
+def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0):
     """
     Computes the Chebyshev differentiation matrix on N+1 points (i.e., N
      intervals).
@@ -114,10 +114,13 @@ def Chebyshev(N, xTransform = None):
         D, x = 0, 1
 
     else:
-
+        
         #Create a vector of N+1 Chebyshev-spaced components from 1 to -1
         x = np.cos(pi * np.arange(0, (N + 1)) / N)
-
+        
+        #Rescale x as dictated (note: important to do this BEFORE building D)
+        x *= xIntervalScaleFactor
+        
         #Define the Chebyshev coeffs c_{ij}
         c = np.hstack([2, np.ones(N - 1), 2]) * (-1)**np.arange(0, (N + 1))
             
@@ -132,8 +135,7 @@ def Chebyshev(N, xTransform = None):
         D = D - np.diag(D.sum(axis = 1))
 
         #Shift entries of x (note: important to do this AFTER building D)
-        if xTransform is not None:
-            x = xTransform(x)
+        x += xIntervalShiftAmt
         
     return D, x
     
@@ -153,12 +155,10 @@ class ChebyshevGeometry:
         self.Dr2 = np.matmul(self.Dr, self.Dr)
         
         if params.discretizeVertical:
-        
-            def zTransform():
-                return lambda z : (z - 1) / 2
                 
             #Compute differentiation matrix and Chebyshev-spaced grid
-            Dz, z = Chebyshev(params.Nz, xTransform = zTransform())
+            Dz, z = Chebyshev(params.Nz, xIntervalScaleFactor = 0.5,
+                              xIntervalShiftAmt = -0.5)
 
             #Scale gridpoints and variable of differentiation to fit domain
             self.z, self.Dz = z * params.Lz, Dz / params.Lz
