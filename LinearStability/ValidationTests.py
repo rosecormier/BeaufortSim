@@ -146,7 +146,90 @@ def ErrorsInDiscreteHorizontalLaplacians():
                   )
              )
              
+def ErrorsInDiscreteVerticalDerivs():
+    
+    testArgs = {"Nr": 201, "Lr": 1, "Nz": 201, "Lz": 1, 
+                "zBCs": "homogeneous", "bkgd": "BG", 
+                "strat_shape": "constant", "sigmaz": 1,
+                "buoyancyfreq": 1, "Coriolis": 1, "bkgdU": 1, 
+                "sigmar": 1, "Np": None, "k_phi": [0, 1, 1], "nmodes": None}
+        
+    params = Parameters(args = testArgs, discretizeVertical = True)
+    geom   = ChebyshevGeometry(params)
+
+    sineTestFunction = lambda z : np.sin(z * pi / params.Lz)
+    
+    sineTest1stDeriv = lambda z : (pi / params.Lz)  * np.cos(z * pi / params.Lz)
+    
+    sineTest2ndDeriv = lambda z : (-(pi / params.Lz)**2
+                                     * np.sin(z * pi / params.Lz))
+                                     
+    testFunctions = [sineTestFunction]
+    
+    test1stDerivs = {sineTestFunction: sineTest1stDeriv}
+    
+    test2ndDerivs = {sineTestFunction: sineTest2ndDeriv}
+    
+    for testFunctionExpression in testFunctions:
+    
+        test1stDerivExpression = test1stDerivs[testFunctionExpression]
+        test2ndDerivExpression = test2ndDerivs[testFunctionExpression]
+      
+        ComputeRecips(params, geom)
+      
+        testFunction      = testFunctionExpression(geom.z)
+        test1stDerivExact = test1stDerivExpression(geom.z)
+        test2ndDerivExact = test2ndDerivExpression(geom.z)
+        
+        if params.verticalBCs == "homogeneous":
+        
+            testFunction = testFunction[1:-1]
+        
+            Dz  = geom.Dz[1:-1, 1:-1]
+            Dz2 = geom.Dz2[1:-1, 1:-1]
+            
+            test1stDeriv = np.matmul(Dz, testFunction)
+            test2ndDeriv = np.matmul(Dz2, testFunction)
+            
+        elif params.verticalBCs == "constantBuoyancy":
+        
+            Dz  = geom.Dz
+            Dz2 = np.vstack((np.zeros((1, (params.Nz + 1))),
+                             geom.Dz2[1:-1, :], 
+                             np.zeros((1, (params.Nz + 1)))
+                            )
+                           )
+            
+            #To avoid division by 0
+            test1stDeriv = np.matmul(Dz, testFunction)[1:-1]
+            test2ndDeriv = np.matmul(Dz2, testFunction)[1:-1]
+        
+        print("Max. fractional error in 1st-order z-derivative applied to test function on 1D domain:",
+              norm(((test1stDeriv - test1stDerivExact[1:-1]) 
+                    / test1stDerivExact[1:-1]
+                   ),
+                   ord = inf
+                  ),
+              "\nL2 fractional error in 1st-order z-derivative applied to test function on 1D domain:",
+              norm((test1stDeriv - test1stDerivExact[1:-1]) 
+                   / test1stDerivExact[1:-1]
+                  ),
+              "\n"
+             )
+             
+        
+        
+        print("Max. fractional error in 2nd-order z-derivative applied to test function on 1D domain:",
+              norm(((test2ndDeriv - test2ndDerivExact[1:-1]) / test2ndDerivExact[1:-1]),
+                   ord = inf
+                  ),
+              "\nL2 fractional error in 2nd-order z-derivative applied to test function on 1D domain:",
+              norm((test2ndDeriv - test2ndDerivExact[1:-1]) / test2ndDerivExact[1:-1]),
+              "\n"
+             )
+
 #def Validate2DBkgdOpsInBarotropicLimit():
 
 if __name__ == '__main__': #For testing
-    ErrorsInDiscreteHorizontalLaplacians()
+    #ErrorsInDiscreteHorizontalLaplacians()
+    ErrorsInDiscreteVerticalDerivs()
