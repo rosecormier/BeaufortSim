@@ -71,26 +71,34 @@ def BuildBkgdOperators(params, geom):
                     
         elif params.discretizeVertical:
         
+            #Where to start indexing in z to match size of matrix B
+            zStartIdx = int((np.size(geom.z) - params.DzSize) / 2)
+            
+            if zStartIdx == 0:
+                zEndIdx = np.size(geom.z) + 1
+            elif zStartIdx > 0:
+                zEndIdx = -zStartIdx
+        
             f0, dimensional_σz = params.f0, params.sigmaz
         
             r       = geom.r[1:-1]
             rTilde  = np.ravel(r) / dimensional_σr
             r2Tilde = rTilde**2
             
-            z       = geom.z[1:-1]
+            z       = geom.z[zStartIdx:zEndIdx]
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
             
-            Dz = geom.Dz[1:-1, 1:-1]
+            Dz = geom.Dz[zStartIdx:zEndIdx, zStartIdx:zEndIdx]
             
-            N2Recip = np.ravel(geom.N2Recip[1:-1])
+            N2Recip = np.ravel(geom.N2Recip[zStartIdx:zEndIdx])
 
             Ψ_opRadialFactor   = np.diag(np.sqrt(2 * e) * np.exp(-r2Tilde)
                                          * dimensional_U / dimensional_σr)
             Ψ_opVerticalFactor = np.diag(np.exp(-z2Tilde))
             
             Ir = np.eye(params.Nr - 1)
-            Iz = np.eye(params.Nz - 1)
+            Iz = np.eye(params.DzSize) #np.eye(params.Nz - 1)
 
             Ψ_op = np.matmul(np.kron(Ψ_opRadialFactor, Iz),
                              np.kron(Ir, Ψ_opVerticalFactor))
@@ -222,42 +230,54 @@ def BuildMatrixB(params, geom, kφ, kz = None):
         horizontalB = ConvertQuadsToBlock(horizontalB_Q1, horizontalB_Q2,
                                           horizontalB_Q3, horizontalB_Q4)
         
-        Iz = np.eye(params.Nz - 1)
+        Iz = np.eye(params.DzSize)
         
-        #Terms depending on r, discretized on rz-grid
-        horizontalB_2D = np.kron(horizontalB, Iz)
+        #Deal with vertical boundary conditions
         
-        N2Recip = np.diag(geom.N2Recip[1:-1])
-        Dz      = geom.Dz[1:-1, 1:-1]
-        Dz2     = geom.Dz2[1:-1, 1:-1]
+        if params.verticalBCs == "homogeneous":
         
+            #Terms depending on r, discretized on rz-grid
+            horizontalB_2D = np.kron(horizontalB, Iz)
+            
+            #Retain interior values (eigfunction will vanish at boundary pts)
+            N2Recip = np.diag(geom.N2Recip[1:-1])
+            Dz      = geom.Dz[1:-1, 1:-1]
+            Dz2     = geom.Dz2[1:-1, 1:-1]
+        
+        elif params.verticalBCs == "continuousBuoyancy":
+        
+            zz = np.zeros((1, (params.Nz + 1)))
+            
+            #Terms depending on r, discretized on rz-grid
+            horizontalB_2D = np.kron(horizontalB, Iz)
+            
+            #Load these operators in full
+            N2Recip = np.diag(geom.N2Recip)
+            Dz      = geom.Dz
+            Dz2Full = geom.Dz2[1:-1, :]
+            
+            #Impose BCs by zeroing first and last rows of the full Dz2
+            Dz2 = np.vstack((zz, Dz2Full, zz))
+            
         #Terms depending on z, discretized on z-grid
         verticalB = -(np.matmul((params.f0**2 * N2Recip), Dz2)
                       + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
                      )
-        
+            
         Ir = np.eye(params.Nr - 1)
-        
+            
         #Terms depending on z, discretized on rz-grid
         verticalB_2D = np.kron(Ir, verticalB)
-        
-        geom.B_Q1 = (horizontalB_2D + verticalB_2D)[:(params.halfNr
-                                                      * (params.Nz - 1)),
-                                                    :(params.halfNr
-                                                      * (params.Nz - 1))]
-        geom.B_Q2 = (horizontalB_2D + verticalB_2D)[(params.halfNr
-                                                     * (params.Nz - 1)):,
-                                                    :(params.halfNr
-                                                      * (params.Nz - 1))]
-        geom.B_Q3 = (horizontalB_2D + verticalB_2D)[:(params.halfNr
-                                                      * (params.Nz - 1)),
-                                                    (params.halfNr
-                                                     * (params.Nz - 1)):]
-        geom.B_Q4 = (horizontalB_2D + verticalB_2D)[(params.halfNr
-                                                     * (params.Nz - 1)):,
-                                                    (params.halfNr
-                                                     * (params.Nz - 1)):]
-        
+            
+        geom.B_Q1 = (horizontalB_2D + verticalB_2D)[:(params.halfNr * params.DzSize),
+                                                    :(params.halfNr * params.DzSize)]
+        geom.B_Q2 = (horizontalB_2D + verticalB_2D)[(params.halfNr * params.DzSize):,
+                                                    :(params.halfNr * params.DzSize)]
+        geom.B_Q3 = (horizontalB_2D + verticalB_2D)[:(params.halfNr * params.DzSize),
+                                                    (params.halfNr * params.DzSize):]
+        geom.B_Q4 = (horizontalB_2D + verticalB_2D)[(params.halfNr * params.DzSize):,
+                                                    (params.halfNr * params.DzSize):]
+            
         #Assemble square matrix to be used in gen. eig. solver
         geom.B = geom.B_Q1 + geom.B_Q2
         
@@ -273,11 +293,11 @@ def BuildMatrixA(params, geom):
         geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
     
     elif params.discretizeVertical:
-        geom.A = (np.matmul(geom.Ψ_op[:(params.halfNr * (params.Nz - 1)),
-                                     :(params.halfNr * (params.Nz - 1))],
-                           geom.B)
-                  + geom.Q_op[:(params.halfNr * (params.Nz - 1)),
-                              :(params.halfNr * (params.Nz - 1))]
+        geom.A = (np.matmul(geom.Ψ_op[:(params.halfNr * params.DzSize),
+                                     :(params.halfNr * params.DzSize)],
+                            geom.B)
+                  + geom.Q_op[:(params.halfNr * params.DzSize),
+                              :(params.halfNr * params.DzSize)]
                  )
 
     return geom.A
