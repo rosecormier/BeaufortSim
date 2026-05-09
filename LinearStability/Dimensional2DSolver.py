@@ -31,6 +31,9 @@ parser.add_argument("-Lr",
 parser.add_argument("-Lz",
                     help = "DIMENSIONAL depth (> 0) of physical domain (m)",
                     type = float, default = 3e4)
+parser.add_argument("--zBCs",
+                    help = "Vertical boundary conditions on streamfunction",
+                    type = str, default = "continuousBuoyancy")
 parser.add_argument("--strat_shape",
                     help = "Shape of ambient squared buoyancy frequency profile",
                     type = str, default = "constant")
@@ -118,13 +121,21 @@ def QG_Vortex_Stability():
             growth[kφ_idx, 0:nmodes] = -ωs[0:nmodes].imag
             prop[kφ_idx, 0:nmodes]   = ωs[0:nmodes].real
             
-            #Update eigenvectors at interior points (they vanish at boundary points)
             modesLen = len(modes[kφ_idx, :, 0:nmodes])
-            modes[kφ_idx, 
-                  ((np.mod(np.arange(modesLen), (params.Nz + 1)) != 0)
-                   & (np.mod(np.arange(modesLen), (params.Nz + 1)) != params.Nz)
-                   & (np.arange(modesLen) > params.Nz)),
-                  0:nmodes] = eigVecs[:, 0:nmodes]
+            
+            if params.verticalBCs == "homogeneous":
+                #Update 'modes' at interior points only
+                modes[kφ_idx, 
+                      ((np.mod(np.arange(modesLen), (params.Nz + 1)) != 0)
+                       & (np.mod(np.arange(modesLen), 
+                                 (params.Nz + 1)) != params.Nz)
+                       & (np.arange(modesLen) > params.Nz)),
+                      0:nmodes] = eigVecs[:, 0:nmodes]
+            elif params.verticalBCs == "continuousBuoyancy":
+                #Update 'modes' at all z-points but interior points only in r
+                modes[kφ_idx, 
+                      (np.arange(modesLen) > params.Nz), 
+                      0:nmodes] = eigVecs[:, 0:nmodes]
     
         #Save results to nc file
         SaveToNetCDF(params, geom, growth, prop, modes)
