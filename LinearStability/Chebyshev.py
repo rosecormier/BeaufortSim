@@ -35,6 +35,14 @@ class Parameters:
         
             self.stratification_kw = args["strat_shape"]
             self.sigmaz            = args["sigmaz"]
+            
+            self.verticalBCs = args["zBCs"]
+            
+            #Store size of z-differential operators used in gen. eig. problem
+            if self.verticalBCs == "homogeneous":
+                self.DzSize = self.Nz - 1
+            elif self.verticalBCs == "continuousBuoyancy":
+                self.DzSize = self.Nz + 1
                  
         self.f0 = args["Coriolis"]
     
