@@ -1,17 +1,10 @@
 include("LibraryVisualization.jl")
-using .VisFunctions
 
 using Adapt, CairoMakie
 using Oceananigans.AbstractOperations
 using Oceananigans.Fields
 using Oceananigans.Operators 
 using OffsetArrays, Printf
-
-####################
-
-module Stability
-   export check_inert_stability, check_grav_stability, compute_Bu
-end
 
 ####################
 
@@ -149,7 +142,6 @@ function check_grav_stability(b; plot_∂b∂z = false, grid = nothing,
       fig[1, 1:2] = Label(fig, title, fontsize = 18, tellwidth = false)
 
       save(joinpath("./Plots", "dbdz_$(const_dim)$(nearest)_t0.png"), fig)
-
    end
 end
 

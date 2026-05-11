@@ -41,7 +41,7 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ_centre = 0.0)
    return i_face
 end
 
-function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+function bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot, zmax, zmin)
    
    #this will all be cleaner if we convert to polar coords upfront; i plan to change this
    
@@ -53,43 +53,56 @@ function bkgd_fields(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
       v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
                          * exp((1/2) - (x^2 + y^2)/(σr^2)))
 
-      ūφ_abs = (x, y, z) -> (sqrt(2)*U/σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2))
-
       b̄z_top = (x, y, t) -> bkgd_N²_top
       b̄z_bot = (x, y, t) -> bkgd_N²_bot
-   
+
    else #Baroclinic case
       
       b̄ = (x, y, z) -> (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-                 + ((sqrt(2)*f*U*σr*z/(σz^2))
-                    * exp((1/2) - (z/σz)^2)
-                    * (1 - exp(-(x^2 + y^2)/(σr^2)))
-                    * (1 - ((sqrt(2)*U/(f*σr)) * exp((1/2) - (z/σz)^2)
-                             * (1 + exp(-(x^2 + y^2)/(σr^2)))
-                           )
-                      )
-                   )
-                )
+                        - (sqrt(2)*f*U*σr*z/(σz^2))
+			  * exp((1/2) - (z/σz)^2)
+			  * (exp(-(x^2 + y^2)/(σr^2)) - 1)
+		       )
       ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
                         * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
       v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
                          * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+      
+      @inline b̄z(x, y, z, bkgd_N²) = (bkgd_N² 
+				      .- (sqrt(2)*f*U*σr/(σz^2))
+				         * exp((1/2) - (z/σz)^2)
+					 * (exp(-(x^2 +y^2)/(σr^2)) - 1)
+					 * (1 - 2*(z/σz)^2)
+				     )
 
-      ūφ_abs = (x, y, z) -> (sqrt(2)*U/σr) * sqrt(x^2 + y^2) * exp(0.5 - ((x^2 + y^2)/σr^2) - (z/σz)^2)
-
-      b̄z_top = (x, y, t) -> (bkgd_N²_top
-                                .+ (sqrt(2)*f*U*σr/(σz^2)
-                                   * exp(1/2)
-                                   * (1 - exp(-(x^2 + y^2)/(σr^2)))))
-      b̄z_bot = (x, y, t) -> (bkgd_N²_bot
-                                .+ (sqrt(2)*f*U*σr/(σz^2)
-                                   * exp((1/2) - (Lz/σz)^2)
-                                   * (1 - exp(-(x^2 + y^2)/(σr^2)))
-                                   * (1 - 2 * (Lz/σz)^2)))
+      b̄z_top = (x, y, t) -> b̄z(x, y, zmax, bkgd_N²_top)
+      b̄z_bot = (x, y, t) -> b̄z(x, y, zmin, bkgd_N²_bot)
    end
 
    b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
 				   bottom = GradientBoundaryCondition(b̄z_bot))
 
-   return b̄, ū, v̄, ūφ_abs, b̄_BCs
+   return b̄, ū, v̄, b̄_BCs
+end
+
+function bkgd_fields_2D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+
+   #this will all be cleaner if we convert to polar coords upfront; i plan to change this
+
+   if σz == "infinity" #Barotropic case
+
+      b̄ = (x, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
+      ū = (x, z) -> 0
+      v̄ = (x, z) -> -((sqrt(2)*U*x/σr) * exp((1/2) - (x^2)/(σr^2)))
+
+      b̄z_top = (x, t) -> bkgd_N²_top
+      b̄z_bot = (x, t) -> bkgd_N²_bot
+
+   #else #Baroclinic case
+   end
+
+   b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
+                                   bottom = GradientBoundaryCondition(b̄z_bot))
+
+   return b̄, ū, v̄, b̄_BCs
 end

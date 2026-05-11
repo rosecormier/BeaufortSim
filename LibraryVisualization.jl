@@ -1,11 +1,5 @@
-using Adapt, CUDA
+using Adapt, CUDA, Glob, LinearAlgebra, NCDatasets
 using Oceananigans.AbstractOperations, Oceananigans.Fields
-
-####################
-
-module CylindricalCoords
-   export compute_polar_coords, xy_vector_to_rφ
-end
 
 ####################
 
@@ -70,18 +64,6 @@ function xy_vector_to_rφ(vx, vy, grid)
    compute!(vφ)
    return vr, vφ
 end
-
-####################
-
-using LinearAlgebra
-
-####################
-
-module ComputeSecondaries
-   export ω, ωz, ζa_b, ζa, ∇b, q, ∂r_q, field_norm
-end
-
-####################
 
 function ω(u, v, w, i, j, k, Δx, Δy, Δz)
    
@@ -158,31 +140,14 @@ function ∂r_q(q, x, y, i, j, k, Δx, Δy)
 end
 
 function field_norm(ψ, n; ψ_bkgd = 0)
-   ψ_n           = ψ[:, :, :, n]
-   ψ_perturb_n   = ψ_n .- ψ_bkgd
-   perturb_norm  = norm(ψ_perturb_n)
+   ψ_n          = ψ[:, :, :, n]
+   ψ_perturb_n  = ψ_n .- ψ_bkgd
+   perturb_norm = norm(ψ_perturb_n)
 end
 
-####################
+function pad_filenames(datetime; prefix = "output")
 
-using Glob, NCDatasets
-
-####################
-
-module OutFileFormat
-   export pad_filenames
-end
-
-module VisFunctions
-   export open_dataset, open_bkgd_dataset, open_scalars_dataset, 
-	  get_range_lims, get_2D_spatial_axis_kwargs
-end
-
-####################
-
-function pad_filenames(datetime)
-
-   outfile_paths = glob("./Output/output_$(datetime)_part*")
+   outfile_paths = glob("./Output/$(prefix)_$(datetime)_part*")
 
    if length(outfile_paths) > 9
       for file_path in outfile_paths
@@ -192,54 +157,131 @@ function pad_filenames(datetime)
       end
    end
    
-   return glob("./Output/output_$(datetime)*")
+   return glob("./Output/$(prefix)_$(datetime)*")
 end
 
-function open_dataset(outfilename)
+function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
 
    ds = NCDataset(outfilename)
 
-   x  = ds[:xC][:] ./ 1000 #Convert to km for readability
-   y  = ds[:yC][:] ./ 1000 #Convert to km for readability
-   z  = ds[:zC][:]
+   x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
+   
+   #Load coords of non-Flat dimensions; convert them to km for readability
+
+   if length(ds[:x_caa][:]) > 1
+      x = ds[:x_caa][Hx+1:end-Hx] ./ 1000
+   end
+
+   if length(ds[:y_aca][:]) > 1
+      y = ds[:y_aca][Hy+1:end-Hy] ./ 1000
+   end
+   
+   if length(ds[:z_aac][:]) > 1
+      zC = ds[:z_aac][Hz+1:end-Hz] ./ 1000
+      zF = ds[:z_aaf][Hz+1:end-Hz] ./ 1000
+   end
 
    t  = ds[:time][:] ./ 86400 #Convert to days for readability
    Nt = length(t)
 
-   return ds, x, y, z, t, Nt
-end
-
-function open_bkgd_dataset(bkgd_datetime)
-   bkgd_ds = NCDataset(joinpath("./Output", "bkgd_$(bkgd_datetime).nc"))
+   return ds, x, y, zC, zF, t, Nt
 end
 
 function open_energetics_dataset(energeticsfilename)
-   energetics_ds = NCDataset(joinpath("./Output", energeticsfilename))
+   
+   energetics_ds = NCDataset(energeticsfilename)
+
+   t  = energetics_ds[:time][:] ./ 86400 #Convert to days for readability
+   Nt = length(t)
+
+   return energetics_ds, t, Nt
 end
 
-function open_scalars_dataset(scalarfilename)
+function open_scalars_dataset(scalarfilename; idxStart = 2)
+
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
+
+   t = scalars_ds[:time][idxStart:end] ./ 86400 #Convert to days for readability
+   
+   return scalars_ds, t
 end
 
-function get_range_lims(final_field; max_fraction = 1, prescribed_max = 0)
+function order1_forward_difference(t, u)
+   return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
+end
+
+function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
    field_max  = max(maximum(abs.(final_field)), prescribed_max)
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
 
-function get_2D_spatial_axis_kwargs(x, y, z;
+function get_2D_spatial_axis_idcs(const_dim;
+	                          Hx = 3, Hy = 3, Hz = 3,
+		                  x_idx = nothing, y_idx = nothing, z_idx = nothing,
+				  xC = nothing, yC = nothing, zC = nothing,
+				  zF = nothing)
+
+   if const_dim == "x"
+
+      if isnothing(x_idx) #Grid is 2D with only y and z axes
+	 yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCzF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
+      else #Grid is 3D
+	 yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCzF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
+      end
+
+      return yCzC_idcs, yCzF_idcs
+
+   elseif const_dim == "y"
+
+      if isnothing(y_idx) #Grid is 2D with only x and z axes
+         xCzC_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zC)+Hz)
+         xCzF_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zF)+Hz)
+      else #Grid is 3D
+         xCzC_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zC)+Hz)
+         xCzF_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zF)+Hz)
+      end
+
+      return xCzC_idcs, xCzF_idcs
+
+   elseif const_dim == "z"
+
+      if isnothing(z_idx) #Grid is 2D with only x and y axes
+         xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, 1)
+      else #Grid is 3D
+	 xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
+      end
+
+      return xCyC_idcs, xCyC_idcs
+   end
+end
+
+function get_2D_spatial_axis_kwargs(x, y, z, const_dim;
                                     x_idx = nothing,
 				    y_idx = nothing,
-                                    z_idx = nothing)
+				    z_idx = nothing)
+   nearest = 0
+
    if !isnothing(x_idx)
-      nearest     = round(Int, x[x_idx])
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [m]")
+      const_dim = "x"
+      nearest   = round(Int, x[x_idx])
    elseif !isnothing(y_idx)
-      nearest     = round(Int, y[y_idx])
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [m]")
+      const_dim = "y"
+      nearest   = round(Int, y[y_idx])
    elseif !isnothing(z_idx)
-      nearest     = round(Int, z[z_idx])
+      const_dim = "z"
+      nearest   = round(z[z_idx], digits = 2)
+   end
+
+   if const_dim == "x"
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
+   elseif const_dim == "y"
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
+   elseif const_dim == "z"
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
+   
    return nearest, axis_kwargs
 end
 
