@@ -65,7 +65,7 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 #Whether to run visualization functions
 const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = false
+const vis_const_z    = true
 const vis_norms      = false
 const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
@@ -127,6 +127,7 @@ check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
 
 datetimestart = now()
 datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
