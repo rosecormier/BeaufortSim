@@ -22,14 +22,14 @@ using Printf, Random
 
 const Nx = 252 #x-grid size
 const Ny = 252 #y-grid size
-const Nz = 50  #z-grid size
+const Nz = 20  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
 const Hz = 3 #Number of z halo cells per boundary
 
 const Lr = 2.5e3 * kilometer #[Minimum] domain radius
-const Lz = 1 * kilometer    #z-axis length
+const Lz = 1 * kilometer     #z-axis length
 
 const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
@@ -44,11 +44,11 @@ const σz = 300 * meter 	   #Vertical gyre length scale
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
 const N²_max = 4e-3 * (second^(-2)) #1e-4 * (second^(-2))
 
-const d_ML = -50 * meter #Mixed-layer depth
+const d_ML = -40 * meter #Mixed-layer depth
 
 const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
 const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
-const Δt_checkpt = 250 * day   		   #Checkpoint interval
+const Δt_checkpt = 250 * day   		         #Checkpoint interval
 
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 200
@@ -58,17 +58,17 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 
-const useGPU = true #Whether to use GPU
+const useGPU = false #Whether to use GPU
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
 const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = true
+const vis_const_z    = false
 const vis_norms      = false
-const vis_energetics = true
-const vis_z_grid     = false #Note: currently can only be done on CPU
+const vis_energetics = false
+const vis_z_grid     = true #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -89,16 +89,18 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-#z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
+z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
 
 grid = RectilinearGrid(architecture,
-		       topology = (Bounded, Bounded, Bounded),
+		                   topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lr, Lr),
-		       y = (-Lr, Lr),
-                       z = (-Lz, 0.0),
-		       halo = (Hx, Hy, Hz))
-#                       z = z_grid_spacing)
+		                   y = (-Lr, Lr),
+                       z = z_grid_spacing,
+		                   halo = (Hx, Hy, Hz))
+                       #z = (-Lz, 0.0),
+                       
+print(znodes(grid, Center()))
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
@@ -116,7 +118,7 @@ model = NonhydrostaticModel(;
 
 set!(model, u = ū, v = v̄, b = b̄)
 
-#Prints warnings if the respective instabilities are present
+#Print warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
 		      z_idx = z_idx)
 check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
@@ -130,8 +132,8 @@ datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
-Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u,
-                                   model.velocities.v, model.grid)
+Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, model.velocities.v, 
+                                   model.grid, useGPU)
 
 #Create fields to store background state
 Ux = XFaceField(model.grid)
@@ -277,7 +279,7 @@ end
 
 add_callback!(simulation, progress, TimeInterval(Δt_save))
 
-ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid)
+ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid, useGPU)
 
 outputs = (ur = ur,
 	   uφ = uφ,
