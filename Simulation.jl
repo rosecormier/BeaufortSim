@@ -44,7 +44,7 @@ const σz = 300 * meter 	   #Vertical gyre length scale
 #Max buoyancy frequency (equal to N²₀ for uniform stratification)
 const N²_max = 4e-3 * (second^(-2)) #1e-4 * (second^(-2))
 
-const d_ML = -40 * meter #Mixed-layer depth
+const d_ML = -30 * meter #Mixed-layer depth
 
 const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
 const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
@@ -100,10 +100,11 @@ grid = RectilinearGrid(architecture,
 		                   halo = (Hx, Hy, Hz))
                        #z = (-Lz, 0.0),
 
-gridfilepath = joinpath("./Logs", "grid_Nz$(Nz).csv") 
+gridfilepath = joinpath("./Logs", "grid_Nz$(Nz)_MLD$(abs(d_ML)).csv") 
 
-mkpath(dirname(gridfilepath))                   #Make required path if nonexistent
-CSV.write(gridfilepath, Tables.table(znodes(grid, Center()))) #Save zC values
+mkpath(dirname(gridfilepath)) #Make required path if nonexistent
+CSV.write(gridfilepath, 
+          Tables.table(znodes(grid, Center())), header = false) #Save zC values
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
