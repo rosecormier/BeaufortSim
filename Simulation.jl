@@ -4,7 +4,7 @@ include("LibraryStability.jl")
 include("LibraryVisualization.jl")
 include("Visualization.jl")
 
-using Adapt, CUDA
+using Adapt, CSV, CUDA
 using Dates: canonicalize, format, now
 using LinearAlgebra: norm
 using Oceananigans
@@ -14,7 +14,7 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 using Oceananigans.Units
 using Oceananigans.Utils 
-using Printf, Random
+using Printf, Random, Tables
 
 ######################
 # SPECIFY PARAMETERS #
@@ -89,7 +89,7 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ_centre = d_ML)
+z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ0 = d_ML)
 
 grid = RectilinearGrid(architecture,
 		                   topology = (Bounded, Bounded, Bounded),
@@ -99,8 +99,11 @@ grid = RectilinearGrid(architecture,
                        z = z_grid_spacing,
 		                   halo = (Hx, Hy, Hz))
                        #z = (-Lz, 0.0),
-                       
-print(znodes(grid, Center()))
+
+gridfilepath = joinpath("./Logs", "grid_Nz$(Nz).csv") 
+
+mkpath(dirname(gridfilepath))                   #Make required path if nonexistent
+CSV.write(gridfilepath, Tables.table(znodes(grid, Center()))) #Save zC values
 
 const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
 const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
