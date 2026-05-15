@@ -30,7 +30,7 @@ parser.add_argument("-Lr",
                     type = float, default = 2.5e6)
 parser.add_argument("-Lz",
                     help = "DIMENSIONAL depth (> 0) of physical domain (m)",
-                    type = float, default = 3e4)
+                    type = float, default = 1e3)
 parser.add_argument("--zBCs",
                     help = "Vertical boundary conditions on streamfunction",
                     type = str, default = "continuousBuoyancy")
@@ -51,7 +51,7 @@ parser.add_argument("--sigmar",
                     type = float, default = 2.5e5)
 parser.add_argument("--sigmaz",
                     help = "Vertical length scale of gyre (m)",
-                    type = float, default = 1e20)
+                    type = float, default = 3e2)
 parser.add_argument("-Np", 
                     help = "Number of phi-points for visualization", 
                     type = int, default = 50)
