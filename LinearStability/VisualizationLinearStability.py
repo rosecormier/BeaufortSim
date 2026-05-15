@@ -117,32 +117,43 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
     """
     Visualize growth rates and propagation speeds for different wavenumbers.
     """
-  
-    for mode in range(nmodes):
+        
+    if params.discretizeVertical:
     
-        modeString = GetModeString(nmodes, mode)
-        
-        if params.discretizeVertical:
-        
-            dimString, xVariable = params.dimString + "2D", "kphi"
+        modeString = f"first{nmodes}modes"
+        dimString, xVariable = params.dimString + "2D", "kphi"
 
-            fig, (axGrowth, axProp) = plt.subplots(1, 2, figsize = (13, 5))
+        fig, (axGrowth, axProp) = plt.subplots(1, 2, figsize = (13, 5))
     
-            axGrowth.grid(True)
-            axGrowth.scatter(kφs, np.ravel(dimensionalGrowthRates[:, mode]),
-                             color = "mediumpurple")
-            axGrowth.set(title = "Growth rate", xlabel = "Azimuthal wavenumber",
-                         ylabel = "Growth rate (s$^{{-1}}$)")
-    
-            axProp.grid(True)
-            axProp.scatter(kφs, np.ravel(dimensionalPropSpeeds[:, mode]),
-                           color = "mediumpurple")
-            axProp.set(title = "Propagation speed", 
-                       xlabel = "Azimuthal wavenumber",
-                       ylabel = "Angular velocity (s$^{{-1}}$)")
-            
-        elif not params.discretizeVertical:
+        axGrowth.grid(True)
+        axProp.grid(True)
         
+        if nmodes == 1:
+            axGrowth.scatter(kφs, np.ravel(dimensionalGrowthRates[:, 0]),
+                             color = "mediumpurple")
+            axProp.scatter(kφs, np.ravel(dimensionalPropSpeeds[:, 0]),
+                           color = "mediumpurple")
+        
+        elif nmodes > 1:
+            for mode in range(nmodes):
+                axGrowth.scatter(kφs, np.ravel(dimensionalGrowthRates[:, mode]),
+                                 label = f"Mode {mode}")
+                axProp.scatter(kφs, np.ravel(dimensionalPropSpeeds[:, mode]),
+                               label = f"Mode {mode}")
+            axGrowth.legend()
+            axProp.legend()
+
+        axGrowth.set(title = "Growth rate", xlabel = "Azimuthal wavenumber",
+                     ylabel = "Growth rate (s$^{{-1}}$)")
+        axProp.set(title = "Propagation speed", 
+                   xlabel = "Azimuthal wavenumber",
+                   ylabel = "Angular velocity (s$^{{-1}}$)")
+        
+    elif not params.discretizeVertical:
+
+        for mode in range(nmodes):
+    
+            modeString           = GetModeString(nmodes, mode)
             dimString, xVariable = params.dimString + "1D", "kz"
 
             nRows = min(len(kφs), 4)
@@ -170,7 +181,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             #Set x-labels on lowest axes
             axGrowth.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
             axProp.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
-
+        
         fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
         plt.close(fig)
         
@@ -606,7 +617,7 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
     PlotEigModeStructures(params, len(modes), kφs, kzs, r, z, eigModesReal, 
                           eigModesImag, setupString)
                           
-    PlotStreamfnsAndVelocities(params, geom, len(modes), kφs, kzs, r, φ, z, 
+    PlotStreamfnsAndVelocities(params, geom, 1, kφs, kzs, r, φ, z, 
                                eigStreamfnsReal, eigStreamfnsImag, eig_urReal,
                                eig_urImag, eig_uφReal, eig_uφImag, setupString)
 
