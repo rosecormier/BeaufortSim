@@ -91,7 +91,6 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
         z_var    = ncfile.createVariable("z", float, ("z",))
         z_var[:] = geom.z[0:(Nz + 1)]
         
-        
         z_var.units = params.units["z"]
     
         #Create variables for dimensional growth rates and propagation speeds
