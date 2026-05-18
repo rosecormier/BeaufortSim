@@ -182,8 +182,8 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             axGrowth.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
             axProp.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
         
-        fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
-        plt.close(fig)
+    fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
+    plt.close(fig)
         
 def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal, 
                           eigModesImag, setupString):
@@ -605,6 +605,8 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
                      eigModesReal, eigModesImag, eigStreamfnsReal, 
                      eigStreamfnsImag, eig_urReal, eig_urImag, eig_uφReal,
                      eig_uφImag, setupString):
+                     
+    print("Starting visualization")
     
     plt.rcParams.update({"text.usetex": True, "font.size": 12})
 
