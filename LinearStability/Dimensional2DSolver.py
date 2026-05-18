@@ -7,7 +7,7 @@ All variables should be specified in SI base units.
 
 import argparse
 import numpy as np
-import scipy.linalg as spalg
+import scipy.sparse.linalg as sspla
 
 import sys
 import time
@@ -17,6 +17,8 @@ from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 from SaveToNetCDF import SaveToNetCDF
 from VisualizationLinearStability import RunVisFromSavedData
+
+from scipy.sparse import csr_matrix
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-Nr", 
@@ -100,26 +102,28 @@ def QG_Vortex_Stability():
             #Build matrices "A" and "B"
             B = BuildMatrixB(params, geom, kφ)
             A = BuildMatrixA(params, geom)
-    
-            #Find generalized eigenspace (directly)
-                
-            t0 = timeit.timeit()
+            
+            eigVals, eigVecs = sspla.eigs(A, k = nmodes, M = B, which = "LI")
+
+            ##Find generalized eigenspace (directly)
+            
+            #t0 = timeit.timeit()
             
             #Compute eigvals c and eigvecs psi with direct solver
-            eigVals, eigVecs = spalg.eig(A, B)
+            #eigVals, eigVecs = spalg.eig(A, B)
     
-            solveTime = timeit.timeit() - t0 #Time for direct solver
+            #solveTime = timeit.timeit() - t0 #Time for direct solver
                 
-            #Indexing that sorts eigvals by ASCENDING Im(c)
-            indSort = np.argsort(eigVals.imag)
+            #Indexing that sorts eigvals by DESCENDING Im(c)
+            indSort = np.argsort(eigVals.imag)[::-1]
     
             eigVals = eigVals[indSort]    #Sort eigvals
             eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
             ωs      = eigVals * kφ        #Corresponding ω-values for this kφ
             
             #Growth rates and propagation speeds
-            growth[kφ_idx, 0:nmodes] = -ωs[0:nmodes].imag
-            prop[kφ_idx, 0:nmodes]   = ωs[0:nmodes].real
+            growth[kφ_idx, 0:nmodes] = ωs.imag #-ωs[0:nmodes].imag
+            prop[kφ_idx, 0:nmodes]   = ωs.real #ωs[0:nmodes].real
             
             modesLen = len(modes[kφ_idx, :, 0:nmodes])
             
