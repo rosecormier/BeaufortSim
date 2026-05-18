@@ -94,61 +94,38 @@ def BuildBkgdOperators(params, geom):
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
             
-            Dz = geom.Dz[zStartIdx:zEndIdx, zStartIdx:zEndIdx]
-            
-            #N2Recip = np.ravel(geom.N2Recip[zStartIdx:zEndIdx])
-            #N2Recip = ssp.csr_array(geom.N2Recip[zStartIdx:zEndIdx])
+            Dz      = geom.Dz[zStartIdx:zEndIdx, zStartIdx:zEndIdx]
             N2Recip = geom.N2Recip[zStartIdx:zEndIdx]
 
             Ψ_opRadialFactor   = np.diag(np.sqrt(2 * e) * np.exp(-r2Tilde)
                                          * dimensional_U / dimensional_σr)
             Ψ_opVerticalFactor = np.diag(np.exp(-z2Tilde))
             
-            Ir = ssp.eye_array(params.Nr - 1, format = "csr") #np.eye(params.Nr - 1)
-            Iz = ssp.eye_array(params.DzSize, format = "csr") #np.eye(params.DzSize)
+            Ir = ssp.eye_array(params.Nr - 1, format = "csr")
+            Iz = ssp.eye_array(params.DzSize, format = "csr")
 
             Ψ_op = (ssp.kron(Ψ_opRadialFactor, Iz, format = "csr") @
                     ssp.kron(Ir, Ψ_opVerticalFactor, format = "csr"))
-            #Ψ_op = np.matmul(np.kron(Ψ_opRadialFactor, Iz), np.kron(Ir, Ψ_opVerticalFactor))
 
             Q_opScaleFactor = (8 * e)**0.5 * (dimensional_U / dimensional_σr**3)
             
             Q_opFactor1 = np.diag(np.exp(-r2Tilde))
             Q_opFactor2 = np.diag(np.exp(-z2Tilde))
-            
-            #Q_opFactor3RadialTerm   = ssp.diags_array(2 * (rTilde**2 - 2), format = "csr")
+
             Q_opFactor3RadialTerm = np.diag(2 * (rTilde**2 - 2))
-            #Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
-            #                                    / dimensional_σz)**2 
-            #                                  * (N2Recip * (1 - 2 * z2Tilde) 
-            #                                     + z * np.matmul(Dz, N2Recip)
-            #                                    )
-            #                                 )
             Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
                                                 / dimensional_σz)**2 
-                                              * (N2Recip * (1 - 2 * z2Tilde) 
-                                                 + z * np.matmul(Dz.toarray(), N2Recip)
-                                                )
+                * (N2Recip * (1 - 2 * z2Tilde) + z * np.matmul(Dz.toarray(), N2Recip))
                                              )
-            #Q_opFactor3VerticalTerm = ssp.diags_array(
-            #                 -(f0 * dimensional_σr / dimensional_σz)**2 
-            #                 * (N2Recip * (1 - 2 * z2Tilde) 
-            #                    + z * (Dz @ N2Recip)),
-            #                    format = "csr")
-                                
+  
             Q_opFactor3 = (ssp.kron(Q_opFactor3RadialTerm, Iz, format = "csr")
                            + ssp.kron(Ir, Q_opFactor3VerticalTerm, format = "csr"))
-            #Q_opFactor3 = (np.kron(Q_opFactor3RadialTerm, Iz) + np.kron(Ir, Q_opFactor3VerticalTerm))
-  
-            #Q_op = np.matmul(np.matmul(np.kron(Q_opScaleFactor * Q_opFactor1,
-            #                                   Iz),
-            #                           np.kron(Ir, Q_opFactor2)),
-            #                 Q_opFactor3
-            #                )
-            Q_op = ((ssp.kron(Q_opScaleFactor * Q_opFactor1, Iz, format = "csr") @
-                                       ssp.kron(Ir, Q_opFactor2, format = "csr")) @ Q_opFactor3)
+
+            Q_op = ((ssp.kron(Q_opScaleFactor * Q_opFactor1, Iz, format = "csr") 
+                    @ ssp.kron(Ir, Q_opFactor2, format = "csr")) 
+                    @ Q_opFactor3)
             #N.b., in the limit of very large dimensional_σz, this construction
-            # of Q_op agrees with the 1-dimensional Q_op constructed in the 
+            # of Q_op should agree with the 1-dimensional Q_op constructed in the 
             # case of the other disjunct (!discretizeVertical).
 
             geom.Ψ_op, geom.Q_op = Ψ_op, Q_op
@@ -197,10 +174,6 @@ def BuildHorizontalLaplacian(params, geom):
     geom.LapH_Q2 = geom.Dr2_Q2 + (geom.rRecip @ geom.Dr_Q2)
     geom.LapH_Q3 = geom.Dr2_Q3 + (geom.rRecip @ geom.Dr_Q3)
     geom.LapH_Q4 = geom.Dr2_Q4 + (geom.rRecip @ geom.Dr_Q4)
-    #geom.LapH_Q1 = geom.Dr2_Q1 + np.matmul(geom.rRecip, geom.Dr_Q1)
-    #geom.LapH_Q2 = geom.Dr2_Q2 + np.matmul(geom.rRecip, geom.Dr_Q2)
-    #geom.LapH_Q3 = geom.Dr2_Q3 + np.matmul(geom.rRecip, geom.Dr_Q3)
-    #geom.LapH_Q4 = geom.Dr2_Q4 + np.matmul(geom.rRecip, geom.Dr_Q4)
     
     geom.LapH = ConvertQuadsToBlock(geom, geom.LapH_Q1, geom.LapH_Q2, 
                                     geom.LapH_Q3, geom.LapH_Q4)
@@ -260,7 +233,7 @@ def BuildMatrixB(params, geom, kφ, kz = None):
         horizontalB = ConvertQuadsToBlock(geom, horizontalB_Q1, horizontalB_Q2,
                                           horizontalB_Q3, horizontalB_Q4)
         
-        Iz = ssp.eye(params.DzSize, format = "csr") #np.eye(params.DzSize)
+        Iz = ssp.eye_array(params.DzSize, format = "csr")
         
         #Deal with vertical boundary conditions
         
@@ -271,20 +244,20 @@ def BuildMatrixB(params, geom, kφ, kz = None):
             
             #Retain interior values (eigfunction will vanish at boundary pts)
             N2Recip = np.diag(geom.N2Recip[1:-1])
-            Dz      = geom.Dz[1:-1, 1:-1]
-            Dz2     = geom.Dz2[1:-1, 1:-1]
+            Dz      = geom.Dz[1:-1, 1:-1].toarray()
+            Dz2     = geom.Dz2[1:-1, 1:-1].toarray()
         
         elif params.verticalBCs == "continuousBuoyancy":
         
             zz = np.zeros((1, (params.Nz + 1)))
             
             #Terms depending on r, discretized on rz-grid
-            horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr") #np.kron(horizontalB, Iz)
+            horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr")
             
             #Load these operators in full (w.r.t. z)
             #N2Recip = ssp.diags_array(geom.N2Recip, format = "csr")
             N2Recip = np.diag(geom.N2Recip)
-            Dz      = geom.Dz
+            Dz      = geom.Dz.toarray()
             Dz2Full = geom.Dz2[1:-1, :].toarray()
             
             #Impose BCs by zeroing first and last rows of the full Dz2
@@ -292,17 +265,11 @@ def BuildMatrixB(params, geom, kφ, kz = None):
             Dz2 = np.vstack((zz, Dz2Full, zz))
 
         #Terms depending on z, discretized on z-grid
-        #-(np.matmul((params.f0**2 * N2Recip), Dz2)
-        #              + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
-        #             )
-        #verticalB = -(((params.f0**2 * N2Recip) @ Dz2)
-        #              + (((params.f0**2 * Dz) @ N2Recip) @ Dz)
-        #             )
         verticalB = -(np.matmul((params.f0**2 * N2Recip), Dz2)
-                      + np.matmul(np.matmul(params.f0**2 * Dz.toarray(), N2Recip), Dz.toarray())
+                      + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
                      )
         
-        Ir = ssp.eye(params.Nr - 1, format = "csr") #np.eye(params.Nr - 1)
+        Ir = ssp.eye_array(params.Nr - 1, format = "csr")
             
         #Terms depending on z, discretized on rz-grid
         verticalB_2D = ssp.kron(Ir, verticalB, format = "csr") #np.kron(Ir, verticalB)

@@ -103,17 +103,14 @@ def QG_Vortex_Stability():
             B = BuildMatrixB(params, geom, kφ)
             A = BuildMatrixA(params, geom)
             
+            #Find (nmodes) eigenvalue/vector pairs, indirectly
             eigVals, eigVecs = sspla.eigs(A, k = nmodes, M = B, which = "LI")
+            #Note: "which = 'LI'" prioritizes finding eigenvalue with largest 
+            # imaginary part.
+            #Assuming generalized eigvals will occur in conjugate pairs, the
+            #  largest imaginary part of any eigenvalue equals the largest negative
+            #  imaginary part of any eigenvalue -- i.e., largest growth rate.
 
-            ##Find generalized eigenspace (directly)
-            
-            #t0 = timeit.timeit()
-            
-            #Compute eigvals c and eigvecs psi with direct solver
-            #eigVals, eigVecs = spalg.eig(A, B)
-    
-            #solveTime = timeit.timeit() - t0 #Time for direct solver
-                
             #Indexing that sorts eigvals by DESCENDING Im(c)
             indSort = np.argsort(eigVals.imag)[::-1]
     
@@ -122,8 +119,8 @@ def QG_Vortex_Stability():
             ωs      = eigVals * kφ        #Corresponding ω-values for this kφ
             
             #Growth rates and propagation speeds
-            growth[kφ_idx, 0:nmodes] = ωs.imag #-ωs[0:nmodes].imag
-            prop[kφ_idx, 0:nmodes]   = ωs.real #ωs[0:nmodes].real
+            growth[kφ_idx, 0:nmodes] = ωs.imag
+            prop[kφ_idx, 0:nmodes]   = ωs.real
             
             modesLen = len(modes[kφ_idx, :, 0:nmodes])
             
