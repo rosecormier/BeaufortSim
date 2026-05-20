@@ -205,12 +205,12 @@ function open_energetics_dataset(energeticsfilename)
    return energetics_ds, t, Nt
 end
 
-function open_scalars_dataset(scalarfilename; idxStart = 2)
+function open_scalars_dataset(scalarfilename; idxStart = 2, idxEnd = -1)
 
    scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
 
-   t = scalars_ds[:time][idxStart:end] ./ 86400 #Convert to days for readability
-   
+   t = scalars_ds[:time][idxStart:idxEnd] ./ 86400 #Convert to days for readability
+
    return scalars_ds, t
 end
 
@@ -232,10 +232,10 @@ function get_2D_spatial_axis_idcs(const_dim;
    if const_dim == "x"
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
-	 yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
          yCzF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
       else #Grid is 3D
-	 yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
+         yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
          yCzF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
       end
 
@@ -258,7 +258,7 @@ function get_2D_spatial_axis_idcs(const_dim;
       if isnothing(z_idx) #Grid is 2D with only x and y axes
          xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, 1)
       else #Grid is 3D
-	 xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
+         xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
       end
 
       return xCyC_idcs, xCyC_idcs
