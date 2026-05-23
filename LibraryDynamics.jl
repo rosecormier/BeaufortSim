@@ -1,28 +1,7 @@
+using CSV
 using Oceananigans.BoundaryConditions
-using SpecialFunctions
-
-function lognormal_strat(N²₀, N²_max, d_ML, z; σ = 0.5)
-
-   if N²_max == N²₀
-      N² = N²₀ #Uniform-stratification case
-      b  = @. N² * z
-
-   elseif N²_max > N²₀
-
-      μ  = log(-d_ML) + (σ^2)/2
-      A  = -d_ML * σ * sqrt(2*pi) * (N²_max - N²₀) * exp(-(σ^2))
-
-      if z == 0.0
-         N² = 0.0
-	 b  = 0.0
-      elseif z < 0.0
-         N² = @. N²₀ - (A / (z*σ*sqrt(2*pi))) * exp(-(log(-z) - μ)^2 / (2*σ^2))
-         b  = @. N²₀*z - (A/2) * (1 + erf((log(z/d_ML) - (σ^2/2)) / (σ*sqrt(2))))
-      end
-   end
-
-   return N², b
-end
+using Oceananigans.Fields
+using SpecialFunctions, Tables
 
 function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 
@@ -43,68 +22,200 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
    return i_face
 end
 
-function bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot, zmax, zmin)
+function save_zC_values(z_grid, d_ML, grid)
+   #Save zC values to a csv file, if non-existent for this grid (Chebyshev only)
    
-   #this will all be cleaner if we convert to polar coords upfront; i plan to change this
+   if z_grid == "chebyshev"
    
-   if σz == "infinity" #Barotropic case
-  
-      b̄ = (x, y, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-      ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
-                        * exp((1/2) - (x^2 + y^2)/(σr^2)))
-      v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
-                         * exp((1/2) - (x^2 + y^2)/(σr^2)))
+      gridfilepath = joinpath("./Logs", "grid_Nz$(grid.Nz)_MLD$(abs(d_ML)).csv") 
 
-      b̄z_top = (x, y, t) -> bkgd_N²_top
-      b̄z_bot = (x, y, t) -> bkgd_N²_bot
-
-   else #Baroclinic case
-      
-      b̄ = (x, y, z) -> (lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-                        - (sqrt(2)*f*U*σr*z/(σz^2))
-			  * exp((1/2) - (z/σz)^2)
-			  * (exp(-(x^2 + y^2)/(σr^2)) - 1)
-		       )
-      ū = (x, y, z) -> ((sqrt(2)*U*y/σr)
-                        * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-      v̄ = (x, y, z) -> -((sqrt(2)*U*x/σr)
-                         * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-      
-      @inline b̄z(x, y, z, bkgd_N²) = (bkgd_N² 
-				      .- (sqrt(2)*f*U*σr/(σz^2))
-				         * exp((1/2) - (z/σz)^2)
-					 * (exp(-(x^2 +y^2)/(σr^2)) - 1)
-					 * (1 - 2*(z/σz)^2)
-				     )
-
-      b̄z_top = (x, y, t) -> b̄z(x, y, zmax, bkgd_N²_top)
-      b̄z_bot = (x, y, t) -> b̄z(x, y, zmin, bkgd_N²_bot)
+      if !isfile(gridfilepath)
+         mkpath(dirname(gridfilepath)) #Make required path
+         @views CSV.write(gridfilepath, Tables.table(znodes(grid, Center())), 
+                          header = false)
+      end
    end
-
-   b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
-				   bottom = GradientBoundaryCondition(b̄z_bot))
-
-   return b̄, ū, v̄, b̄_BCs
 end
 
-function bkgd_fields_2D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot)
+function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
+   #=
+   Contribution to background buoyancy from thermal-wind balance with background velocity.
+   =#
+   
+   if !yFlat #Return 3D version of function
+      TWB_b̄ = (x, y, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
+			                        * exp((1/2) - (z/σz)^2)
+			                        * (exp(-(x^2 + y^2) / (σr^2)) - 1))
+   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
+      TWB_b̄ = (x, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
+                           * exp((1/2) - (z/σz)^2) * (exp(-(x^2) / (σr^2)) - 1))
+   end
+   return TWB_b̄
+end
 
-   #this will all be cleaner if we convert to polar coords upfront; i plan to change this
+function TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
+   #=
+   Contribution to z-derivative of background buoyancy from thermal-wind balance with background velocity derivatives.
+   =#
+   if !yFlat #Return 3D version of function
+      TWB_∂b̄∂z = (x, y, z) -> -((sqrt(2) * f * U * σr / (σz^2))
+				                         * exp((1/2) - (z/σz)^2)
+					                       * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
+                                 * (1 - 2 * (z/σz)^2)
+                                )
+   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
+      TWB_∂b̄∂z = (x, z) -> -((sqrt(2) * f * U * σr / (σz^2))
+				                      * exp((1/2) - (z/σz)^2)
+					                    * (exp(-(x^2) / (σr^2)) - 1) * (1 - 2 * (z/σz)^2)
+                             )
+   end
+   return TWB_∂b̄∂z
+end
+
+function N²_from_data(Nz, d_ML, constantN²Term, linearN²Coeff, season = "Ma06")
+   file = CSV.File(joinpath("./Data/", "N2_Nz$(Nz)_MLD$(abs(d_ML)).csv"); header = 2)
+   z    = file["Column1"]
+   N²   = @. file[season] + constantN²Term
+end
+
+function buoyancy_BCS(σz, constantN²Term; 
+                      z_top = 0, 
+                      z_bot = 0, 
+                      Nz = 0, 
+                      d_ML = 0, 
+                      season = nothing, 
+                      yFlat = false)
 
    if σz == "infinity" #Barotropic case
+      b̄z_top = constantN²Term
+      b̄z_bot = constantN²Term
+      
+   else #Baroclinic case
+   
+      TWB_∂b̄∂z_function = TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
+      
+      if isnothing(season)
+      
+         if !yFlat
+            
+            #Function to compute z-derivative of background buoyancy
+            @inline b̄z(x, y, z) = constantN²Term .+ TWB_∂b̄∂z_function(x, y, z)
+         
+            #Evaluate z-derivatives at top and bottom of domain
+            b̄z_top = (x, y, t) -> b̄z(x, y, z_top)
+            b̄z_bot = (x, y, t) -> b̄z(x, y, z_bot)
+         
+         elseif yFlat
+         
+            #Function to compute z-derivative of background buoyancy
+            @inline b̄z(x, z) = constantN²Term .+ TWB_∂b̄∂z_function(x, z)
+            
+            #Evaluate z-derivatives at top and bottom of domain
+            b̄z_top = (x, t) -> b̄z(x, z_top)
+            b̄z_bot = (x, t) -> b̄z(x, z_bot)
+         end
+     
+      else #Construct ambient stratification from seasonal data
+      
+         N² = N²_from_data(Nz, d_ML, constantN²Term, season)
+         
+         #z-derivatives of buoyancy at top and bottom of domain
+         if !yFlat
+            b̄z_top = (x, y, t) -> N²[end-1] .+ TWB_∂b̄∂z_function(x, y, z_top)
+            b̄z_bot = (x, y, t) -> N²[1] .+ TWB_∂b̄∂z_function(x, y, z_bot)
+         elseif yFlat
+            b̄z_top = (x, t) -> N²[end-1] .+ TWB_∂b̄∂z_function(x, z_top)
+            b̄z_bot = (x, t) -> N²[1] .+ TWB_∂b̄∂z_function(x, z_bot)
+         end
+      end
+   end
+   
+   b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
+				                            bottom = GradientBoundaryCondition(b̄z_bot))
+   
+   return b̄_BCs
+end
 
-      b̄ = (x, z) -> lognormal_strat(N²₀, N²_max, d_ML, z)[2]
-      ū = (x, z) -> 0
-      v̄ = (x, z) -> -((sqrt(2)*U*x/σr) * exp((1/2) - (x^2)/(σr^2)))
+function integrate_N²_upwards(i, j, k, grid, N², integral)
+   #=
+   Integrate discrete N² values from the surface (z[grid.Nz - 1] = 0) to the 
+    depth z[k], producing a CenterField(grid).
+   =#
 
-      b̄z_top = (x, t) -> bkgd_N²_top
-      b̄z_bot = (x, t) -> bkgd_N²_bot
+   integral_m = N²[grid.Nz] .* Δzᶜᶜᶜ(i, j, grid.Nz, grid)
 
-   #else #Baroclinic case
+   for m in k:grid.Nz:1
+      integral_m += N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
    end
 
-   b̄_BCs = FieldBoundaryConditions(top    = GradientBoundaryCondition(b̄z_top),
-                                   bottom = GradientBoundaryCondition(b̄z_bot))
+   integral[i, j, k] = integral_m
+end
 
-   return b̄, ū, v̄, b̄_BCs
+function bkgd_buoyancy(f, σr, σz, U, constantN²Term; 
+                       Nz = 0, 
+                       d_ML = 0, 
+                       season = nothing, 
+                       grid = nothing, 
+                       yFlat = false)
+
+   TWB_b̄_function = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
+
+   if σz == "infinity" #Barotropic case
+      if !yFlat
+         b̄ = (x, y, z) -> constantN²Term .* z
+      elseif yFlat
+         b̄ = (x, z) -> constantN²Term .* z
+      end
+      
+   else #Baroclinic case
+
+      if isnothing(season)
+      
+         if !yFlat
+            b̄ = (x, y, z) -> TWB_b̄_function(x, y, z) .+ (constantN²Term .* z)      
+         elseif yFlat
+            b̄ = (x, z) -> TWB_b̄_function(x, z) .+ (constantN²Term .* z)
+         end
+         
+      else
+      
+         N² = N²_from_data(Nz, d_ML, constantN²Term, season)
+         b̄ = CenterField(grid)
+         
+         integrate_N²_upwards_op = KernelFunctionOperation{Center, Center, Center}(
+                integrate_N²_upwards, grid, N², b̄)
+
+         compute!(integrate_N²_upwards_op)
+      end
+   end
+   return b̄
+end
+
+function bkgd_velocities(σr, σz, U, yFlat = false)
+
+   if yFlat #2D versions, evaluated at y = 0
+      
+      ū = (x, z) -> 0
+   
+      if σz == "infinity" #Barotropic case
+         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x^2)/(σr^2)))
+      else #Baroclinic case
+         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x^2)/(σr^2) - (z/σz)^2))
+      end
+   
+   elseif !yFlat #3D versions
+   
+      if σz == "infinity" #Barotropic case
+         ū = (x, y, z) -> ((sqrt(2) * U * y / σr)
+                            * exp((1/2) - (x^2 + y^2)/(σr^2)))
+         v̄ = (x, y, z) -> -((sqrt(2) * U * x / σr)
+                             * exp((1/2) - (x^2 + y^2)/(σr^2)))
+      else #Baroclinic case
+         ū = (x, y, z) -> ((sqrt(2) * U * y / σr)
+                         * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+         v̄ = (x, y, z) -> -((sqrt(2) * U * x / σr)
+                          * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+      end
+   end
+   return ū, v̄
 end
