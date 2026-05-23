@@ -224,10 +224,10 @@ function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
 end
 
 function get_2D_spatial_axis_idcs(const_dim;
-	                          Hx = 3, Hy = 3, Hz = 3,
-		                  x_idx = nothing, y_idx = nothing, z_idx = nothing,
-				  xC = nothing, yC = nothing, zC = nothing,
-				  zF = nothing)
+                                  Hx = 3, Hy = 3, Hz = 3,
+		                              x_idx = nothing, y_idx = nothing, z_idx = nothing,
+				                          xC = nothing, yC = nothing, zC = nothing,
+                      				    zF = nothing)
 
    if const_dim == "x"
 
@@ -267,8 +267,9 @@ end
 
 function get_2D_spatial_axis_kwargs(x, y, z, const_dim;
                                     x_idx = nothing,
-				    y_idx = nothing,
-				    z_idx = nothing)
+				                            y_idx = nothing,
+                                    z_idx = nothing)
+
    nearest = 0
 
    if !isnothing(x_idx)
