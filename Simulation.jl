@@ -1,4 +1,5 @@
 include("LibraryDynamics.jl")
+include("LibraryEnergetics.jl")
 include("LibraryOptionalSimOutputs.jl")
 include("LibraryStability.jl")
 include("LibraryVisualization.jl")
@@ -6,7 +7,7 @@ include("Visualization.jl")
 
 using Adapt, CSV, CUDA
 using Dates: canonicalize, format, now
-using LinearAlgebra: norm
+
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Coriolis
@@ -14,7 +15,7 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 using Oceananigans.Units
 using Oceananigans.Utils 
-using Printf, Random, Tables
+using Printf, Random#, Tables
 
 ######################
 # SPECIFY PARAMETERS #
@@ -35,16 +36,16 @@ const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const U   = 3.5 * (meter/second) #Gyre velocity scale (at surface)
-const N²₀ = 4e-3 * (second^(-2)) #1e-4 * (second^(-2)) #Buoyancy frequency squared (at surface)
+const U  = 3.5 * (meter/second) #Maximum gyre velocity scale (at surface)
+const σr = 250 * kilometer      #Radial gyre length scale
+const σz = 300 * meter 	        #Vertical gyre length scale
 
-const σr = 250 * kilometer #Radial gyre length scale
-const σz = 300 * meter 	   #Vertical gyre length scale
+const season = "Ma06" #Season to use data from when constructing stratification
 
-#Max buoyancy frequency (equal to N²₀ for uniform stratification)
-const N²_max = 4e-3 * (second^(-2)) #1e-4 * (second^(-2))
+const constantN²Term = 0 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyancy at z = 0
 
-const d_ML = -30 * meter #Mixed-layer depth
+const z_grid = "chebyshev" #'uniform' or 'chebyshev'
+const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
 const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
 const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
@@ -63,12 +64,12 @@ const useGPU = false #Whether to use GPU
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = false
+const vis_const_x    = true
 const vis_const_y    = false
 const vis_const_z    = false
-const vis_norms      = false
+const vis_norms      = true
 const vis_energetics = false
-const vis_z_grid     = true #Note: currently can only be done on CPU
+const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -89,27 +90,35 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-z_grid_spacing(k) = chebyshev_spaced_faces(k, -Lz, Nz; ξ0 = d_ML)
+z_grids = Dict("uniform"   => (-Lz, 0.0), 
+               "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz; ξ0 = d_ML))
 
 grid = RectilinearGrid(architecture,
 		                   topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lr, Lr),
 		                   y = (-Lr, Lr),
-                       z = z_grid_spacing,
+                       z = z_grids[z_grid],
 		                   halo = (Hx, Hy, Hz))
-                       #z = (-Lz, 0.0),
 
-gridfilepath = joinpath("./Logs", "grid_Nz$(Nz)_MLD$(abs(d_ML)).csv") 
+save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
 
-mkpath(dirname(gridfilepath)) #Make required path if nonexistent
-CSV.write(gridfilepath, 
-          Tables.table(znodes(grid, Center())), header = false) #Save zC values
+if !isnothing(season)
+   #Construct ambient stratification from seasonal data
+   const N²   = N²_from_data(Nz, d_ML, constantN²Term, season)
+   const N²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
+   const N²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
+elseif isnothing(season)
+   const N²Top    = nothing
+   const N²Bottom = nothing
+end
 
-const bkgd_N²_top = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, 0)[1]
-const bkgd_N²_bot = N²₀ #lognormal_strat(N²₀, N²_max, d_ML, -Lz)[1]
-
-b̄, ū, v̄, b̄_BCs = bkgd_fields_3D(f, σr, σz, U, bkgd_N²_top, bkgd_N²_bot, 0, -Lz)
+b̄_BCs = buoyancy_BCS(σz,
+                      constantN²Term,
+                      0,
+                      -Lz,
+                      false;
+                      parameters = (N²FromDataTop = N²Top, N²FromDataBottom = N²Bottom))
 
 model = NonhydrostaticModel(; 
                             grid = grid, 
@@ -117,15 +126,21 @@ model = NonhydrostaticModel(;
                             advection = WENO(),
                             coriolis = fPlane,
                             tracers = (:b),
-               		    buoyancy = BuoyancyTracer(),
+                            buoyancy = BuoyancyTracer(),
                             boundary_conditions = (; b = b̄_BCs))
+
+b̄     = bkgd_buoyancy(f, σr, σz, U;
+                       constantN²Term = constantN²Term,
+                       N²FromData = N², 
+                       grid = model.grid)
+ū, v̄ = bkgd_velocities(σr, σz, U)
 
 set!(model, u = ū, v = v̄, b = b̄)
 
 #Print warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
 		      z_idx = z_idx)
-check_grav_stability(model.tracers.b; grid = model.grid, x_idx = x_idx)
+check_grav_stability(model.tracers.b; plot_∂b∂z = true, grid = model.grid, x_idx = x_idx)
 
 #########################################################
 # SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
@@ -159,22 +174,22 @@ fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 fill_halo_regions!(B)
 
-∂z_Uφ = CenterField(model.grid)
+#Create fields that are used in computing PKE budget terms
+φcoords = CenterField(model.grid)
+∂r_Uφ   = CenterField(model.grid)
+∂z_Uφ   = CenterField(model.grid)
+
+#Prescribe initial values to those fields
+set!(φcoords, compute_polar_coords(grid)[2])
+set!(∂r_Uφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
 set!(∂z_Uφ, ∂z(Uφ))
 
-φcoords = CenterField(model.grid)
-set!(φcoords, compute_polar_coords(grid)[2])
-
-∂r_Uφ = CenterField(model.grid)
-set!(∂r_Uφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
-
+#Functions to compute perturbation-velocity components (cylindrical coords)
 @inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
-
 @inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
-
 @inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
 
-@inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
+#@inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
 
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
 
@@ -318,38 +333,40 @@ uz_perturbation_norm(model) = perturbation_norm(model.velocities.w, Uz)
 b_perturbation_norm(model)  = perturbation_norm(model.tracers.b, B)
 
 scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
-		      uy′_norm = uy_perturbation_norm,
-		      ur′_norm = ur_perturbation_norm,
-		      uφ′_norm = uφ_perturbation_norm,
-		      uz′_norm = uz_perturbation_norm,
-		      b′_norm  = b_perturbation_norm)
+		                  uy′_norm = uy_perturbation_norm,
+		                  ur′_norm = ur_perturbation_norm,
+		                  uφ′_norm = uφ_perturbation_norm,
+		                  uz′_norm = uz_perturbation_norm,
+		                  b′_norm  = b_perturbation_norm)
 
 scalar_writer = NetCDFWriter(model, scalar_diagnostics,
-		                   filename = scalarfilepath, 
-				   schedule = TimeInterval(1*hour),
+		                         filename = scalarfilepath, 
+				                     schedule = TimeInterval(1*hour),
                              file_splitting = FileSizeLimit(30GiB),
-				 dimensions = (ux′_norm = (),
-					       uy′_norm = (),
-					       ur′_norm = (),
-					       uφ′_norm = (),
-					       uz′_norm = (),
-					       b′_norm  = ()))
+		                         dimensions = (ux′_norm = (),
+					                                 uy′_norm = (),
+					                                 ur′_norm = (),
+					                                 uφ′_norm = (),
+					                                 uz′_norm = (),
+					                                 b′_norm  = ()))
 
-energy_diagnostics = (; integrated_pKE = compute_integrated_pKE(simulation),
-	integrated_pAPE_to_pKE = compute_integrated_pAPE_to_pKE(simulation),
-	integrated_BTI_transfer = compute_BTI_transfer(simulation),
-	integrated_BCI_transfer = compute_BCI_transfer(simulation))
+energy_diagnostics = (; 
+                      integrated_pKE = compute_integrated_pKE(simulation),
+	                    integrated_pAPE_to_pKE = compute_integrated_pAPE_to_pKE(simulation),
+	                    integrated_BTI_transfer = compute_BTI_transfer(simulation),
+	                    integrated_BCI_transfer = compute_BCI_transfer(simulation))
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
 			 	   schedule = TimeInterval(Δt_save),
 			     file_splitting = FileSizeLimit(30GiB))
 
-checkpointer = Checkpointer(model; schedule = TimeInterval(Δt_checkpt),
-			    		dir = "Checkpoints", 
-			    	     prefix = "checkpoint_$(datetimenow)", 
-			    	 properties = [:grid, :clock, :timestepper,
-					       :velocities, :tracers])
+checkpointer = Checkpointer(model; 
+                            schedule = TimeInterval(Δt_checkpt),
+                            dir = "Checkpoints", 
+			    	                prefix = "checkpoint_$(datetimenow)", 
+		    	                  properties = [:grid, :clock, :timestepper,
+					                                :velocities, :tracers])
 
 simulation.output_writers[:field_writer]  = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
@@ -369,7 +386,9 @@ open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
    write(file, "Lr, Lz = $(Lr), $(Lz) \n\n")
    write(file, "σr, σz = $(σr), $(σz) \n")
-   write(file, "U, N²₀ = $(U), $(N²₀) \n")
+   write(file, "U = $(U) \n")
+   write(file, "Constant N² term = $(constantN²Term) \n")
+   write(file, "Season = $(season) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
    write(file, "Δt, tf = $(Δt), $(tf) \n\n")

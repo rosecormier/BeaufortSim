@@ -72,29 +72,27 @@ function TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
    return TWB_∂b̄∂z
 end
 
-function N²_from_data(Nz, d_ML, constantN²Term, linearN²Coeff, season = "Ma06")
+function N²_from_data(Nz, d_ML, constantN²Term, season)
    file = CSV.File(joinpath("./Data/", "N2_Nz$(Nz)_MLD$(abs(d_ML)).csv"); header = 2)
-   z    = file["Column1"]
-   N²   = @. file[season] + constantN²Term
+   N²   = file[season] .+ constantN²Term
 end
 
-function buoyancy_BCS(σz, constantN²Term; 
-                      z_top = 0, 
-                      z_bot = 0, 
-                      Nz = 0, 
-                      d_ML = 0, 
-                      season = nothing, 
-                      yFlat = false)
+function buoyancy_BCS(σz,
+                      constantN²Term,
+                      z_top, 
+                      z_bot, 
+                      yFlat;
+                      parameters=nothing)
 
    if σz == "infinity" #Barotropic case
-      b̄z_top = constantN²Term
-      b̄z_bot = constantN²Term
+      b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(constantN²Term),
+				                               bottom = GradientBoundaryCondition(constantN²Term))
       
    else #Baroclinic case
    
       TWB_∂b̄∂z_function = TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
       
-      if isnothing(season)
+      if isnothing(parameters.N²FromDataTop)
       
          if !yFlat
             
@@ -114,25 +112,27 @@ function buoyancy_BCS(σz, constantN²Term;
             b̄z_top = (x, t) -> b̄z(x, z_top)
             b̄z_bot = (x, t) -> b̄z(x, z_bot)
          end
+         
+         b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
+				                                  bottom = GradientBoundaryCondition(b̄z_bot))
      
-      else #Construct ambient stratification from seasonal data
-      
-         N² = N²_from_data(Nz, d_ML, constantN²Term, season)
+      else
          
          #z-derivatives of buoyancy at top and bottom of domain
          if !yFlat
-            b̄z_top = (x, y, t) -> N²[end-1] .+ TWB_∂b̄∂z_function(x, y, z_top)
-            b̄z_bot = (x, y, t) -> N²[1] .+ TWB_∂b̄∂z_function(x, y, z_bot)
+            b̄z_top = (x, y, t, p) -> p.N²FromDataTop .+ TWB_∂b̄∂z_function(x, y, z_top)
+            b̄z_bot = (x, y, t, p) -> p.N²FromDataBottom .+ TWB_∂b̄∂z_function(x, y, z_bot)
          elseif yFlat
-            b̄z_top = (x, t) -> N²[end-1] .+ TWB_∂b̄∂z_function(x, z_top)
-            b̄z_bot = (x, t) -> N²[1] .+ TWB_∂b̄∂z_function(x, z_bot)
+            b̄z_top = (x, t, p) -> p.N²FromDataTop .+ TWB_∂b̄∂z_function(x, z_top)
+            b̄z_bot = (x, t, p) -> p.N²FromDataBottom .+ TWB_∂b̄∂z_function(x, z_bot)
          end
+         
+         b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top, 
+                                                                    parameters = parameters),
+				                                  bottom = GradientBoundaryCondition(b̄z_bot, 
+                                                                    parameters = parameters))
       end
    end
-   
-   b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
-				                            bottom = GradientBoundaryCondition(b̄z_bot))
-   
    return b̄_BCs
 end
 
@@ -151,10 +151,9 @@ function integrate_N²_upwards(i, j, k, grid, N², integral)
    integral[i, j, k] = integral_m
 end
 
-function bkgd_buoyancy(f, σr, σz, U, constantN²Term; 
-                       Nz = 0, 
-                       d_ML = 0, 
-                       season = nothing, 
+function bkgd_buoyancy(f, σr, σz, U;
+                       constantN²Term = 0,
+                       N²FromData = nothing, 
                        grid = nothing, 
                        yFlat = false)
 
@@ -169,7 +168,7 @@ function bkgd_buoyancy(f, σr, σz, U, constantN²Term;
       
    else #Baroclinic case
 
-      if isnothing(season)
+      if isnothing(N²FromData)
       
          if !yFlat
             b̄ = (x, y, z) -> TWB_b̄_function(x, y, z) .+ (constantN²Term .* z)      
@@ -179,11 +178,10 @@ function bkgd_buoyancy(f, σr, σz, U, constantN²Term;
          
       else
       
-         N² = N²_from_data(Nz, d_ML, constantN²Term, season)
          b̄ = CenterField(grid)
          
          integrate_N²_upwards_op = KernelFunctionOperation{Center, Center, Center}(
-                integrate_N²_upwards, grid, N², b̄)
+                integrate_N²_upwards, grid, N²FromData, b̄)
 
          compute!(integrate_N²_upwards_op)
       end
