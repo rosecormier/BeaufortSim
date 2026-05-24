@@ -20,17 +20,17 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_ux = nothing, idxEndLinGrowth_ux = nothing,
 		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
 		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
-		idxStartPlot = 2)
+		idxStartPlot = 2, idxEndPlot = -1)
 
    scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc";
-					    idxStart = idxStartPlot)
+					    idxStart = idxStartPlot, idxEnd = idxEndPlot)
 
-   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:end]
-   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:end]
-   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:end]
-   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:end]
-   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:end]
-   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:end]
+   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:idxEndPlot]
+   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:idxEndPlot]
+   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:idxEndPlot]
+   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:idxEndPlot]
+   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:idxEndPlot]
+   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:idxEndPlot]
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
@@ -170,6 +170,21 @@ function visualize_energetics(datetime, grid, initialKE)
    pAPE_to_pKE  = ds[:integrated_pAPE_to_pKE][sortIdcs] / initialKE[1]
    BTI_transfer = ds[:integrated_BTI_transfer][sortIdcs] / initialKE[1]
    BCI_transfer = ds[:integrated_BCI_transfer][sortIdcs] / initialKE[1]
+   
+   pKE_total = pKE_total .- pKE_total[1]
+   pAPE_to_pKE = pAPE_to_pKE .- pAPE_to_pKE[1]
+   BTI_transfer = BTI_transfer .- BTI_transfer[1]
+   BCI_transfer = BCI_transfer .- BCI_transfer[1]
+   
+   gyre_pKE = ds[:gyre_integrated_pKE][sortIdcs]
+   gyre_pAPE_to_pKE = ds[:gyre_integrated_pAPE_to_pKE][sortIdcs]
+   gyre_BTI_transfer = ds[:gyre_BTI_transfer][sortIdcs]
+   gyre_BCI_transfer = ds[:gyre_BCI_transfer][sortIdcs]
+   
+   gyre_pKE = gyre_pKE .- gyre_pKE[1]
+   gyre_pAPE_to_pKE = gyre_pAPE_to_pKE .- gyre_pAPE_to_pKE[1]
+   gyre_BTI_transfer = gyre_BTI_transfer .- gyre_BTI_transfer[1]
+   gyre_BCI_transfer = gyre_BCI_transfer .- gyre_BCI_transfer[1]
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
@@ -185,7 +200,20 @@ function visualize_energetics(datetime, grid, initialKE)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
    
-   dt_pKE_total = order1_forward_difference(t, pKE_total)
+   fig_pKEgyre = Figure(size = (1200, 700))
+   ax_pKEgyre  = Axis(fig_pKEgyre[2, 1]; xlabel = "Time [days]",
+	      		                   ylabel = "pKE in gyre region", yscale = log10)
+
+   scatter!(ax_pKEgyre, t[2:end], gyre_pKE[2:end], color = :black)
+
+   fig_pKEgyre[1, 1] = Label(fig_pKEgyre,
+	"Perturbation kinetic energy integrated over gyre region",
+                     	      fontsize = 24, tellwidth = false)
+
+   save(joinpath("./Plots", "pKEgyre_$(datetime).png"), fig_pKEgyre)
+   
+   #Convert time to s to compute time-derivative of PKE
+   dt_pKE_total = order1_forward_difference(86400 * t, pKE_total)
    
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
@@ -205,6 +233,29 @@ function visualize_energetics(datetime, grid, initialKE)
 			    fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "pKEbudget_$(datetime).png"), fig_budget)
+   
+   #Convert time to s to compute time-derivative of PKE
+   dt_pKE_gyre = order1_forward_difference(86400 * t, gyre_pKE)
+
+   fig_gyreBudget = Figure(size = (1200, 700))
+   ax_gyreBudget  = Axis(fig_gyreBudget[2, 1]; xlabel = "Time [days]",
+		     ylabel = L"[s$^{-1}$]")
+
+   lines!(ax_gyreBudget, t[1:end-1], dt_pKE_gyre, 
+	    label = "Time derivative of total pKE", color = :yellowgreen)
+   lines!(ax_gyreBudget, t, gyre_pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
+   lines!(ax_gyreBudget, t, gyre_BTI_transfer, label = "BTI transfer", 
+	    color = :hotpink)
+   lines!(ax_gyreBudget, t, gyre_BCI_transfer, label = "BCI transfer", 
+	    color = :darkgreen)
+   lines!(ax_gyreBudget, t[1:end-1], (dt_pKE_gyre - gyre_pAPE_to_pKE[1:end-1] - gyre_BTI_transfer[1:end-1] - gyre_BCI_transfer[1:end-1]), label = "residual", color = :red)
+   axislegend(ax_budget)
+
+   fig_gyreBudget[1, 1] = Label(fig_gyreBudget,
+			    "Terms in pKE budget, integrated over gyre region",
+			    fontsize = 24, tellwidth = false)
+
+   save(joinpath("./Plots", "pKEgyreBudget_$(datetime).png"), fig_gyreBudget)
 
    close(ds)
 end
