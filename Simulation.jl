@@ -7,7 +7,6 @@ include("Visualization.jl")
 
 using Adapt, CSV, CUDA
 using Dates: canonicalize, format, now
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Coriolis
@@ -15,15 +14,15 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 using Oceananigans.Units
 using Oceananigans.Utils 
-using Printf, Random#, Tables
+using Printf, Random
 
 ######################
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 252 #x-grid size
-const Ny = 252 #y-grid size
-const Nz = 20  #z-grid size
+const Nx = 50 #x-grid size
+const Ny = 50 #y-grid size
+const Nz = 20 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -47,28 +46,30 @@ const constantN²Term = 0 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyan
 const z_grid = "chebyshev" #'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
-const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 60 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 240 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 
-#Set save interval
+#=#Set save interval
 if parse(Float64, ARGS[3]) < tf / 200
    print("Save interval too small for given duration. Using tf/200 instead.")
    const Δt_save = tf / 200
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
+=#
+const Δt_save = 60
 
 const useGPU = false #Whether to use GPU
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = true
+const vis_const_x    = false
 const vis_const_y    = false
 const vis_const_z    = false
-const vis_norms      = true
-const vis_energetics = false
+const vis_norms      = false
+const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -105,7 +106,7 @@ save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
 
 if !isnothing(season)
    #Construct ambient stratification from seasonal data
-   const N²   = N²_from_data(Nz, d_ML, constantN²Term, season)
+   const N²       = N²_from_data(Nz, d_ML, constantN²Term, season)
    const N²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
    const N²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
 elseif isnothing(season)
@@ -138,9 +139,9 @@ ū, v̄ = bkgd_velocities(σr, σz, U)
 set!(model, u = ū, v = v̄, b = b̄)
 
 #Print warnings if the respective instabilities are present
-check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
-		      z_idx = z_idx)
-check_grav_stability(model.tracers.b; plot_∂b∂z = true, grid = model.grid, x_idx = x_idx)
+check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v; 
+                      z_idx = z_idx)
+check_grav_stability(model.tracers.b)
 
 #########################################################
 # SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
@@ -176,87 +177,13 @@ fill_halo_regions!(B)
 
 #Create fields that are used in computing PKE budget terms
 φcoords = CenterField(model.grid)
-∂r_Uφ   = CenterField(model.grid)
-∂z_Uφ   = CenterField(model.grid)
+∂rUφ    = CenterField(model.grid)
+∂zUφ    = CenterField(model.grid)
 
 #Prescribe initial values to those fields
 set!(φcoords, compute_polar_coords(grid)[2])
-set!(∂r_Uφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
-set!(∂z_Uφ, ∂z(Uφ))
-
-#Functions to compute perturbation-velocity components (cylindrical coords)
-@inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
-@inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
-@inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
-
-#@inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
-
-@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
-
-@inline pKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (
-     		      		ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) + 
-     		      		ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
-                      		ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
-
-pointwise_pKE_op = KernelFunctionOperation{Center, Center, Center}(pKE_ccc,
-   grid, model.velocities.u, model.velocities.v, model.velocities.w, Ux, Uy, Uz)
-
-function compute_integrated_pKE(sim)
-   compute!(Integral(Field(pointwise_pKE_op)))
-end
-
-function ∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂r_Uφ)
-
-   φ = atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())), ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center())))
-
-   ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
-   uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
-   ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
-   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
-
-   ur′_ccc = ur′(i, j, k, grid, ur_ccc, Ur)
-   uφ′_ccc = uφ′(i, j, k, grid, uφ_ccc, Uφ)
-   ∂r_Uφ_ccc = @inbounds ∂r_Uφ[i, j, k]
-
-   return @inbounds -(∂r_Uφ_ccc * ur′_ccc * uφ′_ccc)
-end
-
-BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, grid, model.velocities.u, model.velocities.v, Ur, Uφ, ∂r_Uφ)
-
-function compute_BTI_transfer(sim)
-   compute!(Integral(Field(BTI_transfer_op)))
-end
-
-@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (
-		  (b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
-
-pAPE_to_pKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc,
-   grid, model.tracers.b, model.velocities.w, B, Uz)
-
-function compute_integrated_pAPE_to_pKE(sim)
-   compute!(Integral(Field(pAPE_to_pKE_op)))
-end
-
-function ∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂z_Uφ)
-
-   φ = atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())), ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center())))
-
-   ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
-   uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
-   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ)) 
-
-   uφ′_ccc = uφ′(i, j, k, grid, uφ_ccc, Uφ)
-   uz′_ccc = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz) 
-   ∂z_Uφ_ccc = @inbounds ∂z_Uφ[i, j, k]
-
-   return @inbounds -(∂z_Uφ_ccc * uφ′_ccc * uz′_ccc)
-end
-
-BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, grid, model.velocities.u, model.velocities.v, model.velocities.w, Uφ, Uz, ∂z_Uφ)
-
-function compute_BCI_transfer(sim)
-   compute!(Integral(Field(BCI_transfer_op)))
-end
+set!(∂rUφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
+set!(∂zUφ, ∂z(Uφ))
 
 #############################
 # SET UP AND RUN SIMULATION #
@@ -264,13 +191,13 @@ end
 
 #Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = ū(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
+@inline u_perturbed(x, y, z) = @inbounds ū(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = v̄(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
+@inline v_perturbed(x, y, z) = @inbounds v̄(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
@@ -351,10 +278,15 @@ scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 					                                 b′_norm  = ()))
 
 energy_diagnostics = (; 
-                      integrated_pKE = compute_integrated_pKE(simulation),
-	                    integrated_pAPE_to_pKE = compute_integrated_pAPE_to_pKE(simulation),
-	                    integrated_BTI_transfer = compute_BTI_transfer(simulation),
-	                    integrated_BCI_transfer = compute_BCI_transfer(simulation))
+                      integrated_pKE = total_PKE(simulation; Ux, Uy, Uz),
+	                    integrated_pAPE_to_pKE = total_PAPE_to_PKE(simulation; B, Uz),
+	                    integrated_BTI_transfer = BTI_transfer(simulation; bkgdParameters = (Ur = Ur, Uφ = Uφ, ∂rUφ = ∂rUφ)),
+	                    integrated_BCI_transfer = BCI_transfer(simulation; bkgdParameters = (Uφ = Uφ, Uz = Uz, ∂zUφ = ∂zUφ)),
+                      gyre_integrated_pKE = gyre_PKE(simulation; gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
+                      gyre_integrated_pAPE_to_pKE = gyre_PAPE_to_PKE(simulation; gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
+                      gyre_BTI_transfer = gyre_BTI_transfer(simulation; bkgdParameters = (Ur = Ur, Uφ = Uφ, ∂rUφ = ∂rUφ), gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
+                      gyre_BCI_transfer = gyre_BCI_transfer(simulation; bkgdParameters = (Uφ = Uφ, Uz = Uz, ∂zUφ = ∂zUφ), gyreParameters = (σr = σr, σz = σz, architecture = architecture))
+                     )
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
 				   filename = energyfilepath,
