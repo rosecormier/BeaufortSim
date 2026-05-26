@@ -46,19 +46,17 @@ const constantN²Term = 0 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyan
 const z_grid = "chebyshev" #'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
-const Δt         = 60 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 240 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 
-#=#Set save interval
+#Set save interval
 if parse(Float64, ARGS[3]) < tf / 200
    print("Save interval too small for given duration. Using tf/200 instead.")
    const Δt_save = tf / 200
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-const Δt_save = 60
 
 const useGPU = false #Whether to use GPU
 
