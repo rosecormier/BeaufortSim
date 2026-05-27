@@ -20,8 +20,8 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 50 #x-grid size
-const Ny = 50 #y-grid size
+const Nx = 252 #x-grid size
+const Ny = 252 #y-grid size
 const Nz = 20 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
@@ -59,14 +59,15 @@ else
 end
 
 const useGPU = false #Whether to use GPU
+const useNHS = false #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = false
+const vis_const_x    = true
 const vis_const_y    = false
-const vis_const_z    = false
-const vis_norms      = false
+const vis_const_z    = true
+const vis_norms      = true
 const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
@@ -119,14 +120,25 @@ b̄_BCs = buoyancy_BCS(σz,
                       false;
                       parameters = (N²FromDataTop = N²Top, N²FromDataBottom = N²Bottom))
 
-model = NonhydrostaticModel(; 
-                            grid = grid, 
-                            timestepper = :RungeKutta3,
-                            advection = WENO(),
-                            coriolis = fPlane,
-                            tracers = (:b),
-                            buoyancy = BuoyancyTracer(),
-                            boundary_conditions = (; b = b̄_BCs))
+if useNHS
+   model = NonhydrostaticModel(; 
+                               grid = grid, 
+                               timestepper = :RungeKutta3,
+                               advection = WENO(),
+                               coriolis = fPlane,
+                               tracers = (:b),
+                               buoyancy = BuoyancyTracer(),
+                               boundary_conditions = (; b = b̄_BCs))
+elseif !useNHS
+   model = HydrostaticFreeSurfaceModel(;
+                                       grid = grid,
+                                       momentum_advection = WENO(),
+                                       tracer_advection = WENO(),
+                                       coriolis = fPlane,
+                                       tracers = (:b),
+                                       buoyancy = BuoyancyTracer(),
+                                       boundary_conditions = (; b = b̄_BCs))
+end
 
 b̄     = bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = constantN²Term,
@@ -226,11 +238,11 @@ add_callback!(simulation, progress, TimeInterval(Δt_save))
 ur, uφ = xy_vector_to_rφ(model.velocities.u, model.velocities.v, model.grid, useGPU)
 
 outputs = (ur = ur,
-	   uφ = uφ,
-	   ux = model.velocities.u,
-	   uy = model.velocities.v,
-	   uz = model.velocities.w,
-	   b  = model.tracers.b)
+	         uφ = uφ,
+	         ux = model.velocities.u,
+	         uy = model.velocities.v,
+	         uz = model.velocities.w,
+	         b  = model.tracers.b)
 
 #Define output filepaths
 outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
