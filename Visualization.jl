@@ -22,15 +22,23 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
 		idxStartPlot = 2, idxEndPlot = -1)
 
-   scalars_ds, times = open_scalars_dataset("scalars_$(datetime).nc";
-					    idxStart = idxStartPlot, idxEnd = idxEndPlot)
+   scalars_ds, times, Nt = open_scalars_dataset(glob("./Output/scalars_$(datetime)*"))
+   
+   if idxEndPlot < 0
+      idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
+   end
+   
+   #Retain only necessary portion of 'times' data
+   times = times[idxStartPlot:idxEndPlot]
+   
+   Nt = length(times) #Update Nt
 
-   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:idxEndPlot]
-   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:idxEndPlot]
-   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:idxEndPlot]
-   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:idxEndPlot]
-   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:idxEndPlot]
-   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:idxEndPlot]
+   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:end-1]
+   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:end-1]
+   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:end-1]
+   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:end-1]
+   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:end-1]
+   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:end-1]
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
@@ -73,7 +81,7 @@ function visualize_norms(datetime;
    if idxEndLinGrowth_b > 0
       growthIdcs_b = (idxStartLinGrowth_b, idxEndLinGrowth_b)
    elseif idxEndLinGrowth_b < 0
-      growthIdcs_b = (idxStartLinGrowth_b, length(times) + idxEndLinGrowth_b)
+      growthIdcs_b = (idxStartLinGrowth_b, Nt + idxEndLinGrowth_b)
    end
 
    function updateGrowthIdcs!(idxStart, idxEnd)
@@ -167,24 +175,24 @@ function visualize_energetics(datetime, grid, initialKE)
    initialKE = no_offset_view(adapt(Array, initialKE))
 
    pKE_total    = ds[:integrated_pKE][sortIdcs] / initialKE[1]
-   pAPE_to_pKE  = ds[:integrated_pAPE_to_pKE][sortIdcs] / initialKE[1]
-   BTI_transfer = ds[:integrated_BTI_transfer][sortIdcs] / initialKE[1]
-   BCI_transfer = ds[:integrated_BCI_transfer][sortIdcs] / initialKE[1]
+   #pAPE_to_pKE  = ds[:integrated_pAPE_to_pKE][sortIdcs] / initialKE[1]
+   #BTI_transfer = ds[:integrated_BTI_transfer][sortIdcs] / initialKE[1]
+   #BCI_transfer = ds[:integrated_BCI_transfer][sortIdcs] / initialKE[1]
    
    pKE_total = pKE_total .- pKE_total[1]
-   pAPE_to_pKE = pAPE_to_pKE .- pAPE_to_pKE[1]
-   BTI_transfer = BTI_transfer .- BTI_transfer[1]
-   BCI_transfer = BCI_transfer .- BCI_transfer[1]
+   #pAPE_to_pKE = pAPE_to_pKE .- pAPE_to_pKE[1]
+   #BTI_transfer = BTI_transfer .- BTI_transfer[1]
+   #BCI_transfer = BCI_transfer .- BCI_transfer[1]
    
-   gyre_pKE = ds[:gyre_integrated_pKE][sortIdcs]
-   gyre_pAPE_to_pKE = ds[:gyre_integrated_pAPE_to_pKE][sortIdcs]
-   gyre_BTI_transfer = ds[:gyre_BTI_transfer][sortIdcs]
-   gyre_BCI_transfer = ds[:gyre_BCI_transfer][sortIdcs]
+   #gyre_pKE = ds[:gyre_integrated_pKE][sortIdcs]
+   #gyre_pAPE_to_pKE = ds[:gyre_integrated_pAPE_to_pKE][sortIdcs]
+   #gyre_BTI_transfer = ds[:gyre_BTI_transfer][sortIdcs]
+   #gyre_BCI_transfer = ds[:gyre_BCI_transfer][sortIdcs]
    
-   gyre_pKE = gyre_pKE .- gyre_pKE[1]
-   gyre_pAPE_to_pKE = gyre_pAPE_to_pKE .- gyre_pAPE_to_pKE[1]
-   gyre_BTI_transfer = gyre_BTI_transfer .- gyre_BTI_transfer[1]
-   gyre_BCI_transfer = gyre_BCI_transfer .- gyre_BCI_transfer[1]
+   #gyre_pKE = gyre_pKE .- gyre_pKE[1]
+   #gyre_pAPE_to_pKE = gyre_pAPE_to_pKE .- gyre_pAPE_to_pKE[1]
+   #gyre_BTI_transfer = gyre_BTI_transfer .- gyre_BTI_transfer[1]
+   #gyre_BCI_transfer = gyre_BCI_transfer .- gyre_BCI_transfer[1]
 
    fig_pKEtotal = Figure(size = (1200, 700))
    ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
@@ -199,7 +207,7 @@ function visualize_energetics(datetime, grid, initialKE)
  
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
-   
+   #=
    fig_pKEgyre = Figure(size = (1200, 700))
    ax_pKEgyre  = Axis(fig_pKEgyre[2, 1]; xlabel = "Time [days]",
 	      		                   ylabel = "pKE in gyre region", yscale = log10)
@@ -256,7 +264,7 @@ function visualize_energetics(datetime, grid, initialKE)
 			    fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "pKEgyreBudget_$(datetime).png"), fig_gyreBudget)
-
+   =#
    close(ds)
 end
 
@@ -419,7 +427,7 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
       while file_idx < length(outfile_list)
         
          outfilename                 = outfile_list[file_idx] 
-	 ds, x, y, z, times, Nt_file = open_dataset(outfilename)
+         ds, x, y, z, times, Nt_file = open_dataset(outfilename)
 
          ux = @views adapt(Array, ds[:ux])[:, :, :, :]
          uy = @views adapt(Array, ds[:uy])[:, :, :, :]
@@ -480,15 +488,15 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
          fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                   tellwidth = false)
  
-	 for i = 1:t_idx_skip:Nt_file
+         for i = 1:t_idx_skip:Nt_file
             recordframe!(video_total)
-	    recordframe!(video_perturb)
-	    yield()
-	    n[] = i
+            recordframe!(video_perturb)
+            yield()
+            n[] = i
          end
 
-	 close(ds)
-	 file_idx += 1
+         close(ds)
+         file_idx += 1
       end
 
       save(joinpath("./Plots",

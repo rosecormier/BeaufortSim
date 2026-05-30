@@ -168,6 +168,14 @@ function pad_filenames(datetime; prefix = "output")
    return glob("./Output/$(prefix)_$(datetime)*")
 end
 
+function load_times_in_days(dataset)
+
+   t  = dataset[:time][:] ./ 86400
+   Nt = length(t)
+   
+   return t, Nt
+end
+
 function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
 
    ds = NCDataset(outfilename)
@@ -189,8 +197,7 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
       zF = ds[:z_aaf][Hz+1:end-Hz] ./ 1000
    end
 
-   t  = ds[:time][:] ./ 86400 #Convert to days for readability
-   Nt = length(t)
+   t, Nt = load_times_in_days(ds)
 
    return ds, x, y, zC, zF, t, Nt
 end
@@ -198,20 +205,17 @@ end
 function open_energetics_dataset(energeticsfilename)
    
    energetics_ds = NCDataset(energeticsfilename)
-
-   t  = energetics_ds[:time][:] ./ 86400 #Convert to days for readability
-   Nt = length(t)
+   t, Nt         = load_times_in_days(energetics_ds)
 
    return energetics_ds, t, Nt
 end
 
-function open_scalars_dataset(scalarfilename; idxStart = 2, idxEnd = -1)
+function open_scalars_dataset(scalarfilename)
 
-   scalars_ds = NCDataset(joinpath("./Output", scalarfilename))
+   scalars_ds = NCDataset(scalarfilename)
+   t, Nt      = load_times_in_days(scalars_ds)
 
-   t = scalars_ds[:time][idxStart:idxEnd] ./ 86400 #Convert to days for readability
-
-   return scalars_ds, t
+   return scalars_ds, t, Nt
 end
 
 function order1_forward_difference(t, u)
