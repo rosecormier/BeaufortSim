@@ -31,7 +31,7 @@ function save_zC_values(z_grid, d_ML, grid)
 
       if !isfile(gridfilepath)
          mkpath(dirname(gridfilepath)) #Make required path
-         @views CSV.write(gridfilepath, Tables.table(znodes(grid, Center())), 
+         @views CSV.write(gridfilepath, Tables.table(znodes(grid, Center())),
                           header = false)
       end
    end
@@ -53,23 +53,9 @@ function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
    return TWB_b̄
 end
 
-function TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
-   #=
-   Contribution to z-derivative of background buoyancy from thermal-wind balance with background velocity derivatives.
-   =#
-   if !yFlat #Return 3D version of function
-      TWB_∂b̄∂z = (x, y, z) -> -((sqrt(2) * f * U * σr / (σz^2))
-				                         * exp((1/2) - (z/σz)^2)
-					                       * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
-                                 * (1 - 2 * (z/σz)^2)
-                                )
-   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
-      TWB_∂b̄∂z = (x, z) -> -((sqrt(2) * f * U * σr / (σz^2))
-				                      * exp((1/2) - (z/σz)^2)
-					                    * (exp(-(x^2) / (σr^2)) - 1) * (1 - 2 * (z/σz)^2)
-                             )
-   end
-   return TWB_∂b̄∂z
+function N²_double_tanh(g, ρ₀, As, Bs, Cs, Ad, Bd, Cd)
+   N² = (x, y, z) -> -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2
+                                  + (Ad / Cd) * (sech((z - Bd) / Cd))^2)
 end
 
 function N²_from_data(Nz, d_ML, constantN²Term, season)
@@ -77,12 +63,8 @@ function N²_from_data(Nz, d_ML, constantN²Term, season)
    N²   = file[season] .+ constantN²Term
 end
 
-function buoyancy_BCS(σz,
-                      constantN²Term,
-                      z_top, 
-                      z_bot, 
-                      yFlat;
-                      parameters=nothing)
+function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
+                      parameters = nothing)
 
    if σz == "infinity" #Barotropic case
       b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(constantN²Term),
@@ -90,41 +72,46 @@ function buoyancy_BCS(σz,
       
    else #Baroclinic case
    
-      TWB_∂b̄∂z_function = TWB_∂b∂z_contribution(f, σr, σz, U, yFlat)
-      
+      #Contribution from background-state thermal-wind balance
+      @inline TWB_∂b̄∂z(x, y, z, constN²) = constN² .- ((sqrt(2) * f * U * σr / (σz^2))
+                                                        * exp((1/2) - (z/σz)^2)
+					                                              * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
+                                                        * (1 - 2 * (z/σz)^2)
+                                                       )
+
       if isnothing(parameters.N²FromDataTop)
       
          if !yFlat
-            
-            #Function to compute z-derivative of background buoyancy
-            @inline b̄z(x, y, z) = constantN²Term .+ TWB_∂b̄∂z_function(x, y, z)
-         
-            #Evaluate z-derivatives at top and bottom of domain
-            b̄z_top = (x, y, t) -> b̄z(x, y, z_top)
-            b̄z_bot = (x, y, t) -> b̄z(x, y, z_bot)
-         
-         elseif yFlat
-         
-            #Function to compute z-derivative of background buoyancy
-            @inline b̄z(x, z) = constantN²Term .+ TWB_∂b̄∂z_function(x, z)
-            
-            #Evaluate z-derivatives at top and bottom of domain
-            b̄z_top = (x, t) -> b̄z(x, z_top)
-            b̄z_bot = (x, t) -> b̄z(x, z_bot)
+            b̄z_top = (x, y, t) -> TWB_∂b̄∂z(x, y, z_top, constantN²Term)
+            b̄z_bot = (x, y, t) -> TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
+         elseif yFlat #Note: this case needs to be tested
+            b̄z_top = (x, t) -> TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
+            b̄z_bot = (x, t) -> TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
          end
          
          b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
 				                                  bottom = GradientBoundaryCondition(b̄z_bot))
-     
+
       else
-         
-         #z-derivatives of buoyancy at top and bottom of domain
+
          if !yFlat
-            b̄z_top = (x, y, t, p) -> p.N²FromDataTop .+ TWB_∂b̄∂z_function(x, y, z_top)
-            b̄z_bot = (x, y, t, p) -> p.N²FromDataBottom .+ TWB_∂b̄∂z_function(x, y, z_bot)
+            b̄z_top = (x, y, t, p) -> (p.N²FromDataTop 
+                                       .+ TWB_∂b̄∂z_function(x, y, z_top, 
+                                                             constantN²Term)
+                                      )
+            b̄z_bot = (x, y, t, p) -> (p.N²FromDataBottom 
+                                       .+ TWB_∂b̄∂z_function(x, y, z_bot, 
+                                                             constantN²Term)
+                                      )
          elseif yFlat
-            b̄z_top = (x, t, p) -> p.N²FromDataTop .+ TWB_∂b̄∂z_function(x, z_top)
-            b̄z_bot = (x, t, p) -> p.N²FromDataBottom .+ TWB_∂b̄∂z_function(x, z_bot)
+            b̄z_top = (x, t, p) -> (p.N²FromDataTop 
+                                    .+ TWB_∂b̄∂z_function(x, 0, z_top, 
+                                                          constantN²Term)
+                                   )
+            b̄z_bot = (x, t, p) -> (p.N²FromDataBottom 
+                                    .+ TWB_∂b̄∂z_function(x, 0, z_bot, 
+                                                          constantN²Term)
+                                   )
          end
          
          b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top, 
