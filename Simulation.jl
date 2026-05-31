@@ -46,10 +46,10 @@ const constantN²Term = 4e-3 * (second^(-2)) #Ambient (i.e., excluding gyre) buo
 const z_grid = "uniform" #'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
-const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 600 * second #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 2400 * second #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-
+#=
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -57,6 +57,8 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
+=#
+const Δt_save = 600 * second
 
 const useGPU = true #Whether to use GPU
 const useNHS = true #Whether to use NonhydrostaticModel
@@ -105,17 +107,19 @@ save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
 
 if !isnothing(season)
    #Construct ambient stratification from seasonal data
-   const N²       = N²_from_data(Nz, d_ML, constantN²Term, season)
-   const N²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
-   const N²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
+   const N²FromData = N²_from_data(Nz, d_ML, constantN²Term, season)
+   const N²Top      = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
+   const N²Bottom   = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
 elseif isnothing(season)
-   const N²       = nothing
-   const N²Top    = nothing
-   const N²Bottom = nothing
+   const N²FromData       = nothing
+   const N²FromDataTop    = nothing
+   const N²FromDataBottom = nothing
 end
 
 b̄_BCs = buoyancy_BCS(σz, constantN²Term, 0, -Lz, false;
-                      parameters = (N²FromDataTop = N²Top, N²FromDataBottom = N²Bottom))
+                      parameters = (N²FromDataTop = N²FromDataTop, 
+                                    N²FromDataBottom = N²FromDataBottom)
+                     )
 
 if useNHS
    model = NonhydrostaticModel(; 
@@ -139,7 +143,7 @@ end
 
 b̄     = bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = constantN²Term,
-                       N²FromData = N², 
+                       N²FromData = N²FromData, 
                        grid = model.grid)
 ū, v̄ = bkgd_velocities(σr, σz, U)
 
@@ -285,8 +289,8 @@ scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 					                                 uz′_norm = (),
 					                                 b′_norm  = ()))
 
-bkgdParameters      = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
-gyreModelParameters = (σr = σr, σz = σz)
+bkgdParameters = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
+gyreParameters = (σr = σr, σz = σz)
 
 energy_diagnostics = (; 
    integrated_pKE = total_PKE(simulation; Ux, Uy, Uz),
@@ -296,15 +300,15 @@ energy_diagnostics = (;
    integrated_BCI_transfer = BCI_transfer(simulation; 
                                           bkgdParameters = bkgdParameters),
    gyre_integrated_pKE = gyre_PKE(simulation; 
-                                  gyreParameters = gyreModelParameters),
+                                  gyreParameters = gyreParameters),
    gyre_integrated_pAPE_to_pKE = gyre_PAPE_to_PKE(simulation; 
-                                                  gyreParameters = gyreModelParameters),
+                                                  gyreParameters = gyreParameters),
    gyre_BTI_transfer = gyre_BTI_transfer(simulation; 
                                          bkgdParameters = bkgdParameters, 
-                                         gyreParameters = gyreModelParameters),
+                                         gyreParameters = gyreParameters),
    gyre_BCI_transfer = gyre_BCI_transfer(simulation; 
                                          bkgdParameters = bkgdParameters, 
-                                         gyreParameters = gyreModelParameters)
+                                         gyreParameters = gyreParameters)
                      )
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
