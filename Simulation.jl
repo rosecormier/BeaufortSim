@@ -46,10 +46,10 @@ const constantN²Term = 4e-3 * (second^(-2)) #Ambient (i.e., excluding gyre) buo
 const z_grid = "uniform" #'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
-const Δt         = 600 * second #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 2400 * second #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-#=
+
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -57,8 +57,6 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-const Δt_save = 600 * second
 
 const useGPU = true #Whether to use GPU
 const useNHS = true #Whether to use NonhydrostaticModel
@@ -66,9 +64,9 @@ const useNHS = true #Whether to use NonhydrostaticModel
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = false
+const vis_const_x    = true
 const vis_const_y    = false
-const vis_const_z    = false
+const vis_const_z    = true
 const vis_norms      = false
 const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
@@ -173,12 +171,12 @@ Uz = ZFaceField(model.grid)
 B  = CenterField(model.grid)
 
 #Prescribe background values to those fields
-set!(Ux, ū) #model.velocities.u)
-set!(Uy, v̄) #model.velocities.v)
+set!(Ux, ū)
+set!(Uy, v̄)
 set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
-set!(B, b̄ )#model.tracers.b)
+set!(B, b̄ )
 fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
