@@ -22,7 +22,7 @@ using Printf, Random
 
 const Nx = 252 #x-grid size
 const Ny = 252 #y-grid size
-const Nz = 20 #z-grid size
+const Nz = 50 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -39,35 +39,37 @@ const U  = 3.5 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer      #Radial gyre length scale
 const σz = 300 * meter 	        #Vertical gyre length scale
 
-const season = "Ma06" #Season to use data from when constructing stratification
+const season = nothing #"Ma06" #Season to use data from when constructing stratification
 
-const constantN²Term = 0 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyancy at z = 0
+const constantN²Term = 4e-3 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyancy at z = 0
 
-const z_grid = "chebyshev" #'uniform' or 'chebyshev'
+const z_grid = "uniform" #'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
-const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 600 * second #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 2400 * second #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-
+#=
 #Set save interval
-if parse(Float64, ARGS[3]) < tf / 200
-   print("Save interval too small for given duration. Using tf/200 instead.")
-   const Δt_save = tf / 200
+if parse(Float64, ARGS[3]) < tf / 250
+   print("Save interval too small for given duration. Using tf/250 instead.")
+   const Δt_save = tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
+=#
+const Δt_save = 600 * second
 
-const useGPU = false #Whether to use GPU
-const useNHS = false #Whether to use NonhydrostaticModel
+const useGPU = true #Whether to use GPU
+const useNHS = true #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = true
+const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = true
-const vis_norms      = true
+const vis_const_z    = false
+const vis_norms      = false
 const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
@@ -90,7 +92,7 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-z_grids = Dict("uniform"   => (-Lz, 0.0), 
+z_grids = Dict("uniform"   => (-Lz, 0),
                "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz; ξ0 = d_ML))
 
 grid = RectilinearGrid(architecture,
@@ -109,15 +111,12 @@ if !isnothing(season)
    const N²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
    const N²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
 elseif isnothing(season)
+   const N²       = nothing
    const N²Top    = nothing
    const N²Bottom = nothing
 end
 
-b̄_BCs = buoyancy_BCS(σz,
-                      constantN²Term,
-                      0,
-                      -Lz,
-                      false;
+b̄_BCs = buoyancy_BCS(σz, constantN²Term, 0, -Lz, false;
                       parameters = (N²FromDataTop = N²Top, N²FromDataBottom = N²Bottom))
 
 if useNHS
@@ -174,12 +173,12 @@ Uz = ZFaceField(model.grid)
 B  = CenterField(model.grid)
 
 #Prescribe background values to those fields
-set!(Ux, model.velocities.u)
-set!(Uy, model.velocities.v)
+set!(Ux, ū) #model.velocities.u)
+set!(Uy, v̄) #model.velocities.v)
 set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
-set!(B, model.tracers.b)
+set!(B, b̄ )#model.tracers.b)
 fill_halo_regions!(Ux)
 fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
@@ -217,10 +216,11 @@ set!(initial_KE, (model.velocities.u^2 + model.velocities.v^2
 total_initial_KE = Field(Integral(initial_KE))
 compute!(total_initial_KE)
 
-simulation = Simulation(model; Δt = Δt,
-			stop_time = tf, 
-		  align_time_step = false, 
-	    minimum_relative_step = 1e-9)
+simulation = Simulation(model;
+                        Δt = Δt,
+                        stop_time = tf, 
+                        align_time_step = false, 
+                        minimum_relative_step = 1e-9)
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -258,9 +258,9 @@ mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
 
 field_writer = NetCDFWriter(model, outputs, with_halos = true,
-		                              filename = outfilepath, 
-                                              schedule = TimeInterval(Δt_save),
-					file_splitting = FileSizeLimit(30GiB))
+                            filename = outfilepath, 
+                            schedule = TimeInterval(Δt_save),
+                            file_splitting = FileSizeLimit(30GiB))
 
 ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
 uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
@@ -287,15 +287,26 @@ scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 					                                 uz′_norm = (),
 					                                 b′_norm  = ()))
 
+bkgdParameters      = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
+gyreModelParameters = (σr = σr, σz = σz)
+
 energy_diagnostics = (; 
-                      integrated_pKE = total_PKE(simulation; Ux, Uy, Uz),
-	                    integrated_pAPE_to_pKE = total_PAPE_to_PKE(simulation; B, Uz),
-	                    integrated_BTI_transfer = BTI_transfer(simulation; bkgdParameters = (Ur = Ur, Uφ = Uφ, ∂rUφ = ∂rUφ)),
-	                    integrated_BCI_transfer = BCI_transfer(simulation; bkgdParameters = (Uφ = Uφ, Uz = Uz, ∂zUφ = ∂zUφ)),
-                      gyre_integrated_pKE = gyre_PKE(simulation; gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
-                      gyre_integrated_pAPE_to_pKE = gyre_PAPE_to_PKE(simulation; gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
-                      gyre_BTI_transfer = gyre_BTI_transfer(simulation; bkgdParameters = (Ur = Ur, Uφ = Uφ, ∂rUφ = ∂rUφ), gyreParameters = (σr = σr, σz = σz, architecture = architecture)),
-                      gyre_BCI_transfer = gyre_BCI_transfer(simulation; bkgdParameters = (Uφ = Uφ, Uz = Uz, ∂zUφ = ∂zUφ), gyreParameters = (σr = σr, σz = σz, architecture = architecture))
+   integrated_pKE = total_PKE(simulation; Ux, Uy, Uz),
+   integrated_pAPE_to_pKE = total_PAPE_to_PKE(simulation; B, Uz),
+   integrated_BTI_transfer = BTI_transfer(simulation; 
+                                          bkgdParameters = bkgdParameters),
+   integrated_BCI_transfer = BCI_transfer(simulation; 
+                                          bkgdParameters = bkgdParameters),
+   gyre_integrated_pKE = gyre_PKE(simulation; 
+                                  gyreParameters = gyreModelParameters),
+   gyre_integrated_pAPE_to_pKE = gyre_PAPE_to_PKE(simulation; 
+                                                  gyreParameters = gyreModelParameters),
+   gyre_BTI_transfer = gyre_BTI_transfer(simulation; 
+                                         bkgdParameters = bkgdParameters, 
+                                         gyreParameters = gyreModelParameters),
+   gyre_BCI_transfer = gyre_BCI_transfer(simulation; 
+                                         bkgdParameters = bkgdParameters, 
+                                         gyreParameters = gyreModelParameters)
                      )
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
@@ -315,13 +326,15 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
-run!(simulation)#; pickup = joinpath("./Checkpoints", "checkpoint_260306-200453_iteration360000.jld2"))
+run!(simulation; pickup = false) 
+     #pickup = joinpath("../Checkpoints", "checkpoint_260310-084141_iteration720000.jld2"))
 
 duration = canonicalize(now() - datetimestart)
 
 #Append zeros to filenames so they can be accessed in chronological order
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
+pad_filenames(datetimenow; prefix = "scalars")
 
 #Save parameters to logfile
 open(logfilepath, "w") do file
@@ -364,7 +377,8 @@ if vis_norms
                 idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
                 idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
                 idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
-                idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37)
+                idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
+                idxStartPlot = 2, idxEndPlot = -1)
 end
 
 if vis_energetics

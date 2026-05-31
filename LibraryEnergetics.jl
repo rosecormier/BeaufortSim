@@ -2,7 +2,7 @@ using Adapt
 using LinearAlgebra: norm
 using Oceananigans
 using Oceananigans.Architectures
-#using Oceananigans.Fields
+using Oceananigans.Fields
 using Oceananigans.Grids
 
 #Functions to compute cylindrical components of perturbation velocity
@@ -76,26 +76,17 @@ function IsWithinGyreRegion(i, j, k, grid, integrand; parameters)
     region.
    =#
    
-   σr, σz       = parameters.σr, parameters.σz
-   architecture = parameters.architecture
-
-   if architecture == GPU()
-      xnodes = adapt(CuArray, xnodes(grid, Center()))
-      ynodes = adapt(CuArray, ynodes(grid, Center()))
-      znodes = adapt(CuArray, znodes(grid, Center()))
-   elseif architecture == CPU()
-      xnodes = grid.xᶜᵃᵃ
-      ynodes = grid.yᵃᶜᵃ
-      znodes = grid.z.cᵃᵃᶜ
-   end
-
-   isWithinGyreRegion = @views (-(2 * σr) ≤ ynodes[j] ≤ (2 * σr)
-                                && -sqrt((2 * σr)^2 - ynodes[j]^2) ≤ 
-                                    xnodes[i] ≤ sqrt((2 * σr)^2 - ynodes[j]^2)
-                                && (σz == "infinity"
-                                    || -(2 * σz) ≤ znodes[k] ≤ 0
-                                   )
-                               )
+   σr, σz = parameters.σr, parameters.σz
+   
+   isWithinGyreRegion = (-(2 * σr) ≤ grid.yᵃᶜᵃ[j] ≤ (2 * σr)
+                         && -sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2) ≤ 
+                            grid.xᶜᵃᵃ[i] ≤ 
+                            sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2)
+                         && (σz == "infinity"
+                             || -(2 * σz) ≤ grid.z.cᵃᵃᶜ[k] ≤ 0
+                            )
+                        )
+   return isWithinGyreRegion
 end
    
 function total_PKE(simulation; Ux, Uy, Uz)
@@ -106,10 +97,10 @@ function total_PKE(simulation; Ux, Uy, Uz)
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
    
-   pointwise_PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, 
+   PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, 
                                        grid, u, v, w, Ux, Uy, Uz)
    
-   compute!(Integral(Field(pointwise_PKE_op)))
+   compute!(Integral(Field(PKE_op)))
 end
 
 function gyre_PKE(simulation; gyreParameters)
@@ -122,10 +113,14 @@ function gyre_PKE(simulation; gyreParameters)
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
    
-   pointwise_PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, 
-                                       grid, u, v, w, Ux, Uy, Uz)
+   PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, grid, u, v, w, Ux, Uy, Uz)
+   PKE    = Field(PKE_op)
 
-   compute!(Integral(Field(pointwise_PKE_op), condition = IsWithinModelGyreRegion))
+   #Mask areas far from gyre
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
+                         IsWithinModelGyreRegion, grid, PKE))
+
+   compute!(Integral(PKE, mask = mask))
 end
 
 function total_PAPE_to_PKE(simulation; B, Uz)
@@ -156,8 +151,13 @@ function gyre_PAPE_to_PKE(simulation; gyreParameters)
 
    PAPE_to_PKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc,
                                            grid, b, w, B, Uz)
+   PAPE_to_PKE    = Field(PAPE_to_PKE_op)
+   
+   #Mask areas far from gyre
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
+                         IsWithinModelGyreRegion, grid, PAPE_to_PKE))
 
-   compute!(Integral(Field(PAPE_to_PKE_op), condition = IsWithinModelGyreRegion))
+   compute!(Integral(PAPE_to_PKE, mask = mask))
 end
 
 function BTI_transfer(simulation; bkgdParameters)
@@ -193,9 +193,15 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, grid, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, 
+                                                         grid, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer    = Field(BTI_transfer_op)
 
-   compute!(Integral(Field(BTI_transfer_op), condition = IsWithinModelGyreRegion))
+   #Mask areas far from gyre
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
+                         IsWithinModelGyreRegion, grid, BTI_transfer))
+
+   compute!(Integral(BTI_transfer_op, mask = mask))
 end
 
 function BCI_transfer(simulation; bkgdParameters)
@@ -231,7 +237,13 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, 
+                                                        grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer    = Field(BCI_transfer_op)
+   
+   #Mask areas far from gyre
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
+                         IsWithinModelGyreRegion, grid, BCI_transfer))
 
-   compute!(Integral(Field(BCI_transfer_op), condition = IsWithinModelGyreRegion))
+   compute!(Integral(BCI_transfer, mask = mask))
 end
