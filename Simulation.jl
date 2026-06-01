@@ -22,7 +22,7 @@ using Printf, Random
 
 const Nx = 252 #x-grid size
 const Ny = 252 #y-grid size
-const Nz = 50 #z-grid size
+const Nz = 20  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -39,11 +39,27 @@ const U  = 3.5 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer      #Radial gyre length scale
 const σz = 300 * meter 	        #Vertical gyre length scale
 
-const season = nothing #"Ma06" #Season to use data from when constructing stratification
+#Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at z = 0
+const constantN²Term = 4e-3 * second^(-2)
 
-const constantN²Term = 4e-3 * (second^(-2)) #Ambient (i.e., excluding gyre) buoyancy at z = 0
+#Type of ambient stratification to construct ('fromData', 'doubleTanh', or 'constant')
+ambientStrat = "doubleTanh"
 
-const z_grid = "uniform" #'uniform' or 'chebyshev'
+#Season to use data (Timmermans & Toole, 2023) from when constructing stratification.
+# Note this stratification can only be constructed on CPU; fails on GPU.
+const season = "Ma06"
+
+#Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
+const g  = 9.81 * meter * (second^2)
+const ρ₀ = 1000 * meter^(-3)
+const As = 1.7e-1 * meter^(-3)
+const Bs = 40 * meter
+const Cs = 75 * meter
+const Ad = 2e-2 * meter^(-3)
+const Bd = 200 * meter
+const Cd = 150 * meter
+
+const z_grid = "uniform" #Either 'uniform' or 'chebyshev'
 const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
 
 const Δt         = 600 * second #parse(Float64, ARGS[1]) #Simulation timestep (s)
@@ -68,9 +84,9 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 #Whether to run visualization functions
 const vis_const_x    = true
 const vis_const_y    = false
-const vis_const_z    = true
+const vis_const_z    = false
 const vis_norms      = false
-const vis_energetics = true
+const vis_energetics = false
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -105,20 +121,33 @@ grid = RectilinearGrid(architecture,
 
 save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
 
-if !isnothing(season)
+if ambientStrat == "doubleTanh"
+
+   doubleTanhParams = (g = g, ρ₀ = ρ₀,
+                       As = As, Bs = Bs, Cs = Cs, 
+                       Ad = Ad, Bd = Bd, Cd = Cd)
+
+   #Construct ambient stratification using double-tanh function
+   N²DoubleTanhFunction = N²DoubleTanh(doubleTanhParams)
+   discreteN²           = @. N²DoubleTanhFunction(grid.z.cᵃᵃᶜ)
+   
+   const additionalN²Top    = @view discreteN²[end-1]
+   const additionalN²Bottom = @view discreteN²[1]
+   
+elseif ambientStrat == "fromData"
    #Construct ambient stratification from seasonal data
-   const N²FromData = N²_from_data(Nz, d_ML, constantN²Term, season)
-   const N²Top      = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
-   const N²Bottom   = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
-elseif isnothing(season)
-   const N²FromData       = nothing
-   const N²FromDataTop    = nothing
-   const N²FromDataBottom = nothing
+   const discreteN²         = N²FromData(Nz, d_ML, constantN²Term, season)
+   const additionalN²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
+   const additionalN²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
+elseif ambientStrat == "constant"
+   const discreteN²         = nothing
+   const additionalN²Top    = nothing
+   const additionalN²Bottom = nothing
 end
 
 b̄_BCs = buoyancy_BCS(σz, constantN²Term, 0, -Lz, false;
-                      parameters = (N²FromDataTop = N²FromDataTop, 
-                                    N²FromDataBottom = N²FromDataBottom)
+                      parameters = (additionalN²Top = additionalN²Top, 
+                                    additionalN²Bottom = additionalN²Bottom)
                      )
 
 if useNHS
@@ -143,7 +172,7 @@ end
 
 b̄     = bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = constantN²Term,
-                       N²FromData = N²FromData, 
+                       discreteN² = discreteN², 
                        grid = model.grid)
 ū, v̄ = bkgd_velocities(σr, σz, U)
 

@@ -53,12 +53,22 @@ function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
    return TWB_b̄
 end
 
-function N²_double_tanh(g, ρ₀, As, Bs, Cs, Ad, Bd, Cd)
-   N² = (x, y, z) -> -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2
-                                  + (Ad / Cd) * (sech((z - Bd) / Cd))^2)
+function N²DoubleTanh(doubleTanhParams)
+
+   g  = doubleTanhParams.g
+   ρ₀ = doubleTanhParams.ρ₀
+   As = doubleTanhParams.As
+   Bs = doubleTanhParams.Bs
+   Cs = doubleTanhParams.Cs
+   Ad = doubleTanhParams.Ad
+   Bd = doubleTanhParams.Bd
+   Cd = doubleTanhParams.Cd
+
+   N² = (z) -> -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2
+                            + (Ad / Cd) * (sech((z - Bd) / Cd))^2)      
 end
 
-function N²_from_data(Nz, d_ML, constantN²Term, season)
+function N²FromData(Nz, d_ML, constantN²Term, season)
    file = CSV.File(joinpath("./Data/", "N2_Nz$(Nz)_MLD$(abs(d_ML)).csv"); header = 2)
    N²   = file[season] .+ constantN²Term
 end
@@ -79,7 +89,7 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
                                                         * (1 - 2 * (z/σz)^2)
                                                        )
 
-      if isnothing(parameters.N²FromDataTop)
+      if isnothing(parameters.additionalN²Top)
       
          if !yFlat
             b̄z_top = (x, y, t) -> TWB_∂b̄∂z(x, y, z_top, constantN²Term)
@@ -95,22 +105,18 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
       else
 
          if !yFlat
-            b̄z_top = (x, y, t, p) -> (p.N²FromDataTop 
-                                       .+ TWB_∂b̄∂z_function(x, y, z_top, 
-                                                             constantN²Term)
+            b̄z_top = (x, y, t, p) -> (p.additionalN²Top 
+                                       .+ TWB_∂b̄∂z(x, y, z_top, constantN²Term)
                                       )
-            b̄z_bot = (x, y, t, p) -> (p.N²FromDataBottom 
-                                       .+ TWB_∂b̄∂z_function(x, y, z_bot, 
-                                                             constantN²Term)
+            b̄z_bot = (x, y, t, p) -> (p.additionalN²Bottom 
+                                       .+ TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
                                       )
          elseif yFlat
-            b̄z_top = (x, t, p) -> (p.N²FromDataTop 
-                                    .+ TWB_∂b̄∂z_function(x, 0, z_top, 
-                                                          constantN²Term)
+            b̄z_top = (x, t, p) -> (p.additionalN²Top 
+                                    .+ TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
                                    )
-            b̄z_bot = (x, t, p) -> (p.N²FromDataBottom 
-                                    .+ TWB_∂b̄∂z_function(x, 0, z_bot, 
-                                                          constantN²Term)
+            b̄z_bot = (x, t, p) -> (p.additionalN²Bottom 
+                                    .+ TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
                                    )
          end
          
@@ -123,7 +129,7 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
    return b̄_BCs
 end
 
-function integrate_N²_upwards(i, j, k, grid, N², integral)
+function integrate_N²_upwards(i, j, k, grid, N²)#, integral)
    #=
    Integrate discrete N² values from the surface (z[grid.Nz - 1] = 0) to the 
     depth z[k], producing a CenterField(grid).
@@ -135,16 +141,18 @@ function integrate_N²_upwards(i, j, k, grid, N², integral)
       integral_m += N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
    end
 
-   integral[i, j, k] = integral_m
+   return integral_m
+   #integral[i, j, k] = integral_m
 end
 
 function bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = 0,
-                       N²FromData = nothing, 
+                       discreteN² = nothing, 
                        grid = nothing, 
-                       yFlat = false)
+                       yFlat = false,
+                       doubleTanhParams = nothing)
 
-   TWB_b̄_function = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
+   TWB_b̄ = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
 
    if σz == "infinity" #Barotropic case
       if !yFlat
@@ -155,22 +163,39 @@ function bkgd_buoyancy(f, σr, σz, U;
       
    else #Baroclinic case
 
-      if isnothing(N²FromData)
+      if ambientStrat == "constant"
       
          if !yFlat
-            b̄ = (x, y, z) -> TWB_b̄_function(x, y, z) .+ (constantN²Term .* z)      
+            b̄ = (x, y, z) -> TWB_b̄(x, y, z) .+ (constantN²Term .* z)      
          elseif yFlat
-            b̄ = (x, z) -> TWB_b̄_function(x, z) .+ (constantN²Term .* z)
+            b̄ = (x, z) -> TWB_b̄(x, z) .+ (constantN²Term .* z)
          end
          
       else
       
-         b̄ = CenterField(grid)
+         function total_b̄_ccc(i, j, k)
+
+            if ambientStrat == "doubleTanh"
+               discreteN² = N²DoubleTanh(doubleTanhParams)
+            end
+         
+            integrated_term = integrate_N²_upwards(i, j, k, grid, discreteN²)
+            TWB_term        = TWB_b̄(grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], grid.z.cᵃᵃᶜ[k])
+            linear_term     = constantN²Term .* grid.z.cᵃᵃᶜ[k]
+            
+            return integrated_term + TWB_term + linear_term
+         end
+      
+         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc)
+         @compute b̄ = Field(total_b̄_op)
+         
+         #=b̄ = CenterField(grid)
          
          integrate_N²_upwards_op = KernelFunctionOperation{Center, Center, Center}(
                 integrate_N²_upwards, grid, N²FromData, b̄)
 
          compute!(integrate_N²_upwards_op)
+         =#
       end
    end
    return b̄
