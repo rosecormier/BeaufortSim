@@ -22,7 +22,7 @@ using Printf, Random
 
 const Nx = 252 #x-grid size
 const Ny = 252 #y-grid size
-const Nz = 20  #z-grid size
+const Nz = 100  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -40,14 +40,13 @@ const σr = 250 * kilometer      #Radial gyre length scale
 const σz = 300 * meter 	        #Vertical gyre length scale
 
 #Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at z = 0
-const constantN²Term = 4e-3 * second^(-2)
+const constantN²Term = 0 * second^(-2)
 
-#Type of ambient stratification to construct ('fromData', 'doubleTanh', or 'constant')
+const z_grid = "uniform" #Either 'uniform' or 'chebyshev'
+const d_ML   = -30 * meter #Mixed-layer depth (<= 0); necessary for Chebyshev grid
+
+#Type of ambient stratification to construct ('doubleTanh' or 'constant')
 ambientStrat = "doubleTanh"
-
-#Season to use data (Timmermans & Toole, 2023) from when constructing stratification.
-# Note this stratification can only be constructed on CPU; fails on GPU.
-const season = "Ma06"
 
 #Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
 const g  = 9.81 * meter * (second^2)
@@ -59,13 +58,13 @@ const Ad = 2e-2 * meter^(-3)
 const Bd = 200 * meter
 const Cd = 150 * meter
 
-const z_grid = "uniform" #Either 'uniform' or 'chebyshev'
-const d_ML   = -30 * meter #Mixed-layer depth (<= 0); only necessary for Chebyshev grid
+doubleTanhParams = (g = g, ρ₀ = ρ₀, As = As, Bs = Bs, Cs = Cs, 
+                    Ad = Ad, Bd = Bd, Cd = Cd)
 
-const Δt         = 600 * second #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 2400 * second #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-#=
+
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -73,8 +72,6 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-const Δt_save = 600 * second
 
 const useGPU = true #Whether to use GPU
 const useNHS = true #Whether to use NonhydrostaticModel
@@ -84,9 +81,9 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 #Whether to run visualization functions
 const vis_const_x    = true
 const vis_const_y    = false
-const vis_const_z    = false
-const vis_norms      = false
-const vis_energetics = false
+const vis_const_z    = true
+const vis_norms      = true
+const vis_energetics = true
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -108,39 +105,36 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-z_grids = Dict("uniform"   => (-Lz, 0),
-               "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz; ξ0 = d_ML))
+custom_z_grids = Dict("uniform"   => (-Lz, 0),
+                      "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz; 
+                                                                 ξ0 = d_ML)
+                     )
 
 grid = RectilinearGrid(architecture,
 		                   topology = (Bounded, Bounded, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lr, Lr),
 		                   y = (-Lr, Lr),
-                       z = z_grids[z_grid],
+                       z = custom_z_grids[z_grid],
 		                   halo = (Hx, Hy, Hz))
 
 save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
 
 if ambientStrat == "doubleTanh"
 
-   doubleTanhParams = (g = g, ρ₀ = ρ₀,
-                       As = As, Bs = Bs, Cs = Cs, 
-                       Ad = Ad, Bd = Bd, Cd = Cd)
+   #Ambient stratification, from double-tanh function, at vertical boundaries
+   additionalN²Top    = @views N²DoubleTanh(grid.z.cᵃᵃᶜ[Nz-1], doubleTanhParams)
+   additionalN²Bottom = @views N²DoubleTanh(grid.z.cᵃᵃᶜ[1], doubleTanhParams)
 
-   #Construct ambient stratification using double-tanh function
-   N²DoubleTanhFunction = N²DoubleTanh(doubleTanhParams)
-   discreteN²           = @. N²DoubleTanhFunction(grid.z.cᵃᵃᶜ)
-   
-   const additionalN²Top    = @view discreteN²[end-1]
-   const additionalN²Bottom = @view discreteN²[1]
-   
 elseif ambientStrat == "fromData"
-   #Construct ambient stratification from seasonal data
-   const discreteN²         = N²FromData(Nz, d_ML, constantN²Term, season)
-   const additionalN²Top    = @view N²_from_data(Nz, d_ML, constantN²Term, season)[end-1]
-   const additionalN²Bottom = @view N²_from_data(Nz, d_ML, constantN²Term, season)[1]
+
+   N²Data = LoadN²Data(Nz, d_ML, season)
+
+   #Ambient stratification, from saved data, at vertical boundaries
+   additionalN²Top    = N²Data[Nz - 1]
+   additionalN²Bottom = N²Data[1]
+   
 elseif ambientStrat == "constant"
-   const discreteN²         = nothing
    const additionalN²Top    = nothing
    const additionalN²Bottom = nothing
 end
@@ -171,9 +165,9 @@ elseif !useNHS
 end
 
 b̄     = bkgd_buoyancy(f, σr, σz, U;
-                       constantN²Term = constantN²Term,
-                       discreteN² = discreteN², 
-                       grid = model.grid)
+                       constantN²Term = constantN²Term, 
+                       grid = model.grid,
+                       doubleTanhParams = doubleTanhParams)
 ū, v̄ = bkgd_velocities(σr, σz, U)
 
 set!(model, u = ū, v = v̄, b = b̄)
@@ -374,7 +368,6 @@ open(logfilepath, "w") do file
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U = $(U) \n")
    write(file, "Constant N² term = $(constantN²Term) \n")
-   write(file, "Season = $(season) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
    write(file, "Δt, tf = $(Δt), $(tf) \n\n")

@@ -23,7 +23,9 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 end
 
 function save_zC_values(z_grid, d_ML, grid)
-   #Save zC values to a csv file, if non-existent for this grid (Chebyshev only)
+   #=
+   Save zC values to a csv file, if non-existent for this grid (Chebyshev only).
+   =#
    
    if z_grid == "chebyshev"
    
@@ -39,7 +41,8 @@ end
 
 function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
    #=
-   Contribution to background buoyancy from thermal-wind balance with background velocity.
+   Contribution to background buoyancy from thermal-wind balance with background
+    velocity.
    =#
    
    if !yFlat #Return 3D version of function
@@ -53,28 +56,46 @@ function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
    return TWB_b̄
 end
 
-function N²DoubleTanh(doubleTanhParams)
+function N²DoubleTanh(z, parameters)
+   #=
+   Evaluate double-tanh function for N² at z.
+   =#
 
-   g  = doubleTanhParams.g
-   ρ₀ = doubleTanhParams.ρ₀
-   As = doubleTanhParams.As
-   Bs = doubleTanhParams.Bs
-   Cs = doubleTanhParams.Cs
-   Ad = doubleTanhParams.Ad
-   Bd = doubleTanhParams.Bd
-   Cd = doubleTanhParams.Cd
+   g  = parameters.g
+   ρ₀ = parameters.ρ₀
+   As = parameters.As
+   Bs = parameters.Bs
+   Cs = parameters.Cs
+   Ad = parameters.Ad
+   Bd = parameters.Bd
+   Cd = parameters.Cd
 
-   N² = (z) -> -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2
-                            + (Ad / Cd) * (sech((z - Bd) / Cd))^2)      
+   N² = -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2 
+                     + (Ad / Cd) * (sech((z - Bd) / Cd))^2)
+
+   return N²   
 end
 
-function N²FromData(Nz, d_ML, constantN²Term, season)
-   file = CSV.File(joinpath("./Data/", "N2_Nz$(Nz)_MLD$(abs(d_ML)).csv"); header = 2)
-   N²   = file[season] .+ constantN²Term
+function N²FromData(k, parameters)
+   #=
+   Evaluate N² at z[k] from seasonal data in csv file.
+   =#
+
+   file = CSV.File(joinpath("./Data/",
+                            "N2_Nz$(parameters.Nz)_MLD$(abs(parameters.d_ML)).csv");
+                   header = 2)
+   N²   = Tuple(file[parameters.season])
+   N²_k = N²[k]
+   
+   return N²_k
 end
 
 function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
                       parameters = nothing)
+   #=
+   Compute appropriate (i.e., preserving gradient-continuity) boundary 
+    conditions on buoyancy at top and bottom of simulation domain.
+   =#
 
    if σz == "infinity" #Barotropic case
       b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(constantN²Term),
@@ -129,28 +150,27 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
    return b̄_BCs
 end
 
-function integrate_N²_upwards(i, j, k, grid, N²)#, integral)
+function integrate_N²_upwards(i, j, k, grid, N²)
    #=
-   Integrate discrete N² values from the surface (z[grid.Nz - 1] = 0) to the 
+   Integrate discrete N²-values from the surface (z[grid.Nz - 1] = 0) to the 
     depth z[k], producing a CenterField(grid).
    =#
 
-   integral_m = N²[grid.Nz] .* Δzᶜᶜᶜ(i, j, grid.Nz, grid)
+   integral = @views N²[grid.Nz] .* Δzᶜᶜᶜ(i, j, grid.Nz, grid)
 
    for m in k:grid.Nz:1
-      integral_m += N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
+      integral += @views N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
    end
 
-   return integral_m
-   #integral[i, j, k] = integral_m
+   return integral
 end
 
 function bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = 0,
-                       discreteN² = nothing, 
                        grid = nothing, 
                        yFlat = false,
-                       doubleTanhParams = nothing)
+                       doubleTanhParams = nothing,
+                       N²Data = nothing)
 
    TWB_b̄ = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
 
@@ -171,31 +191,26 @@ function bkgd_buoyancy(f, σr, σz, U;
             b̄ = (x, z) -> TWB_b̄(x, z) .+ (constantN²Term .* z)
          end
          
-      else
-      
-         function total_b̄_ccc(i, j, k)
+      elseif ambientStrat == "doubleTanh"
 
-            if ambientStrat == "doubleTanh"
-               discreteN² = N²DoubleTanh(doubleTanhParams)
-            end
+         @inline globalDoubleTanhN²_ccc(i, j, k, grid) = N²DoubleTanh(grid.z.cᵃᵃᶜ[k], doubleTanhParams)
+
+         globalN²_op = KernelFunctionOperation{Center, Center, Center}(globalDoubleTanhN²_ccc, grid)
          
-            integrated_term = integrate_N²_upwards(i, j, k, grid, discreteN²)
+         @compute globalN² = Field(globalN²_op)
+      
+         function total_b̄_ccc(i, j, k, grid)
+
+            integrated_term = integrate_N²_upwards(i, j, k, grid, globalN²)
             TWB_term        = TWB_b̄(grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], grid.z.cᵃᵃᶜ[k])
             linear_term     = constantN²Term .* grid.z.cᵃᵃᶜ[k]
             
             return integrated_term + TWB_term + linear_term
          end
       
-         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc)
+         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc, grid)
+        
          @compute b̄ = Field(total_b̄_op)
-         
-         #=b̄ = CenterField(grid)
-         
-         integrate_N²_upwards_op = KernelFunctionOperation{Center, Center, Center}(
-                integrate_N²_upwards, grid, N²FromData, b̄)
-
-         compute!(integrate_N²_upwards_op)
-         =#
       end
    end
    return b̄
