@@ -89,7 +89,7 @@ function IsWithinGyreRegion(i, j, k, grid, integrand; parameters)
    return isWithinGyreRegion
 end
    
-function total_PKE(simulation; Ux, Uy, Uz)
+function PKE(simulation; Ux, Uy, Uz)
    #=
    Return computed integral of PKE over entire domain.
    =#
@@ -123,7 +123,7 @@ function gyre_PKE(simulation; gyreParameters)
    compute!(Integral(PKE, mask = mask))
 end
 
-function total_PAPE_to_PKE(simulation; B, Uz)
+function PAPE_to_PKE(simulation; B, Uz)
    #=
    Return computed integral, over entire domain, of conversion from perturbation 
     APE to PKE.
