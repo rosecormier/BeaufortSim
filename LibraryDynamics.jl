@@ -70,7 +70,7 @@ function N²DoubleTanh(z, parameters)
    Bd = parameters.Bd
    Cd = parameters.Cd
 
-   N² = -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2 
+   N² = @. -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2 
                      + (Ad / Cd) * (sech((z - Bd) / Cd))^2)
 
    return N²   
@@ -90,8 +90,7 @@ function N²FromData(k, parameters)
    return N²_k
 end
 
-function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
-                      parameters = nothing)
+function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = nothing)
    #=
    Compute appropriate (i.e., preserving gradient-continuity) boundary 
     conditions on buoyancy at top and bottom of simulation domain.
@@ -103,14 +102,20 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
       
    else #Baroclinic case
    
-      #Contribution from background-state thermal-wind balance
-      @inline TWB_∂b̄∂z(x, y, z, constN²) = constN² .- ((sqrt(2) * f * U * σr / (σz^2))
-                                                        * exp((1/2) - (z/σz)^2)
-					                                              * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
-                                                        * (1 - 2 * (z/σz)^2)
-                                                       )
+      #Function to compute contribution from background-state thermal-wind balance
+      @inline TWB_∂b̄∂z(x, y, z, constN²) = @. (constN²
+                                                - ((sqrt(2) * f * U * σr / (σz^2))
+                                                   * exp((1/2) - (z/σz)^2)
+					                                         * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
+                                                   * (1 - 2 * (z/σz)^2)
+                                                  )
+                                               )
 
-      if isnothing(parameters.additionalN²Top)
+      Nz    = grid.Nz
+      z_top = @view grid.z.cᵃᵃᶜ[Nz-1]
+      z_bot = @view grid.z.cᵃᵃᶜ[1]
+
+      if ambientStrat == "constant" #if isnothing(parameters.additionalN²Top)
       
          if !yFlat
             b̄z_top = (x, y, t) -> TWB_∂b̄∂z(x, y, z_top, constantN²Term)
@@ -123,28 +128,26 @@ function buoyancy_BCS(σz, constantN²Term, z_top, z_bot, yFlat;
          b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
 				                                  bottom = GradientBoundaryCondition(b̄z_bot))
 
-      else
+      elseif ambientStrat == "doubleTanh"
 
          if !yFlat
-            b̄z_top = (x, y, t, p) -> (p.additionalN²Top 
-                                       .+ TWB_∂b̄∂z(x, y, z_top, constantN²Term)
-                                      )
-            b̄z_bot = (x, y, t, p) -> (p.additionalN²Bottom 
-                                       .+ TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
-                                      )
+            b̄z_top = (x, y, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
+                                    .+ TWB_∂b̄∂z(x, y, z_top, constantN²Term)
+                                   )
+            b̄z_bot = (x, y, t) -> (N²DoubleTanh(z_bot, doubleTanhParams) 
+                                    .+ TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
+                                   )
          elseif yFlat
-            b̄z_top = (x, t, p) -> (p.additionalN²Top 
-                                    .+ TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
-                                   )
-            b̄z_bot = (x, t, p) -> (p.additionalN²Bottom 
-                                    .+ TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
-                                   )
+            b̄z_top = (x, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
+                                 .+ TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
+                                )
+            b̄z_bot = (x, t) -> (N²DoubleTanh(z_bot, doubleTanhParams)
+                                 .+ TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
+                                )
          end
          
-         b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top, 
-                                                                    parameters = parameters),
-				                                  bottom = GradientBoundaryCondition(b̄z_bot, 
-                                                                    parameters = parameters))
+         b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
+				                                  bottom = GradientBoundaryCondition(b̄z_bot))
       end
    end
    return b̄_BCs
@@ -172,8 +175,6 @@ function bkgd_buoyancy(f, σr, σz, U;
                        doubleTanhParams = nothing,
                        N²Data = nothing)
 
-   TWB_b̄ = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
-
    if σz == "infinity" #Barotropic case
       if !yFlat
          b̄ = (x, y, z) -> constantN²Term .* z
@@ -182,6 +183,8 @@ function bkgd_buoyancy(f, σr, σz, U;
       end
       
    else #Baroclinic case
+   
+      TWB_b̄ = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
 
       if ambientStrat == "constant"
       
