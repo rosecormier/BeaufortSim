@@ -185,16 +185,16 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
    #Load coords of non-Flat dimensions; convert them to km for readability
 
    if length(ds[:x_caa][:]) > 1
-      x = ds[:x_caa][Hx+1:end-Hx] ./ 1000
+      x = ds[:x_caa][Hx+1:length(ds[:x_caa][:])-Hx] ./ 1000
    end
 
    if length(ds[:y_aca][:]) > 1
-      y = ds[:y_aca][Hy+1:end-Hy] ./ 1000
+      y = ds[:y_aca][Hy+1:length(ds[:y_aca][:])-Hy] ./ 1000
    end
    
    if length(ds[:z_aac][:]) > 1
-      zC = ds[:z_aac][Hz+1:end-Hz] ./ 1000
-      zF = ds[:z_aaf][Hz+1:end-Hz] ./ 1000
+      zC = ds[:z_aac][Hz+1:length(ds[:z_aac][:])-Hz] ./ 1000
+      zF = ds[:z_aaf][Hz+1:length(ds[:z_aaf][:])-Hz] ./ 1000
    end
 
    t, Nt = load_times_in_days(ds)

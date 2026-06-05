@@ -1,21 +1,21 @@
 include("LibraryVisualization.jl")
 
 using Adapt, CairoMakie, CommonDataModel, CUDA, DataStructures
-using Dierckx, Glob, LaTeXStrings, NCDatasets, Printf
-
-update_theme!(fontsize = 16)
-
+using Dierckx, Glob, LaTeXStrings, NCDatasets
 using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.OutputReaders
 using OffsetArrays: no_offset_view
 using Polynomials: fit
+using Printf
+
+update_theme!(fontsize = 16)
 
 ####################
 
 function visualize_norms(datetime; 
 		idxStartLinGrowth_b = 2, idxEndLinGrowth_b = -1,
-		idxStartLinGrowth_ur = nothing, idxEndLinGrowth_ur = nothing,
+    idxStartLinGrowth_ur = nothing, idxEndLinGrowth_ur = nothing,
 		idxStartLinGrowth_uφ = nothing, idxEndLinGrowth_uφ = nothing,
 		idxStartLinGrowth_ux = nothing, idxEndLinGrowth_ux = nothing,
 		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
@@ -28,10 +28,9 @@ function visualize_norms(datetime;
       idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
    end
    
-   #Retain only necessary portion of 'times' data
+   #Retain only necessary portion of 'times' data and update Nt accordingly
    times = times[idxStartPlot:idxEndPlot]
-   
-   Nt = length(times) #Update Nt
+   Nt    = length(times)
 
    b′_norm  = scalars_ds[:b′_norm][idxStartPlot:end-1]
    ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:end-1]
@@ -42,7 +41,7 @@ function visualize_norms(datetime;
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
-		    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
+                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
                     yscale = log10)
    ax_ur     = Axis(fig_cyl[2, 2]; title = L"Norm of $u_r'$",
                     xlabel = L"$t$ [days]", ylabel = L"$||u_r'||$ [m/s]",
@@ -57,7 +56,7 @@ function visualize_norms(datetime;
    fig_Cart   = Figure(size = (1200, 700))
    ax_b_Cart  = Axis(fig_Cart[2, 1]; title = L"Norm of $b'$",
                      xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
-	    	     yscale = log10)
+                     yscale = log10)
    ax_ux      = Axis(fig_Cart[2, 2]; title = L"Norm of $u_x'$",
                      xlabel = L"$t$ [days]", ylabel = L"$||u_x'||$ [m/s]",
                      yscale = log10)
@@ -97,11 +96,16 @@ function visualize_norms(datetime;
       return idxStart, idxEnd
    end
 
-   idxStartLinGrowth_ur, idxEndLinGrowth_ur = updateGrowthIdcs!(idxStartLinGrowth_ur, idxEndLinGrowth_ur)
-   idxStartLinGrowth_uφ, idxEndLinGrowth_uφ = updateGrowthIdcs!(idxStartLinGrowth_uφ, idxEndLinGrowth_uφ)
-   idxStartLinGrowth_ux, idxEndLinGrowth_ux = updateGrowthIdcs!(idxStartLinGrowth_ux, idxEndLinGrowth_ux)
-   idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, idxEndLinGrowth_uy)
-   idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz, idxEndLinGrowth_uz)
+   idxStartLinGrowth_ur, idxEndLinGrowth_ur = updateGrowthIdcs!(idxStartLinGrowth_ur, 
+                                                                idxEndLinGrowth_ur)
+   idxStartLinGrowth_uφ, idxEndLinGrowth_uφ = updateGrowthIdcs!(idxStartLinGrowth_uφ, 
+                                                                idxEndLinGrowth_uφ)
+   idxStartLinGrowth_ux, idxEndLinGrowth_ux = updateGrowthIdcs!(idxStartLinGrowth_ux,
+                                                                idxEndLinGrowth_ux)
+   idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, 
+                                                                idxEndLinGrowth_uy)
+   idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz,
+                                                                idxEndLinGrowth_uz)
 
    b′NormFitInterval  = b′_norm[growthIdcs_b[1]:growthIdcs_b[2]]
    ur′NormFitInterval = ur′_norm[idxStartLinGrowth_ur:idxEndLinGrowth_ur]
@@ -111,17 +115,17 @@ function visualize_norms(datetime;
    uz′NormFitInterval = uz′_norm[idxStartLinGrowth_uz:idxEndLinGrowth_uz]
 
    b′NormLinearFitParams  = fit(times[growthIdcs_b[1]:growthIdcs_b[2]], 
-				log.(b′NormFitInterval), 1, var = :times)
+                                log.(b′NormFitInterval), 1, var = :times)
    ur′NormLinearFitParams = fit(times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-				log.(ur′NormFitInterval), 1, var = :times)
+                                log.(ur′NormFitInterval), 1, var = :times)
    uφ′NormLinearFitParams = fit(times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-				log.(uφ′NormFitInterval), 1, var = :times)
+                                log.(uφ′NormFitInterval), 1, var = :times)
    ux′NormLinearFitParams = fit(times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-				log.(ux′NormFitInterval), 1, var = :times)
+                                log.(ux′NormFitInterval), 1, var = :times)
    uy′NormLinearFitParams = fit(times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-				log.(uy′NormFitInterval), 1, var = :times)
+                                log.(uy′NormFitInterval), 1, var = :times)
    uz′NormLinearFitParams = fit(times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-				log.(uz′NormFitInterval), 1, var = :times)
+                                log.(uz′NormFitInterval), 1, var = :times)
    
    @printf("Empirical growth rate:\n From b′-norm: %.5f per day\n From ur′-norm: %.5f per day\n From uφ′-norm: %.5f per day\n From ux′-norm: %.5f per day\n From uy′-norm: %.5f per day\n From uz′-norm: %.5f per day\n",
 	    b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
@@ -132,22 +136,38 @@ function visualize_norms(datetime;
    				exp(fitParams[0] + fitParams[1] * tFitInterval)
 
    lines!(ax_b_cyl, times[growthIdcs_b[1]:growthIdcs_b[2]],
-	  linearFunction(b′NormLinearFitParams, times[growthIdcs_b[1]:growthIdcs_b[2]]))
+          linearFunction(b′NormLinearFitParams, 
+                         times[growthIdcs_b[1]:growthIdcs_b[2]])
+         )
    lines!(ax_ur, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-	  linearFunction(ur′NormLinearFitParams, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur]))
+          linearFunction(ur′NormLinearFitParams, 
+                         times[idxStartLinGrowth_ur:idxEndLinGrowth_ur])
+         )
    lines!(ax_uφ, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-	  linearFunction(uφ′NormLinearFitParams, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]))
+          linearFunction(uφ′NormLinearFitParams, 
+                         times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ])
+         )
    lines!(ax_uz_cyl, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-	  linearFunction(uz′NormLinearFitParams, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz]))
+          linearFunction(uz′NormLinearFitParams, 
+                         times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
+         )
 
    lines!(ax_b_Cart, times[growthIdcs_b[1]:growthIdcs_b[2]], 
-	  linearFunction(b′NormLinearFitParams, times[growthIdcs_b[1]:growthIdcs_b[2]]))
+          linearFunction(b′NormLinearFitParams, 
+                         times[growthIdcs_b[1]:growthIdcs_b[2]])
+         )
    lines!(ax_ux, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-	  linearFunction(ux′NormLinearFitParams, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux]))
+          linearFunction(ux′NormLinearFitParams, 
+                         times[idxStartLinGrowth_ux:idxEndLinGrowth_ux])
+         )
    lines!(ax_uy, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-	  linearFunction(uy′NormLinearFitParams, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy]))
+          linearFunction(uy′NormLinearFitParams, 
+                         times[idxStartLinGrowth_uy:idxEndLinGrowth_uy])
+         )
    lines!(ax_uz_Cart, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-	  linearFunction(uz′NormLinearFitParams, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz]))
+          linearFunction(uz′NormLinearFitParams, 
+                         times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
+         )
 
    mkpath("./Plots") #Make visualization directory if nonexistent
 
@@ -174,96 +194,98 @@ function visualize_energetics(datetime, grid, initialKE)
    
    initialKE = no_offset_view(adapt(Array, initialKE))
 
-   pKE_total    = ds[:integrated_pKE][sortIdcs] / initialKE[1]
-   pAPE_to_pKE  = ds[:integrated_pAPE_to_pKE][sortIdcs] / initialKE[1]
-   BTI_transfer = ds[:integrated_BTI_transfer][sortIdcs] / initialKE[1]
-   BCI_transfer = ds[:integrated_BCI_transfer][sortIdcs] / initialKE[1]
+   PKE          = ds[:total_PKE][sortIdcs] / initialKE[1]
+   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][sortIdcs] / initialKE[1]
+   BTI_transfer = ds[:total_BTI_transfer][sortIdcs] / initialKE[1]
+   BCI_transfer = ds[:total_BCI_transfer][sortIdcs] / initialKE[1]
    
-   pKE_total = pKE_total .- pKE_total[1]
-   pAPE_to_pKE = pAPE_to_pKE .- pAPE_to_pKE[1]
+   PKE          = PKE .- PKE[1]
+   PAPE_to_PKE  = PAPE_to_PKE .- PAPE_to_PKE[1]
    BTI_transfer = BTI_transfer .- BTI_transfer[1]
    BCI_transfer = BCI_transfer .- BCI_transfer[1]
    
-   gyre_pKE = ds[:gyre_integrated_pKE][sortIdcs]
-   gyre_pAPE_to_pKE = ds[:gyre_integrated_pAPE_to_pKE][sortIdcs]
+   gyre_PKE          = ds[:gyre_PKE][sortIdcs]
+   gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][sortIdcs]
    gyre_BTI_transfer = ds[:gyre_BTI_transfer][sortIdcs]
    gyre_BCI_transfer = ds[:gyre_BCI_transfer][sortIdcs]
    
-   gyre_pKE = gyre_pKE .- gyre_pKE[1]
-   gyre_pAPE_to_pKE = gyre_pAPE_to_pKE .- gyre_pAPE_to_pKE[1]
+   gyre_PKE          = gyre_PKE .- gyre_PKE[1]
+   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE .- gyre_PAPE_to_PKE[1]
    gyre_BTI_transfer = gyre_BTI_transfer .- gyre_BTI_transfer[1]
    gyre_BCI_transfer = gyre_BCI_transfer .- gyre_BCI_transfer[1]
 
-   fig_pKEtotal = Figure(size = (1200, 700))
-   ax_pKEtotal  = Axis(fig_pKEtotal[2, 1]; xlabel = "Time [days]",
-	      		                   ylabel = "pKE per initial KE",
-                                           yscale = log10)
+   fig_PKEtotal = Figure(size = (1200, 700))
+   ax_PKEtotal  = Axis(fig_PKEtotal[2, 1]; xlabel = "Time [days]",
+                       ylabel = "pKE per initial KE", yscale = log10)
 
-   scatter!(ax_pKEtotal, t[2:end], pKE_total[2:end], color = :black)
+   scatter!(ax_PKEtotal, t[2:end], PKE[2:end], color = :black)
 
-   fig_pKEtotal[1, 1] = Label(fig_pKEtotal,
-	"Ratio of volume-integrated perturbation kinetic energy to volume-integrated initial kinetic energy",
-                     	      fontsize = 24, tellwidth = false)
+   fig_PKEtotal[1, 1] = Label(fig_PKEtotal,
+	                            "Ratio of volume-integrated perturbation kinetic energy to volume-integrated initial kinetic energy",
+                     	        fontsize = 24, tellwidth = false)
  
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "pKEtotal_$(datetime).png"), fig_pKEtotal)
+   save(joinpath("./Plots", "PKEtotal_$(datetime).png"), fig_PKEtotal)
    
-   fig_pKEgyre = Figure(size = (1200, 700))
-   ax_pKEgyre  = Axis(fig_pKEgyre[2, 1]; xlabel = "Time [days]",
-	      		                   ylabel = "pKE in gyre region", yscale = log10)
+   fig_PKEgyre = Figure(size = (1200, 700))
+   ax_PKEgyre  = Axis(fig_PKEgyre[2, 1]; xlabel = "Time [days]",
+                      ylabel = "PKE in gyre region", yscale = log10)
 
-   scatter!(ax_pKEgyre, t[2:end], gyre_pKE[2:end], color = :black)
+   scatter!(ax_PKEgyre, t[2:end], gyre_PKE[2:end], color = :black)
 
-   fig_pKEgyre[1, 1] = Label(fig_pKEgyre,
-	"Perturbation kinetic energy integrated over gyre region",
-                     	      fontsize = 24, tellwidth = false)
+   fig_PKEgyre[1, 1] = Label(fig_PKEgyre,
+                             "Perturbation kinetic energy integrated over gyre region",
+                     	       fontsize = 24, tellwidth = false)
 
-   save(joinpath("./Plots", "pKEgyre_$(datetime).png"), fig_pKEgyre)
+   save(joinpath("./Plots", "PKEgyre_$(datetime).png"), fig_PKEgyre)
    
    #Convert time to s to compute time-derivative of PKE
-   dt_pKE_total = order1_forward_difference(86400 * t, pKE_total)
+   dt_PKE_total = order1_forward_difference(86400 * t, PKE)
    
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
-		     ylabel = L"[s$^{-1}$]")
+                     ylabel = L"[s$^{-1}$]")
 
-   scatter!(ax_budget, t[1:end-1], dt_pKE_total, 
-	    label = "Time derivative of total pKE", color = :yellowgreen)
-   scatter!(ax_budget, t, pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
+   scatter!(ax_budget, t[1:end-1], dt_PKE_total, 
+            label = "Time derivative of total PKE", color = :yellowgreen)
+   scatter!(ax_budget, t, PAPE_to_PKE, label = "PAPE to PKE", color = :navy)
    scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", 
-	    color = :hotpink)
+            color = :hotpink)
    scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", 
-	    color = :darkgreen)
+            color = :darkgreen)
    axislegend(ax_budget)
 
-   fig_budget[1, 1] = Label(fig_budget,
-			    "Terms in pKE budget",
-			    fontsize = 24, tellwidth = false)
+   fig_budget[1, 1] = Label(fig_budget, "Terms in PKE budget", fontsize = 24,
+                            tellwidth = false)
 
-   save(joinpath("./Plots", "pKEbudget_$(datetime).png"), fig_budget)
+   save(joinpath("./Plots", "PKEbudget_$(datetime).png"), fig_budget)
    
    #Convert time to s to compute time-derivative of PKE
-   dt_pKE_gyre = order1_forward_difference(86400 * t, gyre_pKE)
+   dt_PKE_gyre = order1_forward_difference(86400 * t, gyre_PKE)
 
    fig_gyreBudget = Figure(size = (1200, 700))
    ax_gyreBudget  = Axis(fig_gyreBudget[2, 1]; xlabel = "Time [days]",
-		     ylabel = L"[s$^{-1}$]")
+                         ylabel = L"[s$^{-1}$]")
 
-   lines!(ax_gyreBudget, t[1:end-1], dt_pKE_gyre, 
-	    label = "Time derivative of total pKE", color = :yellowgreen)
-   lines!(ax_gyreBudget, t, gyre_pAPE_to_pKE, label = "pAPE to pKE", color = :navy)
+   lines!(ax_gyreBudget, t[1:end-1], dt_PKE_gyre, 
+          label = "Time derivative of total PKE", color = :yellowgreen)
+   lines!(ax_gyreBudget, t, gyre_PAPE_to_PKE, label = "PAPE to PKE",
+          color = :navy)
    lines!(ax_gyreBudget, t, gyre_BTI_transfer, label = "BTI transfer", 
-	    color = :hotpink)
+          color = :hotpink)
    lines!(ax_gyreBudget, t, gyre_BCI_transfer, label = "BCI transfer", 
-	    color = :darkgreen)
-   lines!(ax_gyreBudget, t[1:end-1], (dt_pKE_gyre - gyre_pAPE_to_pKE[1:end-1] - gyre_BTI_transfer[1:end-1] - gyre_BCI_transfer[1:end-1]), label = "residual", color = :red)
+          color = :darkgreen)
+   lines!(ax_gyreBudget, t[1:end-1], 
+          (dt_PKE_gyre - gyre_PAPE_to_PKE[1:end-1] - gyre_BTI_transfer[1:end-1]
+           - gyre_BCI_transfer[1:end-1]), 
+          label = "residual", color = :red)
    axislegend(ax_budget)
 
    fig_gyreBudget[1, 1] = Label(fig_gyreBudget,
-			    "Terms in pKE budget, integrated over gyre region",
+			    "Terms in PKE budget, integrated over gyre region",
 			    fontsize = 24, tellwidth = false)
 
-   save(joinpath("./Plots", "pKEgyreBudget_$(datetime).png"), fig_gyreBudget)
+   save(joinpath("./Plots", "PKEgyreBudget_$(datetime).png"), fig_gyreBudget)
    close(ds)
 end
 
@@ -533,9 +555,12 @@ function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
    save(joinpath("./Plots", "zgrid_$(datetime).png"), fig)
 end
 
-function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ, 
-				   Hx, Hy, Hz; plot_animation = true, 
+function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
+				   Hx = 0, Hy = 0, Hz = 0, plot_animation = true, 
 				   		   t_idx_skip = 1)
+   #=
+   Plot 2D slices of prognostic fields. By default, data are assumed to exclude halos.
+   =#
 
    outfile_list                  = glob("./Output/output_$(datetime)*")
    ds_f, x, y, zC, zF, times, Nt = open_dataset(
@@ -559,7 +584,7 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
-   B  = no_offset_view(adapt(Array, B))[xyzC_idcs...]
+   B  = adapt(Array, B)[xyzC_idcs...] #no_offset_view(adapt(Array, B))[xyzC_idcs...]
    Uφ = no_offset_view(adapt(Array, Uφ))[xyzC_idcs...]
 
    b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., Nt]
@@ -581,7 +606,7 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ,
 
    nearest, ax_kwargs = get_2D_spatial_axis_kwargs(x, y, zC, const_dim;
                                                    x_idx = x_idx, 
-						   y_idx = y_idx,
+                                                   y_idx = y_idx,
                                                    z_idx = z_idx)
 
    #Plot static images (final frame, by default)
