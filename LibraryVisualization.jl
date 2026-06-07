@@ -120,6 +120,13 @@ function ζa(f, u, v, w, Δx, Δy, Δz)
    ζa         = f + ωz
 end
 
+function ∂z_b(b, i, j, k, Δz)
+
+   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz
+   
+   return @. (∂z_b[1] + ∂z_b[2]) / 2
+end
+
 function ∇b(b, i, j, k, Δx, Δy, Δz)
    ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / Δx
    ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / Δy
@@ -168,12 +175,25 @@ function pad_filenames(datetime; prefix = "output")
    return glob("./Output/$(prefix)_$(datetime)*")
 end
 
+function sort_times(unsortedTimes)
+   #=
+   Sort data chronologically (essential if simulation was ever picked up from a
+    checkpoint).
+   =#
+   
+   sorting_indices = sortperm(unsortedTimes)
+   t               = unsortedTimes[sorting_indices]
+   
+   return t, sorting_indices
+end
+
 function load_times_in_days(dataset)
 
-   t  = dataset[:time][:] ./ 86400
-   Nt = length(t)
+   unsorted_t               = dataset[:time][:] ./ 86400
+   t, chronological_indices = sort_times(unsorted_t)
+   Nt                       = length(t)
    
-   return t, Nt
+   return t, Nt, chronological_indices
 end
 
 function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
@@ -185,37 +205,37 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
    #Load coords of non-Flat dimensions; convert them to km for readability
 
    if length(ds[:x_caa][:]) > 1
-      x = ds[:x_caa][Hx+1:length(ds[:x_caa][:])-Hx] ./ 1000
+      x = ds[:x_caa][(Hx + 1):(length(ds[:x_caa][:]) - Hx)] ./ 1000
    end
 
    if length(ds[:y_aca][:]) > 1
-      y = ds[:y_aca][Hy+1:length(ds[:y_aca][:])-Hy] ./ 1000
+      y = ds[:y_aca][(Hy + 1):(length(ds[:y_aca][:]) - Hy)] ./ 1000
    end
    
    if length(ds[:z_aac][:]) > 1
-      zC = ds[:z_aac][Hz+1:length(ds[:z_aac][:])-Hz] ./ 1000
-      zF = ds[:z_aaf][Hz+1:length(ds[:z_aaf][:])-Hz] ./ 1000
+      zC = ds[:z_aac][(Hz + 1):(length(ds[:z_aac][:]) - Hz)] ./ 1000
+      zF = ds[:z_aaf][(Hz + 1):(length(ds[:z_aaf][:]) - Hz)] ./ 1000
    end
 
-   t, Nt = load_times_in_days(ds)
+   t, Nt, chronological_indices = load_times_in_days(ds)
 
-   return ds, x, y, zC, zF, t, Nt
+   return ds, x, y, zC, zF, t, Nt, chronological_indices
 end
 
 function open_energetics_dataset(energeticsfilename)
    
-   energetics_ds = NCDataset(energeticsfilename)
-   t, Nt         = load_times_in_days(energetics_ds)
+   energetics_ds                = NCDataset(energeticsfilename)
+   t, Nt, chronological_indices = load_times_in_days(energetics_ds)
 
-   return energetics_ds, t, Nt
+   return energetics_ds, t, Nt, chronological_indices
 end
 
 function open_scalars_dataset(scalarfilename)
 
-   scalars_ds = NCDataset(scalarfilename)
-   t, Nt      = load_times_in_days(scalars_ds)
+   scalars_ds                   = NCDataset(scalarfilename)
+   t, Nt, chronological_indices = load_times_in_days(scalars_ds)
 
-   return scalars_ds, t, Nt
+   return scalars_ds, t, Nt, chronological_indices
 end
 
 function order1_forward_difference(t, u)
