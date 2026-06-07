@@ -68,7 +68,7 @@ function ∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ)
 
    return @inbounds -(∂zUφ_ccc * uφ′_ccc * uz′_ccc)
 end
-                         
+
 function IsWithinGyreRegion(i, j, k, grid, integrand; parameters) 
    #=
    Return true if gridpoint coords are r ≤ (2 * σr) and (only if baroclinic 
@@ -78,14 +78,14 @@ function IsWithinGyreRegion(i, j, k, grid, integrand; parameters)
    
    σr, σz = parameters.σr, parameters.σz
    
-   isWithinGyreRegion = (-(2 * σr) ≤ grid.yᵃᶜᵃ[j] ≤ (2 * σr)
-                         && -sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2) ≤ 
-                            grid.xᶜᵃᵃ[i] ≤ 
-                            sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2)
-                         && (σz == "infinity"
-                             || -(2 * σz) ≤ grid.z.cᵃᵃᶜ[k] ≤ 0
-                            )
-                        )
+   isWithinGyreRegion = @inbounds (-(2 * σr) ≤ grid.yᵃᶜᵃ[j] ≤ (2 * σr)
+                                   && -sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2) ≤
+                                      grid.xᶜᵃᵃ[i] ≤ 
+                                      sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2)
+                                   && (σz == "infinity"
+                                       || -(2 * σz) ≤ grid.z.cᵃᵃᶜ[k] ≤ 0
+                                      )
+                                  )
    return isWithinGyreRegion
 end
    
