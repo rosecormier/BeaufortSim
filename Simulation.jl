@@ -35,31 +35,30 @@ const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const U  = 3.5 * (meter/second) #Maximum gyre velocity scale (at surface)
-const σr = 250 * kilometer      #Radial gyre length scale
-const σz = 300 * meter 	        #Vertical gyre length scale
+const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
+const σr = 250 * kilometer       #Radial gyre length scale
+const σz = 300 * meter 	         #Vertical gyre length scale
 
 #Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at z = 0
-const constantN²Term = 0 * second^(-2)
+const constantN²Term = 2e-5 * second^(-2)
 
-const z_grid = "uniform" #Either 'uniform' or 'chebyshev'
-const d_ML   = -30 * meter #Mixed-layer depth (<= 0); necessary for Chebyshev grid
+const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev'
 
 #Type of ambient stratification to construct ('doubleTanh' or 'constant')
-ambientStrat = "doubleTanh"
+const ambientStrat = "doubleTanh"
 
 #Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
-const g  = 9.81 * meter * (second^2)
-const ρ₀ = 1000 * meter^(-3)
-const As = 1.7e-1 * meter^(-3)
-const Bs = 40 * meter
-const Cs = 75 * meter
-const Ad = 2e-2 * meter^(-3)
-const Bd = 200 * meter
-const Cd = 150 * meter
+const g   = -9.81 * meter * (second^2)
+const ρ₀  = 1000 * meter^(-3)
+const A_s = 1.7e1 * meter^(-3)
+const z_s = -40 * meter
+const C_s = 40 * meter
+const A_d = 2 * meter^(-3)
+const z_d = -200 * meter
+const C_d = 40 * meter
 
-doubleTanhParams = (g = g, ρ₀ = ρ₀, As = As, Bs = Bs, Cs = Cs, 
-                    Ad = Ad, Bd = Bd, Cd = Cd)
+doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
+                    A_d = A_d, C_d = C_d, z_d = z_d)
 
 const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
 const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
@@ -73,17 +72,17 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 
-const useGPU = true #Whether to use GPU
-const useNHS = true #Whether to use NonhydrostaticModel
+const useGPU = false #Whether to use GPU
+const useNHS = false #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = true
+const vis_const_x    = false
 const vis_const_y    = false
-const vis_const_z    = true
-const vis_norms      = true
-const vis_energetics = true
+const vis_const_z    = false
+const vis_norms      = false
+const vis_energetics = false
 const vis_z_grid     = false #Note: currently can only be done on CPU
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -106,8 +105,7 @@ end
 useGPU ? architecture = GPU() : architecture = CPU()
 
 custom_z_grids = Dict("uniform"   => (-Lz, 0),
-                      "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz; 
-                                                                 ξ0 = d_ML)
+                      "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz + 1)
                      )
 
 grid = RectilinearGrid(architecture,
@@ -116,34 +114,13 @@ grid = RectilinearGrid(architecture,
                        x = (-Lr, Lr),
 		                   y = (-Lr, Lr),
                        z = custom_z_grids[z_grid],
-		                   halo = (Hx, Hy, Hz))
+		                   halo = (Hx, Hy, Hz)
+                      )
 
-save_zC_values(z_grid, d_ML, grid) #If Chebyshev z-grid, save values to csv file
+save_zC_values(z_grid, grid) #If Chebyshev z-grid, save values to csv file
 
-if ambientStrat == "doubleTanh"
-
-   #Ambient stratification, from double-tanh function, at vertical boundaries
-   additionalN²Top    = @views N²DoubleTanh(grid.z.cᵃᵃᶜ[Nz-1], doubleTanhParams)
-   additionalN²Bottom = @views N²DoubleTanh(grid.z.cᵃᵃᶜ[1], doubleTanhParams)
-
-elseif ambientStrat == "fromData"
-
-   N²Data = LoadN²Data(Nz, d_ML, season)
-
-   #Ambient stratification, from saved data, at vertical boundaries
-   additionalN²Top    = N²Data[Nz - 1]
-   additionalN²Bottom = N²Data[1]
-   
-elseif ambientStrat == "constant"
-   const additionalN²Top    = nothing
-   const additionalN²Bottom = nothing
-end
-
-b̄_BCs = buoyancy_BCS(σz, constantN²Term, 0, -Lz, false;
-                      parameters = (additionalN²Top = additionalN²Top, 
-                                    additionalN²Bottom = additionalN²Bottom)
-                     )
-
+b̄_BCs = buoyancy_BCS(σz, constantN²Term, grid, false;
+                      doubleTanhParams = doubleTanhParams)
 if useNHS
    model = NonhydrostaticModel(; 
                                grid = grid, 
@@ -152,7 +129,8 @@ if useNHS
                                coriolis = fPlane,
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
-                               boundary_conditions = (; b = b̄_BCs))
+                               boundary_conditions = (; b = b̄_BCs)
+                              )
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
                                        grid = grid,
@@ -161,7 +139,8 @@ elseif !useNHS
                                        coriolis = fPlane,
                                        tracers = (:b),
                                        buoyancy = BuoyancyTracer(),
-                                       boundary_conditions = (; b = b̄_BCs))
+                                       boundary_conditions = (; b = b̄_BCs)
+                                      )
 end
 
 b̄     = bkgd_buoyancy(f, σr, σz, U;
@@ -204,10 +183,6 @@ set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
 set!(B, b̄ )
-fill_halo_regions!(Ux)
-fill_halo_regions!(Uy)
-fill_halo_regions!(Uz)
-fill_halo_regions!(B)
 
 #Create fields that are used in computing PKE budget terms
 φcoords = CenterField(model.grid)
@@ -225,13 +200,21 @@ set!(∂zUφ, ∂z(Uφ))
 
 #Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = @inbounds ū(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
+@inline u_perturbed(x, y, z) = @inbounds (ū(x, y, z)
+                                          * (1 + 2 * (rand() - 0.5) * max_u′
+                                                 / (U * sqrt(2))
+                                            )
+                                         )
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = @inbounds v̄(x, y, z)*(1 + 2*(rand()-0.5) * max_u′/(U*sqrt(2)))
+@inline v_perturbed(x, y, z) = @inbounds (v̄(x, y, z)
+                                          * (1 + 2 * (rand() - 0.5) * max_u′ 
+                                                 / (U * sqrt(2))
+                                            )
+                                         )
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
@@ -245,7 +228,8 @@ simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
                         align_time_step = false, 
-                        minimum_relative_step = 1e-9)
+                        minimum_relative_step = 1e-9
+                       )
 
 function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
@@ -267,7 +251,7 @@ outputs = (ur = ur,
 	         ux = model.velocities.u,
 	         uy = model.velocities.v,
 	         uz = model.velocities.w,
-	         b  = model.tracers.b)
+	         b = model.tracers.b)
 
 #Define output filepaths
 outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
@@ -282,7 +266,7 @@ mkpath(dirname(energyfilepath))
 mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
 
-field_writer = NetCDFWriter(model, outputs, with_halos = true,
+field_writer = NetCDFWriter(model, outputs,
                             filename = outfilepath, 
                             schedule = TimeInterval(Δt_save),
                             file_splitting = FileSizeLimit(30GiB))
@@ -303,7 +287,7 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 
 scalar_writer = NetCDFWriter(model, scalar_diagnostics,
 		                         filename = scalarfilepath, 
-				                     schedule = TimeInterval(1*hour),
+				                     schedule = TimeInterval(1 * hour),
                              file_splitting = FileSizeLimit(30GiB),
 		                         dimensions = (ux′_norm = (),
 					                                 uy′_norm = (),
@@ -316,16 +300,16 @@ bkgdParameters = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂z
 gyreParameters = (σr = σr, σz = σz)
 
 energy_diagnostics = (; 
-   integrated_pKE = total_PKE(simulation; Ux, Uy, Uz),
-   integrated_pAPE_to_pKE = total_PAPE_to_PKE(simulation; B, Uz),
-   integrated_BTI_transfer = BTI_transfer(simulation; 
-                                          bkgdParameters = bkgdParameters),
-   integrated_BCI_transfer = BCI_transfer(simulation; 
-                                          bkgdParameters = bkgdParameters),
-   gyre_integrated_pKE = gyre_PKE(simulation; 
+   total_PKE = PKE(simulation; Ux, Uy, Uz),
+   total_PAPE_to_PKE = PAPE_to_PKE(simulation; B, Uz),
+   total_BTI_transfer = BTI_transfer(simulation; 
+                                     bkgdParameters = bkgdParameters),
+   total_BCI_transfer = BCI_transfer(simulation; 
+                                     bkgdParameters = bkgdParameters),
+   gyre_PKE = gyre_PKE(simulation; 
                                   gyreParameters = gyreParameters),
-   gyre_integrated_pAPE_to_pKE = gyre_PAPE_to_PKE(simulation; 
-                                                  gyreParameters = gyreParameters),
+   gyre_PAPE_to_PKE = gyre_PAPE_to_PKE(simulation; 
+                                       gyreParameters = gyreParameters),
    gyre_BTI_transfer = gyre_BTI_transfer(simulation; 
                                          bkgdParameters = bkgdParameters, 
                                          gyreParameters = gyreParameters),
@@ -334,25 +318,28 @@ energy_diagnostics = (;
                                          gyreParameters = gyreParameters)
                      )
 
-energy_writer = NetCDFWriter(model, energy_diagnostics,
-				   filename = energyfilepath,
-			 	   schedule = TimeInterval(Δt_save),
-			     file_splitting = FileSizeLimit(30GiB))
+energy_writer = NetCDFWriter(model,
+                             energy_diagnostics,
+                             filename = energyfilepath,
+                             schedule = TimeInterval(Δt_save),
+                             file_splitting = FileSizeLimit(30GiB)
+                            )
 
 checkpointer = Checkpointer(model; 
                             schedule = TimeInterval(Δt_checkpt),
                             dir = "Checkpoints", 
 			    	                prefix = "checkpoint_$(datetimenow)", 
 		    	                  properties = [:grid, :clock, :timestepper,
-					                                :velocities, :tracers])
+					                                :velocities, :tracers]
+                           )
 
 simulation.output_writers[:field_writer]  = field_writer
 simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
-run!(simulation; pickup = false) 
-     #pickup = joinpath("../Checkpoints", "checkpoint_260310-084141_iteration720000.jld2"))
+run!(simulation; pickup = false)
+    #pickup = joinpath("./Checkpoints", "checkpoint_260605-075732_iteration6.jld2"))
 
 duration = canonicalize(now() - datetimestart)
 
@@ -381,23 +368,23 @@ end
 #####################
 
 if vis_const_x
-   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ, Hx, Hy, Hz; 
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
 			     t_idx_skip = t_idx_skip)
 end
 
 if vis_const_y
-   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ, Hx, Hy, Hz; 
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ; 
 			     t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
-   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ, Hx, Hy, Hz; 
+   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ; 
 			     t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
-   visualize_norms(datetimenow, idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
-                idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
+   visualize_norms(datetimenow; idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
+               idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
                 idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
                 idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
                 idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
