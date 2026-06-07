@@ -5,8 +5,6 @@ using SpecialFunctions, Tables
 
 function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 
-   i -= 1
-
    Lξ = ξ_max - ξ_min
    
    pi_shift = asin(1 + (ξ0/Lξ))
@@ -22,14 +20,14 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
    return i_face
 end
 
-function save_zC_values(z_grid, d_ML, grid)
+function save_zC_values(z_grid, grid)
    #=
    Save zC values to a csv file, if non-existent for this grid (Chebyshev only).
    =#
    
    if z_grid == "chebyshev"
    
-      gridfilepath = joinpath("./Logs", "grid_Nz$(grid.Nz)_MLD$(abs(d_ML)).csv") 
+      gridfilepath = joinpath("./Logs", "grid_Nz$(grid.Nz).csv") 
 
       if !isfile(gridfilepath)
          mkpath(dirname(gridfilepath)) #Make required path
@@ -58,36 +56,42 @@ end
 
 function N²DoubleTanh(z, parameters)
    #=
-   Evaluate double-tanh function for N² at z.
+   Evaluate, at z, N² corresponding to double-tanh function.
    =#
 
-   g  = parameters.g
-   ρ₀ = parameters.ρ₀
-   As = parameters.As
-   Bs = parameters.Bs
-   Cs = parameters.Cs
-   Ad = parameters.Ad
-   Bd = parameters.Bd
-   Cd = parameters.Cd
+   g   = parameters.g
+   ρ₀  = parameters.ρ₀
+   A_s = parameters.A_s
+   C_s = parameters.C_s
+   z_s = parameters.z_s
+   A_d = parameters.A_d
+   C_d = parameters.C_d
+   z_d = parameters.z_d
 
-   N² = @. -(g / ρ₀) * ((As / Cs) * (sech((z - Bs) / Cs))^2 
-                     + (Ad / Cd) * (sech((z - Bd) / Cd))^2)
+   N² = @. -(g / ρ₀) * ((A_s / C_s) * (sech((z - z_s) / C_s))^2 
+                        + (A_d / C_d) * (sech((z - z_d) / C_d))^2)
 
    return N²   
 end
 
-function N²FromData(k, parameters)
+function buoyancyDoubleTanh(z, parameters)
    #=
-   Evaluate N² at z[k] from seasonal data in csv file.
+   Evaluate, at z, buoyancy field from double-tanh function.
    =#
 
-   file = CSV.File(joinpath("./Data/",
-                            "N2_Nz$(parameters.Nz)_MLD$(abs(parameters.d_ML)).csv");
-                   header = 2)
-   N²   = Tuple(file[parameters.season])
-   N²_k = N²[k]
+   g   = parameters.g
+   ρ₀  = parameters.ρ₀
+   A_s = parameters.A_s
+   C_s = parameters.C_s
+   z_s = parameters.z_s
+   A_d = parameters.A_d
+   C_d = parameters.C_d
+   z_d = parameters.z_d
    
-   return N²_k
+   b = @. -(g / ρ₀) * (A_s * tanh((z - z_s) / C_s)
+                       + A_d * tanh((z - z_d) / C_d))
+   
+   return b
 end
 
 function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = nothing)
@@ -111,8 +115,7 @@ function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = noth
                                                   )
                                                )
 
-      Nz    = grid.Nz
-      z_top = @view grid.z.cᵃᵃᶜ[Nz-1]
+      z_top = @view grid.z.cᵃᵃᶜ[grid.Nz]
       z_bot = @view grid.z.cᵃᵃᶜ[1]
 
       if ambientStrat == "constant" #if isnothing(parameters.additionalN²Top)
@@ -153,27 +156,11 @@ function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = noth
    return b̄_BCs
 end
 
-function integrate_N²_upwards(i, j, k, grid, N²)
-   #=
-   Integrate discrete N²-values from the surface (z[grid.Nz - 1] = 0) to the 
-    depth z[k], producing a CenterField(grid).
-   =#
-
-   integral = @views N²[grid.Nz] .* Δzᶜᶜᶜ(i, j, grid.Nz, grid)
-
-   for m in k:grid.Nz:1
-      integral += @views N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
-   end
-
-   return integral
-end
-
 function bkgd_buoyancy(f, σr, σz, U;
                        constantN²Term = 0,
                        grid = nothing, 
                        yFlat = false,
-                       doubleTanhParams = nothing,
-                       N²Data = nothing)
+                       doubleTanhParams = nothing)
 
    if σz == "infinity" #Barotropic case
       if !yFlat
@@ -184,34 +171,30 @@ function bkgd_buoyancy(f, σr, σz, U;
       
    else #Baroclinic case
    
-      TWB_b̄ = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
+      TWB_b̄_function = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
 
       if ambientStrat == "constant"
       
          if !yFlat
-            b̄ = (x, y, z) -> TWB_b̄(x, y, z) .+ (constantN²Term .* z)      
+            b̄ = (x, y, z) -> TWB_b̄_function(x, y, z) .+ (constantN²Term .* z)
          elseif yFlat
-            b̄ = (x, z) -> TWB_b̄(x, z) .+ (constantN²Term .* z)
+            b̄ = (x, z) -> TWB_b̄_function(x, z) .+ (constantN²Term .* z)
          end
          
       elseif ambientStrat == "doubleTanh"
-
-         @inline globalDoubleTanhN²_ccc(i, j, k, grid) = N²DoubleTanh(grid.z.cᵃᵃᶜ[k], doubleTanhParams)
-
-         globalN²_op = KernelFunctionOperation{Center, Center, Center}(globalDoubleTanhN²_ccc, grid)
-         
-         @compute globalN² = Field(globalN²_op)
       
          function total_b̄_ccc(i, j, k, grid)
 
-            integrated_term = integrate_N²_upwards(i, j, k, grid, globalN²)
-            TWB_term        = TWB_b̄(grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], grid.z.cᵃᵃᶜ[k])
-            linear_term     = constantN²Term .* grid.z.cᵃᵃᶜ[k]
+            doubleTanh_term = buoyancyDoubleTanh(grid.z.cᵃᵃᶜ[k], doubleTanhParams)
+            TWB_term        = TWB_b̄_function(grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], 
+                                              grid.z.cᵃᵃᶜ[k])
+            linear_term     = constantN²Term * grid.z.cᵃᵃᶜ[k]
             
-            return integrated_term + TWB_term + linear_term
+            return doubleTanh_term + TWB_term + linear_term
          end
       
-         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc, grid)
+         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc,
+                                                                       grid)
         
          @compute b̄ = Field(total_b̄_op)
       end
@@ -219,16 +202,17 @@ function bkgd_buoyancy(f, σr, σz, U;
    return b̄
 end
 
-function bkgd_velocities(σr, σz, U, yFlat = false)
+function bkgd_velocities(σr, σz, U; yFlat = false)
 
    if yFlat #2D versions, evaluated at y = 0
       
       ū = (x, z) -> 0
    
       if σz == "infinity" #Barotropic case
-         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x^2)/(σr^2)))
+         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x/σr)^2))
       else #Baroclinic case
-         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x^2)/(σr^2) - (z/σz)^2))
+         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp((1/2) - (x/σr)^2 
+                                                       - (z/σz)^2))
       end
    
    elseif !yFlat #3D versions
@@ -240,10 +224,40 @@ function bkgd_velocities(σr, σz, U, yFlat = false)
                              * exp((1/2) - (x^2 + y^2)/(σr^2)))
       else #Baroclinic case
          ū = (x, y, z) -> ((sqrt(2) * U * y / σr)
-                         * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+                            * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
          v̄ = (x, y, z) -> -((sqrt(2) * U * x / σr)
-                          * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
+                             * exp((1/2) - (x^2 + y^2)/(σr^2) - (z/σz)^2))
       end
    end
    return ū, v̄
+end
+
+function integrate_N²_upwards(i, j, k, grid, N²)
+   #=
+   Integrate discrete N²-values from the surface (z[grid.Nz - 1] = 0) to the
+    depth z[k], producing a CenterField(grid).
+   *Needs to be edited/tested*
+   =#
+
+   integral = @views N²[grid.Nz] .* Δzᶜᶜᶜ(i, j, grid.Nz, grid)
+
+   for m in k:grid.Nz:1
+      integral += @views N²[m - 1] .* Δzᶜᶜᶜ(i, j, (m - 1), grid)
+   end
+
+   return integral
+end
+
+function N²FromData(k, parameters)
+   #=
+   Evaluate N² at z[k] from seasonal data in csv file.
+   =#
+
+   file = CSV.File(joinpath("./Data/",
+                            "N2_Nz$(parameters.Nz)_MLD$(abs(parameters.d_ML)).csv");
+                   header = 2)
+   N²   = Tuple(file[parameters.season])
+   N²_k = N²[k]
+   
+   return N²_k
 end
