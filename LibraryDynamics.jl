@@ -37,23 +37,6 @@ function save_zC_values(z_grid, grid)
    end
 end
 
-function TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
-   #=
-   Contribution to background buoyancy from thermal-wind balance with background
-    velocity.
-   =#
-   
-   if !yFlat #Return 3D version of function
-      TWB_b̄ = (x, y, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
-			                        * exp((1/2) - (z/σz)^2)
-			                        * (exp(-(x^2 + y^2) / (σr^2)) - 1))
-   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
-      TWB_b̄ = (x, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
-                           * exp((1/2) - (z/σz)^2) * (exp(-(x^2) / (σr^2)) - 1))
-   end
-   return TWB_b̄
-end
-
 function N²DoubleTanh(z, parameters)
    #=
    Evaluate, at z, N² corresponding to double-tanh function.
@@ -94,9 +77,75 @@ function buoyancyDoubleTanh(z, parameters)
    return b
 end
 
-function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = nothing)
+function TWB_b_field(grid, f, σr, σz, U; returnAsArray = true)
+
+   @inline b_ccc(i, j, k, g) = @inbounds (-(sqrt(2) * f * U * σr * g.z.cᵃᵃᶜ[k]
+                                            / (σz^2)
+                                           )
+			                                     * exp(0.5 - (g.z.cᵃᵃᶜ[k]/σz)^2)
+			                                     * (exp(-(g.xᶜᵃᵃ[i]^2 + g.yᵃᶜᵃ[j]^2) 
+                                                   / (σr^2)) 
+                                              - 1)
+                                         )
+
+   b_op = KernelFunctionOperation{Center, Center, Center}(b_ccc, grid)
+   
+   @compute b = Field(b_op)
+
+   if returnAsArray
+      return adapt(Array, b)
+   elseif !returnAsArray
+      return b
+   end
+end
+
+function TWB_b_anon_function(f, σr, σz, U, yFlat)
    #=
-   Compute appropriate (i.e., preserving gradient-continuity) boundary 
+   Contribution to background buoyancy from thermal-wind balance with background
+    velocity.
+   =#
+   
+   if !yFlat #Return 3D version of function
+      TWB_b = (x, y, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
+                             * exp(0.5 - (z/σz)^2)
+                             * (exp(-(x^2 + y^2) / (σr^2)) - 1)
+                           )
+   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
+      TWB_b = (x, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
+                          * exp((1/2) - (z/σz)^2) * (exp(-(x^2) / (σr^2)) - 1)
+                        )
+   end
+   return TWB_b
+end
+
+function TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U; returnAsArray = true)
+
+   @inline ∂b∂z_ccc(i, j, k, g) = @inbounds (N²_far 
+                                             - ((sqrt(2) * f * U * σr / (σz^2))
+                                                * exp(0.5 
+                                                      - (g.z.cᵃᵃᶜ[k] / σz)^2)
+                                                * (exp(-(g.xᶜᵃᵃ[i]^2 
+                                                         + g.yᵃᶜᵃ[j]^2) 
+                                                       / (σr^2))
+                                                   - 1) 
+                                                * (1 - 2 * (g.z.cᵃᵃᶜ[k]/σz)^2)
+                                               )
+                                            )
+
+   ∂b∂z_op = KernelFunctionOperation{Center, Center, Center}(∂b∂z_ccc, grid)
+                                                    
+   @compute ∂b∂z = Field(∂b∂z_op)
+   
+   if returnAsArray
+      return adapt(Array, ∂b∂z)
+   elseif !returnAsArray
+      return ∂b∂z
+   end
+end
+
+function buoyancy_BCS(f, σr, σz, U, N²_far, grid, yFlat; doubleTanhParams = nothing)
+   #=
+   Return appropriate (i.e., preserving gradient-continuity) boundary 
     conditions on buoyancy at top and bottom of simulation domain.
    =#
 
@@ -107,25 +156,25 @@ function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = noth
    else #Baroclinic case
    
       #Function to compute contribution from background-state thermal-wind balance
-      @inline TWB_∂b̄∂z(x, y, z, constN²) = @. (constN²
-                                                - ((sqrt(2) * f * U * σr / (σz^2))
-                                                   * exp((1/2) - (z/σz)^2)
-					                                         * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
-                                                   * (1 - 2 * (z/σz)^2)
-                                                  )
-                                               )
+      @inline TWB_∂b∂z_function(x, y, z) = @. (N²_far
+                                               - ((sqrt(2) * f * U * σr / (σz^2))
+                                                  * exp(0.5 - (z/σz)^2)
+                                                  * (exp(-(x^2 + y^2) / (σr^2)) - 1) 
+                                                  * (1 - 2 * (z/σz)^2)
+                                                 )
+                                              )
 
       z_top = @view grid.z.cᵃᵃᶜ[grid.Nz]
       z_bot = @view grid.z.cᵃᵃᶜ[1]
 
-      if ambientStrat == "constant" #if isnothing(parameters.additionalN²Top)
+      if ambientStrat == "constant"
       
          if !yFlat
-            b̄z_top = (x, y, t) -> TWB_∂b̄∂z(x, y, z_top, constantN²Term)
-            b̄z_bot = (x, y, t) -> TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
+            b̄z_top = (x, y, t) -> TWB_∂b∂z_function(x, y, z_top)
+            b̄z_bot = (x, y, t) -> TWB_∂b∂z_function(x, y, z_bot)
          elseif yFlat #Note: this case needs to be tested
-            b̄z_top = (x, t) -> TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
-            b̄z_bot = (x, t) -> TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
+            b̄z_top = (x, t) -> TWB_∂b∂z_function(x, 0, z_top)
+            b̄z_bot = (x, t) -> TWB_∂b∂z_function(x, 0, z_bot)
          end
          
          b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
@@ -135,17 +184,17 @@ function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = noth
 
          if !yFlat
             b̄z_top = (x, y, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                    .+ TWB_∂b̄∂z(x, y, z_top, constantN²Term)
+                                    .+ TWB_∂b∂z_function(x, y, z_top)
                                    )
             b̄z_bot = (x, y, t) -> (N²DoubleTanh(z_bot, doubleTanhParams) 
-                                    .+ TWB_∂b̄∂z(x, y, z_bot, constantN²Term)
+                                    .+ TWB_∂b∂z_function(x, y, z_bot)
                                    )
          elseif yFlat
             b̄z_top = (x, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                 .+ TWB_∂b̄∂z(x, 0, z_top, constantN²Term)
+                                 .+ TWB_∂b∂z_function(x, 0, z_top)
                                 )
             b̄z_bot = (x, t) -> (N²DoubleTanh(z_bot, doubleTanhParams)
-                                 .+ TWB_∂b̄∂z(x, 0, z_bot, constantN²Term)
+                                 .+ TWB_∂b∂z_function(x, 0, z_bot)
                                 )
          end
          
@@ -156,50 +205,47 @@ function buoyancy_BCS(σz, constantN²Term, grid, yFlat; doubleTanhParams = noth
    return b̄_BCs
 end
 
-function bkgd_buoyancy(f, σr, σz, U;
-                       constantN²Term = 0,
+function bkgd_buoyancy(f, σr, σz, U, N²_far;
                        grid = nothing, 
                        yFlat = false,
                        doubleTanhParams = nothing)
 
    if σz == "infinity" #Barotropic case
       if !yFlat
-         b̄ = (x, y, z) -> constantN²Term .* z
+         B = (x, y, z) -> N²_far .* z
       elseif yFlat
-         b̄ = (x, z) -> constantN²Term .* z
+         B = (x, z) -> N²_far .* z
       end
       
    else #Baroclinic case
    
-      TWB_b̄_function = TWB_buoyancy_contribution(f, σr, σz, U, yFlat)
+      TWB_b_function = TWB_b_anon_function(f, σr, σz, U, yFlat)
 
       if ambientStrat == "constant"
       
          if !yFlat
-            b̄ = (x, y, z) -> TWB_b̄_function(x, y, z) .+ (constantN²Term .* z)
+            B = (x, y, z) -> TWB_b_function(x, y, z) .+ (N²_far .* z)
          elseif yFlat
-            b̄ = (x, z) -> TWB_b̄_function(x, z) .+ (constantN²Term .* z)
+            B = (x, z) -> TWB_b_function(x, z) .+ (N²_far .* z)
          end
          
       elseif ambientStrat == "doubleTanh"
       
-         function total_b̄_ccc(i, j, k, grid)
+         function B_ccc(i, j, k, g)
 
-            doubleTanh_term = buoyancyDoubleTanh(grid.z.cᵃᵃᶜ[k], doubleTanhParams)
-            TWB_term        = TWB_b̄_function(grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], 
-                                              grid.z.cᵃᵃᶜ[k])
-            linear_term     = constantN²Term * grid.z.cᵃᵃᶜ[k]
+            doubleTanh_term = buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], doubleTanhParams)
+            TWB_term        = TWB_b_function(g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k])
+            linear_term     = N²_far * g.z.cᵃᵃᶜ[k]
             
             return doubleTanh_term + TWB_term + linear_term
          end
       
-         total_b̄_op = KernelFunctionOperation{Center, Center, Center}(total_b̄_ccc,
-                                                                       grid)
+         B_op = KernelFunctionOperation{Center, Center, Center}(B_ccc, grid)
         
-         @compute b̄ = Field(total_b̄_op)
+         @compute B = Field(B_op)
       end
    end
-   return b̄
+   return B
 end
 
 function bkgd_velocities(σr, σz, U; yFlat = false)
