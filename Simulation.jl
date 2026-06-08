@@ -5,7 +5,7 @@ include("LibraryStability.jl")
 include("LibraryVisualization.jl")
 include("Visualization.jl")
 
-using Adapt, CSV, CUDA
+using Adapt, CUDA
 using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
@@ -39,8 +39,8 @@ const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
 const σz = 300 * meter 	         #Vertical gyre length scale
 
-#Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at z = 0
-const constantN²Term = 2e-5 * second^(-2)
+#Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at -infty
+const N²_far = 2e-5 * second^(-2)
 
 const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev'
 
@@ -49,13 +49,13 @@ const ambientStrat = "doubleTanh"
 
 #Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
 const g   = -9.81 * meter * (second^2)
-const ρ₀  = 1000 * meter^(-3)
-const A_s = 1.7e1 * meter^(-3)
+const ρ₀  = 1025.5 * meter^(-3)
+const A_s = 2.5 * meter^(-3)
 const z_s = -40 * meter
-const C_s = 40 * meter
-const A_d = 2 * meter^(-3)
+const C_s = 15 * meter
+const A_d = 1.05 * meter^(-3)
 const z_d = -200 * meter
-const C_d = 40 * meter
+const C_d = 60 * meter
 
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
@@ -72,18 +72,19 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 
-const useGPU = false #Whether to use GPU
+const useGPU = true #Whether to use GPU
 const useNHS = false #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x    = false
-const vis_const_y    = false
-const vis_const_z    = false
-const vis_norms      = false
-const vis_energetics = false
-const vis_z_grid     = false #Note: currently can only be done on CPU
+const vis_const_x           = true
+const vis_const_y           = false
+const vis_const_z           = true
+const vis_norms             = true
+const vis_energetics        = true
+const vis_z_grid            = false #Note: currently can only be done on CPU
+const vis_B_and_N²_profiles = true
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -117,15 +118,14 @@ grid = RectilinearGrid(architecture,
 		                   halo = (Hx, Hy, Hz)
                       )
 
-save_zC_values(z_grid, grid) #If Chebyshev z-grid, save values to csv file
-
-b̄_BCs = buoyancy_BCS(σz, constantN²Term, grid, false;
+b̄_BCs = buoyancy_BCS(f, σr, σz, U, N²_far, grid, false;
                       doubleTanhParams = doubleTanhParams)
+
 if useNHS
    model = NonhydrostaticModel(; 
                                grid = grid, 
                                timestepper = :RungeKutta3,
-                               advection = WENO(),
+                               advection = UpwindBiased(order = 5),
                                coriolis = fPlane,
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
@@ -134,8 +134,8 @@ if useNHS
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
                                        grid = grid,
-                                       momentum_advection = WENO(),
-                                       tracer_advection = WENO(),
+                                       momentum_advection = UpwindBiased(order = 5),
+                                       tracer_advection = UpwindBiased(order = 5),
                                        coriolis = fPlane,
                                        tracers = (:b),
                                        buoyancy = BuoyancyTracer(),
@@ -143,8 +143,7 @@ elseif !useNHS
                                       )
 end
 
-b̄     = bkgd_buoyancy(f, σr, σz, U;
-                       constantN²Term = constantN²Term, 
+b̄     = bkgd_buoyancy(f, σr, σz, U, N²_far;
                        grid = model.grid,
                        doubleTanhParams = doubleTanhParams)
 ū, v̄ = bkgd_velocities(σr, σz, U)
@@ -154,7 +153,7 @@ set!(model, u = ū, v = v̄, b = b̄)
 #Print warnings if the respective instabilities are present
 check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v; 
                       z_idx = z_idx)
-check_grav_stability(model.tracers.b)
+check_grav_stability(model.tracers.b, model.grid)
 
 #########################################################
 # SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
@@ -354,7 +353,10 @@ open(logfilepath, "w") do file
    write(file, "Lr, Lz = $(Lr), $(Lz) \n\n")
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U = $(U) \n")
-   write(file, "Constant N² term = $(constantN²Term) \n")
+   write(file, "Far-field N² term = $(N²_far) \n")
+   write(file, "Stratification parameters: g = $(g), ρ₀ = $(ρ₀), A_s = $(A_s),
+                C_s = $(C_s), z_s = $(z_s), A_d = $(A_d), C_d = $(C_d), 
+                z_d = $(z_d) \n")
    write(file, "Max. u' = $(max_u′) \n")
    write(file, "Random-number seeds = $(seed1), $(seed2) \n\n")
    write(file, "Δt, tf = $(Δt), $(tf) \n\n")
@@ -383,13 +385,14 @@ if vis_const_z
 end
 
 if vis_norms
-   visualize_norms(datetimenow; idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
-               idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
-                idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
-                idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
-                idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
-                idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
-                idxStartPlot = 2, idxEndPlot = -1)
+   visualize_norms(datetimenow; 
+                   idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
+                   idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
+                   idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
+                   idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
+                   idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
+                   idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
+                   idxStartPlot = 2, idxEndPlot = -1)
 end
 
 if vis_energetics
@@ -398,4 +401,9 @@ end
 
 if vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
+end
+
+if vis_B_and_N²_profiles
+   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, σr,
+                           σz, U, N²_far; Hz = Hz)
 end
