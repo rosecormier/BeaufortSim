@@ -1,7 +1,8 @@
+include("LibraryDynamics.jl")
 include("LibraryVisualization.jl")
 
 using Adapt, CairoMakie, CommonDataModel, CUDA, DataStructures
-using Dierckx, Glob, LaTeXStrings, NCDatasets
+using Glob, LaTeXStrings, NCDatasets
 using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.OutputReaders
@@ -9,9 +10,54 @@ using OffsetArrays: no_offset_view
 using Polynomials: fit
 using Printf
 
-update_theme!(fontsize = 16)
+update_theme!(theme_latexfonts(), fontsize = 16)
 
 ####################
+
+function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
+                                 σr, σz, U, N²_far; Hz = 3)
+
+   B_total    = no_offset_view(adapt(Array, B)
+                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
+   b_TWB      = no_offset_view(TWB_b_field(grid, f, σr, σz, U)
+                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
+   ∂B∂z_total = no_offset_view(∂b∂z_field(B, grid))[x_idx, y_idx, 
+                                                    Hz:(length(grid.z.cᵃᵃᶜ)
+                                                        - Hz)
+                                                   ]
+   ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U)
+                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
+   
+   x = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
+   y = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
+   z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz:(length(grid.z.cᵃᵃᶜ) - Hz)]
+   
+   fig   = Figure(size = (1400, 700))
+   ax_B  = Axis(fig[2, 1], xlabel = L"$B$ [m/s$^{2}$]", ylabel = L"$z$ [m]")
+   ax_N2 = Axis(fig[2, 2], xlabel = L"$N^2$ [s$^{-2}$]", ylabel = L"$z$ [m]")
+   
+   lines!(ax_B, B_total, z, label = "Total")
+   scatter!(ax_B, B_total, z, label = "Total (at gridpoints)")
+   lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
+          label = "From double-tanh function")
+   lines!(ax_B, b_TWB, z, label = "Thermal-wind contribution")
+   lines!(ax_B, N²_far .* z, z, label = "Linear term")
+   
+   lines!(ax_N2, ∂B∂z_total, z, label = "Total")
+   scatter!(ax_N2, ∂B∂z_total, z, label = "Total (at gridpoints)")
+   lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
+          label = "From double-tanh function")
+   lines!(ax_N2, ∂b∂z_TWB, z, label = "Thermal-wind contribution")
+   lines!(ax_N2, N²_far .+ 0*z, z, label = "Linear term")
+   
+   fig[2, 3] = Legend(fig, ax_B)
+   fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
+                      tellwidth = false)
+   fig[1, 2] = Label(fig, L"Background $N^2$", fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "b_and_N2_profiles.png"), fig)
+end
 
 function visualize_norms(datetime; 
 		idxStartLinGrowth_b = 2, idxEndLinGrowth_b = -1,
@@ -22,7 +68,8 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
 		idxStartPlot = 2, idxEndPlot = -1)
 
-   scalars_ds, times, Nt = open_scalars_dataset(glob("./Output/scalars_$(datetime)*"))
+   scalars_ds, times, Nt, chron_idcs = open_scalars_dataset(
+                      glob("./Output/scalars_$(datetime)*"))
    
    if idxEndPlot < 0
       idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
@@ -32,12 +79,13 @@ function visualize_norms(datetime;
    times = times[idxStartPlot:idxEndPlot]
    Nt    = length(times)
 
-   b′_norm  = scalars_ds[:b′_norm][idxStartPlot:end-1]
-   ux′_norm = scalars_ds[:ux′_norm][idxStartPlot:end-1]
-   uy′_norm = scalars_ds[:uy′_norm][idxStartPlot:end-1]
-   ur′_norm = scalars_ds[:ur′_norm][idxStartPlot:end-1]
-   uφ′_norm = scalars_ds[:uφ′_norm][idxStartPlot:end-1]
-   uz′_norm = scalars_ds[:uz′_norm][idxStartPlot:end-1]
+   #Load data, sorted chronologically and then restricted to plot interval
+   b′_norm  = scalars_ds[:b′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   ux′_norm = scalars_ds[:ux′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   uy′_norm = scalars_ds[:uy′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   ur′_norm = scalars_ds[:ur′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   uφ′_norm = scalars_ds[:uφ′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   uz′_norm = scalars_ds[:uz′_norm][chron_idcs][idxStartPlot:idxEndPlot]
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
@@ -185,29 +233,25 @@ end
 
 function visualize_energetics(datetime, grid, initialKE)
 
-   outfile_list      = glob("./Output/energetics_$(datetime)*")
-   ds, tUnsorted, Nt = open_energetics_dataset(outfile_list)
-
-   #Sort times (essential if sim has ever been picked up from a checkpoint)
-   sortIdcs = sortperm(tUnsorted)
-   t        = tUnsorted[sortIdcs]
+   outfile_list          = glob("./Output/energetics_$(datetime)*")
+   ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
    
    initialKE = no_offset_view(adapt(Array, initialKE))
 
-   PKE          = ds[:total_PKE][sortIdcs] / initialKE[1]
-   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][sortIdcs] / initialKE[1]
-   BTI_transfer = ds[:total_BTI_transfer][sortIdcs] / initialKE[1]
-   BCI_transfer = ds[:total_BCI_transfer][sortIdcs] / initialKE[1]
+   PKE          = ds[:total_PKE][chron_idcs] / initialKE[1]
+   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][chron_idcs] / initialKE[1]
+   BTI_transfer = ds[:total_BTI_transfer][chron_idcs] / initialKE[1]
+   BCI_transfer = ds[:total_BCI_transfer][chron_idcs] / initialKE[1]
    
    PKE          = PKE .- PKE[1]
    PAPE_to_PKE  = PAPE_to_PKE .- PAPE_to_PKE[1]
    BTI_transfer = BTI_transfer .- BTI_transfer[1]
    BCI_transfer = BCI_transfer .- BCI_transfer[1]
    
-   gyre_PKE          = ds[:gyre_PKE][sortIdcs]
-   gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][sortIdcs]
-   gyre_BTI_transfer = ds[:gyre_BTI_transfer][sortIdcs]
-   gyre_BCI_transfer = ds[:gyre_BCI_transfer][sortIdcs]
+   gyre_PKE          = ds[:gyre_PKE][chron_idcs]
+   gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][chron_idcs]
+   gyre_BTI_transfer = ds[:gyre_BTI_transfer][chron_idcs]
+   gyre_BCI_transfer = ds[:gyre_BCI_transfer][chron_idcs]
    
    gyre_PKE          = gyre_PKE .- gyre_PKE[1]
    gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE .- gyre_PAPE_to_PKE[1]
@@ -556,17 +600,18 @@ function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
 end
 
 function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
-				   Hx = 0, Hy = 0, Hz = 0, plot_animation = true, 
-				   		   t_idx_skip = 1)
+                                   Hx = 0, Hy = 0, Hz = 0, 
+                                   plot_animation = true, t_idx_skip = 1)
    #=
-   Plot 2D slices of prognostic fields. By default, data are assumed to exclude halos.
+   Plot 2D slices of prognostic fields. By default, data are assumed to exclude
+    halos.
    =#
 
-   outfile_list                  = glob("./Output/output_$(datetime)*")
-   ds_f, x, y, zC, zF, times, Nt = open_dataset(
-					     outfile_list[length(outfile_list)];
-                                             Hx = Hx, Hy = Hy, Hz = Hz
-					       )
+   outfile_list = glob("./Output/output_$(datetime)*")
+   
+   ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(
+					                                 outfile_list[length(outfile_list)];
+                                           Hx = Hx, Hy = Hy, Hz = Hz)
 
    if const_dim == "x"
       x_idx, y_idx, z_idx       = const_idx, nothing, nothing
@@ -584,13 +629,23 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
-   B  = adapt(Array, B)[xyzC_idcs...] #no_offset_view(adapt(Array, B))[xyzC_idcs...]
+   B  = adapt(Array, B)[xyzC_idcs...]
    Uφ = no_offset_view(adapt(Array, Uφ))[xyzC_idcs...]
 
-   b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., Nt]
-   ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., Nt]
-   uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., Nt]
-   uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., Nt]
+   b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., chron_idcs[Nt]]
+   ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., chron_idcs[Nt]]
+   uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., chron_idcs[Nt]]
+   uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., chron_idcs[Nt]]
+   
+   #b_total_f  = b_total[:, :, Nt]
+   #ur_total_f = ur_total[:, :, Nt]
+   #uφ_total_f = uφ_total[:, :, Nt]
+   #uz_total_f = uz_total[:, :, Nt]
+   
+   #b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., Nt]
+   #ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., Nt]
+   #uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., Nt]
+   #uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., Nt]
 
    Δb_f  = b_total_f .- B
    Δuφ_f = uφ_total_f .- Uφ
@@ -697,14 +752,16 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                         title = L"Vertical velocity perturbation ($u_z'$)",
                         ax_kwargs...)
 
-      ds, x, y, zC, zF, times, Nt = open_dataset(outfile_list)
+      ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
+                                                             Hx = Hx, Hy = Hy, 
+                                                             Hz = Hz)
 
       n = Observable(1)
 
-      b_total  = @lift ds[:b][xyzC_idcs..., $n]
-      ur_total = @lift ds[:ur][xyzC_idcs..., $n]
-      uφ_total = @lift ds[:uφ][xyzC_idcs..., $n]
-      uz_total = @lift ds[:uz][xyzF_idcs..., $n]
+      b_total  = @lift ds[:b][xyzC_idcs..., chron_idcs[$n]]
+      ur_total = @lift ds[:ur][xyzC_idcs..., chron_idcs[$n]]
+      uφ_total = @lift ds[:uφ][xyzC_idcs..., chron_idcs[$n]]
+      uz_total = @lift ds[:uz][xyzF_idcs..., chron_idcs[$n]]
 
       Δb  = @lift $b_total .- B
       Δuφ = @lift $uφ_total .- Uφ
