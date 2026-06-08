@@ -127,6 +127,23 @@ function ∂z_b(b, i, j, k, Δz)
    return @. (∂z_b[1] + ∂z_b[2]) / 2
 end
 
+function ∂b∂z_field(b, grid; returnAsArray = true)
+
+   @inline ∂b∂z_ccc(i, j, k, g) = @inbounds ((b[i, j, (k + 1)] - b[i, j, k])
+                                             / Δzᶜᶜᶜ(i, j, k, g)
+                                            )
+
+   ∂b∂z_op = KernelFunctionOperation{Center, Center, Center}(∂b∂z_ccc, grid)
+   
+   @compute ∂b∂z = Field(∂b∂z_op)
+   
+   if returnAsArray
+      return adapt(Array, ∂b∂z)
+   elseif !returnAsArray
+      return ∂b∂z
+   end
+end
+
 function ∇b(b, i, j, k, Δx, Δy, Δz)
    ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / Δx
    ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / Δy
