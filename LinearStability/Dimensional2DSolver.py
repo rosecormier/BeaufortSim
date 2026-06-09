@@ -39,13 +39,13 @@ parser.add_argument("--strat_shape",
                     type = str, default = "constant")
 parser.add_argument("-N", "--buoyancyfreq",
                     help = "Maximum buoyancy frequency (Hz)",
-                    type = float, default = 1e-2)
+                    type = float, default = 1e-3) #Update to far-field N
 parser.add_argument("-f0", "--Coriolis",
                     help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
 parser.add_argument("-U", "--bkgdU",
                     help = "Characteristic scale for background velocity (m/s)",
-                    type = float, default = 3.5)
+                    type = float, default = 5e-2)
 parser.add_argument("--sigmar",
                     help = "Radial length scale of gyre (m)",
                     type = float, default = 2.5e5)
