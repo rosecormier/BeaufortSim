@@ -3,17 +3,56 @@ import scipy.sparse as ssp
 
 from math import e, pi
 
-def N2_profile(stratification_kw, dimensional_N2 = 1):
+def N2_profile(params, dimensional_N2_far = 1):
     """
     Return a function to compute N^2 at discrete values of z.
     """
 
-    if stratification_kw == "constant":
-        N2_function = lambda z : dimensional_N2 * np.ones_like(z)
+    def TWB_N2(r, z):
 
-    #elif stratification_kw == "baroclinicthermalwind":
+        f0, dimensional_U              = params.f0, params.Umax
+        dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
+    
+        #z deriv of
+        #r_integrated_∂Uϕ∂z = (np.sqrt(2) * dimensional_σr * f0 * dimensional_U * z / (dimensional_σz**2)) * np.exp(0.5 - (z / dimensional_σz)**2) * (1 - np.exp(-(r / dimensional_σr)**2))
+        
+        N2 = ((np.sqrt(2) * dimensional_σr * f0 * dimensional_U 
+               / (dimensional_σz**2)) 
+              * (1 - np.exp(-(r / dimensional_σr)**2)) 
+              * (1 - 2 * z / (dimensional_σz**2)) 
+              * np.exp(0.5 - (z / dimensional_σz)**2)
+             )
+        return N2
 
-    return N2_function
+    def fromDoubleTanhN2(z, doubleTanhParams):
+    
+        g, rho_0, A_s, z_s, C_s, A_d, z_d, C_d = params.doubleTanhParams
+        
+        N2 = -(g / rho_0) * ((A_s / C_s) 
+                             * (1 / (np.cosh((z - z_s) / C_s))**2) 
+                             + (A_d / C_d) 
+                             * (1 / (np.cosh((z - z_d) / C_d))**2)
+                            )
+        return N2
+       
+    def constantN2(z):
+        return dimensional_N2_far * np.ones_like(z)
+
+    if params.stratification_kw == "constant":
+        totalN2function = lambda z : constantN2(z)
+        
+    elif params.stratification_kw == "TWB":
+        totalN2function = lambda r, z : constantN2(z) + TWB_N2(r, z)
+
+    elif params.stratification_kw == "doubleTanh":
+        totalN2function = lambda z : (constantN2(z) 
+                                 + fromDoubleTanhN2(z, params.doubleTanhParams))
+        
+    elif params.stratification_kw == "doubleTanhTWB":
+        totalN2function = lambda r, z : (constantN2(z) 
+                  + TWB_N2(r, z) + fromDoubleTanhN2(z, params.doubleTanhParams))
+
+    return totalN2function
 
 def ComputeRecips(params, geom):
     """
@@ -27,8 +66,8 @@ def ComputeRecips(params, geom):
         else:
             dimensional_N2 = params.Nmax**2
 
-        N2_function  = N2_profile(params.stratification_kw, 
-                                  dimensional_N2 = dimensional_N2)
+        N2_function  = N2_profile(params, 
+                                  dimensional_N2_far = dimensional_N2)
         geom.N2      = N2_function(geom.z)
         geom.N2Recip = 1 / geom.N2
         

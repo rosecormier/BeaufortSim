@@ -35,7 +35,22 @@ class Parameters:
             self.bkgd = "BG"
         
             self.stratification_kw = args["strat_shape"]
-            self.sigmaz            = args["sigmaz"]
+            
+            if self.stratification_kw in ["doubleTanh", "doubleTanhTWB"]:
+            
+                #Stratification parameters
+                g     = -9.81  #m/s^2
+                rho_0 = 1025.5 #kg/m^3
+                A_s   = 2.5    #kg/m^3
+                z_s   = -40    #m
+                C_s   = 15     #m
+                A_d   = 1.05   #kg/m^3
+                z_d   = -200   #m
+                C_d   = 60     #m
+                
+                self.doubleTanhParams = [g, rho_0, A_s, z_s, C_s, A_d, z_d, C_d]
+            
+            self.sigmaz = args["sigmaz"]
             
             self.verticalBCs = args["zBCs"]
             
