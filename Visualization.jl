@@ -297,6 +297,10 @@ function visualize_energetics(datetime, grid, initialKE)
             color = :hotpink)
    scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", 
             color = :darkgreen)
+   scatter!(ax_budget, t[1:end-1], 
+           (dt_PKE_total - PAPE_to_PKE[1:end-1] - BTI_transfer[1:end-1]
+            - gyre_transfer[1:end-1]), 
+           label = "Residual", color = :red)
    axislegend(ax_budget)
 
    fig_budget[1, 1] = Label(fig_budget, "Terms in PKE budget", fontsize = 24,
@@ -322,8 +326,8 @@ function visualize_energetics(datetime, grid, initialKE)
    lines!(ax_gyreBudget, t[1:end-1], 
           (dt_PKE_gyre - gyre_PAPE_to_PKE[1:end-1] - gyre_BTI_transfer[1:end-1]
            - gyre_BCI_transfer[1:end-1]), 
-          label = "residual", color = :red)
-   axislegend(ax_budget)
+          label = "Residual", color = :red)
+   axislegend(ax_gyreBudget)
 
    fig_gyreBudget[1, 1] = Label(fig_gyreBudget,
 			    "Terms in PKE budget, integrated over gyre region",
