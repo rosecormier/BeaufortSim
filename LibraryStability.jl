@@ -8,8 +8,8 @@ using OffsetArrays, Printf
 
 ####################
 
-function ζz_abs_ffc(i, j, k, grid, f, u, v)
-   return f + ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
+function ζz_abs_ffc(i, j, k, g, f, u, v)
+   return f + ζ₃ᶠᶠᶜ(i, j, k, g, u, v)
 end
 
 function check_inert_stability(grid, f, u, v; 
@@ -75,7 +75,7 @@ function check_inert_stability(grid, f, u, v;
       Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
 
       title = @sprintf("Absolute vorticity at %s = %i %s; t = 0.0 days",
-		       const_dim, nearest, units)
+                       const_dim, nearest, units)
 
       fig[1, 1:2] = Label(fig, title, fontsize = 18, tellwidth = false)
 
@@ -83,14 +83,21 @@ function check_inert_stability(grid, f, u, v;
    end
 end
 
-function check_grav_stability(b; 
-                              plot_∂b∂z = false, 
-                              grid = nothing,
+function check_grav_stability(b, grid; 
+                              plot_∂b∂z = false,
 		                          x_idx = nothing, 
                               y_idx = nothing, 
-                              z_idx = nothing)
+                              z_idx = nothing,
+                              Hx = 3, Hy = 3, Hz = 3)
    
-   if any(n -> n < 0, ∂z(b))
+   @compute @at (Center, Center, Center) ∂b∂z = Field(∂z(b))
+   ∂b∂z_array = no_offset_view(adapt(Array, ∂b∂z))
+   
+   ∂b∂z_interior = ∂b∂z_array[Hx + 1:length(no_offset_view(grid.xᶜᵃᵃ)) - Hx,
+                              Hy + 1:length(no_offset_view(grid.yᵃᶜᵃ)) - Hy, 
+                              Hz + 1:length(grid.z.cᵃᵃᶜ) - Hz]
+   
+   if any(n -> n < 0, ∂b∂z_interior)
       print("Warning: system is gravitationally unstable.\n")
    end
    
@@ -98,13 +105,13 @@ function check_grav_stability(b;
 
       mkpath("./Plots") #Make visualization directory if nonexistent
 
-      x = xnodes(grid, Center()) ./ 1000 #Convert to km for readability
-      y = ynodes(grid, Center()) ./ 1000 #Convert to km for readability
-      z = znodes(grid, Face())
+      x = adapt(Array, grid.xᶜᵃᵃ)[Hx+1:length(grid.xᶜᵃᵃ)-Hx] ./ 1000 #Convert to km for readability
+      y = adapt(Array, grid.yᵃᶜᵃ)[Hy+1:length(grid.yᵃᶜᵃ)-Hy] ./ 1000 #Convert to km for readability
+      z = adapt(Array, grid.z.cᵃᵃᶜ)[1:length(grid.z.cᵃᵃᶜ)-2*Hz]
 
       if !isnothing(x_idx)
 
-         ∂b∂z_slice = @views adapt(Array, ∂z(b))[x_idx, :, :]
+         ∂b∂z_slice = ∂b∂z_interior[x_idx, :, :] #@views adapt(Array, ∂z(b))[x_idx, :, :]
          
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "x";
                                                            x_idx = x_idx)
@@ -147,6 +154,4 @@ function check_grav_stability(b;
    end
 end
 
-function compute_Bu(σr, σz, f, N²)
-   Bu = N² * (σz / (f * σr))^2
-end
+@inline compute_Bu(σr, σz, f, N²) = N² * (σz / (f * σr))^2
