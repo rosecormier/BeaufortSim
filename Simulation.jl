@@ -20,8 +20,8 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 252 #x-grid size
-const Ny = 252 #y-grid size
+const Nx = 400 #x-grid size
+const Ny = 400 #y-grid size
 const Nz = 100  #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
@@ -110,7 +110,7 @@ custom_z_grids = Dict("uniform"   => (-Lz, 0),
                      )
 
 grid = RectilinearGrid(architecture,
-		                   topology = (Bounded, Bounded, Bounded),
+		                   topology = (Periodic, Periodic, Bounded),
                        size = (Nx, Ny, Nz), 
                        x = (-Lr, Lr),
 		                   y = (-Lr, Lr),
@@ -371,17 +371,17 @@ end
 
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
-			     t_idx_skip = t_idx_skip)
+                             t_idx_skip = t_idx_skip)
 end
 
 if vis_const_y
    visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Uφ; 
-			     t_idx_skip = t_idx_skip) 
+                             t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
    visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ; 
-			     t_idx_skip = t_idx_skip)
+                             t_idx_skip = t_idx_skip)
 end
 
 if vis_norms
