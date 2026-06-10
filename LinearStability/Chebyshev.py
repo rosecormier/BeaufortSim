@@ -5,6 +5,7 @@ I reference "Spectral Methods in MATLAB" by L. Trefethen.
 """
 
 import numpy as np
+import scipy.sparse as ssp
 
 from math import pi
 
@@ -116,7 +117,7 @@ class Parameters:
         self.discretizeVertical = discretizeVertical
         self.nondimensional     = nondimensional
     
-def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0):
+def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0, sparse = False):
     """
     Computes the Chebyshev differentiation matrix on N+1 points (i.e., N
      intervals).
@@ -143,11 +144,14 @@ def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0):
         dX = X.T - X.conj()
     
         #Initialize D with off-diag entries computed by eq. 6.5 (Trefethen)
-        D = ((c[:, np.newaxis] * (1.0 / c.conj())[np.newaxis, :])
+        D_ndarray = ((c[:, np.newaxis] * (1.0 / c.conj())[np.newaxis, :])
                  / (dX + (np.eye(N + 1))))
     
         #Update diagonal entries (currently = 0) using identity 6.6 (Trefethen)
-        D = D - np.diag(D.sum(axis = 1))
+        D = D_ndarray - np.diag(D_ndarray.sum(axis = 1))
+        
+        if sparse:
+            D = ssp.csr_array(D)
 
         #Shift entries of x (note: important to do this AFTER building D)
         x += xIntervalShiftAmt
@@ -157,26 +161,34 @@ def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0):
 class ChebyshevGeometry:
 
     def __init__(self, params):
-        
+    
         self.method = "Chebyshev"
-
-        #Compute differentiation matrix and Chebyshev-spaced grid
-        Dr, r = Chebyshev(params.Nr)
-                        
-        #Scale gridpoints and variable of differentiation to fit domain
-        self.r, self.Dr = r * params.Lr, Dr / params.Lr
-
-        #Second-order r-differentiation matrix
-        self.Dr2 = np.matmul(self.Dr, self.Dr)
         
-        if params.discretizeVertical:
+        if not params.discretizeVertical:
+            self.sparse = False
+    
+        elif params.discretizeVertical:
+        
+            self.sparse = True
                 
             #Compute differentiation matrix and Chebyshev-spaced grid
             Dz, z = Chebyshev(params.Nz, xIntervalScaleFactor = 0.5,
-                              xIntervalShiftAmt = -0.5)
+                              xIntervalShiftAmt = -0.5, sparse = self.sparse)
 
             #Scale gridpoints and variable of differentiation to fit domain
             self.z, self.Dz = z * params.Lz, Dz / params.Lz
 
             #Second-order z-differentiation matrix
-            self.Dz2 = np.matmul(self.Dz, self.Dz)
+            self.Dz2 = self.Dz @ self.Dz
+
+        #Compute differentiation matrix and Chebyshev-spaced grid
+        Dr, r = Chebyshev(params.Nr, sparse = self.sparse)
+                        
+        #Scale gridpoints and variable of differentiation to fit domain
+        self.r, self.Dr = r * params.Lr, Dr / params.Lr
+
+        #Second-order r-differentiation matrix
+        if self.sparse:
+            self.Dr2 = self.Dr @ self.Dr
+        elif not self.sparse:
+            self.Dr2 = np.matmul(self.Dr, self.Dr)

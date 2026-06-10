@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as ssp
 
 from math import cos, sin
 
@@ -33,7 +34,7 @@ def EigvelFrom1DEigvec(params, geom, eigvec, k, **kwargs):
 
     halfNr = params.halfNr
     r      = geom.r[0:(halfNr + 1)]
-    Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)] #I need to double-check whether I should be adding quadrants instead
+    Dr     = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
 
     m, ω     = kwargs.get("m"), kwargs.get("ω")
     φ, z, t  = kwargs.get("φ"), kwargs.get("z"), kwargs.get("t")
@@ -69,18 +70,15 @@ def EigvelFrom2DEigmode(params, geom, eigMode, k, **kwargs):
     Nz     = params.Nz
    
     iz = np.ones(params.Nz + 1) 
-    Iz = np.eye(params.Nz + 1)
+    Iz = ssp.eye(params.Nz + 1, format = "csr")
 
-    r     = geom.r[0:(halfNr + 1)]
-    Dr_2D = np.kron(geom.Dr[:(halfNr + 1), :(halfNr + 1)], Iz)
+    r     = geom.r[:(halfNr + 1)]
+    Dr_2D = ssp.kron(geom.Dr[:(halfNr + 1), :(halfNr + 1)], Iz, format = "csr")
     
     ω, φ, t = kwargs.get("ω"), kwargs.get("φ"), kwargs.get("t")
-    
-    ur = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
-    uφ = np.zeros((Nz + 1) * (halfNr + 1), dtype = complex)
-   
+
     ur = 1j * k * (eigMode / np.kron(r, iz))
-    uφ = -np.matmul(Dr_2D, eigMode)
+    uφ = -(Dr_2D @ ssp.csr_array(eigMode)).toarray()
 
     if φ is not None:
         ur = ur * (np.cos(k * φ) + 1j * np.sin(k * φ))
