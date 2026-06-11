@@ -12,9 +12,6 @@ def N2_profile(params, dimensional_N2_far = 1):
 
         f0, dimensional_U              = params.f0, params.Umax
         dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
-    
-        #z deriv of
-        #r_integrated_∂Uϕ∂z = (np.sqrt(2) * dimensional_σr * f0 * dimensional_U * z / (dimensional_σz**2)) * np.exp(0.5 - (z / dimensional_σz)**2) * (1 - np.exp(-(r / dimensional_σr)**2))
         
         N2 = ((np.sqrt(2) * dimensional_σr * f0 * dimensional_U 
                / (dimensional_σz**2)) 
@@ -71,12 +68,16 @@ def ComputeRecips(params, geom):
         geom.N2      = N2_function(geom.z)
         geom.N2Recip = 1 / geom.N2
         
-        geom.rRecip = ssp.diags_array(1 / geom.r[1:(params.halfNr + 1)], format = "csr")
+        #2D eigenvalue problem
+        if params.discretizeRadial:
+            geom.rRecip = ssp.diags_array(1 / geom.r[1:(params.halfNr + 1)],
+                                          format = "csr")
         
-    elif not params.discretizeVertical:
+    #1D (r) eigenvalue problem
+    elif (params.discretizeRadial and not params.discretizeVertical):
         geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
 
-def BuildBkgdOperators(params, geom):
+def BuildBkgdOperators(params, geom, r_idx = None):
     """
     Build discrete representations of operators Ψ_op := (1/r) * (∂Ψ/∂r) and
      Q_op := (1/r) * (∂Q/∂r) for the prescribed background flow.
@@ -87,7 +88,8 @@ def BuildBkgdOperators(params, geom):
     else:
         dimensional_U, dimensional_σr = params.Umax, params.sigmar
 
-    if not params.discretizeVertical:
+    #1D (r) eigenvalue problem
+    if (params.discretizeRadial and not params.discretizeVertical):
     
         rTilde = np.ravel(geom.r[1:(params.halfNr + 1)]) / dimensional_σr
 
@@ -125,10 +127,16 @@ def BuildBkgdOperators(params, geom):
         
             f0, dimensional_σz = params.f0, params.sigmaz
         
-            r       = geom.r[1:-1]
-            rTilde  = np.ravel(r) / dimensional_σr
+            #2D eigenvalue problem
+            if params.discretizeRadial:
+                rTilde = np.ravel(geom.r[1:-1]) / dimensional_σr
+                
+            #1D (z) eigenvalue problem
+            elif not params.discretizeRadial:
+                rTilde = np.array([params.rs[r_idx] / dimensional_σr])
+                
             r2Tilde = rTilde**2
-            
+                
             z       = geom.z[zStartIdx:zEndIdx]
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
@@ -140,32 +148,64 @@ def BuildBkgdOperators(params, geom):
                                          * dimensional_U / dimensional_σr)
             Ψ_opVerticalFactor = np.diag(np.exp(-z2Tilde))
             
-            Ir = ssp.eye_array(params.Nr - 1, format = "csr")
-            Iz = ssp.eye_array(params.DzSize, format = "csr")
-
-            Ψ_op = (ssp.kron(Ψ_opRadialFactor, Iz, format = "csr") @
-                    ssp.kron(Ir, Ψ_opVerticalFactor, format = "csr"))
-
             Q_opScaleFactor = (8 * e)**0.5 * (dimensional_U / dimensional_σr**3)
             
             Q_opFactor1 = np.diag(np.exp(-r2Tilde))
             Q_opFactor2 = np.diag(np.exp(-z2Tilde))
 
             Q_opFactor3RadialTerm = np.diag(2 * (rTilde**2 - 2))
-            Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
-                                                / dimensional_σz)**2 
-                * (N2Recip * (1 - 2 * z2Tilde) + z * np.matmul(Dz.toarray(), N2Recip))
-                                             )
-  
-            Q_opFactor3 = (ssp.kron(Q_opFactor3RadialTerm, Iz, format = "csr")
-                           + ssp.kron(Ir, Q_opFactor3VerticalTerm, format = "csr"))
+            
+            #2D eigenvalue problem
+            if params.discretizeRadial:
+            
+                Ir = ssp.eye_array(params.Nr - 1, format = "csr")
+                Iz = ssp.eye_array(params.DzSize, format = "csr")
 
-            Q_op = ((ssp.kron(Q_opScaleFactor * Q_opFactor1, Iz, format = "csr") 
-                    @ ssp.kron(Ir, Q_opFactor2, format = "csr")) 
-                    @ Q_opFactor3)
-            #N.b., in the limit of very large dimensional_σz, this construction
-            # of Q_op should agree with the 1-dimensional Q_op constructed in the 
-            # case of the other disjunct (!discretizeVertical).
+                Ψ_op = (ssp.kron(Ψ_opRadialFactor, Iz, format = "csr") @
+                        ssp.kron(Ir, Ψ_opVerticalFactor, format = "csr"))
+
+            
+                Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
+                                                    / dimensional_σz)**2 
+                                                  * (N2Recip * (1 - 2 * z2Tilde)
+                                                     + z 
+                                                       * np.matmul(Dz.toarray(),
+                                                                   N2Recip)
+                                                    )
+                                                 )
+  
+                Q_opFactor3 = (ssp.kron(Q_opFactor3RadialTerm, Iz, 
+                                        format = "csr")
+                               + ssp.kron(Ir, Q_opFactor3VerticalTerm, 
+                                          format = "csr")
+                              )
+
+                Q_op = ((ssp.kron(Q_opScaleFactor * Q_opFactor1, Iz, 
+                                  format = "csr") 
+                         @ ssp.kron(Ir, Q_opFactor2, format = "csr")
+                        ) 
+                        @ Q_opFactor3
+                       )
+                    
+            #1D (z) eigenvalue problem   
+            elif not params.discretizeRadial:
+                
+                Ψ_op = Ψ_opRadialFactor * Ψ_opVerticalFactor
+                
+                Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
+                                                    / dimensional_σz)**2 
+                                                  * (N2Recip * (1 - 2 * z2Tilde)
+                                                     + z 
+                                                       * np.matmul(Dz, N2Recip)
+                                                    )
+                                                 )
+                
+                Q_op = (Q_opScaleFactor * Q_opFactor1 
+                        * np.matmul(Q_opFactor2, 
+                                    (Q_opFactor3RadialTerm 
+                                     + Q_opFactor3VerticalTerm)
+                                   )
+                       )
 
             geom.Ψ_op, geom.Q_op = Ψ_op, Q_op
 
@@ -217,24 +257,25 @@ def BuildHorizontalLaplacian(params, geom):
     geom.LapH = ConvertQuadsToBlock(geom, geom.LapH_Q1, geom.LapH_Q2, 
                                     geom.LapH_Q3, geom.LapH_Q4)
     
+    #2D eigenvalue problem
     if params.discretizeVertical:
-    
-        Iz = ssp.eye_array(params.Nz - 1, format = "csr")
-        
+        Iz           = ssp.eye_array(params.Nz - 1, format = "csr")
         geom.LapH_2D = ssp.kron(geom.LapH, Iz, format = "csr")
     
-def BuildMatrixB(params, geom, kφ, kz = None):
+def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
     """
     Build discrete representation of 'B' operator in generalized eigenvalue 
      problem.
     """
     
-    Nr, halfNr = params.Nr, params.halfNr
+    kφ2 = kφ**2
     
-    kφ2     = kφ**2
-    r2Recip = geom.rRecip**2
-    
-    if not params.discretizeVertical:
+    if params.discretizeRadial:
+        Nr, halfNr = params.Nr, params.halfNr
+        r2Recip    = geom.rRecip**2
+
+    #1D (r) eigenvalue problem
+    if (params.discretizeRadial and not params.discretizeVertical):
     
         kz2 = kz**2
         
@@ -260,7 +301,38 @@ def BuildMatrixB(params, geom, kφ, kz = None):
         
         return geom.B
         
-    elif params.discretizeVertical:
+    #1D (z) eigenvalue problem
+    elif (params.discretizeVertical and not params.discretizeRadial):
+    
+        #Deal with vertical boundary conditions
+        
+        if params.verticalBCs == "homogeneous":
+        
+            #Retain interior values (eigfunction will vanish at boundary pts)
+            N2Recip = np.diag(geom.N2Recip[1:-1])
+            Dz      = geom.Dz[1:-1, 1:-1]
+            Dz2     = geom.Dz2[1:-1, 1:-1]
+        
+        elif params.verticalBCs == "continuousBuoyancy":
+        
+            zz = np.zeros((1, (params.Nz + 1)))
+            
+            #Load these operators in full
+            N2Recip = np.diag(geom.N2Recip)
+            Dz      = geom.Dz
+            Dz2Full = geom.Dz2[1:-1, :]
+            
+            #Impose BCs by zeroing first and last rows of the full Dz2
+            Dz2 = np.vstack((zz, Dz2Full, zz))
+
+        geom.B = -(np.matmul((params.f0**2 * N2Recip), Dz2)
+                   + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
+                  )
+    
+        return geom.B
+        
+    #2D eigenvalue problem
+    elif (params.discretizeRadial and params.discretizeVertical):
     
         #Quadrants of terms depending on r, discretized on r-grid
         horizontalB_Q1 = (kφ2 * r2Recip) - geom.LapH_Q1
@@ -294,13 +366,11 @@ def BuildMatrixB(params, geom, kφ, kz = None):
             horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr")
             
             #Load these operators in full (w.r.t. z)
-            #N2Recip = ssp.diags_array(geom.N2Recip, format = "csr")
             N2Recip = np.diag(geom.N2Recip)
             Dz      = geom.Dz.toarray()
             Dz2Full = geom.Dz2[1:-1, :].toarray()
             
             #Impose BCs by zeroing first and last rows of the full Dz2
-            #Dz2 = ssp.vstack([zz, Dz2Full, zz], format = "csr") 
             Dz2 = np.vstack((zz, Dz2Full, zz))
 
         #Terms depending on z, discretized on z-grid
@@ -311,7 +381,7 @@ def BuildMatrixB(params, geom, kφ, kz = None):
         Ir = ssp.eye_array(params.Nr - 1, format = "csr")
             
         #Terms depending on z, discretized on rz-grid
-        verticalB_2D = ssp.kron(Ir, verticalB, format = "csr") #np.kron(Ir, verticalB)
+        verticalB_2D = ssp.kron(Ir, verticalB, format = "csr")
             
         geom.B_Q1 = (horizontalB_2D + verticalB_2D)[:(params.halfNr * params.DzSize),
                                                     :(params.halfNr * params.DzSize)]
@@ -333,19 +403,16 @@ def BuildMatrixA(params, geom):
      problem.
     """
 
-    if not params.discretizeVertical:
-        geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op
+    #Any 1D eigenvalue problem
+    if ((params.discretizeRadial and not params.discretizeVertical) or
+        (params.discretizeVertical and not params.discretizeRadial)):
+        geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op  
     
-    elif params.discretizeVertical:
-        #(np.matmul(geom.Ψ_op[:(params.halfNr * params.DzSize),
-        #                             :(params.halfNr * params.DzSize)],
-        #                    geom.B)
-        #          + geom.Q_op[:(params.halfNr * params.DzSize),
-        #                      :(params.halfNr * params.DzSize)]
-        #         )
-
+    #2D eigenvalue problem
+    elif (params.discretizeRadial and params.discretizeVertical):
         geom.A = ((geom.Ψ_op[:(params.halfNr * params.DzSize),
-                             :(params.halfNr * params.DzSize)] @ geom.B_Q1 + geom.B_Q2)
+                             :(params.halfNr * params.DzSize)] @ geom.B_Q1 
+                   + geom.B_Q2)
                   + geom.Q_op[:(params.halfNr * params.DzSize),
                               :(params.halfNr * params.DzSize)]
                  )
