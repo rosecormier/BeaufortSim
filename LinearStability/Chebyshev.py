@@ -11,23 +11,26 @@ from math import pi
 
 class Parameters:
     
-    def __init__(self, args, discretizeVertical = False,
+    def __init__(self, args, discretizeRadial = False,
+                 discretizeVertical = False,
                  nondimensional = False):
-                 
-        self.Lr     = args["Lr"] #Max. r in phys. space; half of comp. domain
-        self.Nr     = args["Nr"] #No. (odd) of radial points in comp. domain
-        self.halfNr = self.Nr // 2   
+
         self.Np     = args["Np"] #No. of azimuthal points (visualization only)
         self.kps    = np.arange(args["k_phi"][0], args["k_phi"][1],
                                 args["k_phi"][2])
         self.nmodes = args["nmodes"]
                  
-        if not discretizeVertical:
-            self.bkgd = args["bkgd"]
-            self.kzs  = np.arange(args["k_z"][0], args["k_z"][1],
-                                  args["k_z"][2])
+        if discretizeRadial:
+            self.Lr     = args["Lr"] #Max. r in phys. space; half of comp. domain
+            self.Nr     = args["Nr"] #No. (odd) of radial points in comp. domain
+            self.halfNr = self.Nr // 2   
+                 
+            if not discretizeVertical:
+                self.bkgd = args["bkgd"]
+                self.kzs  = np.arange(args["k_z"][0], args["k_z"][1],
+                                      args["k_z"][2])
         
-        elif discretizeVertical:
+        if discretizeVertical:
         
             self.Lz = args["Lz"] #Max. depth (i.e., -min(z)) in physical domain
             self.Nz = args["Nz"] #Number of computational gridpoints in z
@@ -59,6 +62,9 @@ class Parameters:
                 self.DzSize = self.Nz - 1
             elif self.verticalBCs == "continuousBuoyancy":
                 self.DzSize = self.Nz + 1
+                
+            if not discretizeRadial:
+                self.rs = np.arange(args["r"][0], args["r"][1], args["r"][2])
                  
         self.f0 = args["Coriolis"]
     
@@ -114,10 +120,12 @@ class Parameters:
         else:
             self.dimString = "dimensional"    
         
+        self.discretizeRadial   = discretizeRadial
         self.discretizeVertical = discretizeVertical
         self.nondimensional     = nondimensional
     
-def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0, sparse = False):
+def Chebyshev(N, xIntervalScaleFactor = 1, xIntervalShiftAmt = 0, 
+              sparse = False):
     """
     Computes the Chebyshev differentiation matrix on N+1 points (i.e., N
      intervals).
@@ -164,13 +172,13 @@ class ChebyshevGeometry:
     
         self.method = "Chebyshev"
         
-        if not params.discretizeVertical:
+        if (not params.discretizeVertical or not params.discretizeRadial):
             self.sparse = False
     
-        elif params.discretizeVertical:
-        
+        elif (params.discretizeRadial and params.discretizeVertical):
             self.sparse = True
                 
+        if params.discretizeVertical:
             #Compute differentiation matrix and Chebyshev-spaced grid
             Dz, z = Chebyshev(params.Nz, xIntervalScaleFactor = 0.5,
                               xIntervalShiftAmt = -0.5, sparse = self.sparse)
@@ -181,14 +189,15 @@ class ChebyshevGeometry:
             #Second-order z-differentiation matrix
             self.Dz2 = self.Dz @ self.Dz
 
-        #Compute differentiation matrix and Chebyshev-spaced grid
-        Dr, r = Chebyshev(params.Nr, sparse = self.sparse)
-                        
-        #Scale gridpoints and variable of differentiation to fit domain
-        self.r, self.Dr = r * params.Lr, Dr / params.Lr
-
-        #Second-order r-differentiation matrix
-        if self.sparse:
-            self.Dr2 = self.Dr @ self.Dr
-        elif not self.sparse:
-            self.Dr2 = np.matmul(self.Dr, self.Dr)
+        if params.discretizeRadial:
+            #Compute differentiation matrix and Chebyshev-spaced grid
+            Dr, r = Chebyshev(params.Nr, sparse = self.sparse)
+                            
+            #Scale gridpoints and variable of differentiation to fit domain
+            self.r, self.Dr = r * params.Lr, Dr / params.Lr
+    
+            #Second-order r-differentiation matrix
+            if self.sparse:
+                self.Dr2 = self.Dr @ self.Dr
+            elif not self.sparse:
+                self.Dr2 = np.matmul(self.Dr, self.Dr)

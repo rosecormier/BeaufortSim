@@ -9,19 +9,24 @@ from Streamfunctions import *
 def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                  eigVecs):
     
-    Lr, Nr, halfNr = params.Lr, params.Nr, params.halfNr
-    
     dφ = 2 * pi / params.Np           #φ-increment
     φ  = dφ * np.arange(0, params.Np) #φ-coords
-
-    makedirs("./Data", exist_ok = True) #Create data directory if nonexistent
     
-    if params.discretizeVertical:
-        Lz, Nz     = params.Lz, params.Nz
-        Bu         = f"{params.Bu:.1E}"
-        gridString = f"Lr{Lr:.1E}_Lz{Lz:.1E}_Nr{Nr}_Nz{Nz}"
-    else:
+    if params.discretizeRadial:
+        Lr, Nr, halfNr = params.Lr, params.Nr, params.halfNr
+
+    if (params.discretizeRadial and not params.discretizeVertical):
         Bu, gridString = "Inf", f"Lr{Lr:.1E}_Nr{Nr}"
+        
+    elif params.discretizeVertical:
+        Lz, Nz, Bu = params.Lz, params.Nz, f"{params.Bu:.1E}"
+        
+        if params.discretizeRadial:
+            gridString = f"Lr{Lr:.1E}_Lz{Lz:.1E}_Nr{Nr}_Nz{Nz}"
+        elif not params.discretizeRadial:
+            gridString = f"Lz{Lz:.1E}_Nz{Nz}"
+        
+    makedirs("./Data", exist_ok = True) #Create data directory if nonexistent
 
     ncfile = Dataset(f"./Data/{params.dimString}_{gridString}_Ro{params.Ro:.1E}_Bu{Bu}_f{params.f0:.1E}.nc",
                      mode = "w", auto_complex = True)
@@ -32,27 +37,35 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
     #Create coordinate dimensions
     mode_dim = ncfile.createDimension("mode", nmodes)
     kφ_dim   = ncfile.createDimension("kφ", len(kφs))
-    r_dim    = ncfile.createDimension("r", (halfNr + 1))
     φ_dim    = ncfile.createDimension("φ", len(φ))
+    
+    if params.discretizeRadial:
+        r_dim = ncfile.createDimension("r", (halfNr + 1))
+    elif (params.discretizeVertical and not params.discretizeRadial):
+        r_dim = ncfile.createDimension("r", len(params.rs))
 
     #Create variables corresponding to each coordinate dimension
     mode_var = ncfile.createVariable("mode", float, ("mode",))
     kφ_var   = ncfile.createVariable("kφ", float, ("kφ",))
-    r_var    = ncfile.createVariable("r", float, ("r",))
     φ_var    = ncfile.createVariable("φ", float, ("φ",))
+    r_var    = ncfile.createVariable("r", float, ("r",))
 
     #Store data corresponding to each coordinate dimension
     mode_var[:] = range(nmodes)
     kφ_var[:]   = kφs
-    r_var[:]    = geom.r[0:(halfNr + 1)] #Physical coordinates only
     φ_var[:]    = φ
+    
+    if params.discretizeRadial:
+        r_var[:] = geom.r[0:(halfNr + 1)] #Physical coordinates only
+    elif (params.discretizeVertical and not params.discretizeRadial):
+        r_var[:] = params.rs[:]
     
     #Store units
     r_var.units = params.units["r"]
     
-    if not params.discretizeVertical:
+    if (params.discretizeRadial and not params.discretizeVertical):
     
-        #For 1D gen. eig. problem, also save kz-information
+        #Also save kz-information
         
         kzs       = params.kzs
         kz_dim    = ncfile.createDimension("kz", len(kzs))
@@ -86,22 +99,36 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
 
     elif params.discretizeVertical:
     
-        #For 2D gen. eig. problem, also save z-information
+        #Save z-information
         z_dim    = ncfile.createDimension("z", (Nz + 1))
         z_var    = ncfile.createVariable("z", float, ("z",))
         z_var[:] = geom.z[0:(Nz + 1)]
         
         z_var.units = params.units["z"]
+        
+        if not params.discretizeRadial:
+        
+            #Create variables for dimensional growth rates and prop. speeds
+            growth_rate = ncfile.createVariable("growth_rate", float,
+                                                (r_dim, kφ_dim, mode_dim))
+            prop_speed  = ncfile.createVariable("prop_speed", float,
+                                                (r_dim, kφ_dim, mode_dim))
+                                                
+            #Save growth-rate and propagation-speed data
+            growth_rate[:, :] = dimensionalGrowthRates[:, :, :]
+            prop_speed[:, :]  = dimensionalPropSpeeds[:, :, :]
     
-        #Create variables for dimensional growth rates and propagation speeds
-        growth_rate = ncfile.createVariable("growth_rate", float,
-                                            (kφ_dim, mode_dim))
-        prop_speed  = ncfile.createVariable("prop_speed", float,
-                                            (kφ_dim, mode_dim))
-                                            
-        #Save growth-rate and propagation-speed data
-        growth_rate[:, :] = dimensionalGrowthRates[:, :]
-        prop_speed[:, :]  = dimensionalPropSpeeds[:, :]
+        elif params.discretizeRadial:
+    
+            #Create variables for dimensional growth rates and prop. speeds
+            growth_rate = ncfile.createVariable("growth_rate", float,
+                                                (kφ_dim, mode_dim))
+            prop_speed  = ncfile.createVariable("prop_speed", float,
+                                                (kφ_dim, mode_dim))
+                                                
+            #Save growth-rate and propagation-speed data
+            growth_rate[:, :] = dimensionalGrowthRates[:, :]
+            prop_speed[:, :]  = dimensionalPropSpeeds[:, :]
         
         #Create variables for eigenmodes and corresponding streamfunctions
         eigMode     = ncfile.createVariable("eigMode", complex,
@@ -131,19 +158,31 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                 #Evaluate and save eigen-velocities at discrete grid points
                 for ell in range(len(φ)):
                 
-                    eigVel = EigvelFrom2DEigmode(params, geom, 
-                                                 eigVecs[kφ_idx, :, mode], kφ)
-                                                 
-                    eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
-                    eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
+                    if params.discretizeRadial:
                     
-                #Reshape and save eigenmode data
-                eigMode[kφ_idx, :, :, mode] = np.reshape(eigVecs[kφ_idx, :, 
-                                                                 mode],
-                                                         ((halfNr + 1), 
-                                                          (Nz + 1)
-                                                         )
-                                                        )
+                        eigVel = EigvelFrom2DEigmode(params, geom, 
+                                                     eigVecs[kφ_idx, :, mode],
+                                                     kφ_idx)
+                                                     
+                        eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
+                        eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
+                        
+                        #Reshape and save eigenmode data
+                        eigMode[kφ_idx, :, :, 
+                                mode] = np.reshape(eigVecs[kφ_idx, :, mode],
+                                                   ((halfNr + 1), (Nz + 1))
+                                                  )
+                                                 
+                    elif not params.discretizeRadial:
+                    
+                        for r_idx in range(len(params.rs)):
+                         
+                            eigVel = EigvelFrom1DEigvec(params, geom, 
+                                                        eigVecs[:, kφ_idx, :, mode],
+                                                        kφ_idx)
+                                                 
+                            eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
+                            eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
                                                         
                 #Evaluate and save eigen-streamfunction at discrete grid points
                 for ell in range(len(φ)):
@@ -154,7 +193,7 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                                                                k = kφ,
                                                                φ = φ[ell])
             
-            elif not params.discretizeVertical:
+            elif (params.discretizeRadial and not params.discretizeVertical):
             
                 for kz in kzs:
                 
@@ -179,7 +218,7 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                         eigVels = EigvelFrom1DEigvec(params, geom, 
                                                      eigVecs[kz_idx, kφ_idx, :,
                                                              mode], 
-                                                     kφ)
+                                                     kφ_idx)
 
                         eig_ur[kz_idx, kφ_idx, :, ell, mode] = eigVels[0]
                         eig_uφ[kz_idx, kφ_idx, :, ell, mode] = eigVels[1]
