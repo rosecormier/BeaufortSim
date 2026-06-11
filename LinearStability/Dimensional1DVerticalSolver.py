@@ -19,15 +19,21 @@ from SaveToNetCDF import SaveToNetCDF
 from VisualizationLinearStability import RunVisFromSavedData
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-Nr", 
-                    help = "Number (must be ODD) of grid points for direct computation",
-                    type = int, default = 501)
-parser.add_argument("-Lr", 
-                    help = "DIMENSIONAL radius of the physical domain (m)",
-                    type = float, default = 2.5e6)
+parser.add_argument("-Nz", 
+                    help = "Number of grid points for direct computation",
+                    type = int, default = 100)
+parser.add_argument("-Lz", 
+                    help = "DIMENSIONAL depth of the physical domain (m)",
+                    type = float, default = 1e3)
+parser.add_argument("--zBCs",
+                    help = "Vertical boundary conditions on streamfunction",
+                    type = str, default = "continuousBuoyancy")
+parser.add_argument("--strat_shape",
+                    help = "Shape of ambient squared buoyancy frequency profile",
+                    type = str, default = "constant")
 parser.add_argument("-N", "--buoyancyfreq",
-                    help = "Buoyancy frequency (Hz)",
-                    type = float, default = 1e-2)
+                    help = "Maximum buoyancy frequency (Hz)",
+                    type = float, default = 1e-3) #Update to far-field N
 parser.add_argument("-f0", "--Coriolis",
                     help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
@@ -37,18 +43,18 @@ parser.add_argument("-U", "--bkgdU",
 parser.add_argument("--sigmar",
                     help = "Radial length scale of gyre (m)",
                     type = float, default = 2.5e5)
-parser.add_argument("--bkgd",
-                    help = "Background flow to use ('GM' or 'BG')",
-                    type = str, default = "BG")
+parser.add_argument("--sigmaz",
+                    help = "Vertical length scale of gyre (m)",
+                    type = float, default = 3e2)
 parser.add_argument("-Np", 
                     help = "Number of phi-points for visualization", 
                     type = int, default = 50)
 parser.add_argument("--k_phi", 
                     help = "Azimuthal wavenumbers; enter as --k_phi start stop step",
                     type = float, default = [1, 3, 1], nargs = 3)
-parser.add_argument("--k_z", 
-                    help = "DIMENSIONAL vertical wavenumbers (m^{-1}); enter as --k_z start stop step",
-                    type = float, default = [0, 1e-3, 2e-5], nargs = 3)
+parser.add_argument("-r", 
+                    help = "DIMENSIONAL r-values to solve at (m); enter as -r start stop step",
+                    type = float, default = [1, 5e5, 5e3], nargs = 3)
 parser.add_argument("--nmodes", 
                     help = "Number of modes of instability to be considered",
                     type = int, default = 1)
@@ -60,40 +66,38 @@ args = vars(parser.parse_args())
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
-    params = Parameters(args)
+    params = Parameters(args, discretizeVertical = True)
     geom   = ChebyshevGeometry(params)
         
     if not args["useSaved"]:
 
         #Build discrete operators
         ComputeRecips(params, geom)
-        BuildBkgdOperators(params, geom)
-        BuildHorizontalLaplacian(params, geom)
          
         #Information about wavenumbers and modes
-        kφs, kzs, nmodes = params.kps, params.kzs, params.nmodes
+        kφs, rs, nmodes = params.kps, params.rs, params.nmodes
     
         #Initialize arrays to store results of eigen-computation
-        growth = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-        prop   = np.zeros([kzs.shape[0], kφs.shape[0], nmodes])
-        modes  = np.zeros([kzs.shape[0], kφs.shape[0], params.halfNr + 1,
-                           nmodes], dtype = complex)
+        growth = np.zeros([rs.shape[0], kφs.shape[0], nmodes])
+        prop   = np.zeros([rs.shape[0], kφs.shape[0], nmodes])
+        modes  = np.zeros([rs.shape[0], kφs.shape[0], params.Nz + 1, nmodes],
+                          dtype = complex)
     
         #Solve generalized eigenvalue problem
         
-        for kz_idx in range(kzs.shape[0]):
-    
-            kz  = kzs[kz_idx]
-            kz2 = kz**2
-      
+        for r_idx in range(rs.shape[0]):
+        
+            #Build remaining discrete operators
+            BuildBkgdOperators(params, geom, r_idx = r_idx)
+
             for kφ_idx in range(kφs.shape[0]):
     
                 kφ = kφs[kφ_idx]
         
-                print("Solving for kφ =", kφ, ", kz =", kz)
+                print("Solving for kφ =", kφ, ", r =", rs[r_idx])
     
                 #Build matrices "A" and "B"
-                B = BuildMatrixB(params, geom, kφ, kz = kz)
+                B = BuildMatrixB(params, geom, kφ, r_idx = r_idx)
                 A = BuildMatrixA(params, geom)
     
                 #Find generalized eigenspace (directly)
@@ -102,7 +106,7 @@ def QG_Vortex_Stability():
             
                 #Compute eigvals c and eigvecs psi with direct solver
                 eigVals, eigVecs = spalg.eig(A, B)
-    
+
                 solveTime = timeit.timeit() - t0 #Time for direct solver
                 
                 #Indexing that sorts eigvals by ASCENDING Im(c)
@@ -112,9 +116,18 @@ def QG_Vortex_Stability():
                 eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
                 ωs      = eigVals * kφ        #Corresponding ω-values
                 
-                growth[kz_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
-                prop[kz_idx, kφ_idx, :]      = ωs[0:nmodes].real
-                modes[kz_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
+                growth[r_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
+                prop[r_idx, kφ_idx, :]      = ωs[0:nmodes].real
+                #modes[r_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
+                
+                modesLen = len(modes[r_idx, kφ_idx, :, 0:nmodes])
+            
+                if params.verticalBCs == "homogeneous":
+                    #Update 'modes' at interior points only
+                    modes[r_idx, kφ_idx, 1:-1, 0:nmodes] = eigVecs[:, 0:nmodes]
+                elif params.verticalBCs == "continuousBuoyancy":
+                    #Update 'modes' at all z-points
+                    modes[r_idx, kφ_idx, :, 0:nmodes] = eigVecs[:, 0:nmodes]
                 
         #Save results to nc file
         SaveToNetCDF(params, geom, growth, prop, modes)
