@@ -56,9 +56,9 @@ def LoadCommonVariables(ds):
     return (modes, kφs, r, φ, eigModesReal, eigModesImag, eigStreamfnsReal,
             eigStreamfnsImag, eig_urReal, eig_urImag, eig_uφReal, eig_uφImag)
 
-def LoadSavedData1D(params, geom):
+def LoadSavedData1DRadial(params, geom):
     """
-    Load results of 1D gen. eig. solver from nc file.
+    Load results of 1D (r) gen. eig. solver from nc file.
     """
 
     ds = Dataset(f"./Data/{params.dimString}_Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}.nc")
@@ -71,6 +71,23 @@ def LoadSavedData1D(params, geom):
     ds.close()
     
     return commonVariables, kzs, growthDim, propDim
+
+def LoadSavedData1DVertical(params, geom):
+    """
+    Load results of 1D (z) gen. eig. solver from nc file.
+    """
+
+    ds = Dataset(f"./Data/{params.dimString}_Lz{params.Lz:.1E}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
+
+    commonVariables = LoadCommonVariables(ds)
+    z               = ds.variables["z"][:]
+    growthDim       = ds.variables["growth_rate"][:, :, :]
+    propDim         = ds.variables["prop_speed"][:, :, :]
+    
+    ds.close()
+    
+    return commonVariables, z, growthDim, propDim
+
 
 def LoadSavedData2D(params, geom):
     """
@@ -93,7 +110,10 @@ def plot_sigmar_polarGrid(ax, params):
     Plot indication of radial gyre length scale, if it is within domain, on 
      polar rφ-grid.
     """
-    if params.sigmar < params.Lr:
+    
+    if ((params.discretizeRadial and params.sigmar < params.Lr) 
+        or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
+        
         ax.plot(np.linspace(0, (2 * pi), params.Np), 
                 params.sigmar * np.ones(params.Np), color = "k", ls = "--")
                     
@@ -102,7 +122,10 @@ def plot_sigmar_CartesianGrid(ax, params):
     Plot indication of radial gyre length scale, if it is within domain, on 
      Cartesian grid with horizontal axis r.
     """
-    if params.sigmar < params.Lr:
+    
+    if ((params.discretizeRadial and params.sigmar < params.Lr) 
+        or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
+        
         ax.axvline(params.sigmar, color = "k", ls = "--")
     
 def plot_sigmaz(ax, params):
@@ -118,7 +141,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
     Visualize growth rates and propagation speeds for different wavenumbers.
     """
         
-    if params.discretizeVertical:
+    if (params.discretizeRadial and params.discretizeVertical):
     
         modeString = f"first{nmodes}modes"
         dimString, xVariable = params.dimString + "2D", "kphi"
@@ -149,7 +172,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                    xlabel = "Azimuthal wavenumber",
                    ylabel = "Angular velocity (s$^{{-1}}$)")
         
-    elif not params.discretizeVertical:
+    elif (params.discretizeRadial and not params.discretizeVertical):
 
         for mode in range(nmodes):
     
@@ -181,6 +204,40 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             #Set x-labels on lowest axes
             axGrowth.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
             axProp.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
+            
+    elif (params.discretizeVertical and not params.discretizeRadial):
+        
+        for mode in range(nmodes):
+        
+            modeString           = GetModeString(nmodes, mode)
+            dimString, xVariable = params.dimString + "1D", "r"
+
+            nRows = min(len(kφs), 4)
+
+            fig, axs = plt.subplots(nRows, 2, figsize = (13, (7 * nRows)),
+                                    sharex = "col")
+            
+            for ii in range(len(kφs)):
+                
+                axGrowth = axs[ii, 0]
+                axGrowth.grid(True)
+                axGrowth.plot(params.rs, 
+                              np.ravel(dimensionalGrowthRates[:, ii, mode]),
+                              ".-", color = "mediumpurple")
+                axGrowth.set(title = f"Growth rate; $k_{{\phi}}$ = {kφs[ii]}",
+                             ylabel = "Growth rate (s$^{{-1}}$)")
+
+                axProp = axs[ii, 1]
+                axProp.grid(True)
+                axProp.plot(params.rs,
+                            np.ravel(dimensionalPropSpeeds[:, ii, mode]),
+                            ".-", color = "mediumpurple")
+                axProp.set(title = f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
+                           ylabel = "Angular velocity (s$^{{-1}}$)")
+            
+            #Set x-labels on lowest axes
+            axGrowth.set(xlabel = f"$r$ ({params.units[xVariable]})")
+            axProp.set(xlabel = f"$r$ ({params.units[xVariable]})")
         
     fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
     plt.close(fig)
@@ -199,7 +256,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
         
             kφ = kφs[kφ_idx] #Wavenumber to plot for
     
-            if params.discretizeVertical:
+            if (params.discretizeRadial and params.discretizeVertical):
                 
                 #Normalize eigenvector components
                 eigModeReal, eigModeImag = Normed(eigModesReal[kφ_idx, :, :,
@@ -243,7 +300,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                 fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
                 
-            elif not params.discretizeVertical:
+            elif (params.discretizeRadial and not params.discretizeVertical):
             
                 for kz_idx in range(len(kzs)):
             
@@ -272,6 +329,50 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     ax.legend()
                     fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_m{kz:.4E}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
                     plt.close(fig)
+                    
+            elif (params.discretizeVertical and not params.discretizeRadial):
+                
+                #Normalize eigenvector components
+                eigModeReal, eigModeImag = Normed(eigModesReal[kφ_idx, :, :,
+                                                               mode],
+                                                  eigModesImag[kφ_idx, :, :,
+                                                               mode])
+             
+                #Reshape eigenvector to fit rz-grid
+                eigModeReal_rz = np.reshape(eigModeReal, (len(r), len(z)))
+                eigModeImag_rz = np.reshape(eigModeImag, (len(r), len(z)))
+             
+                zMesh, rMesh = np.meshgrid(z, r)
+             
+                fig, axs = plt.subplots(1, 2, figsize = (12, 7), sharey = "row")
+                
+                for i in range(2):
+                    axs[i].grid(False) #Required for pcolormesh
+                    
+                axs[0].pcolormesh(rMesh, zMesh, eigModeReal_rz, cmap = "RdBu_r",
+                                  vmin = -1, vmax = 1)
+                axs[0].set(xlabel = f"$r$ ({params.units['r']})", 
+                           ylabel = f"$z$ ({params.units['z']})",
+                           title = "Re[$\hat{\psi} (r,z)$]")
+                axs[1].pcolormesh(rMesh, zMesh, eigModeImag_rz, cmap = "RdBu_r",
+                                  vmin = -1, vmax = 1)
+                axs[1].set(xlabel = f"$r$ ({params.units['r']})",
+                           title = "Im[$\hat{\psi} (r,z)$]")
+        
+                for i in range(2):
+                    
+                    #Gyre length scales
+                    plot_sigmar_CartesianGrid(axs[i], params)
+                    plot_sigmaz(axs[i], params)
+                    
+                    axs[i].grid(True) #Restore grids for final version
+                    
+                fig.suptitle(f"Components of fastest-growing eigenmode in $rz$-plane for wavenumber $k_{{\phi}}= {kφ}$\n\n")
+                fig.colorbar(NormedMappable, ax = axs.ravel().tolist(),
+                             orientation = "horizontal", shrink = 0.8,
+                             label = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$")
+                fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
+                plt.close(fig)
                     
 def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z, 
                                eigStreamfnsReal, eigStreamfnsImag, eig_urReal,
@@ -625,19 +726,28 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
 
 def RunVisFromSavedData(params, geom):
 
-    if params.discretizeVertical:
+    if (params.discretizeRadial and not params.discretizeVertical):
+    
+        commonVariables, kzs, growthDim, propDim = LoadSavedData1DRadial(params,
+                                                                         geom)
+        z                                        = None
+        
+        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}"
+        
+    elif (params.discretizeVertical and not params.discretizeRadial):
+    
+        commonVariables, z, growthDim, propDim = LoadSavedData1DVertical(params,
+                                                                         geom)
+        kzs                                    = None
+        
+        setupString = f"Lz{params.Lz:.1E}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
+        
+    elif (params.discretizeRadial and params.discretizeVertical):
     
         commonVariables, z, growthDim, propDim = LoadSavedData2D(params, geom)
         kzs                                    = None
         
         setupString = f"Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
-        
-    elif not params.discretizeVertical:
-    
-        commonVariables, kzs, growthDim, propDim = LoadSavedData1D(params, geom)
-        z                                        = None
-        
-        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}"
         
     modes, kφs = commonVariables[0], commonVariables[1]
     r, φ       = commonVariables[2], commonVariables[3]
