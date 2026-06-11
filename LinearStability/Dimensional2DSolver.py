@@ -71,7 +71,8 @@ args = vars(parser.parse_args())
 def QG_Vortex_Stability():
 
     #Initialize parameters and set up geometry for Chebyshev solver
-    params = Parameters(args, discretizeVertical = True)
+    params = Parameters(args, discretizeRadial = True, 
+                        discretizeVertical = True)
     geom   = ChebyshevGeometry(params)
         
     if not args["useSaved"]:
@@ -107,9 +108,10 @@ def QG_Vortex_Stability():
             eigVals, eigVecs = sspla.eigs(A, k = nmodes, M = B, which = "LI")
             #Note: "which = 'LI'" prioritizes finding eigenvalue with largest 
             # imaginary part.
-            #Assuming generalized eigvals will occur in conjugate pairs, the
-            #  largest imaginary part of any eigenvalue equals the largest negative
-            #  imaginary part of any eigenvalue -- i.e., largest growth rate.
+            #Assuming indirectly-found generalized eigvals will occur in
+            # conjugate pairs, the largest imaginary part of any eigenvalue 
+            # equals the largest negative imaginary part of any eigenvalue -- 
+            # i.e., largest growth rate.
 
             #Indexing that sorts eigvals by DESCENDING Im(c)
             indSort = np.argsort(eigVals.imag)[::-1]
