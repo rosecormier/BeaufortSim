@@ -5,16 +5,14 @@ import scipy.sparse as sp
 from scipy.special import factorial
 import scipy.linalg as spalg
 
-def FiniteDiff(x, n, spb, uniform):
+def FiniteDiff(x, n, sparse = True, uniform = True):
     """
-    Create a finite difference matrix of arbitrary order for an arbitrary grid.
-    x       = discretized domain (grid)
-    n       = order of stencil?
-    spb     = whether matrix is sparse? 
-    uniform = whether points in x are uniformly spaced
+    Create a finite difference matrix of order n for an arbitrary grid {x}.
+    --> sparse  = whether to use sparse functionality
+    --> uniform = whether points in x are uniformly spaced
 
-    Note that x can be provided in the form [a, b, c].
-    This is interpreted as x = linspace(a, b, c).
+    Note that x can be provided in the form [a, b, c], which is interpreted
+     as x = linspace(a, b, c).
     The advantage of this shorthand is that we don't actually need to
      generate x, so we can save on memory when using large grids.
     """
@@ -26,7 +24,7 @@ def FiniteDiff(x, n, spb, uniform):
     else:
         Nx = len(x)
 
-    if spb: #If differentiation matrix will be sparse
+    if sparse: #If differentiation matrix will be sparse
         Dx = sp.lil_matrix((Nx, Nx)) #Construct an empty Nx x Nx matrix
     else:
         Dx = np.zeros([Nx, Nx]) #Initialize an Nx x Nx matrix with zeros
@@ -80,7 +78,7 @@ def FiniteDiff(x, n, spb, uniform):
 
         A = np.zeros([n+1, n+1])
         
-        if n % 2 == 0: #If finite-differencing order is even
+        if n % 2 == 0: #Even-order method
 
             for j in range(-n//2 - 1, n//2):
                 A[:, (j + (n//2) + 1)] = (np.power((j+1) * dx 
@@ -99,7 +97,7 @@ def FiniteDiff(x, n, spb, uniform):
                                                    range(0, n+1), 
                                                    Nx-n, Nx).todense()
 
-        elif n % 2 == 1: #If finite-differencing order is odd
+        elif n % 2 == 1: #Odd-order method
 
             for j in range((int(-n//2) - 1), int(np.ceil(n/2))):
                 A[:, (j + int(n//2) + 1)] = (((j*dx)**range(0, n+1))
@@ -217,7 +215,7 @@ def FiniteDiff(x, n, spb, uniform):
 
                         Dx[i, (i - int(np.ceil(n/2))):(i + int(n//2))] = coeff
 
-    if spb: #If making a sparse matrix
+    if sparse:
         Dx = Dx.tocsr() #Convert to Compressed Sparse Row format
             
     return Dx
