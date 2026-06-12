@@ -39,7 +39,7 @@ parser.add_argument("-f0", "--Coriolis",
                     type = float, default = 1.4e-4)
 parser.add_argument("-U", "--bkgdU",
                     help = "Characteristic scale for background velocity (m/s)",
-                    type = float, default = 3.5)
+                    type = float, default = 5e-2)
 parser.add_argument("--sigmar",
                     help = "Radial length scale of gyre (m)",
                     type = float, default = 2.5e5)
@@ -116,9 +116,8 @@ def QG_Vortex_Stability():
                 eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
                 ωs      = eigVals * kφ        #Corresponding ω-values
                 
-                growth[r_idx, kφ_idx, :]    = -ωs[0:nmodes].imag
-                prop[r_idx, kφ_idx, :]      = ωs[0:nmodes].real
-                #modes[r_idx, kφ_idx, 1:, :] = eigVecs[:, 0:nmodes]
+                growth[r_idx, kφ_idx, :] = -ωs[0:nmodes].imag
+                prop[r_idx, kφ_idx, :]   = ωs[0:nmodes].real
                 
                 modesLen = len(modes[r_idx, kφ_idx, :, 0:nmodes])
             
