@@ -125,7 +125,7 @@ def plot_sigmar_CartesianGrid(ax, params):
     
     if ((params.discretizeRadial and params.sigmar < params.Lr) 
         or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
-        
+
         ax.axvline(params.sigmar, color = "k", ls = "--")
     
 def plot_sigmaz(ax, params):
@@ -224,6 +224,9 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                 axGrowth.plot(params.rs, 
                               np.ravel(dimensionalGrowthRates[:, ii, mode]),
                               ".-", color = "mediumpurple")
+                              
+                plot_sigmar_CartesianGrid(axGrowth, params) #Gyre scale
+                
                 axGrowth.set(title = f"Growth rate; $k_{{\phi}}$ = {kφs[ii]}",
                              ylabel = "Growth rate (s$^{{-1}}$)")
 
@@ -232,6 +235,9 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                 axProp.plot(params.rs,
                             np.ravel(dimensionalPropSpeeds[:, ii, mode]),
                             ".-", color = "mediumpurple")
+                            
+                plot_sigmar_CartesianGrid(axProp, params) #Gyre scale
+                
                 axProp.set(title = f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
                            ylabel = "Angular velocity (s$^{{-1}}$)")
             
@@ -316,6 +322,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                           
                     fig, ax = plt.subplots(figsize = (10, 8))
         
+                    ax.grid(True)
                     ax.plot(r, eigModeReal, "-", color = "mediumpurple", 
                             label = "Re[$\hat{\psi}$]")
                     ax.plot(r, eigModeImag, "--", color = "mediumpurple", 
@@ -332,47 +339,34 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     
             elif (params.discretizeVertical and not params.discretizeRadial):
                 
-                #Normalize eigenvector components
-                eigModeReal, eigModeImag = Normed(eigModesReal[kφ_idx, :, :,
-                                                               mode],
-                                                  eigModesImag[kφ_idx, :, :,
-                                                               mode])
-             
-                #Reshape eigenvector to fit rz-grid
-                eigModeReal_rz = np.reshape(eigModeReal, (len(r), len(z)))
-                eigModeImag_rz = np.reshape(eigModeImag, (len(r), len(z)))
-             
-                zMesh, rMesh = np.meshgrid(z, r)
-             
-                fig, axs = plt.subplots(1, 2, figsize = (12, 7), sharey = "row")
+                for r_idx in range(len(r)):
                 
-                for i in range(2):
-                    axs[i].grid(False) #Required for pcolormesh
+                    r_int = int(r[r_idx])
                     
-                axs[0].pcolormesh(rMesh, zMesh, eigModeReal_rz, cmap = "RdBu_r",
-                                  vmin = -1, vmax = 1)
-                axs[0].set(xlabel = f"$r$ ({params.units['r']})", 
-                           ylabel = f"$z$ ({params.units['z']})",
-                           title = "Re[$\hat{\psi} (r,z)$]")
-                axs[1].pcolormesh(rMesh, zMesh, eigModeImag_rz, cmap = "RdBu_r",
-                                  vmin = -1, vmax = 1)
-                axs[1].set(xlabel = f"$r$ ({params.units['r']})",
-                           title = "Im[$\hat{\psi} (r,z)$]")
+                    #Normalize eigenvector components
+                    eigModeReal, eigModeImag = Normed(eigModesReal[kφ_idx,
+                                                                   r_idx, :,
+                                                                   mode],
+                                                      eigModesImag[kφ_idx,
+                                                                   r_idx, :,
+                                                                   mode])
+             
+                    fig, ax = plt.subplots(figsize = (10, 8))
         
-                for i in range(2):
-                    
-                    #Gyre length scales
-                    plot_sigmar_CartesianGrid(axs[i], params)
-                    plot_sigmaz(axs[i], params)
-                    
-                    axs[i].grid(True) #Restore grids for final version
-                    
-                fig.suptitle(f"Components of fastest-growing eigenmode in $rz$-plane for wavenumber $k_{{\phi}}= {kφ}$\n\n")
-                fig.colorbar(NormedMappable, ax = axs.ravel().tolist(),
-                             orientation = "horizontal", shrink = 0.8,
-                             label = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$")
-                fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
-                plt.close(fig)
+                    ax.grid(True)
+                    ax.plot(eigModeReal, z, "-", color = "mediumpurple", 
+                            label = "Re[$\hat{\psi}$]")
+                    ax.plot(eigModeImag, z, "--", color = "mediumpurple", 
+                            label = "Im[$\hat{\psi}$]")
+        
+                    plot_sigmaz(ax, params) #Gyre length scale
+                
+                    ax.set(xlabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
+                           ylabel = f"$z$ ({params.units['z']})",
+                           title = f"Components of fastest-growing eigenvector for $k_{{\phi}}$ = {kφ} and $r =$ {r_int} {params.units['r']}")
+                    ax.legend()
+                    fig.savefig(f"./Graphs/eigModeStructure_k{int(kφ)}_r{r_int}_{modeString}_{params.dimString}1Dgyre_{setupString}.png")
+                    plt.close(fig)
                     
 def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z, 
                                eigStreamfnsReal, eigStreamfnsImag, eig_urReal,
@@ -525,7 +519,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     plot_sigmaz(axs[i], params) #Gyre length scale
                     axs[i].grid(True) #Restore grids for final version of plot
                     
-                fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {r[r_idx]:.1E} {params.units['r']}\n\n\n")
+                fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {int(r[r_idx])} {params.units['r']}\n\n\n")
                 fig.subplots_adjust(hspace = 0.8)
                 fig.colorbar(ScalarMappable(norm = Normalize(
                   vmin = -vmaxStream, vmax = vmaxStream),
@@ -533,7 +527,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                              ax = axs.ravel().tolist(),
                              orientation = "horizontal", shrink = 0.8,
                              pad = 0.1)
-                fig.savefig(f"./Graphs/streamfn_r{r[r_idx]:.1E}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/streamfn_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
 
                 #Plot eigen-velocity on constant-r surface
@@ -577,7 +571,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                         axs[i, j].grid(True) #Restore grids for final version
 
                 fig.subplots_adjust(hspace = 0.3)
-                fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n on surface $r =$ {r[r_idx]:.1E} {params.units['r']} for $k_{{\phi}} =$ {kφ}")
+                fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n on surface $r =$ {int(r[r_idx])} {params.units['r']} for $k_{{\phi}} =$ {kφ}")
                 fig.colorbar(ScalarMappable(norm = Normalize(
                   vmin = -vmax_ur, vmax = vmax_ur), cmap = "RdBu_r"), 
                              ax = [axs[0, 0], axs[0, 1]], location = "right",
@@ -586,7 +580,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                   vmin = -vmax_uφ, vmax = vmax_uφ), cmap = "RdBu_r"), 
                              ax = [axs[1, 0], axs[1, 1]], location = "right", 
                              shrink = 0.6, label = params.units["u"], pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_r{r[r_idx]:.1E}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/velocities_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
                 plt.close(fig)
             
             elif not params.discretizeVertical:
