@@ -14,7 +14,7 @@ def N2_profile(params, dimensional_N2_far = 1):
         dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
         
         N2 = ((np.sqrt(2) * dimensional_σr * f0 * dimensional_U 
-               / (dimensional_σz**2)) 
+               / (dimensional_σz**2))
               * (1 - np.exp(-(r / dimensional_σr)**2)) 
               * (1 - 2 * z / (dimensional_σz**2)) 
               * np.exp(0.5 - (z / dimensional_σz)**2)
@@ -36,13 +36,13 @@ def N2_profile(params, dimensional_N2_far = 1):
         return dimensional_N2_far * np.ones_like(z)
 
     if params.stratification_kw == "constant":
-        totalN2function = lambda z : constantN2(z)
+        totalN2function = lambda r, z : constantN2(z)
         
     elif params.stratification_kw == "TWB":
         totalN2function = lambda r, z : constantN2(z) + TWB_N2(r, z)
 
     elif params.stratification_kw == "doubleTanh":
-        totalN2function = lambda z : (constantN2(z) 
+        totalN2function = lambda r, z : (constantN2(z) 
                                  + fromDoubleTanhN2(z, params.doubleTanhParams))
         
     elif params.stratification_kw == "doubleTanhTWB":
@@ -51,7 +51,7 @@ def N2_profile(params, dimensional_N2_far = 1):
 
     return totalN2function
 
-def ComputeRecips(params, geom):
+def ComputeRecips(params, geom, r = None):
     """
     Compute and save values of 1/r and 1/N^2 at grid points.
     """
@@ -61,11 +61,11 @@ def ComputeRecips(params, geom):
         if params.nondimensional:
             dimensional_N2 = 1
         else:
-            dimensional_N2 = params.Nmax**2
+            dimensional_N2 = params.N2_far
 
         N2_function  = N2_profile(params, 
                                   dimensional_N2_far = dimensional_N2)
-        geom.N2      = N2_function(geom.z)
+        geom.N2      = N2_function(r, geom.z)
         geom.N2Recip = 1 / geom.N2
         
         #2D eigenvalue problem
