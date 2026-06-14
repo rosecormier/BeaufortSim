@@ -30,10 +30,10 @@ parser.add_argument("--zBCs",
                     type = str, default = "continuousBuoyancy")
 parser.add_argument("--strat_shape",
                     help = "Shape of ambient squared buoyancy frequency profile",
-                    type = str, default = "constant")
-parser.add_argument("-N", "--buoyancyfreq",
-                    help = "Maximum buoyancy frequency (Hz)",
-                    type = float, default = 1e-3) #Update to far-field N
+                    type = str, default = "doubleTanh")
+parser.add_argument("--N2_far",
+                    help = "Far-field squared buoyancy frequency (1/s^2)",
+                    type = float, default = 1e-6)
 parser.add_argument("-f0", "--Coriolis",
                     help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
@@ -71,9 +71,6 @@ def QG_Vortex_Stability():
         
     if not args["useSaved"]:
 
-        #Build discrete operators
-        ComputeRecips(params, geom)
-         
         #Information about wavenumbers and modes
         kφs, rs, nmodes = params.kps, params.rs, params.nmodes
     
@@ -87,7 +84,8 @@ def QG_Vortex_Stability():
         
         for r_idx in range(rs.shape[0]):
         
-            #Build remaining discrete operators
+            #Build discrete operators
+            ComputeRecips(params, geom, r = rs[r_idx])
             BuildBkgdOperators(params, geom, r_idx = r_idx)
 
             for kφ_idx in range(kφs.shape[0]):
