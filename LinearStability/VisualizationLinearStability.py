@@ -134,6 +134,20 @@ def plot_sigmaz(ax, params):
     """
     if params.sigmaz < params.Lz:
         ax.axhline(-params.sigmaz, color = "k", ls = "--")
+        
+def plot_stratification_peaks(ax, params):
+    """
+    Plot indications of peaks in stratifications, if they are within domain.
+    """
+    
+    if params.stratification_kw in ["doubleTanh", "doubleTanhTWB"]:
+    
+        if abs(params.z_s) < params.Lz:
+            
+            ax.axhline(params.z_s, color = "greenyellow", ls = "--")
+    
+            if abs(params.z_d) < params.Lz:
+                ax.axhline(params.z_d, color = "greenyellow", ls = "--")
 
 def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                 dimensionalPropSpeeds, setupString):
@@ -184,7 +198,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             fig, axs = plt.subplots(nRows, 2, figsize = (13, (7 * nRows)),
                                     sharex = "col")
             
-            for ii in range(len(kφs)):
+            for ii in range(nRows):
                 
                 axGrowth = axs[ii, 0]
                 axGrowth.grid(True)
@@ -214,10 +228,10 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
 
             nRows = min(len(kφs), 4)
 
-            fig, axs = plt.subplots(nRows, 2, figsize = (13, (7 * nRows)),
+            fig, axs = plt.subplots(nRows, 2, figsize = (10, (4 * nRows)),
                                     sharex = "col")
             
-            for ii in range(len(kφs)):
+            for ii in range(nRows):
                 
                 axGrowth = axs[ii, 0]
                 axGrowth.grid(True)
@@ -297,6 +311,8 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     plot_sigmar_CartesianGrid(axs[i], params)
                     plot_sigmaz(axs[i], params)
                     
+                    plot_stratification_peaks(axs[i], params) #z_s and z_d
+                    
                     axs[i].grid(True) #Restore grids for final version
                     
                 fig.suptitle(f"Components of fastest-growing eigenmode in $rz$-plane for wavenumber $k_{{\phi}}= {kφ}$\n\n")
@@ -360,6 +376,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                             label = "Im[$\hat{\psi}$]")
         
                     plot_sigmaz(ax, params) #Gyre length scale
+                    plot_stratification_peaks(ax, params) #z_s and z_d
                 
                     ax.set(xlabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
                            ylabel = f"$z$ ({params.units['z']})",
@@ -419,13 +436,18 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     plot_sigmar_polarGrid(axs[i], params) #Gyre length scale
                     axs[i].grid(True) #Restore grids for final version of plot
         
+                if params.discretizeRadial:
+                    dimString = params.dimString + "2D"
+                elif not params.discretizeRadial:
+                    dimString = params.dimString + "1D"
+        
                 fig.subplots_adjust(hspace = 0.75, wspace = 0.5)
                 fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $z=$ {z[z_idx]:.1f} {params.units['z']}\n\n\n")
                 fig.colorbar(ScalarMappable(norm = Normalize(
                   vmin = -vmaxStream, vmax = vmaxStream), cmap = "RdBu_r"),
                              ax = axs.ravel().tolist(), label = params.units["psi"],
                              orientation = "horizontal", shrink = 0.8)
-                fig.savefig(f"./Graphs/streamfn_z{z[z_idx]:.1f}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/streamfn_z{z[z_idx]:.1f}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
                 plt.close(fig)
                 
                 #Normalize eigen-velocity components
@@ -436,7 +458,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
 
                 #Plot eigen-velocity on constant-z surface
                 
-                fig, axs = plt.subplots(2, 2, figsize = (8, 8),
+                fig, axs = plt.subplots(2, 2, figsize = (10, 8),
                                         subplot_kw = {"projection": "polar"})
 
                 for i in range(2):
@@ -484,7 +506,8 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                   vmin = -vmax_uφ, vmax = vmax_uφ), cmap = "RdBu_r"), 
                              ax = [axs[1, 0], axs[1, 1]], location = "right", 
                              shrink = 0.6, label = params.units["u"], pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.1f}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.1f}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
+                plt.tight_layout()
                 plt.close(fig)
                 
                 zMesh, φMesh = np.meshgrid(z, φ)
@@ -517,6 +540,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
         
                 for i in range(2):
                     plot_sigmaz(axs[i], params) #Gyre length scale
+                    plot_stratification_peaks(axs[i], params) #z_s and z_d
                     axs[i].grid(True) #Restore grids for final version of plot
                     
                 fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {int(r[r_idx])} {params.units['r']}\n\n\n")
@@ -527,7 +551,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                              ax = axs.ravel().tolist(),
                              orientation = "horizontal", shrink = 0.8,
                              pad = 0.1)
-                fig.savefig(f"./Graphs/streamfn_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/streamfn_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
                 plt.close(fig)
 
                 #Plot eigen-velocity on constant-r surface
@@ -568,6 +592,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                 for i in range(2):
                     for j in range(2):
                         plot_sigmaz(axs[i, j], params) #Gyre length scale
+                        plot_stratification_peaks(axs[i, j], params) #z_s, z_d
                         axs[i, j].grid(True) #Restore grids for final version
 
                 fig.subplots_adjust(hspace = 0.3)
@@ -580,7 +605,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                   vmin = -vmax_uφ, vmax = vmax_uφ), cmap = "RdBu_r"), 
                              ax = [axs[1, 0], axs[1, 1]], location = "right", 
                              shrink = 0.6, label = params.units["u"], pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{params.dimString}2Dgyre_{setupString}.png")
+                fig.savefig(f"./Graphs/velocities_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
                 plt.close(fig)
             
             elif not params.discretizeVertical:
