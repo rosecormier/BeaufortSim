@@ -42,16 +42,17 @@ class Parameters:
             if self.stratification_kw in ["doubleTanh", "doubleTanhTWB"]:
             
                 #Stratification parameters
-                g     = -9.81  #m/s^2
-                rho_0 = 1025.5 #kg/m^3
-                A_s   = 2.5    #kg/m^3
-                z_s   = -40    #m
-                C_s   = 15     #m
-                A_d   = 1.05   #kg/m^3
-                z_d   = -200   #m
-                C_d   = 60     #m
+                self.g     = -9.81  #m/s^2
+                self.rho_0 = 1025.5 #kg/m^3
+                self.A_s   = 2.5    #kg/m^3
+                self.z_s   = -40    #m
+                self.C_s   = 15     #m
+                self.A_d   = 1.05   #kg/m^3
+                self.z_d   = -200   #m
+                self.C_d   = 60     #m
                 
-                self.doubleTanhParams = [g, rho_0, A_s, z_s, C_s, A_d, z_d, C_d]
+                self.doubleTanhParams = [self.g, self.rho_0, self.A_s, self.z_s,
+                                         self.C_s, self.A_d, self.z_d, self.C_d]
             
             self.sigmaz = args["sigmaz"]
             
@@ -84,16 +85,16 @@ class Parameters:
         else:
             
             #Dimensional parameters are explicitly set
-            self.Nmax   = args["buoyancyfreq"] #Max. buoyancy frequency
-            self.Umax   = args["bkgdU"]        #Background velocity scale
-            self.sigmar = args["sigmar"]       #Radial background length scale
+            self.N2_far = args["N2_far"] #Far-field squared buoyancy frequency
+            self.Umax   = args["bkgdU"]  #Background velocity scale
+            self.sigmar = args["sigmar"] #Radial background length scale
             
             #Rossby number is computed
             self.Ro = self.Umax / (self.sigmar * self.f0)
             
             if discretizeVertical:
-                #Burger number is also computed
-                self.Bu = (self.Nmax * self.sigmaz / (self.f0 * self.sigmar))**2
+                #Far-field Burger number is also computed
+                self.Bu = (self.N2_far * self.sigmaz / (self.f0 * self.sigmar))**2
                 
         #Specify units of various variables
         
@@ -188,6 +189,9 @@ class ChebyshevGeometry:
 
             #Second-order z-differentiation matrix
             self.Dz2 = self.Dz @ self.Dz
+            
+            if not params.discretizeRadial:
+                self.r = params.rs
 
         if params.discretizeRadial:
             #Compute differentiation matrix and Chebyshev-spaced grid
