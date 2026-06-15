@@ -37,6 +37,7 @@ def N2_profile(params, dimensional_N2_far = 1):
 
     if params.stratification_kw == "constant":
         totalN2function = lambda r, z : constantN2(z)
+        print("Warning: to ensure thermal-wind balance of background state, ensure U is set to 0 (for no background flow) or sigma_z is set very large (to approximate a barotropic background). \n")
         
     elif params.stratification_kw == "TWB":
         totalN2function = lambda r, z : constantN2(z) + TWB_N2(r, z)
@@ -44,6 +45,7 @@ def N2_profile(params, dimensional_N2_far = 1):
     elif params.stratification_kw == "doubleTanh":
         totalN2function = lambda r, z : (constantN2(z) 
                                  + fromDoubleTanhN2(z, params.doubleTanhParams))
+        print("Warning: to ensure thermal-wind balance of background state, ensure U is set to 0 (for no background flow) or sigma_z is set very large (to approximate a barotropic background). \n")
         
     elif params.stratification_kw == "doubleTanhTWB":
         totalN2function = lambda r, z : (constantN2(z) 
