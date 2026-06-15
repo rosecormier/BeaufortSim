@@ -35,9 +35,11 @@ parser.add_argument("-Lz",
                     type = float, default = 1e3)
 parser.add_argument("--zBCs",
                     help = "Vertical boundary conditions on streamfunction",
+                    choices = ("continuousBuoyancy", "homogeneous"),
                     type = str, default = "continuousBuoyancy")
 parser.add_argument("--strat_shape",
                     help = "Shape of ambient buoyancy profile",
+                    choices = ("constant", "TWB", "doubleTanh", "doubleTanhTWB"),
                     type = str, default = "linear")
 parser.add_argument("--N2_far",
                     help = "Far-field squared buoyancy frequency (1/s^2)",
