@@ -63,6 +63,13 @@ parser.add_argument("--nmodes",
 parser.add_argument("--useSaved",
                     help = "Flag to skip eig. solver and go straight to visualizing previously saved data",
                     action = "store_true", default = False)
+parser.add_argument("--rs_plot",
+                    help = "r-values to plot eigenmodes at (will choose discretized r-values closest to args provided)",
+                    type = float, nargs = "*",
+                    default = [0, vars(parser.parse_args())["sigmar"], 
+                               vars(parser.parse_args())["r"][1]
+                              ]
+                   )
 args = vars(parser.parse_args())
 
 def QG_Vortex_Stability():
@@ -115,6 +122,9 @@ def QG_Vortex_Stability():
                 eigVals = eigVals[indSort]    #Sort eigvals
                 eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
                 ωs      = eigVals * kφ        #Corresponding ω-values
+                
+                if r_idx == 0:
+                    print(f"Eigval at r = {rs[r_idx]}: ", eigVals[0])
                 
                 growth[r_idx, kφ_idx, :] = -ωs[0:nmodes].imag
                 prop[r_idx, kφ_idx, :]   = ωs[0:nmodes].real
