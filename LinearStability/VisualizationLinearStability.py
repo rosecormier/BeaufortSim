@@ -228,7 +228,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
 
             nRows = min(len(kφs), 4)
 
-            fig, axs = plt.subplots(nRows, 2, figsize = (10, (4 * nRows)),
+            fig, axs = plt.subplots(nRows, 2, figsize = (13, (4 * nRows)),
                                     sharex = "col")
             
             for ii in range(nRows):
@@ -354,9 +354,12 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     plt.close(fig)
                     
             elif (params.discretizeVertical and not params.discretizeRadial):
+
+                for r_plot in params.rs_plot:
                 
-                for r_idx in range(len(r)):
-                
+                    #Get index of point on discrete r-grid closest to r_plot
+                    r_idx = np.abs(r - r_plot).argmin()
+                    
                     r_int = int(r[r_idx])
                     
                     #Normalize eigenvector components
@@ -366,7 +369,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                                                       eigModesImag[kφ_idx,
                                                                    r_idx, :,
                                                                    mode])
-             
+
                     fig, ax = plt.subplots(figsize = (10, 8))
         
                     ax.grid(True)
@@ -507,106 +510,109 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                              ax = [axs[1, 0], axs[1, 1]], location = "right", 
                              shrink = 0.6, label = params.units["u"], pad = 0.1)
                 fig.savefig(f"./Graphs/velocities_z{z[z_idx]:.1f}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
-                plt.tight_layout()
                 plt.close(fig)
                 
                 zMesh, φMesh = np.meshgrid(z, φ)
                 
-                #Get index of r closest to sigma_r
-                r_idx = np.abs(r - params.sigmar).argmin()
+                for r_plot in params.rs_plot:
                 
-                #Plot eigen-streamfunction on constant-r surface
-                
-                fig, axs = plt.subplots(1, 2, figsize = (11, 7), 
-                                        sharey = "row")
-                
-                for i in range(2):
-                    axs[i].grid(False) #Required for pcolormesh
+                    #Get index of point on discrete r-grid closest to r_plot
+                    r_idx = np.abs(r - r_plot).argmin()
                     
-                vmaxStream = max(vmax(StreamReal[r_idx, :, :]), 
-                                 vmax(StreamImag[r_idx, :, :]))
-        
-                axs[0].pcolormesh(φMesh, zMesh, StreamReal[r_idx, :, :], 
-                                  cmap = "RdBu_r", vmin = -vmaxStream, 
-                                  vmax = vmaxStream)
-                axs[0].set(xlabel = "$\phi$",
-                           ylabel = f"$z$ ({params.units['z']})",
-                           title = "Re[$\hat{{\psi}}$ exp($ik\phi$)]")
-                axs[1].pcolormesh(φMesh, zMesh, StreamImag[r_idx, :, :], 
-                                  cmap = "RdBu_r", vmin = -vmaxStream, 
-                                  vmax = vmaxStream)
-                axs[1].set(xlabel = "$\phi$",
-                           title = "Im[$\hat{{\psi}}$ exp($ik\phi$)]")
-        
-                for i in range(2):
-                    plot_sigmaz(axs[i], params) #Gyre length scale
-                    plot_stratification_peaks(axs[i], params) #z_s and z_d
-                    axs[i].grid(True) #Restore grids for final version of plot
-                    
-                fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {int(r[r_idx])} {params.units['r']}\n\n\n")
-                fig.subplots_adjust(hspace = 0.8)
-                fig.colorbar(ScalarMappable(norm = Normalize(
-                  vmin = -vmaxStream, vmax = vmaxStream),
-                                            cmap = "RdBu_r"), 
-                             ax = axs.ravel().tolist(),
-                             orientation = "horizontal", shrink = 0.8,
-                             pad = 0.1)
-                fig.savefig(f"./Graphs/streamfn_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
-                plt.close(fig)
-
-                #Plot eigen-velocity on constant-r surface
+                    r_int = int(r[r_idx])
                 
-                fig, axs = plt.subplots(2, 2, figsize = (11, 8), sharey = "row",
-                                        sharex = "col")
-
-                for i in range(2):
-                    for j in range(2):
-                        axs[i, j].grid(False) #Required for pcolormesh
+                    #Plot eigen-streamfunction on constant-r surface
+                    
+                    fig, axs = plt.subplots(1, 2, figsize = (11, 7), 
+                                            sharey = "row")
+                    
+                    for i in range(2):
+                        axs[i].grid(False) #Required for pcolormesh
                         
-                vmax_ur = max(vmax(urReal[r_idx, :, :]), 
-                              vmax(urImag[r_idx, :, :]))
-                vmax_uφ = max(vmax(uφReal[r_idx, :, :]),
-                              vmax(uφImag[r_idx, :, :]))
+                    vmaxStream = max(vmax(StreamReal[r_idx, :, :]), 
+                                     vmax(StreamImag[r_idx, :, :]))
+            
+                    axs[0].pcolormesh(φMesh, zMesh, StreamReal[r_idx, :, :], 
+                                      cmap = "RdBu_r", vmin = -vmaxStream, 
+                                      vmax = vmaxStream)
+                    axs[0].set(xlabel = "$\phi$",
+                               ylabel = f"$z$ ({params.units['z']})",
+                               title = "Re[$\hat{{\psi}}$ exp($ik\phi$)]")
+                    axs[1].pcolormesh(φMesh, zMesh, StreamImag[r_idx, :, :], 
+                                      cmap = "RdBu_r", vmin = -vmaxStream, 
+                                      vmax = vmaxStream)
+                    axs[1].set(xlabel = "$\phi$",
+                               title = "Im[$\hat{{\psi}}$ exp($ik\phi$)]")
+            
+                    for i in range(2):
+                        plot_sigmaz(axs[i], params) #Gyre length scale
+                        plot_stratification_peaks(axs[i], params) #z_s and z_d
+                        axs[i].grid(True) #Restore grids for final version of plot
+                        
+                    fig.suptitle(f"Components of fastest-growing eigen-streamfunction for $k_{{\phi}}$ = {kφ} in plane $r=$ {r_int} {params.units['r']}\n\n\n")
+                    fig.subplots_adjust(hspace = 0.8)
+                    fig.colorbar(ScalarMappable(norm = Normalize(
+                      vmin = -vmaxStream, vmax = vmaxStream),
+                                                cmap = "RdBu_r"), 
+                                 ax = axs.ravel().tolist(),
+                                 orientation = "horizontal", shrink = 0.8,
+                                 pad = 0.1)
+                    fig.savefig(f"./Graphs/streamfn_r{r_int}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
+                    plt.close(fig)
+    
+                    #Plot eigen-velocity on constant-r surface
+                    
+                    fig, axs = plt.subplots(2, 2, figsize = (11, 8), sharey = "row",
+                                            sharex = "col")
+    
+                    for i in range(2):
+                        for j in range(2):
+                            axs[i, j].grid(False) #Required for pcolormesh
                             
-                axs[0, 0].pcolormesh(φMesh, zMesh, urReal[r_idx, :, :], 
-                                     cmap = "RdBu_r", vmin = -vmax_ur, 
-                                     vmax = vmax_ur)
-                axs[0, 0].set(ylabel = f"$z$ ({params.units['z']})", 
-                              title = "Re[$u_r'$]")
-                axs[0, 1].pcolormesh(φMesh, zMesh, urImag[r_idx, :, :], 
-                                     cmap = "RdBu_r", vmin = -vmax_ur, 
-                                     vmax = vmax_ur)
-                axs[0, 1].set(title = "Im[$u_r'$]")
-                    
-                axs[1, 0].pcolormesh(φMesh, zMesh, uφReal[r_idx, :, :], 
-                                     cmap = "RdBu_r", vmin = -vmax_uφ, 
-                                     vmax = vmax_uφ)
-                axs[1, 0].set(xlabel = "$\phi$",
-                              ylabel = f"$z$ ({params.units['z']})", 
-                              title = "Re[$u_{{\phi}}'$]")
-                axs[1, 1].pcolormesh(φMesh, zMesh, uφImag[r_idx, :, :], 
-                                     cmap = "RdBu_r",
-                                     vmin = -vmax_uφ, vmax = vmax_uφ)
-                axs[1, 1].set(xlabel = "$\phi$", title = "Im[$u_{{\phi}}'$]")
-                    
-                for i in range(2):
-                    for j in range(2):
-                        plot_sigmaz(axs[i, j], params) #Gyre length scale
-                        plot_stratification_peaks(axs[i, j], params) #z_s, z_d
-                        axs[i, j].grid(True) #Restore grids for final version
-
-                fig.subplots_adjust(hspace = 0.3)
-                fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n on surface $r =$ {int(r[r_idx])} {params.units['r']} for $k_{{\phi}} =$ {kφ}")
-                fig.colorbar(ScalarMappable(norm = Normalize(
-                  vmin = -vmax_ur, vmax = vmax_ur), cmap = "RdBu_r"), 
-                             ax = [axs[0, 0], axs[0, 1]], location = "right",
-                             shrink = 0.6, label = params.units["u"], pad = 0.1)
-                fig.colorbar(ScalarMappable(norm = Normalize(
-                  vmin = -vmax_uφ, vmax = vmax_uφ), cmap = "RdBu_r"), 
-                             ax = [axs[1, 0], axs[1, 1]], location = "right", 
-                             shrink = 0.6, label = params.units["u"], pad = 0.1)
-                fig.savefig(f"./Graphs/velocities_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
-                plt.close(fig)
+                    vmax_ur = max(vmax(urReal[r_idx, :, :]), 
+                                  vmax(urImag[r_idx, :, :]))
+                    vmax_uφ = max(vmax(uφReal[r_idx, :, :]),
+                                  vmax(uφImag[r_idx, :, :]))
+                                
+                    axs[0, 0].pcolormesh(φMesh, zMesh, urReal[r_idx, :, :], 
+                                         cmap = "RdBu_r", vmin = -vmax_ur, 
+                                         vmax = vmax_ur)
+                    axs[0, 0].set(ylabel = f"$z$ ({params.units['z']})", 
+                                  title = "Re[$u_r'$]")
+                    axs[0, 1].pcolormesh(φMesh, zMesh, urImag[r_idx, :, :], 
+                                         cmap = "RdBu_r", vmin = -vmax_ur, 
+                                         vmax = vmax_ur)
+                    axs[0, 1].set(title = "Im[$u_r'$]")
+                        
+                    axs[1, 0].pcolormesh(φMesh, zMesh, uφReal[r_idx, :, :], 
+                                         cmap = "RdBu_r", vmin = -vmax_uφ, 
+                                         vmax = vmax_uφ)
+                    axs[1, 0].set(xlabel = "$\phi$",
+                                  ylabel = f"$z$ ({params.units['z']})", 
+                                  title = "Re[$u_{{\phi}}'$]")
+                    axs[1, 1].pcolormesh(φMesh, zMesh, uφImag[r_idx, :, :], 
+                                         cmap = "RdBu_r",
+                                         vmin = -vmax_uφ, vmax = vmax_uφ)
+                    axs[1, 1].set(xlabel = "$\phi$", title = "Im[$u_{{\phi}}'$]")
+                        
+                    for i in range(2):
+                        for j in range(2):
+                            plot_sigmaz(axs[i, j], params) #Gyre length scale
+                            plot_stratification_peaks(axs[i, j], params) #z_s, z_d
+                            axs[i, j].grid(True) #Restore grids for final version
+    
+                    fig.subplots_adjust(hspace = 0.3)
+                    fig.suptitle(f"Velocities derived from fastest-growing eigen-streamfunction \n on surface $r =$ {int(r[r_idx])} {params.units['r']} for $k_{{\phi}} =$ {kφ}")
+                    fig.colorbar(ScalarMappable(norm = Normalize(
+                      vmin = -vmax_ur, vmax = vmax_ur), cmap = "RdBu_r"), 
+                                 ax = [axs[0, 0], axs[0, 1]], location = "right",
+                                 shrink = 0.6, label = params.units["u"], pad = 0.1)
+                    fig.colorbar(ScalarMappable(norm = Normalize(
+                      vmin = -vmax_uφ, vmax = vmax_uφ), cmap = "RdBu_r"), 
+                                 ax = [axs[1, 0], axs[1, 1]], location = "right", 
+                                 shrink = 0.6, label = params.units["u"], pad = 0.1)
+                    fig.savefig(f"./Graphs/velocities_r{int(r[r_idx])}_k{int(kφ)}_{modeString}_{dimString}gyre_{setupString}.png")
+                    plt.close(fig)
             
             elif not params.discretizeVertical:
             
