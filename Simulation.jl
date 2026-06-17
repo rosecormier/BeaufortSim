@@ -78,13 +78,13 @@ const useNHS = false #Whether to use NonhydrostaticModel
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x           = true
+const vis_const_x           = false
 const vis_const_y           = false
-const vis_const_z           = true
-const vis_norms             = true
+const vis_const_z           = false
+const vis_norms             = false
 const vis_energetics        = true
 const vis_z_grid            = false #Note: currently can only be done on CPU
-const vis_B_and_N²_profiles = true
+const vis_B_and_N²_profiles = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -125,7 +125,7 @@ if useNHS
    model = NonhydrostaticModel(; 
                                grid = grid, 
                                timestepper = :RungeKutta3,
-                               advection = UpwindBiased(order = 5),
+                               advection = WENO(),
                                coriolis = fPlane,
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
@@ -134,8 +134,8 @@ if useNHS
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
                                        grid = grid,
-                                       momentum_advection = UpwindBiased(order = 5),
-                                       tracer_advection = UpwindBiased(order = 5),
+                                       momentum_advection = WENO(),
+                                       tracer_advection = WENO(),
                                        coriolis = fPlane,
                                        tracers = (:b),
                                        buoyancy = BuoyancyTracer(),
