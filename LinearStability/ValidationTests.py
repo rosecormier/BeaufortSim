@@ -1,4 +1,5 @@
 import numpy as np
+import scipy.sparse as ssp
 
 from math import pi
 from numpy import inf
@@ -11,10 +12,11 @@ def ErrorsInDiscreteHorizontalLaplacians():
     
     testArgs = {"Nr": 201, "Lr": 1, "bkgd": "BG",
                 "buoyancyfreq": 1, "Coriolis": None, "bkgdU": None, 
-                "sigmar": None, "Np": None, "k_phi": [0, 1, 1], 
+                "sigmar": None, "N2_far": 1e-6, "Np": None, "k_phi": [0, 1, 1],
                 "k_z": [0, 1, 1], "nmodes": None}
         
-    params = Parameters(args = testArgs)
+    params = Parameters(args = testArgs, discretizeRadial = True, 
+                        discretizeVertical = False)
     geom   = ChebyshevGeometry(params)
 
     cosineTestFunction = lambda r : np.cos(r * pi / (2 * params.Lr))
@@ -118,21 +120,21 @@ def ErrorsInDiscreteHorizontalLaplacians():
              )
              
         testArgs.update({"Nz": 20, "Lz": 1, "strat_shape": "constant",
-                         "sigmaz": None})
+                         "sigmaz": None, "zBCs": "continuousBuoyancy"})
              
-        params2D = Parameters(args = testArgs, discretizeVertical = True)
+        params2D = Parameters(args = testArgs, discretizeRadial = True, 
+                              discretizeVertical = True)
         geom2D   = ChebyshevGeometry(params2D)
         
-        ComputeRecips(params2D, geom2D, discretizeVertical = True)
-        BuildHorizontalLaplacian(params2D, geom2D, discretizeVertical = True)
+        ComputeRecips(params2D, geom2D)
+        BuildHorizontalLaplacian(params2D, geom2D)
 
         iz = np.ones(params2D.Nz - 1)
         
         test2DFunction = np.kron(testFunction[1:-1], iz)
 
-        test2DLapH = np.matmul(geom2D.LapH_2D, 
-                               test2DFunction)[:(params2D.halfNr
-                                                 * (params2D.Nz - 1))]
+        test2DLapH = (geom2D.LapH_2D @ test2DFunction)[:(params2D.halfNr
+                                                        * (params2D.Nz - 1))]
 
         print("Max. fractional error in horizontal Laplacian applied to test function on physical 2D domain:", 
               norm(((test2DLapH - np.kron(testLapH, iz))
@@ -148,13 +150,14 @@ def ErrorsInDiscreteHorizontalLaplacians():
              
 def ErrorsInDiscreteVerticalDerivs():
     
-    testArgs = {"Nr": 201, "Lr": 1, "Nz": 201, "Lz": 1, 
-                "zBCs": "homogeneous", "bkgd": "BG", 
-                "strat_shape": "constant", "sigmaz": 1,
-                "buoyancyfreq": 1, "Coriolis": 1, "bkgdU": 1, 
-                "sigmar": 1, "Np": None, "k_phi": [0, 1, 1], "nmodes": None}
+    testArgs = {"Nz": 201, "Lz": 1, "zBCs": "homogeneous", "bkgd": "BG", 
+                "strat_shape": "constant", "sigmaz": 1, "N2_far": 1, 
+                "Coriolis": 1, "bkgdU": 1, "sigmar": 1, "r": [1e-2, 10, 1],
+                "Np": None, "k_phi": [0, 1, 1], "nmodes": None, 
+                "rs_plot": None}
         
-    params = Parameters(args = testArgs, discretizeVertical = True)
+    params = Parameters(args = testArgs, discretizeVertical = True, 
+                        discretizeRadial = False)
     geom   = ChebyshevGeometry(params)
 
     sineTestFunction = lambda z : np.sin(z * pi / params.Lz)
@@ -174,9 +177,7 @@ def ErrorsInDiscreteVerticalDerivs():
     
         test1stDerivExpression = test1stDerivs[testFunctionExpression]
         test2ndDerivExpression = test2ndDerivs[testFunctionExpression]
-      
-        ComputeRecips(params, geom)
-      
+
         testFunction      = testFunctionExpression(geom.z)
         test1stDerivExact = test1stDerivExpression(geom.z)
         test2ndDerivExact = test2ndDerivExpression(geom.z)
@@ -231,5 +232,5 @@ def ErrorsInDiscreteVerticalDerivs():
 #def Validate2DBkgdOpsInBarotropicLimit():
 
 if __name__ == '__main__': #For testing
-    #ErrorsInDiscreteHorizontalLaplacians()
+    ErrorsInDiscreteHorizontalLaplacians()
     ErrorsInDiscreteVerticalDerivs()
