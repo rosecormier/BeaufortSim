@@ -299,7 +299,7 @@ function visualize_energetics(datetime, grid, initialKE)
             color = :darkgreen)
    scatter!(ax_budget, t[1:end-1], 
            (dt_PKE_total - PAPE_to_PKE[1:end-1] - BTI_transfer[1:end-1]
-            - gyre_transfer[1:end-1]), 
+            - BCI_transfer[1:end-1]), 
            label = "Residual", color = :red)
    axislegend(ax_budget)
 
