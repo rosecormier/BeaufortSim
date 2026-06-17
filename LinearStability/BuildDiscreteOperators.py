@@ -79,6 +79,10 @@ def ComputeRecips(params, geom, r = None):
     elif (params.discretizeRadial and not params.discretizeVertical):
         geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
 
+    #1D (z) eigenvalue problem - TESTING
+    if (params.discretizeVertical and not params.discretizeRadial):
+        geom.rRecip = 1 / r
+
 def BuildBkgdOperators(params, geom, r_idx = None):
     """
     Build discrete representations of operators Ψ_op := (1/r) * (∂Ψ/∂r) and
@@ -329,7 +333,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
 
         geom.B = -(np.matmul((params.f0**2 * N2Recip), Dz2)
                    + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
-                  )
+                  ) + kφ2 * geom.rRecip**2
     
         return geom.B
         
