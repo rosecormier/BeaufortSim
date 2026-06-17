@@ -65,7 +65,9 @@ class Parameters:
                 self.DzSize = self.Nz + 1
                 
             if not discretizeRadial:
-                self.rs = np.arange(args["r"][0], args["r"][1], args["r"][2])
+                self.rs      = np.arange(args["r"][0], args["r"][1],
+                                         args["r"][2])
+                self.rs_plot = args["rs_plot"]
                  
         self.f0 = args["Coriolis"]
     
