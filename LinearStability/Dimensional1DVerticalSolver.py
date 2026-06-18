@@ -1,7 +1,6 @@
 """
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
-Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
 All variables should be specified in SI base units.
 """
 
@@ -53,10 +52,10 @@ parser.add_argument("-Np",
                     type = int, default = 50)
 parser.add_argument("--k_phi", 
                     help = "Azimuthal wavenumbers; enter as --k_phi start stop step",
-                    type = float, default = [1, 3, 1], nargs = 3)
+                    type = float, default = [1, 5, 1], nargs = 3)
 parser.add_argument("-r", 
                     help = "DIMENSIONAL r-values to solve at (m); enter as -r start stop step",
-                    type = float, default = [1, 5e5, 5e3], nargs = 3)
+                    type = float, default = [1, 2.5e6, 1e4], nargs = 3)
 parser.add_argument("--nmodes", 
                     help = "Number of modes of instability to be considered",
                     type = int, default = 1)
