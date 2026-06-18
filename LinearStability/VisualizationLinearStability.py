@@ -105,7 +105,7 @@ def LoadSavedData2D(params, geom):
     
     return commonVariables, z, growthDim, propDim
     
-def plot_sigmar_polarGrid(ax, params):
+def plot_rMaxVelocity_polarGrid(ax, params):
     """
     Plot indication of radial gyre length scale, if it is within domain, on 
      polar rφ-grid.
@@ -115,9 +115,10 @@ def plot_sigmar_polarGrid(ax, params):
         or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
         
         ax.plot(np.linspace(0, (2 * pi), params.Np), 
-                params.sigmar * np.ones(params.Np), color = "k", ls = "--")
+                (params.sigmar / (2**0.5)) * np.ones(params.Np), color = "k",
+                ls = "--", label = "Location of max. U")
                     
-def plot_sigmar_CartesianGrid(ax, params):
+def plot_rMaxVelocity_CartesianGrid(ax, params):
     """
     Plot indication of radial gyre length scale, if it is within domain, on 
      Cartesian grid with horizontal axis r.
@@ -126,7 +127,8 @@ def plot_sigmar_CartesianGrid(ax, params):
     if ((params.discretizeRadial and params.sigmar < params.Lr) 
         or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
 
-        ax.axvline(params.sigmar, color = "k", ls = "--")
+        ax.axvline(params.sigmar / (2**0.5), color = "k", ls = "--", 
+                   label = "Location of max. U")
     
 def plot_sigmaz(ax, params):
     """
@@ -239,7 +241,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                               np.ravel(dimensionalGrowthRates[:, ii, mode]),
                               ".-", color = "mediumpurple")
                               
-                plot_sigmar_CartesianGrid(axGrowth, params) #Gyre scale
+                plot_rMaxVelocity_CartesianGrid(axGrowth, params)
                 
                 axGrowth.set(title = f"Growth rate; $k_{{\phi}}$ = {kφs[ii]}",
                              ylabel = "Growth rate (s$^{{-1}}$)")
@@ -250,7 +252,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                             np.ravel(dimensionalPropSpeeds[:, ii, mode]),
                             ".-", color = "mediumpurple")
                             
-                plot_sigmar_CartesianGrid(axProp, params) #Gyre scale
+                plot_rMaxVelocity_CartesianGrid(axProp, params)
                 
                 axProp.set(title = f"Propagation speed; $k_{{\phi}}$ = {kφs[ii]}",
                            ylabel = "Angular velocity (s$^{{-1}}$)")
@@ -308,7 +310,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                 for i in range(2):
                     
                     #Gyre length scales
-                    plot_sigmar_CartesianGrid(axs[i], params)
+                    plot_rMaxVelocity_CartesianGrid(axs[i], params)
                     plot_sigmaz(axs[i], params)
                     
                     plot_stratification_peaks(axs[i], params) #z_s and z_d
@@ -344,7 +346,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     ax.plot(r, eigModeImag, "--", color = "mediumpurple", 
                             label = "Im[$\hat{\psi}$]")
         
-                    plot_sigmar_CartesianGrid(ax, params) #Gyre length scale
+                    plot_rMaxVelocity_CartesianGrid(ax, params)
                 
                     ax.set(xlabel = f"$r$ ({params.units['r']})",
                            ylabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
@@ -436,7 +438,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                 axs[1].set(title = f"Im[$\hat{{\psi}}$ exp($ik\phi$)]")
     
                 for i in range(2):
-                    plot_sigmar_polarGrid(axs[i], params) #Gyre length scale
+                    plot_rMaxVelocity_polarGrid(axs[i], params)
                     axs[i].grid(True) #Restore grids for final version of plot
         
                 if params.discretizeRadial:
@@ -493,10 +495,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     
                 for i in range(2):
                     for j in range(2):
-                        
-                        #Gyre length scale
-                        plot_sigmar_polarGrid(axs[i, j], params)
-                        
+                        plot_rMaxVelocity_polarGrid(axs[i, j], params)
                         axs[i, j].grid(True) #Restore grids for final version
 
                 fig.subplots_adjust(hspace = 0.2, wspace = 0.8)
@@ -652,7 +651,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     axs[1].set(title = f"Im[$\hat{{\psi}}(r)$ exp($ik\phi$)]")
                     
                     for i in range(2):
-                        plot_sigmar_polarGrid(axs[i], params) #Gyre length scale     
+                        plot_rMaxVelocity_polarGrid(axs[i], params)
                         axs[i].grid(True) #Restore grids for final version of plot
             
                     fig.subplots_adjust(hspace = 0.5, wspace = 0.75)
@@ -709,10 +708,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                     
                     for i in range(2):
                         for j in range(2):
-                        
-                            #Gyre length scale
-                            plot_sigmar_polarGrid(axs[i, j], params)
-                        
+                            plot_rMaxVelocity_polarGrid(axs[i, j], params)
                             axs[i, j].grid(True) #Restore grids for final version
 
                     fig.subplots_adjust(hspace = 0.2, wspace = 0.8)
