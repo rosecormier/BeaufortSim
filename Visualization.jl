@@ -231,7 +231,47 @@ function visualize_norms(datetime;
    close(scalars_ds)
 end
 
-function visualize_energetics(datetime, grid, initialKE)
+function visualize_total_energy_budgets(datetime, grid)
+
+   outfile_list          = glob("./Output/energetics_$(datetime)*")
+   ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
+
+   total_KE            = ds[:total_KE][chron_idcs]
+   total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
+   total_KE_production = ds[:total_KE_production][chron_idcs]
+   total_pressure_work = ds[:total_pressure_work][chron_idcs]
+   total_PE            = ds[:total_PE][chron_idcs]
+   total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
+   total_gravity_work  = ds[:total_gravity_work][chron_idcs]
+   
+   total_ME = total_KE + total_PE #Mechanical energy
+   
+   #Convert time to s to compute time-derivative of KE
+   dt_KE_total = order1_forward_difference(86400 * t, total_KE)
+   
+   fig_KE_budget = Figure(size = (1200, 700))
+   ax_KE_budget  = Axis(fig_KE_budget[2, 1]; xlabel = "Time [days]",
+                     ylabel = L"[s$^{-1}$]")
+                     
+   scatter!(ax_KE_budget, t[1:end-1], dt_KE_total, 
+            label = "Time derivative of total KE", color = :yellowgreen)
+   scatter!(ax_KE_budget, t, total_KE_adv_flux, label = "Advective flux", color = :royalblue)
+   scatter!(ax_KE_budget, t, total_pressure_work, label = "Pressure work", color = :sienna)
+   scatter!(ax_KE_budget, t, total_KE_production, label = "Buoyant production", color = :orange)
+   scatter!(ax_KE_budget, t[1:end-1], 
+            (dt_KE_total - total_KE_adv_flux[1:end-1] 
+             - total_pressure_work[1:end-1], total_KE_production[1:end-1]), 
+            label = "Residual", color = :red)
+
+   fig_KE_budget[1, 1] = Label(fig_budget, "Terms in total-KE budget", 
+                               fontsize = 24, tellwidth = false)
+
+   save(joinpath("./Plots", "KEbudget_$(datetime).png"), fig_KE_budget)
+
+   close(ds)
+end
+
+function visualize_PKE(datetime, grid, initialKE)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
    ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
