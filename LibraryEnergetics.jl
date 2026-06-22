@@ -4,6 +4,144 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
+using Oceanostics.KineticEnergyEquation
+
+#Function to compute total potential energy in single control volume
+@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) * grid.z.cᵃᵃᶜ[k])
+
+function totalKE(simulation)
+   #=
+   Return computed integral, over entire domain, of total kinetic energy.
+   =#
+
+   u, v, w = simulation.model.velocities
+
+   totalKE_op = KineticEnergy(simulation.model, u, v, w)
+   
+   compute!(Integral(Field(totalKE_op)))
+end
+
+function totalKEadvFlux(simulation; useNHS = nothing)
+   #=
+   Return computed integral, over entire domain, of total advective KE-flux.
+   =#
+   
+   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+      
+      totalKEadvFlux_op = KineticEnergyAdvection(simulation.model)
+      
+   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   
+      u, v, w = simulation.model.velocities
+   
+      totalKE_op = KineticEnergy(simulation.model, u, v, w)
+      
+      @compute KE = Field(totalKE_op)
+      
+      @compute ∂xKE = ∂x((Center, Center, Center), KE)
+      @compute ∂yKE = ∂y((Center, Center, Center), KE)
+      @compute ∂zKE = ∂z((Center, Center, Center), KE)
+      
+      @inline KEadvFlux_ccc(i, j, k, grid) = @inbounds (u[i, j, k] * ∂xKE[i, j, k] + v[i, j, k] * ∂yKE[i, j, k] + w[i, j, k] * ∂zKE[i, j, k])
+   
+      totalKEadvFlux_op = KernelFunctionOperation{Center, Center, Center}(KEadvFlux_ccc, simulation.model.grid)
+   end
+   
+   compute!(Integral(Field(-0.5 * totalKEadvFlux_op)))
+end
+
+function totalPressureWork(simulation; useNHS = nothing)
+   #=
+   Return computed integral, over entire domain, of total pressure work.
+   =#
+   
+   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+      
+      totalPressureWork_op = KineticEnergyPressureRedistribution(simulation.model)
+   
+   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   
+      p       = simulation.model.pressure.pHY′ #Note this is kinematic pressure
+      u, v, w = simulation.model.velocities
+      
+      @compute ∂xp = ∂x(p)
+      @compute ∂yp = ∂y(p)
+      @compute ∂zp = ∂z(p)
+      
+      @inline pressureWork_ccc(i, j, k, grid) = @inbounds (-(u[i, j, k] * ∂xp[i, j, k] + v[i, j, k] * ∂yp[i, j, k] + w[i, j, k] * ∂zp[i, j, k]))
+      
+      totalPressureWork_op = KernelFunctionOperation{Center, Center, Center}(pressureWork_ccc, simulation.model.grid)
+   end
+   
+   compute!(Integral(Field(totalPressureWork_op)))
+end
+
+function totalProduction(simulation; useNHS = nothing)
+   #=
+   Return computed integral, over entire domain, of total KE-production.
+   =#
+   
+   if useNHS #Nonhydrostatic model; fine to use Oceanostrics' KFO
+   
+      totalProduction_op = BuoyancyProduction(simulation.model)
+      
+   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   
+      b, uz = simulation.model.tracers.b, simulation.model.velocities.w
+
+      @inline production_ccc(i, j, k, grid) = @inbounds b[i, j, k] * uz[i, j, k]
+   
+      totalProduction_op = KernelFunctionOperation{Center, Center, Center}(production_ccc, simulation.model.grid)
+   end
+   
+   compute!(Integral(Field(totalProduction_op)))
+end
+
+function totalPE(simulation, g)
+   #=
+   Return computed integral, over entire domain, of total kinetic energy.
+   =#
+   
+   grid = simulation.model.grid
+   b    = simulation.model.tracers.b
+
+   totalPE_op = KernelFunctionOperation{Center, Center, Center}(totalPE_ccc, grid, b, g)
+
+   compute!(Integral(Field(totalPE_op)))
+end
+
+function totalGravityWork(simulation, g)
+   #=
+   Return computed integral, over entire domain, of total gravity work.
+   =#
+
+   uz = simulation.model.velocities.w
+   
+   @inline gravityWork_ccc(i, j, k, grid) = @inbounds uz[i, j, k]
+      
+   totalGravityWork_op = KernelFunctionOperation{Center, Center, Center}(gravityWork_ccc, simulation.model.grid)
+
+   compute!(Integral(Field(g * totalGravityWork_op)))
+end
+
+function totalBuoyancyAdvFlux(simulation)
+   #=
+   Return computed integral, over entire domain, of total advective KE-flux.
+   =#
+   
+   b       = simulation.model.tracers.b
+   u, v, w = simulation.model.velocities
+      
+   @compute ∂xb = ∂x((Center, Center, Center), b)
+   @compute ∂yb = ∂y((Center, Center, Center), b)
+   @compute ∂zb = ∂z((Center, Center, Center), b)
+      
+   @inline buoyancyAdvFlux_ccc(i, j, k, grid) = @inbounds ((u[i, j, k] * ∂xb[i, j, k] + v[i, j, k] * ∂yb[i, j, k] + w[i, j, k] * ∂zb[i, j, k]) * grid.z.cᵃᵃᶜ[k])
+   
+   totalBuoyancyAdvFlux_op = KernelFunctionOperation{Center, Center, Center}(buoyancyAdvFlux_ccc, simulation.model.grid)
+
+   compute!(Integral(Field(totalBuoyancyAdvFlux_op)))
+end
 
 #Functions to compute cylindrical components of perturbation velocity
 @inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
@@ -89,7 +227,7 @@ function IsWithinGyreRegion(i, j, k, grid, integrand; parameters)
    return isWithinGyreRegion
 end
    
-function PKE(simulation; Ux, Uy, Uz)
+function PKE(simulation, Ux, Uy, Uz)
    #=
    Return computed integral of PKE over entire domain.
    =#
@@ -123,7 +261,7 @@ function gyre_PKE(simulation; gyreParameters)
    compute!(Integral(PKE, mask = mask))
 end
 
-function PAPE_to_PKE(simulation; B, Uz)
+function PAPE_to_PKE(simulation, B, Uz)
    #=
    Return computed integral, over entire domain, of conversion from perturbation 
     APE to PKE.
