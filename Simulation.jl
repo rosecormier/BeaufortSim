@@ -73,16 +73,16 @@ else
 end
 
 const useGPU = true #Whether to use GPU
-const useNHS = false #Whether to use NonhydrostaticModel
+const useNHS = true #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x           = false
+const vis_const_x           = true
 const vis_const_y           = false
-const vis_const_z           = false
+const vis_const_z           = true
 const vis_norms             = false
-const vis_energetics        = true
+const vis_energetics        = false
 const vis_z_grid            = false #Note: currently can only be done on CPU
 const vis_B_and_N²_profiles = false
 
@@ -299,35 +299,41 @@ bkgdParameters = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂z
 gyreParameters = (σr = σr, σz = σz)
 
 energy_diagnostics = (; 
-   total_PKE = PKE(simulation; Ux, Uy, Uz),
-   total_PAPE_to_PKE = PAPE_to_PKE(simulation; B, Uz),
-   total_BTI_transfer = BTI_transfer(simulation; 
-                                     bkgdParameters = bkgdParameters),
-   total_BCI_transfer = BCI_transfer(simulation; 
-                                     bkgdParameters = bkgdParameters),
-   gyre_PKE = gyre_PKE(simulation; 
+   total_KE            = totalKE(simulation),
+   total_KE_adv_flux   = totalKEadvFlux(simulation; useNHS = useNHS),
+   total_KE_production = totalProduction(simulation; useNHS = useNHS),
+   total_pressure_work = totalPressureWork(simulation; useNHS = useNHS),
+   total_PE            = totalPE(simulation, g),
+   total_b_adv_flux    = totalBuoyancyAdvFlux(simulation),
+   total_gravity_work  = totalGravityWork(simulation, g),
+   total_PKE           = PKE(simulation, Ux, Uy, Uz),
+   total_PAPE_to_PKE   = PAPE_to_PKE(simulation, B, Uz),
+   total_BTI_transfer  = BTI_transfer(simulation; 
+                                      bkgdParameters = bkgdParameters),
+   total_BCI_transfer  = BCI_transfer(simulation; 
+                                      bkgdParameters = bkgdParameters),
+   gyre_PKE            = gyre_PKE(simulation; 
                                   gyreParameters = gyreParameters),
-   gyre_PAPE_to_PKE = gyre_PAPE_to_PKE(simulation; 
-                                       gyreParameters = gyreParameters),
-   gyre_BTI_transfer = gyre_BTI_transfer(simulation; 
-                                         bkgdParameters = bkgdParameters, 
-                                         gyreParameters = gyreParameters),
-   gyre_BCI_transfer = gyre_BCI_transfer(simulation; 
-                                         bkgdParameters = bkgdParameters, 
-                                         gyreParameters = gyreParameters)
+   gyre_PAPE_to_PKE    = gyre_PAPE_to_PKE(simulation; 
+                                          gyreParameters = gyreParameters),
+   gyre_BTI_transfer   = gyre_BTI_transfer(simulation; 
+                                           bkgdParameters = bkgdParameters, 
+                                           gyreParameters = gyreParameters),
+   gyre_BCI_transfer   = gyre_BCI_transfer(simulation; 
+                                           bkgdParameters = bkgdParameters, 
+                                           gyreParameters = gyreParameters)
                      )
 
-energy_writer = NetCDFWriter(model,
-                             energy_diagnostics,
-                             filename = energyfilepath,
-                             schedule = TimeInterval(Δt_save),
+energy_writer = NetCDFWriter(model, energy_diagnostics,
+                             filename       = energyfilepath,
+                             schedule       = TimeInterval(Δt_save),
                              file_splitting = FileSizeLimit(30GiB)
                             )
 
 checkpointer = Checkpointer(model; 
-                            schedule = TimeInterval(Δt_checkpt),
-                            dir = "Checkpoints", 
-			    	                prefix = "checkpoint_$(datetimenow)", 
+                            schedule   = TimeInterval(Δt_checkpt),
+                            dir        = "Checkpoints", 
+			    	                prefix     = "checkpoint_$(datetimenow)", 
 		    	                  properties = [:grid, :clock, :timestepper,
 					                                :velocities, :tracers]
                            )
@@ -396,7 +402,7 @@ if vis_norms
 end
 
 if vis_energetics
-   visualize_energetics(datetimenow, model.grid, total_initial_KE.data)
+   visualize_PKE(datetimenow, model.grid, total_initial_KE.data)
 end
 
 if vis_z_grid
