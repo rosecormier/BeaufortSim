@@ -175,23 +175,22 @@ def SaveToNetCDF(params, geom, dimensionalGrowthRates, dimensionalPropSpeeds,
                                                  
                     elif not params.discretizeRadial:
                     
-                        for r_idx in range(len(params.rs)):
-                         
-                            eigVel = EigvelFrom1DEigvec(params, geom, 
-                                                        eigVecs[:, kφ_idx, :,
-                                                                mode],
-                                                        kφ_idx)
+                        eigVel = EigvelFrom1DEigvec(params, geom, 
+                                                    eigVecs[:, kφ_idx, :, mode],
+                                                    kφ_idx)
                                                  
-                            eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
-                            eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
+                        eig_ur[kφ_idx, :, ell, :, mode] = eigVel[0]
+                        eig_uφ[kφ_idx, :, ell, :, mode] = eigVel[1]
+                    
+                        for r_idx in range(len(params.rs)):
                             
                             eigMode[kφ_idx, r_idx, :, mode] = eigVecs[r_idx, 
                                                                       kφ_idx, :,
                                                                       mode]
                                   
-                #Evaluate and save eigen-streamfunction at discrete grid points
-                for ell in range(len(φ)):
-                    eigStreamfn[kφ_idx, :, 
+                    #Evaluate and save eigen-streamfunction at discrete grid points
+                    for ell in range(len(φ)):
+                        eigStreamfn[kφ_idx, :, 
                                 ell, :, mode] = Streamfunction(eigMode[kφ_idx,
                                                                        :, :, 
                                                                        mode],
