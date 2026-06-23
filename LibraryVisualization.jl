@@ -98,13 +98,72 @@ function ωz(u, v, Δx, Δy;
    elseif !isnothing(y_idx)
       ωz = @. ((v[2:end, y_idx, :] - v[1:end-1, y_idx, :]) / Δx
 	             - ((u[2:end-1, y_idx+1, :] - u[2:end-1, y_idx, :])
-		               + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2*Δy))
+		               + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2 * Δy))
 
    elseif !isnothing(z_idx)
       ωz = @. ((v[2:end, 2:end-1, z_idx] - v[1:end-1, 2:end-1, z_idx]) / Δx
                - (u[2:end-1, 2:end, z_idx] - u[2:end-1, 1:end-1, z_idx]) / Δy)
    end
    return ωz
+end
+
+function normalStrainInHorizontalFlow(u, v, Δx, Δy; 
+                                      x_idx = nothing, 
+                                      y_idx = nothing, 
+                                      z_idx = nothing)
+
+   if !isnothing(x_idx)
+      Sn = @. (((u[x_idx+1, 2:end-1, :] - u[x_idx, 2:end-1, :]) 
+                 + u[x_idx, 2:end-1, :] - u[x_idx-1, 2:end-1, :]) / (2 * Δx)
+                - (v[x_idx, 2:end, :] - v[x_idx, 1:end-1, :]) / Δy)
+
+   elseif !isnothing(y_idx)
+      Sn = @. ((u[2:end, y_idx, :] - u[1:end-1, y_idx, :]) / Δx
+	             - ((v[2:end-1, y_idx+1, :] - v[2:end-1, y_idx, :])
+		               + v[2:end-1, y_idx, :] - v[2:end-1, y_idx-1, :]) / (2 * Δy))
+                                  
+   elseif !isnothing(z_idx)
+      Sn = @. ((u[2:end, 2:end-1, z_idx] - u[1:end-1, 2:end-1, z_idx]) / Δx
+               - (v[2:end-1, 2:end, z_idx] - v[2:end-1, 1:end-1, z_idx]) / Δy)
+   end
+   return Sn
+end
+
+function shearStrainInHorizontalFlow(u, v, Δx, Δy; 
+                                     x_idx = nothing, 
+                                     y_idx = nothing,
+                                     z_idx = nothing)
+                                     
+   if !isnothing(x_idx)
+      Ss = @. (((v[x_idx+1, 2:end-1, :] - v[x_idx, 2:end-1, :]) 
+                 + v[x_idx, 2:end-1, :] - v[x_idx-1, 2:end-1, :]) / (2 * Δx)
+                + (u[x_idx, 2:end, :] - u[x_idx, 1:end-1, :]) / Δy)
+
+   elseif !isnothing(y_idx)
+      Ss = @. ((v[2:end, y_idx, :] - v[1:end-1, y_idx, :]) / Δx
+	             + ((u[2:end-1, y_idx+1, :] - u[2:end-1, y_idx, :])
+		               + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2 * Δy))
+                                  
+   elseif !isnothing(z_idx)
+      Ss = @. ((v[2:end, 2:end-1, z_idx] - v[1:end-1, 2:end-1, z_idx]) / Δx
+               + (u[2:end-1, 2:end, z_idx] - u[2:end-1, 1:end-1, z_idx]) / Δy)
+   end
+   return Ss
+end
+
+function OkuboWeiss(u, v, Δx, Δy; 
+                    x_idx = nothing, y_idx = nothing, z_idx = nothing)
+   #=
+   Compute W pointwise.   
+   =#
+
+   Sn = normalStrainInHorizontalFlow(u, v, Δx, Δy; 
+                                     x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
+   Ss = shearStrainInHorizontalFlow(u, v, Δx, Δy; 
+                                    x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
+   ζ = ωz(u, v, Δx, Δy; x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
+
+   return Sn^2 + Ss^2 - ζ^2
 end
 
 function ζa_b(U, f, σr, σz, x, y, z)
@@ -257,6 +316,23 @@ end
 
 function order1_forward_difference(t, u)
    return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
+end
+
+function centered_difference(t, u)
+
+   u_i = u[2:end-1]
+   u_i_minus_1 = u[1:end-2]
+   u_i_plus_1 = u[3:end]
+   
+   Delta_t_minus = t[2:end-1] .- t[1:end-2]
+   Delta_t_plus = t[3:end] .- t[2:end-1]
+   
+   A = -Delta_t_plus ./ Delta_t_minus
+   B = (Delta_t_plus ./ Delta_t_minus) .- (Delta_t_minus ./ Delta_t_plus)
+   C = Delta_t_minus ./ Delta_t_plus
+   
+   return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
+              ./ (Delta_t_minus .+ Delta_t_plus))
 end
 
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
