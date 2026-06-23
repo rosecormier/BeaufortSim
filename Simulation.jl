@@ -78,11 +78,11 @@ const useNHS = true #Whether to use NonhydrostaticModel
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x           = true
+const vis_const_x           = false
 const vis_const_y           = false
-const vis_const_z           = true
+const vis_const_z           = false
 const vis_norms             = false
-const vis_energetics        = false
+const vis_energetics        = true
 const vis_z_grid            = false #Note: currently can only be done on CPU
 const vis_B_and_N²_profiles = false
 
@@ -402,6 +402,7 @@ if vis_norms
 end
 
 if vis_energetics
+   visualize_total_energy_budgets(datetimenow, model.grid)
    visualize_PKE(datetimenow, model.grid, total_initial_KE.data)
 end
 
