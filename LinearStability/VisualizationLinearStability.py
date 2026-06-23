@@ -88,7 +88,6 @@ def LoadSavedData1DVertical(params, geom):
     
     return commonVariables, z, growthDim, propDim
 
-
 def LoadSavedData2D(params, geom):
     """
     Load results of 2D gen. eig. solver from nc file.
