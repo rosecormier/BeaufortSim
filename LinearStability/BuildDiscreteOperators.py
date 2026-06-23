@@ -318,14 +318,24 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
             N2Recip = np.diag(geom.N2Recip[1:-1])
             Dz      = geom.Dz[1:-1, 1:-1]
             Dz2     = geom.Dz2[1:-1, 1:-1]
-        
-        elif params.verticalBCs == "continuousBuoyancy":
-        
-            zz = np.zeros((1, (params.Nz + 1)))
             
-            #Load these operators in full
+        elif params.verticalBCs == "constantStreamfunction":
+            
+            zz = np.zeros((1, (params.Nz + 1)))
+
             N2Recip = np.diag(geom.N2Recip)
-            Dz      = geom.Dz
+            DzFull  = geom.Dz[1:-1, :]
+            Dz2     = geom.Dz2
+            
+            #Impose BCs by zeroing first and last rows of the full Dz
+            Dz  = np.vstack((zz, DzFull, zz))
+            
+        elif params.verticalBCs == "continuousBuoyancy":
+            
+            zz = np.zeros((1, (params.Nz + 1)))
+
+            N2Recip = np.diag(geom.N2Recip)
+            DzFull  = geom.Dz
             Dz2Full = geom.Dz2[1:-1, :]
             
             #Impose BCs by zeroing first and last rows of the full Dz2

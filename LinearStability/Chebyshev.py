@@ -61,7 +61,8 @@ class Parameters:
             #Store size of z-differential operators used in gen. eig. problem
             if self.verticalBCs == "homogeneous":
                 self.DzSize = self.Nz - 1
-            elif self.verticalBCs == "continuousBuoyancy":
+            elif (self.verticalBCs == "continuousBuoyancy" 
+                  or self.verticalBCs == "constantStreamfunction"):
                 self.DzSize = self.Nz + 1
                 
             if not discretizeRadial:
