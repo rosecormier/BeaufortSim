@@ -258,12 +258,12 @@ function visualize_total_energy_budgets(datetime, grid)
    scatter!(ax_KE_budget, t, total_KE_adv_flux, label = "Advective flux", color = :royalblue)
    scatter!(ax_KE_budget, t, total_pressure_work, label = "Pressure work", color = :sienna)
    scatter!(ax_KE_budget, t, total_KE_production, label = "Buoyant production", color = :orange)
-   scatter!(ax_KE_budget, t[1:end-1], 
+   lines!(ax_KE_budget, t[1:end-1], 
             (dt_KE_total - total_KE_adv_flux[1:end-1] 
-             - total_pressure_work[1:end-1], total_KE_production[1:end-1]), 
+             - total_pressure_work[1:end-1] - total_KE_production[1:end-1]), 
             label = "Residual", color = :red)
 
-   fig_KE_budget[1, 1] = Label(fig_budget, "Terms in total-KE budget", 
+   fig_KE_budget[1, 1] = Label(fig_KE_budget, "Terms in total-KE budget",
                                fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "KEbudget_$(datetime).png"), fig_KE_budget)
