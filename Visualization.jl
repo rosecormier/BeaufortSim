@@ -247,26 +247,50 @@ function visualize_total_energy_budgets(datetime, grid)
    total_ME = total_KE + total_PE #Mechanical energy
    
    #Convert time to s to compute time-derivative of KE
-   dt_KE_total = order1_forward_difference(86400 * t, total_KE)
+   dt_KE_total = centered_difference(86400 * t, total_KE)
    
    fig_KE_budget = Figure(size = (1200, 700))
    ax_KE_budget  = Axis(fig_KE_budget[2, 1]; xlabel = "Time [days]",
-                     ylabel = L"[s$^{-1}$]")
+                     ylabel = L"[m$^5$ s$^{-3}$]")
                      
-   scatter!(ax_KE_budget, t[1:end-1], dt_KE_total, 
+   scatter!(ax_KE_budget, t[2:end-1], dt_KE_total, 
             label = "Time derivative of total KE", color = :yellowgreen)
    scatter!(ax_KE_budget, t, total_KE_adv_flux, label = "Advective flux", color = :royalblue)
    scatter!(ax_KE_budget, t, total_pressure_work, label = "Pressure work", color = :sienna)
    scatter!(ax_KE_budget, t, total_KE_production, label = "Buoyant production", color = :orange)
-   lines!(ax_KE_budget, t[1:end-1], 
-            (dt_KE_total - total_KE_adv_flux[1:end-1] 
-             - total_pressure_work[1:end-1] - total_KE_production[1:end-1]), 
+   scatter!(ax_KE_budget, t[2:end-1], 
+            (dt_KE_total - total_KE_adv_flux[2:end-1] 
+             - total_pressure_work[2:end-1] - total_KE_production[2:end-1]), 
             label = "Residual", color = :red)
 
    fig_KE_budget[1, 1] = Label(fig_KE_budget, "Terms in total-KE budget",
                                fontsize = 24, tellwidth = false)
 
+   axislegend(ax_KE_budget)
    save(joinpath("./Plots", "KEbudget_$(datetime).png"), fig_KE_budget)
+
+   #Convert time to s to compute time-derivative of PE
+   dt_PE_total = centered_difference(86400 * t, total_PE)
+
+   fig_PE_budget = Figure(size = (1200, 700))
+   ax_PE_budget  = Axis(fig_PE_budget[2, 1]; xlabel = "Time [days]",
+                     ylabel = L"[m$^5$ s$^{-3}$]")
+                     
+   scatter!(ax_PE_budget, t[2:end-1], dt_PE_total, 
+            label = "Time derivative of total PE", color = :yellowgreen)
+   scatter!(ax_PE_budget, t, total_b_adv_flux, label = "Internal sources", color = :royalblue)
+   scatter!(ax_PE_budget, t, total_gravity_work, label = "Gravity work", color = :sienna)
+   scatter!(ax_PE_budget, t, -total_KE_production, label = "Buoyant production (of KE)", color = :orange)
+   scatter!(ax_PE_budget, t[2:end-1], 
+            (dt_PE_total - total_b_adv_flux[2:end-1] 
+             - total_gravity_work[2:end-1] + total_KE_production[2:end-1]), 
+            label = "Residual", color = :red)
+
+   fig_PE_budget[1, 1] = Label(fig_PE_budget, "Terms in total-PE budget",
+                               fontsize = 24, tellwidth = false)
+
+   axislegend(ax_PE_budget)
+   save(joinpath("./Plots", "PEbudget_$(datetime).png"), fig_PE_budget)
 
    close(ds)
 end
@@ -920,6 +944,12 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
    end
    return NCDataset(computed_file, "r")
 end
+
+#=
+function visualize_OkuboWeiss(datetime, )
+
+end
+=#
 
 function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
 
