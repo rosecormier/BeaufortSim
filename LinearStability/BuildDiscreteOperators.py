@@ -146,7 +146,6 @@ def BuildBkgdOperators(params, geom, r_idx = None):
             z       = geom.z[zStartIdx:zEndIdx]
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
-            
             Dz      = geom.Dz[zStartIdx:zEndIdx, zStartIdx:zEndIdx]
             N2Recip = geom.N2Recip[zStartIdx:zEndIdx]
 
@@ -325,10 +324,10 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
 
             N2Recip = np.diag(geom.N2Recip)
             DzFull  = geom.Dz[1:-1, :]
-            Dz2     = geom.Dz2
-            
+
             #Impose BCs by zeroing first and last rows of the full Dz
             Dz  = np.vstack((zz, DzFull, zz))
+            Dz2 = geom.Dz2
             
         elif params.verticalBCs == "continuousBuoyancy":
             
