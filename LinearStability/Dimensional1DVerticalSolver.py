@@ -133,7 +133,8 @@ def QG_Vortex_Stability():
                 if params.verticalBCs == "homogeneous":
                     #Update 'modes' at interior points only
                     modes[r_idx, kφ_idx, 1:-1, 0:nmodes] = eigVecs[:, 0:nmodes]
-                elif params.verticalBCs == "continuousBuoyancy":
+                elif (params.verticalBCs == "continuousBuoyancy" 
+                      or params.verticalBCs == "constantStreamfunction"):
                     #Update 'modes' at all z-points
                     modes[r_idx, kφ_idx, :, 0:nmodes] = eigVecs[:, 0:nmodes]
                 
