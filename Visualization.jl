@@ -238,29 +238,43 @@ function visualize_total_energy_budgets(datetime, grid)
 
    total_KE            = ds[:total_KE][chron_idcs]
    total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
-   total_KE_production = ds[:total_KE_production][chron_idcs]
-   total_pressure_work = ds[:total_pressure_work][chron_idcs]
+   total_KE_production = ds[:total_KE_production][chron_idcs] #0.5
+   total_pressure_work = ds[:total_pressure_work][chron_idcs] #0.5
    total_PE            = ds[:total_PE][chron_idcs]
    total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
    total_gravity_work  = ds[:total_gravity_work][chron_idcs]
    
    total_ME = total_KE + total_PE #Mechanical energy
    
+   fig_ME = Figure(size = (1200, 700))
+   ax_ME  = Axis(fig_ME[2, 1]; xlabel = "Time [days]",
+                 ylabel = L"[m$^5$ s$^{-2}$]")
+                 
+   scatter!(ax_ME, t, 0.5 * total_ME, label = "50% of total ME", color = :black)
+   scatter!(ax_ME, t, total_KE, label = "Total KE", color = :green)
+   scatter!(ax_ME, t, total_PE, label = "Total PE", color = :purple)
+   
+   fig_ME[1, 1] = Label(fig_ME, "Total-ME budget", fontsize = 24, 
+                        tellwidth = false)
+
+   axislegend(ax_ME)
+   save(joinpath("./Plots", "MEbudget_$(datetime).png"), fig_ME)
+   
    #Convert time to s to compute time-derivative of KE
-   dt_KE_total = centered_difference(86400 * t, total_KE)
+   dt_KE_total = order1_forward_difference(86400 * t, total_KE)
    
    fig_KE_budget = Figure(size = (1200, 700))
    ax_KE_budget  = Axis(fig_KE_budget[2, 1]; xlabel = "Time [days]",
-                     ylabel = L"[m$^5$ s$^{-3}$]")
+                        ylabel = L"[m$^5$ s$^{-3}$]")
                      
-   scatter!(ax_KE_budget, t[2:end-1], dt_KE_total, 
+   scatter!(ax_KE_budget, t[1:end-1], dt_KE_total, 
             label = "Time derivative of total KE", color = :yellowgreen)
    scatter!(ax_KE_budget, t, total_KE_adv_flux, label = "Advective flux", color = :royalblue)
    scatter!(ax_KE_budget, t, total_pressure_work, label = "Pressure work", color = :sienna)
    scatter!(ax_KE_budget, t, total_KE_production, label = "Buoyant production", color = :orange)
-   scatter!(ax_KE_budget, t[2:end-1], 
-            (dt_KE_total - total_KE_adv_flux[2:end-1] 
-             - total_pressure_work[2:end-1] - total_KE_production[2:end-1]), 
+   scatter!(ax_KE_budget, t[1:end-1], 
+            (dt_KE_total - total_KE_adv_flux[1:end-1] 
+             - total_pressure_work[1:end-1] - total_KE_production[1:end-1]), 
             label = "Residual", color = :red)
 
    fig_KE_budget[1, 1] = Label(fig_KE_budget, "Terms in total-KE budget",
@@ -270,42 +284,42 @@ function visualize_total_energy_budgets(datetime, grid)
    save(joinpath("./Plots", "KEbudget_$(datetime).png"), fig_KE_budget)
 
    #Convert time to s to compute time-derivative of PE
-   dt_PE_total = centered_difference(86400 * t, total_PE)
+   dt_PE_total = order1_forward_difference(86400 * t, total_PE)
 
    fig_PE_budget = Figure(size = (1200, 700))
    ax_PE_budget  = Axis(fig_PE_budget[2, 1]; xlabel = "Time [days]",
-                     ylabel = L"[m$^5$ s$^{-3}$]")
+                        ylabel = L"[m$^5$ s$^{-3}$]")
                      
-   scatter!(ax_PE_budget, t[2:end-1], dt_PE_total, 
+   scatter!(ax_PE_budget, t[1:end-1], dt_PE_total, 
             label = "Time derivative of total PE", color = :yellowgreen)
    scatter!(ax_PE_budget, t, total_b_adv_flux, label = "Internal sources", color = :royalblue)
    scatter!(ax_PE_budget, t, total_gravity_work, label = "Gravity work", color = :sienna)
    scatter!(ax_PE_budget, t, -total_KE_production, label = "Buoyant production (of KE)", color = :orange)
-   scatter!(ax_PE_budget, t[2:end-1], 
-            (dt_PE_total - total_b_adv_flux[2:end-1] 
-             - total_gravity_work[2:end-1] + total_KE_production[2:end-1]), 
+   scatter!(ax_PE_budget, t[1:end-1], 
+            (dt_PE_total - total_b_adv_flux[1:end-1] 
+             - total_gravity_work[1:end-1] + total_KE_production[1:end-1]), 
             label = "Residual", color = :red)
 
    fig_PE_budget[1, 1] = Label(fig_PE_budget, "Terms in total-PE budget",
                                fontsize = 24, tellwidth = false)
 
-   axislegend(ax_PE_budget)
+   axislegend(ax_PE_budget, position = :lb)
    save(joinpath("./Plots", "PEbudget_$(datetime).png"), fig_PE_budget)
 
    close(ds)
 end
 
-function visualize_PKE(datetime, grid, initialKE)
+function visualize_PKE(datetime, grid)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
    ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
    
-   initialKE = no_offset_view(adapt(Array, initialKE))
+   initialKE = ds[:total_KE][chron_idcs][1]
 
-   PKE          = ds[:total_PKE][chron_idcs] / initialKE[1]
-   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][chron_idcs] / initialKE[1]
-   BTI_transfer = ds[:total_BTI_transfer][chron_idcs] / initialKE[1]
-   BCI_transfer = ds[:total_BCI_transfer][chron_idcs] / initialKE[1]
+   PKE          = ds[:total_PKE][chron_idcs] / initialKE
+   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][chron_idcs] / initialKE
+   BTI_transfer = ds[:total_BTI_transfer][chron_idcs] / initialKE
+   BCI_transfer = ds[:total_BCI_transfer][chron_idcs] / initialKE
    
    PKE          = PKE .- PKE[1]
    PAPE_to_PKE  = PAPE_to_PKE .- PAPE_to_PKE[1]
@@ -704,16 +718,6 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
    ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., chron_idcs[Nt]]
    uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., chron_idcs[Nt]]
    uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., chron_idcs[Nt]]
-   
-   #b_total_f  = b_total[:, :, Nt]
-   #ur_total_f = ur_total[:, :, Nt]
-   #uφ_total_f = uφ_total[:, :, Nt]
-   #uz_total_f = uz_total[:, :, Nt]
-   
-   #b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., Nt]
-   #ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., Nt]
-   #uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., Nt]
-   #uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., Nt]
 
    Δb_f  = b_total_f .- B
    Δuφ_f = uφ_total_f .- Uφ
@@ -883,6 +887,10 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
 end
 
 function open_computed_dataset(datetime, Δx, Δy, Δz, f)
+   #=
+   Produced nc file containing computed diagnostics, if it does not already
+    exist, and return the opened file in read mode.
+   =#
 
    computed_file = joinpath("./Output", "computed_$(datetime).nc")
 
@@ -911,37 +919,39 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
          w  = @lift ds["w"][:, :, 1:end-1, $n]
          qn = @lift q($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
 
-	 defDim(comp_ds, "x", length(x)-2)
-	 defDim(comp_ds, "y", length(y)-2)
-	 defDim(comp_ds, "z", length(z)-2)
-	 defDim(comp_ds, "time", length(times))
+         defDim(comp_ds, "x", length(x)-2)
+         defDim(comp_ds, "y", length(y)-2)
+         defDim(comp_ds, "z", length(z)-2)
+         defDim(comp_ds, "time", length(times))
 
-	 q_data  = Array{Float64, 4}(undef, 
-				     length(x)-2, 
-				     length(y)-2, 
-				     length(z)-2, 
-				     Nt)
+         q_data  = Array{Float64, 4}(undef, length(x)-2, length(y)-2, 
+                                     length(z)-2, Nt)
 
          for t = 1:frames[end]
-	    for z_idx = 2:z_idcs[end]
-       	       for x_idx = 2:x_idcs[end]
+            for z_idx = 2:z_idcs[end]
+               for x_idx = 2:x_idcs[end]
+               
                   for y_idx = 2:y_idcs[end]
-	             update_data_array!(q_data, 
-					x_idx, y_idx, z_idx, t, 
-					to_value(qn))
-		     yield()
-		     j[] = y_idx
-	          end
-	          i[] = x_idx
+                     update_data_array!(q_data, x_idx, y_idx, z_idx, t, 
+                                        to_value(qn))
+                     yield()
+                     j[] = y_idx
+                  end
+                  
+                  i[] = x_idx
                end
-	       k[] = z_idx
-	    end
-	    print("Computing q for time $(t) of $(Nt)" * " \r")
+               
+               k[] = z_idx
+            end
+            
+            print("Computing q for time $(t) of $(Nt)" * " \r")
             n[] = t
-	 end
-	 defVar(comp_ds, "q", q_data, ("x", "y", "z", "time"))
+         end
+         
+         defVar(comp_ds, "q", q_data, ("x", "y", "z", "time"))
       end #comp_ds gets closed automatically
    end
+
    return NCDataset(computed_file, "r")
 end
 
@@ -951,22 +961,66 @@ function visualize_OkuboWeiss(datetime, )
 end
 =#
 
-function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
+function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
+                              Hx = 0, Hy = 0, Hz = 0, 
+                              plot_animation = true)
+                              
+   #=
+   Plot 2D slices of potential vorticity. By default, data are assumed to exclude
+    halos.
+   =#
 
-   ds, x, y, z, times, Nt = open_dataset(datetime)
+   outfile_list = glob("./Output/output_$(datetime)*")
+   
+   ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(
+					                                 outfile_list[length(outfile_list)];
+                                           Hx = Hx, Hy = Hy, Hz = Hz)
    
    comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
+   
+   if const_dim == "x"
+      x_idx, y_idx, z_idx       = const_idx, nothing, nothing
+      axis1, axis2_zC, axis2_zF = x, zC, zF
+   elseif const_dim == "y"
+      x_idx, y_idx, z_idx       = nothing, const_idx, nothing
+      axis1, axis2_zC, axis2_zF = y, zC, zF
+   elseif const_dim == "z"
+      x_idx, y_idx, z_idx       = nothing, nothing, const_idx
+      axis1, axis2_zC, axis2_zF = x, y, y
+   end
 
-   z_plt = div(length(z[:]), 2) #z-index to start plot at
+   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dim;
+                                  Hx = Hx, Hy = Hy, Hz = Hz,
+                                  x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
+                                  xC = x, yC = y, zC = zC, zF = zF)
+                                  
+   q_f = adapt(Array, comp_ds[:q])[xyzC_idcs..., chron_idcs[Nt]]
+   
+   lims_q = get_range_lims(q_f)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   
+   nearest, ax_kwargs = get_2D_spatial_axis_kwargs(x, y, zC, const_dim;
+                                                   x_idx = x_idx, 
+                                                   y_idx = y_idx,
+                                                   z_idx = z_idx)
+
+   #Plot static images (final frame, by default)
+   
+   
+   fig_q = Figure(size = (1200, 800))
+   ax_q  = Axis(fig_q[2, 1]; title = L"Potential vorticity ($q$)", ax_kwargs...)
+
+   #=z_plt = div(length(z[:]), 2) #z-index to start plot at
 
    n    = Observable(1)
-   b    = @lift ds["b"][:, :, z_plt:end, $n]
-   u    = @lift ds["u"][:, :, z_plt:end, $n]
-   v    = @lift ds["v"][:, :, z_plt:end, $n]
-   w    = @lift ds["w"][:, :, z_plt:end-1, $n]
-   q_yz = @lift comp_ds["q"][x_idx, :, z_plt:end, $n] 
+   b    = @lift ds[:b][:, :, z_plt:end, $n]
+   u    = @lift ds[:u][:, :, z_plt:end, $n]
+   v    = @lift ds[:v][:, :, z_plt:end, $n]
+   w    = @lift ds[:w][:, :, z_plt:end-1, $n]
+   q_yz = @lift comp_ds[:q][x_idx, :, z_plt:end, $n] 
    
-   q_yz_f = comp_ds["q"][x_idx, :, z_plt:end, Nt]
+   q_yz_f = comp_ds[:q][x_idx, :, z_plt:end, Nt]
 
    lims_q = get_range_lims(q_yz_f)
 
@@ -993,8 +1047,8 @@ function visualize_q_const_x(datetime, Δx, Δy, Δz, f, x_idx)
       n[] = i
    end
 
-   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_x$(x_nearest)_$(datetime).mp4"), video_q)
+   =#
    close(ds)
 end
 
