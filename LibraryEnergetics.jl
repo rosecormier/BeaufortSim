@@ -18,7 +18,7 @@ function totalKE(simulation)
 
    totalKE_op = KineticEnergy(simulation.model, u, v, w)
    
-   compute!(Integral(Field(totalKE_op)))
+   compute!(Integral(Field(2 * totalKE_op)))
 end
 
 function totalKEadvFlux(simulation; useNHS = nothing)
@@ -47,7 +47,7 @@ function totalKEadvFlux(simulation; useNHS = nothing)
       totalKEadvFlux_op = KernelFunctionOperation{Center, Center, Center}(KEadvFlux_ccc, simulation.model.grid)
    end
    
-   compute!(Integral(Field(-0.5 * totalKEadvFlux_op)))
+   compute!(Integral(Field(-totalKEadvFlux_op)))
 end
 
 function totalPressureWork(simulation; useNHS = nothing)
