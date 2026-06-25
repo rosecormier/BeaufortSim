@@ -72,16 +72,16 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 
-const useGPU = true #Whether to use GPU
+const useGPU = true  #Whether to use GPU
 const useNHS = true #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x           = false
+const vis_const_x           = true
 const vis_const_y           = false
-const vis_const_z           = false
-const vis_norms             = false
+const vis_const_z           = true
+const vis_norms             = true
 const vis_energetics        = true
 const vis_z_grid            = false #Note: currently can only be done on CPU
 const vis_B_and_N²_profiles = false
@@ -121,8 +121,10 @@ grid = RectilinearGrid(architecture,
 b̄_BCs = buoyancy_BCS(f, σr, σz, U, N²_far, grid, false;
                       doubleTanhParams = doubleTanhParams)
 
+#box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
+
 if useNHS
-   model = NonhydrostaticModel(; 
+   model = NonhydrostaticModel(;
                                grid = grid, 
                                timestepper = :RungeKutta3,
                                advection = WENO(),
@@ -155,9 +157,9 @@ check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v;
                       z_idx = z_idx)
 check_grav_stability(model.tracers.b, model.grid)
 
-#########################################################
-# SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FUNCTIONS #
-#########################################################
+######################################################
+# SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FIELDS #
+######################################################
 
 datetimestart = now()
 datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
@@ -216,12 +218,6 @@ end
                                          )
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
-
-initial_KE = CenterField(model.grid)
-set!(initial_KE, (model.velocities.u^2 + model.velocities.v^2
-                  + model.velocities.w^2) / 2)
-total_initial_KE = Field(Integral(initial_KE))
-compute!(total_initial_KE)
 
 simulation = Simulation(model;
                         Δt = Δt,
@@ -403,7 +399,7 @@ end
 
 if vis_energetics
    visualize_total_energy_budgets(datetimenow, model.grid)
-   visualize_PKE(datetimenow, model.grid, total_initial_KE.data)
+   visualize_PKE(datetimenow, model.grid)
 end
 
 if vis_z_grid
