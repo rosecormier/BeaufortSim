@@ -334,7 +334,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
             zz = np.zeros((1, (params.Nz + 1)))
 
             N2Recip = np.diag(geom.N2Recip)
-            DzFull  = geom.Dz
+            Dz      = geom.Dz
             Dz2Full = geom.Dz2[1:-1, :]
             
             #Impose BCs by zeroing first and last rows of the full Dz2
