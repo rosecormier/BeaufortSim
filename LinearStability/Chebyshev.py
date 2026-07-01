@@ -54,8 +54,6 @@ class Parameters:
                 self.doubleTanhParams = [self.g, self.rho_0, self.A_s, self.z_s,
                                          self.C_s, self.A_d, self.z_d, self.C_d]
             
-            self.sigmaz = args["sigmaz"]
-            
             self.verticalBCs = args["zBCs"]
             
             #Store size of z-differential operators used in gen. eig. problem
@@ -66,8 +64,15 @@ class Parameters:
                 self.DzSize = self.Nz + 1
                 
             if not discretizeRadial:
-                self.rs      = np.arange(args["r"][0], args["r"][1],
-                                         args["r"][2])
+            
+                #Shorthand for linear spacing; parse as [start] [stop] [step]
+                if len(args["r"]) == 3:
+                    self.rs = np.arange(args["r"][0], args["r"][1], 
+                                        args["r"][2])
+                                        
+                else: #List of r-values is provided
+                    self.rs = np.array(args["r"])
+                                         
                 self.rs_plot = args["rs_plot"]
                  
         self.f0 = args["Coriolis"]
@@ -96,6 +101,9 @@ class Parameters:
             self.Ro = self.Umax / (self.sigmar * self.f0)
             
             if discretizeVertical:
+            
+                self.sigmaz = args["sigmaz"] #Vertical background length scale
+            
                 #Far-field Burger number is also computed
                 self.Bu = (self.N2_far * self.sigmaz / (self.f0 * self.sigmar))**2
                 
