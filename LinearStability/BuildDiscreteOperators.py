@@ -10,15 +10,27 @@ def N2_profile(params, dimensional_N2_far = 1):
 
     def TWB_N2(r, z):
 
-        f0, dimensional_U              = params.f0, params.Umax
-        dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
+        f0     = params.f0
+        Ro, Bu = params.Ro, params.Bu
         
-        N2 = ((np.sqrt(2) * dimensional_σr * f0 * dimensional_U 
-               / (dimensional_σz**2))
-              * (1 - np.exp(-(r / dimensional_σr)**2)) 
-              * (1 - 2 * z / (dimensional_σz**2)) 
-              * np.exp(0.5 - (z / dimensional_σz)**2)
-             )
+        if params.nondimensional:
+        
+            N2 = Bu * ((np.sqrt(2) * Ro * (f0**2)) * (1 - np.exp(-r**2)) 
+                       * (1 - 2 * z) * np.exp(0.5 - (z**2))
+                      )
+            
+        else:
+
+            dimensional_U                  = params.Umax
+            dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
+        
+            N2 = ((np.sqrt(2) * dimensional_σr * f0 * dimensional_U 
+                   / (dimensional_σz**2))
+                  * (1 - np.exp(-(r / dimensional_σr)**2)) 
+                  * (1 - 2 * z / (dimensional_σz**2)) 
+                  * np.exp(0.5 - (z / dimensional_σz)**2)
+                 )
+
         return N2
 
     def fromDoubleTanhN2(z, doubleTanhParams):
@@ -60,13 +72,8 @@ def ComputeRecips(params, geom, r = None):
 
     if params.discretizeVertical:
 
-        if params.nondimensional:
-            dimensional_N2 = 1
-        else:
-            dimensional_N2 = params.N2_far
-
         N2_function  = N2_profile(params, 
-                                  dimensional_N2_far = dimensional_N2)
+                                  dimensional_N2_far = params.N2_far)
         geom.N2      = N2_function(r, geom.z)
         geom.N2Recip = 1 / geom.N2
         
@@ -79,7 +86,7 @@ def ComputeRecips(params, geom, r = None):
     elif (params.discretizeRadial and not params.discretizeVertical):
         geom.rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
 
-    #1D (z) eigenvalue problem - TESTING
+    #1D (z) eigenvalue problem
     if (params.discretizeVertical and not params.discretizeRadial):
         geom.rRecip = 1 / r
 
