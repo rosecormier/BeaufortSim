@@ -22,7 +22,7 @@ using Printf, Random
 
 const Nx = 400 #x-grid size
 const Ny = 400 #y-grid size
-const Nz = 100  #z-grid size
+const Nz = 100 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -39,7 +39,7 @@ const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
 const σz = 300 * meter 	         #Vertical gyre length scale
 
-#Ambient (i.e., excluding gyre's thermal-wind contribution) N²-value at -infty
+#Ambient (i.e., excluding gyre's TWB contribution) N²-value at z --> -infty
 const N²_far = 2e-5 * second^(-2)
 
 const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev'
@@ -73,7 +73,7 @@ else
 end
 
 const useGPU = true  #Whether to use GPU
-const useNHS = true #Whether to use NonhydrostaticModel
+const useNHS = false #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
