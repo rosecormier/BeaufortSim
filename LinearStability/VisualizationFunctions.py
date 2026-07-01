@@ -38,23 +38,30 @@ def LoadCommonVariables(ds):
     """
     Load, from nc file, variables common to 1D- and 2D-solver outputs.
     """
-
-    modes = ds.variables["mode"][:]
-    kφs   = ds.variables["kφ"][:]
-    r     = ds.variables["r"][:]
-    φ     = ds.variables["φ"][:]
     
-    eigModesReal     = ds.variables["eigMode"][:, :, :, :]["r"]
-    eigModesImag     = ds.variables["eigMode"][:, :, :, :]["i"]
-    eigStreamfnsReal = ds.variables["eigStreamfn"][:, :, :, :, :]["r"]
-    eigStreamfnsImag = ds.variables["eigStreamfn"][:, :, :, :, :]["i"]
-    eig_urReal       = ds.variables["eig_ur"][:, :, :, :, :]["r"]
-    eig_urImag       = ds.variables["eig_ur"][:, :, :, :, :]["i"]
-    eig_uφReal       = ds.variables["eig_uφ"][:, :, :, :, :]["r"]
-    eig_uφImag       = ds.variables["eig_uφ"][:, :, :, :, :]["i"]
+    ds_var_data = {"modes": ds.variables["mode"][:], 
+                   "kφs": ds.variables["kφ"][:], 
+                   "r": ds.variables["r"][:],
+                   "φ": ds.variables["φ"][:],
+                   "eigModesReal": ds.variables["eigMode"][:, :, :, :]["r"],
+                   "eigModesImag": ds.variables["eigMode"][:, :, :, :]["i"],
+                   "eigStreamfnsReal": None, "eigStreamfnsImag": None,
+                   "eig_urReal": None, "eig_urImag": None,
+                   "eig_uφReal": None, "eig_uφImag": None}
     
-    return (modes, kφs, r, φ, eigModesReal, eigModesImag, eigStreamfnsReal,
-            eigStreamfnsImag, eig_urReal, eig_urImag, eig_uφReal, eig_uφImag)
+    #Update eigen-streamfunction and -velocity values, if data are present
+    
+    if "eigStreamfn" in ds.variables:
+        ds_var_data["eigStreamfnsReal"] = ds.variables["eigStreamfn"][:, :, :, :, :]["r"]
+        ds_var_data["eigStreamfnsImag"] = ds.variables["eigStreamfn"][:, :, :, :, :]["i"]
+        
+    if ("eig_ur" in ds.variables and "eig_uφ" in ds.variables):
+        ds_var_data["eig_urReal"] = ds.variables["eig_ur"][:, :, :, :, :]["r"]
+        ds_var_data["eig_urImag"] = ds.variables["eig_ur"][:, :, :, :, :]["i"]
+        ds_var_data["eig_uφReal"] = ds.variables["eig_uφ"][:, :, :, :, :]["r"]
+        ds_var_data["eig_uφImag"] = ds.variables["eig_uφ"][:, :, :, :, :]["i"]
+    
+    return ds_var_data
 
 def LoadSavedData1DRadial(params, geom):
     """
@@ -77,7 +84,7 @@ def LoadSavedData1DVertical(params, geom):
     Load results of 1D (z) gen. eig. solver from nc file.
     """
 
-    ds = Dataset(f"./Data/{params.dimString}_Lz{params.Lz:.1E}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
+    ds = Dataset(f"./Data/{params.dimString}_Lz{params.Lz:.1E}_Nz{params.Nz}_{params.stratification_kw}Strat_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
 
     commonVariables = LoadCommonVariables(ds)
     z               = ds.variables["z"][:]
@@ -129,12 +136,12 @@ def plot_rMaxVelocity_CartesianGrid(ax, params):
         ax.axvline(params.sigmar / (2**0.5), color = "k", ls = "--", 
                    label = "Location of max. U")
     
-def plot_sigmaz(ax, params):
+def plot_sigmaz(ax, sigmaz, Lz):
     """
     Plot indication of vertical gyre length scale, if it is within domain.
     """
-    if params.sigmaz < params.Lz:
-        ax.axhline(-params.sigmaz, color = "k", ls = "--")
+    if sigmaz < Lz:
+        ax.axhline(-sigmaz, color = "k", ls = "--") 
         
 def plot_stratification_peaks(ax, params):
     """
@@ -158,7 +165,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
         
     if (params.discretizeRadial and params.discretizeVertical):
     
-        modeString = f"first{nmodes}modes"
+        modeString           = f"first{nmodes}modes"
         dimString, xVariable = params.dimString + "2D", "kphi"
 
         fig, (axGrowth, axProp) = plt.subplots(1, 2, figsize = (13, 5))
@@ -221,7 +228,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             axProp.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
             
     elif (params.discretizeVertical and not params.discretizeRadial):
-        
+
         for mode in range(nmodes):
         
             modeString           = GetModeString(nmodes, mode)
@@ -237,7 +244,7 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
                 axGrowth = axs[ii, 0]
                 axGrowth.grid(True)
                 axGrowth.plot(params.rs, 
-                              np.ravel(dimensionalGrowthRates[:, ii, mode]),
+                              dimensionalGrowthRates[:, ii, mode],
                               ".-", color = "mediumpurple")
                               
                 plot_rMaxVelocity_CartesianGrid(axGrowth, params)
@@ -310,7 +317,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     
                     #Gyre length scales
                     plot_rMaxVelocity_CartesianGrid(axs[i], params)
-                    plot_sigmaz(axs[i], params)
+                    plot_sigmaz(axs[i], params.sigmaz, params.Lz)
                     
                     plot_stratification_peaks(axs[i], params) #z_s and z_d
                     
@@ -379,7 +386,7 @@ def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal,
                     ax.plot(eigModeImag, z, "--", color = "mediumpurple", 
                             label = "Im[$\hat{\psi}$]")
         
-                    plot_sigmaz(ax, params) #Gyre length scale
+                    plot_sigmaz(ax, params.sigmaz, params.Lz) #Gyre length scale
                     plot_stratification_peaks(ax, params) #z_s and z_d
                 
                     ax.set(xlabel = "Component of $\hat{\psi}$, normalized by max. amplitude of $\hat{\psi}$",
@@ -543,7 +550,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                                title = "Im[$\hat{{\psi}}$ exp($ik\phi$)]")
             
                     for i in range(2):
-                        plot_sigmaz(axs[i], params) #Gyre length scale
+                        plot_sigmaz(axs[i], params.sigmaz, params.Lz) #Gyre length scale
                         plot_stratification_peaks(axs[i], params) #z_s and z_d
                         axs[i].grid(True) #Restore grids for final version of plot
                         
@@ -595,7 +602,7 @@ def PlotStreamfnsAndVelocities(params, geom, nmodes, kφs, kzs, r, φ, z,
                         
                     for i in range(2):
                         for j in range(2):
-                            plot_sigmaz(axs[i, j], params) #Gyre length scale
+                            plot_sigmaz(axs[i, j], params.sigmaz, params.Lz) #Gyre length scale
                             plot_stratification_peaks(axs[i, j], params) #z_s, z_d
                             axs[i, j].grid(True) #Restore grids for final version
     
@@ -739,10 +746,12 @@ def RunVisualization(params, geom, modes, kφs, kzs, r, φ, z,
      
     PlotEigModeStructures(params, len(modes), kφs, kzs, r, z, eigModesReal, 
                           eigModesImag, setupString)
-                          
-    PlotStreamfnsAndVelocities(params, geom, 1, kφs, kzs, r, φ, z, 
-                               eigStreamfnsReal, eigStreamfnsImag, eig_urReal,
-                               eig_urImag, eig_uφReal, eig_uφImag, setupString)
+    
+    if (eigStreamfnsReal is not None and eig_urReal is not None):      
+        PlotStreamfnsAndVelocities(params, geom, 1, kφs, kzs, r, φ, z, 
+                                   eigStreamfnsReal, eigStreamfnsImag,
+                                   eig_urReal, eig_urImag, eig_uφReal, 
+                                   eig_uφImag, setupString)
 
 def RunVisFromSavedData(params, geom):
 
@@ -752,7 +761,7 @@ def RunVisFromSavedData(params, geom):
                                                                          geom)
         z                                        = None
         
-        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}"
+        setupString = f"Lr{params.Lr:.1E}_Nr{params.Nr}_{params.stratification_kw}Strat_Ro{params.Ro:.1E}_BuInf_f{params.f0:.1E}"
         
     elif (params.discretizeVertical and not params.discretizeRadial):
     
@@ -760,25 +769,23 @@ def RunVisFromSavedData(params, geom):
                                                                          geom)
         kzs                                    = None
         
-        setupString = f"Lz{params.Lz:.1E}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
+        setupString = f"Lz{params.Lz:.1E}_Nz{params.Nz}_{params.stratification_kw}Strat_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
         
     elif (params.discretizeRadial and params.discretizeVertical):
     
         commonVariables, z, growthDim, propDim = LoadSavedData2D(params, geom)
         kzs                                    = None
         
-        setupString = f"Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
-        
-    modes, kφs = commonVariables[0], commonVariables[1]
-    r, φ       = commonVariables[2], commonVariables[3]
-    
-    eigModesReal, eigModesImag         = commonVariables[4], commonVariables[5]
-    eigStreamfnsReal, eigStreamfnsImag = commonVariables[6], commonVariables[7]
-    
-    eig_urReal, eig_urImag = commonVariables[8], commonVariables[9]
-    eig_uφReal, eig_uφImag = commonVariables[10], commonVariables[11]
-    
-    RunVisualization(params, geom, modes, kφs, kzs, r, φ, z, growthDim, propDim,
-                     eigModesReal, eigModesImag, eigStreamfnsReal, 
-                     eigStreamfnsImag, eig_urReal, eig_urImag, eig_uφReal, 
-                     eig_uφImag, setupString)
+        setupString = f"Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_{params.stratification_kw}Strat_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}"
+
+    RunVisualization(params, geom, commonVariables["modes"], 
+                     commonVariables["kφs"], kzs, commonVariables["r"], 
+                     commonVariables["φ"], z, growthDim, propDim,
+                     commonVariables["eigModesReal"], 
+                     commonVariables["eigModesImag"], 
+                     commonVariables["eigStreamfnsReal"], 
+                     commonVariables["eigStreamfnsImag"], 
+                     commonVariables["eig_urReal"], 
+                     commonVariables["eig_urImag"], 
+                     commonVariables["eig_uφReal"], 
+                     commonVariables["eig_uφImag"], setupString)
