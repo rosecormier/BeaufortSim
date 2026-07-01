@@ -15,7 +15,7 @@ import timeit
 from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 from SaveToNetCDF import SaveToNetCDF
-from VisualizationLinearStability import RunVisFromSavedData
+from VisualizationFunctions import RunVisFromSavedData
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-Nz", 
@@ -54,8 +54,8 @@ parser.add_argument("--k_phi",
                     help = "Azimuthal wavenumbers; enter as --k_phi start stop step",
                     type = float, default = [1, 5, 1], nargs = 3)
 parser.add_argument("-r", 
-                    help = "DIMENSIONAL r-values to solve at (m); enter as -r start stop step",
-                    type = float, default = [1, 2.5e6, 1e4], nargs = 3)
+                    help = "DIMENSIONAL r-values to solve at (m); enter as (-r start stop step) or as r-values themselves",
+                    type = float, default = [1, 2.5e6, 1e4], nargs = "*")
 parser.add_argument("--nmodes", 
                     help = "Number of modes of instability to be considered",
                     type = int, default = 1)
@@ -64,10 +64,8 @@ parser.add_argument("--useSaved",
                     action = "store_true", default = False)
 parser.add_argument("--rs_plot",
                     help = "r-values to plot eigenmodes at (will choose discretized r-values closest to args provided)",
-                    type = float, nargs = "*",
-                    default = [0, vars(parser.parse_args())["sigmar"], 
-                               vars(parser.parse_args())["r"][1]
-                              ]
+                    type = float,
+                    default = [0, 2.5e5, 2.5e6], nargs = "*"
                    )
 args = vars(parser.parse_args())
 
@@ -81,7 +79,7 @@ def QG_Vortex_Stability():
 
         #Information about wavenumbers and modes
         kφs, rs, nmodes = params.kps, params.rs, params.nmodes
-    
+
         #Initialize arrays to store results of eigen-computation
         growth = np.zeros([rs.shape[0], kφs.shape[0], nmodes])
         prop   = np.zeros([rs.shape[0], kφs.shape[0], nmodes])
@@ -121,15 +119,13 @@ def QG_Vortex_Stability():
                 eigVals = eigVals[indSort]    #Sort eigvals
                 eigVecs = eigVecs[:, indSort] #Sort eigvecs in the same order
                 ωs      = eigVals * kφ        #Corresponding ω-values
-                
+
                 if r_idx == 0:
                     print(f"Eigval at r = {rs[r_idx]}: ", eigVals[0])
                 
                 growth[r_idx, kφ_idx, :] = -ωs[0:nmodes].imag
                 prop[r_idx, kφ_idx, :]   = ωs[0:nmodes].real
-                
-                modesLen = len(modes[r_idx, kφ_idx, :, 0:nmodes])
-            
+
                 if params.verticalBCs == "homogeneous":
                     #Update 'modes' at interior points only
                     modes[r_idx, kφ_idx, 1:-1, 0:nmodes] = eigVecs[:, 0:nmodes]

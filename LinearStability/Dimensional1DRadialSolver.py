@@ -16,7 +16,7 @@ import timeit
 from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 from SaveToNetCDF import SaveToNetCDF
-from VisualizationLinearStability import RunVisFromSavedData
+from VisualizationFunctions import RunVisFromSavedData
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-Nr", 

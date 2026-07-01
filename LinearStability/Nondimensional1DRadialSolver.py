@@ -2,7 +2,7 @@
 Modification of Storer's code "Linear Stability of a Barotropic QG Vortex".
 
 Some of the notation follows "Spectral Methods in MATLAB" by L.N. Trefethen.
-All variables should dimensionless unless otherwise specified.
+All variables should be dimensionless unless otherwise specified.
 """
 
 import argparse
@@ -16,7 +16,7 @@ import timeit
 from BuildDiscreteOperators import *
 from Chebyshev import Parameters, ChebyshevGeometry
 from SaveToNetCDF import SaveToNetCDF
-from VisualizationLinearStability import RunVisFromSavedData
+from VisualizationFunctions import RunVisFromSavedData
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-Nr", 
