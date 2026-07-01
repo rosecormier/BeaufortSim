@@ -68,8 +68,8 @@ for Bu in args["Bu"]:
         
         ds_Ro.close()
             
-        modes, kfs                 = commonVariables[0], commonVariables[1]
-        eigModesReal, eigModesImag = commonVariables[4], commonVariables[5]
+        modes, kfs                 = commonVariables["modes"], commonVariables["kφs"]
+        eigModesReal, eigModesImag = commonVariables["eigModesReal"], commonVariables["eigModesImag"]
         
         #Determine the overall most unstable mode, at sigma_r, for this Ro
         kf_idx           = dimensionalGrowthRates[r_idx, :, 0].argmax()
