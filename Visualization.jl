@@ -710,7 +710,8 @@ end
 
 function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                                    Hx = 0, Hy = 0, Hz = 0, 
-                                   plot_animation = true, t_idx_skip = 1)
+                                   plot_animation = true, t_idx_skip = 1,
+                                   plot_speed_animation = false)
    #=
    Plot 2D slices of prognostic fields. By default, data are assumed to exclude
     halos.
@@ -850,6 +851,13 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
       ax_uz_pert = Axis(fig_pert[3, 3];
                         title = L"Vertical velocity perturbation ($u_z'$)",
                         ax_kwargs...)
+                        
+      if plot_speed_animation #Plot animation of (3D) speed
+      
+         fig_speed = Figure(size = (800, 500))
+         ax_speed  = Axis(fig_speed[2, 1];
+                          title = "Total speed", ax_kwargs...)
+      end
 
       ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
                                                              Hx = Hx, Hy = Hy, 
@@ -894,21 +902,47 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
       fig_total[1, 1:4] = Label(fig_total, title_total, fontsize = 24, tellwidth = false)
       fig_pert[1, 1:4]  = Label(fig_pert, title_pert, fontsize = 24, tellwidth = false)
 
+      if plot_speed_animation
+
+         speed_total = @lift sqrt.($ur_total.^2 .+ $uφ_total.^2)
+         
+         hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total, colormap = :reds)
+         
+         Colorbar(fig_speed[2, 2], hm_speed_total, tickformat = "{:.1e}", label = "m/s")
+         
+         title_speed = @lift @sprintf("Total speed at %s = %.2f km; t = %.2f days",
+                                        const_dim, nearest, times[$n])
+                                        
+         fig_speed[1, 1:2] = Label(fig_speed, title_speed, fontsize = 24, tellwidth = false)
+         video_speed = VideoStream(fig_speed, format = "mp4", framerate = 6)
+      end
+
       frames = 1:Nt
 
       video_total = VideoStream(fig_total, format = "mp4", framerate = 6)
       video_pert  = VideoStream(fig_pert, format = "mp4", framerate = 6)
 
       for i = 1:t_idx_skip:frames[end]
+         
          print(i, " of ", Nt, "\n")
+         
          recordframe!(video_total)
          recordframe!(video_pert)
+         
+         if plot_speed_animation
+            recordframe!(video_speed)
+         end
+         
          yield()
          n[] = i
       end
 
       save(joinpath("./Plots", "fields_$(const_dim)$(nearest)_$(datetime).mp4"), video_total)
       save(joinpath("./Plots", "perturbs_$(const_dim)$(nearest)_$(datetime).mp4"), video_pert)
+      
+      if plot_speed_animation
+         save(joinpath("./Plots", "speed_$(const_dim)$(nearest)_$(datetime).mp4"), video_speed)
+      end
    end
    close(ds)
 end
