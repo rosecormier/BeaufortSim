@@ -278,6 +278,96 @@ function bkgd_velocities(σr, σz, U; yFlat = false)
    return ū, v̄
 end
 
+function bkgd_B_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, ambientStrat)
+   #=
+   Return anonymous function to evaluate B at cylindrical coords (r, z).
+   =#
+   
+   TWB_b_function = (r, z) -> (-(sqrt(2) * f * U * σr / (σz^2)) .* z
+                             .* exp(0.5 .- (z./σz).^2)
+                             .* (exp(-(r./σr).^2) .- 1)
+                           )
+
+   if ambientStrat == "constant"
+      B = (r, z) -> TWB_b_function(r, z) .+ (N²_far .* z)
+   elseif ambientStrat == "doubleTanh"
+      B = (r, z) -> TWB_b_function(r, z) + (buoyancyDoubleTanh(z, doubleTanhParams) .+ (N²_far .* z))
+   end
+   
+   return B
+end
+
+function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, ambientStrat)
+   #=
+   Return anonymous function to evaluate Q at cylindrical coords (r, z).
+   =#
+
+   @inline TWB_N²_function(r, z) = (-((sqrt(2) * f * U * σr / (σz^2))
+                                    .* exp(0.5 .- (z./σz).^2)
+                                    .* (exp.(-(r./σr).^2)) .- 1) 
+                                    .* (1 .- 2 .* (z./σz).^2)
+                                   )
+   
+   function ∂N²∂z_doubleTanh(z)
+   
+      g   = doubleTanhParams.g
+      ρ₀  = doubleTanhParams.ρ₀
+      A_s = doubleTanhParams.A_s
+      C_s = doubleTanhParams.C_s
+      z_s = doubleTanhParams.z_s
+      A_d = doubleTanhParams.A_d
+      C_d = doubleTanhParams.C_d
+      z_d = doubleTanhParams.z_d
+   
+      ∂N²∂z = (2 * g / ρ₀) * ((A_s / C_s^2) * (sech((z - z_s) / C_s))^2 * tanh((z - z_s / C_s))
+                              + (A_d / C_d^2) * (sech((z - z_d) / C_d))^2 * tanh((z - z_d / C_d))
+                             )
+   end
+   
+   @inline ∂N²∂z_TWB(r, z) = (-((sqrt(2) * f * U * σr / (σz^2))
+                              .* (exp.(-(r./σr).^2)) .- 1)
+                              .* exp(0.5 .- (z./σz).^2)
+                              .* ((2 / σz^2) .* z .* (2 .* (z./σz).^2 .- 3))
+                             )
+   
+   if ambientStrat == "constant"
+      N2    = (r, z) -> TWB_N²_function(r, z) + (N²_far .* z)
+      ∂N2∂z = (r, z) -> ∂N²∂z_TWB(r, z) + N²_far
+   elseif ambientStrat == "doubleTanh"
+      N2    = (r, z) -> TWB_N²_function(r, z) + (N²DoubleTanh(z, doubleTanhParams) .+ (N²_far .* z))
+      ∂N2∂z = (r, z) -> ∂N²∂z_TWB(r, z) + ∂N²∂z_doubleTanh(z) .+ N²_far
+   end
+   
+   Q = (r, z) -> f .+ ((sqrt(2) * U / σr) .* (1 .- 2 * r / σr)
+                       .- U * σr / (sqrt(2) .* r)
+                       .+ (f^2 ./ N2(r, z)) 
+                           .* (sqrt(2) * U * σr / (σz^2)) .* (1 .- (2 / (σz^2)) .* z)
+                       .+ (sqrt(2) * f^2 * U * σr / (σz^2)) .* z .* ∂N2∂z(r, z)
+                      ) .* exp(0.5 .- (r./σr).^2 .- (z./σz).^2)
+   
+   return Q
+end
+
+function bkgd_Uφ_cylindrical_coords(σr, σz, U)
+   #=
+   Return anonymous function to evaluate Uφ at cylindrical coords (r, z).
+   =#
+
+   Uφ = (r, z) -> (-(sqrt(2) * U / σr) .* r .* exp.(0.5 .- (r./σr).^2) * exp.(-(z./σz).^2))
+
+   return Uφ
+end
+
+function bkgd_Ψ_cylindrical_coords(σr, σz, U)
+   #=
+   Return anonymous function to evaluate Ψ at cylindrical coords (r, z).
+   =#
+   
+   Ψ = (r, z) -> -(U * σr / sqrt(2)) .* exp(0.5 .- (r./σr).^2) * exp.(-(z/σz).^2)
+
+   return Ψ
+end
+
 function integrate_N²_upwards(i, j, k, grid, N²)
    #=
    Integrate discrete N²-values from the surface (z[grid.Nz - 1] = 0) to the

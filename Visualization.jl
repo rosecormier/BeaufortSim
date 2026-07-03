@@ -14,6 +14,33 @@ update_theme!(theme_latexfonts(), fontsize = 16)
 
 ####################
 
+function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far, doubleTanhParams, ambientStrat, Nr, Nz, Lr, Lz)
+
+   r = range(0, stop = Lr, length = Nr ÷ 2)
+   z = range(-Lz, stop = 0, length = Nz)
+   
+   B_function  = bkgd_B_cylindrical_coords(f, U, σr/1000, σz, N²_far, doubleTanhParams, ambientStrat)
+   Q_function  = bkgd_Q_cylindrical_coords(f, U, σr/1000, σz, N²_far, doubleTanhParams, ambientStrat)
+   Uφ_function = bkgd_Uφ_cylindrical_coords(σr/1000, σz, U)
+   Ψ_function  = bkgd_Ψ_cylindrical_coords(σr/1000, σz, U)
+
+   fig  = Figure(size = (1200, 600))
+   ax_B = Axis(fig[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", title = "Background buoyancy and potential vorticity")
+   ax_U = Axis(fig[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", title = "Background velocity and QG streamfunction")
+
+   print(Q_function(0, 0), Q_function(100, -50), Q_function(1000, -500))
+   hm_B = heatmap!(ax_B, r/1000, z, B_function, colormap = :balance)#, colorrange = lims_B)
+   contour!(ax_B, r[2:end]/1000, z, Q_function, color = :yellow, levels = 10)
+   hm_U = heatmap!(ax_U, r/1000, z, Uφ_function, colormap = Reverse(:Blues), colorrange = (-U, 0))
+   contour!(ax_U, r/1000, z, Ψ_function, color = :yellow, levels = 10)
+   
+   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", vertical = false)
+   Colorbar(fig[2, 2], hm_U, tickformat = "{:.1e}", label = "m/s", vertical = false)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "background_fields.png"), fig)
+end
+
 function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
                                  σr, σz, U, N²_far; Hz = 3)
 
