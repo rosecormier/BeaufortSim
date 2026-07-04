@@ -14,28 +14,34 @@ update_theme!(theme_latexfonts(), fontsize = 16)
 
 ####################
 
-function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far, doubleTanhParams, ambientStrat, Nr, Nz, Lr, Lz)
+function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far, 
+                                      doubleTanhParams, ambientStrat, Nr, Nz, 
+                                      Lr, Lz)
 
    r = range(0, stop = Lr, length = Nr ÷ 2)
    z = range(-Lz, stop = 0, length = Nz)
    
-   B_function  = bkgd_B_cylindrical_coords(f, U, σr/1000, σz, N²_far, doubleTanhParams, ambientStrat)
-   Q_function  = bkgd_Q_cylindrical_coords(f, U, σr/1000, σz, N²_far, doubleTanhParams, ambientStrat)
+   B_function  = bkgd_B_cylindrical_coords(f, U, σr/1000, σz, N²_far, 
+                                           doubleTanhParams, ambientStrat)
+   Q_function  = bkgd_Q_cylindrical_coords(f, U, σr/1000, σz, N²_far, 
+                                           doubleTanhParams, ambientStrat)
    Uφ_function = bkgd_Uφ_cylindrical_coords(σr/1000, σz, U)
    Ψ_function  = bkgd_Ψ_cylindrical_coords(σr/1000, σz, U)
 
    fig  = Figure(size = (1200, 600))
-   ax_B = Axis(fig[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", title = "Background buoyancy and potential vorticity")
-   ax_U = Axis(fig[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", title = "Background velocity and QG streamfunction")
+   ax_B = Axis(fig[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+               title = "Background buoyancy with QG-PV contours")
+   ax_U = Axis(fig[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+               title = "Background velocity with QG-streamfunction contours")
 
-   print(Q_function(0, 0), Q_function(100, -50), Q_function(1000, -500))
-   hm_B = heatmap!(ax_B, r/1000, z, B_function, colormap = :balance)#, colorrange = lims_B)
-   contour!(ax_B, r[2:end]/1000, z, Q_function, color = :yellow, levels = 10)
+   hm_B = heatmap!(ax_B, r/1000, z, B_function, colormap = :balance)
    hm_U = heatmap!(ax_U, r/1000, z, Uφ_function, colormap = Reverse(:Blues), colorrange = (-U, 0))
+   
+   contour!(ax_B, r[2:end]/1000, z, Q_function, color = :yellow, levels = 10)
    contour!(ax_U, r/1000, z, Ψ_function, color = :yellow, levels = 10)
    
-   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", vertical = false)
-   Colorbar(fig[2, 2], hm_U, tickformat = "{:.1e}", label = "m/s", vertical = false)
+   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", vertical = false, width = Relative(3/4))
+   Colorbar(fig[2, 2], hm_U, tickformat = "{:.1e}", label = "m/s", vertical = false, width = Relative(3/4))
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "background_fields.png"), fig)
@@ -713,8 +719,8 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                                    plot_animation = true, t_idx_skip = 1,
                                    plot_speed_animation = false)
    #=
-   Plot 2D slices of prognostic fields. By default, data are assumed to exclude
-    halos.
+   Plot 2D slices of prognostic fields and, optionally, horizontal speed. 
+    By default, data are assumed to exclude halos.
    =#
 
    outfile_list = glob("./Output/output_$(datetime)*")
@@ -852,11 +858,9 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                         title = L"Vertical velocity perturbation ($u_z'$)",
                         ax_kwargs...)
                         
-      if plot_speed_animation #Plot animation of (3D) speed
-      
+      if plot_speed_animation #Plot animation of (horizontal) speed
          fig_speed = Figure(size = (800, 500))
-         ax_speed  = Axis(fig_speed[2, 1];
-                          title = "Total speed", ax_kwargs...)
+         ax_speed  = Axis(fig_speed[2, 1]; ax_kwargs...)
       end
 
       ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
@@ -910,8 +914,8 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
          
          Colorbar(fig_speed[2, 2], hm_speed_total, tickformat = "{:.1e}", label = "m/s")
          
-         title_speed = @lift @sprintf("Total speed at %s = %.2f km; t = %.2f days",
-                                        const_dim, nearest, times[$n])
+         title_speed = @lift @sprintf("Total horizontal speed at %s = %.2f km; t = %.2f days",
+                                      const_dim, nearest, times[$n])
                                         
          fig_speed[1, 1:2] = Label(fig_speed, title_speed, fontsize = 24, tellwidth = false)
          video_speed = VideoStream(fig_speed, format = "mp4", framerate = 6)
