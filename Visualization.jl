@@ -910,7 +910,7 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
 
          speed_total = @lift sqrt.($ur_total.^2 .+ $uφ_total.^2)
          
-         hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total, colormap = :reds)
+         hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total, colormap = :Reds)
          
          Colorbar(fig_speed[2, 2], hm_speed_total, tickformat = "{:.1e}", label = "m/s")
          
@@ -945,7 +945,7 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
       save(joinpath("./Plots", "perturbs_$(const_dim)$(nearest)_$(datetime).mp4"), video_pert)
       
       if plot_speed_animation
-         save(joinpath("./Plots", "speed_$(const_dim)$(nearest)_$(datetime).mp4"), video_speed)
+         save(joinpath("./Plots", "horizontalSpeed_$(const_dim)$(nearest)_$(datetime).mp4"), video_speed)
       end
    end
    close(ds)
