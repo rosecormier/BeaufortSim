@@ -73,18 +73,18 @@ else
 end
 
 const useGPU = true  #Whether to use GPU
-const useNHS = false #Whether to use NonhydrostaticModel
+const useNHS = true #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x           = true
-const vis_const_y           = false
-const vis_const_z           = true
-const vis_norms             = true
-const vis_energetics        = true
-const vis_z_grid            = false #Note: currently can only be done on CPU
-const vis_B_and_N²_profiles = false
+const vis_const_x       = false
+const vis_const_y       = false
+const vis_const_z       = false
+const vis_norms         = false
+const vis_energetics    = false
+const vis_z_grid        = false #Note: currently can only be done on CPU
+const vis_bkgd_profiles = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -296,7 +296,7 @@ gyreParameters = (σr = σr, σz = σz)
 
 energy_diagnostics = (; 
    total_KE            = totalKE(simulation),
-   total_KE_adv_flux   = totalKEadvFlux(simulation; useNHS = useNHS),
+   total_KE_adv_flux   = totalKEadvFlux(simulation),
    total_KE_production = totalProduction(simulation; useNHS = useNHS),
    total_pressure_work = totalPressureWork(simulation; useNHS = useNHS),
    total_PE            = totalPE(simulation, g),
@@ -373,7 +373,7 @@ end
 
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
-                             t_idx_skip = t_idx_skip)
+                             t_idx_skip = t_idx_skip, plot_speed_animation = true)
 end
 
 if vis_const_y
@@ -383,7 +383,7 @@ end
 
 if vis_const_z
    visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ; 
-                             t_idx_skip = t_idx_skip)
+                             t_idx_skip = t_idx_skip, plot_speed_animation = true)
 end
 
 if vis_norms
@@ -406,7 +406,10 @@ if vis_z_grid
    visualize_z_grid(datetimenow, model.grid, -Lz)
 end
 
-if vis_B_and_N²_profiles
-   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, σr,
-                           σz, U, N²_far; Hz = Hz)
+if vis_bkgd_profiles
+   visualize_B_U_Q_Ψ_vs_r_and_z(U, model.grid, f, σr, σz, N²_far, 
+                                doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
+                                1e6, Lz)
+   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
+                           σr, σz, U, N²_far; Hz = Hz)
 end

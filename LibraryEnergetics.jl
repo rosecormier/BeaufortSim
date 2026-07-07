@@ -7,7 +7,8 @@ using Oceananigans.Grids
 using Oceanostics.KineticEnergyEquation
 
 #Function to compute total potential energy in single control volume
-@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) * grid.z.cᵃᵃᶜ[k])
+@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) 
+                                                      * grid.z.cᵃᵃᶜ[k])
 
 function totalKE(simulation)
    #=
@@ -21,16 +22,16 @@ function totalKE(simulation)
    compute!(Integral(Field(2 * totalKE_op)))
 end
 
-function totalKEadvFlux(simulation; useNHS = nothing)
+function totalKEadvFlux(simulation; useOceanostics = false)
    #=
    Return computed integral, over entire domain, of total advective KE-flux.
    =#
    
-   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+   if useOceanostics #Note this requires a NonhydrostaticModel
       
       totalKEadvFlux_op = KineticEnergyAdvection(simulation.model)
       
-   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
    
       u, v, w = simulation.model.velocities
    
@@ -50,18 +51,23 @@ function totalKEadvFlux(simulation; useNHS = nothing)
    compute!(Integral(Field(-totalKEadvFlux_op)))
 end
 
-function totalPressureWork(simulation; useNHS = nothing)
+function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    #=
    Return computed integral, over entire domain, of total pressure work.
    =#
    
-   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+   if useOceanostics #Note this requires a NonhydrostaticModel
       
       totalPressureWork_op = KineticEnergyPressureRedistribution(simulation.model)
    
-   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
    
-      p       = simulation.model.pressure.pHY′ #Note this is kinematic pressure
+      if useNHS
+         p = simulation.model.pressures.pNHS #Note this is kinematic pressure
+      elseif !useNHS
+         p = simulation.model.pressure.pHY′ #Note this is kinematic pressure
+      end
+
       u, v, w = simulation.model.velocities
       
       @compute ∂xp = ∂x(p)
@@ -81,7 +87,7 @@ function totalProduction(simulation; useNHS = nothing)
    Return computed integral, over entire domain, of total KE-production.
    =#
    
-   if useNHS #Nonhydrostatic model; fine to use Oceanostrics' KFO
+   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
    
       totalProduction_op = BuoyancyProduction(simulation.model)
       
