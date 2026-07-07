@@ -18,8 +18,9 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
                                       doubleTanhParams, ambientStrat, Nr, Nz, 
                                       Lr, Lz)
 
-   r = range(0, stop = Lr, length = Nr ÷ 2)
-   z = range(-Lz, stop = 0, length = Nz)
+   r      = range(0, stop = Lr, length = Nr)
+   r_symm = range(-Lr, stop = Lr, length = 2 * Nr)
+   z      = range(-Lz, stop = 0, length = Nz)
    
    B_function  = bkgd_B_cylindrical_coords(f, U, σr/1000, σz, N²_far, 
                                            doubleTanhParams, ambientStrat)
@@ -35,16 +36,40 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
                title = "Background velocity with QG-streamfunction contours")
 
    hm_B = heatmap!(ax_B, r/1000, z, B_function, colormap = :balance)
-   hm_U = heatmap!(ax_U, r/1000, z, Uφ_function, colormap = Reverse(:Blues), colorrange = (-U, 0))
+   hm_U = heatmap!(ax_U, r/1000, z, Uφ_function, colormap = Reverse(:Blues), 
+                   colorrange = (-U, 0))
    
-   contour!(ax_B, r[2:end]/1000, z, Q_function, color = :yellow, levels = 10)
-   contour!(ax_U, r/1000, z, Ψ_function, color = :yellow, levels = 10)
+   contour!(ax_B, r/1000, z, Q_function, color = :yellow, levels = 20)
+   contour!(ax_U, r/1000, z, Ψ_function, color = :yellow, levels = 20)
    
-   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", vertical = false, width = Relative(3/4))
-   Colorbar(fig[2, 2], hm_U, tickformat = "{:.1e}", label = "m/s", vertical = false, width = Relative(3/4))
+   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", 
+            vertical = false, width = Relative(3/4))
+   Colorbar(fig[2, 2], hm_U, tickformat = "{:.1e}", label = "m/s", 
+            vertical = false, width = Relative(3/4))
 
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "background_fields.png"), fig)
+
+   fig_symm  =  Figure(size = (1200, 600))
+   ax_symm_B = Axis(fig_symm[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]",
+                    title = "Background buoyancy with QG-PV contours")
+   ax_symm_U = Axis(fig_symm[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+                    title = "Background velocity with QG-streamfunction contours")
+
+   hm_symm_B = heatmap!(ax_symm_B, r_symm/1000, z, B_function, 
+                        colormap = :balance)
+   hm_symm_U = heatmap!(ax_symm_U, r_symm/1000, z, Uφ_function, 
+                        colormap = Reverse(:Blues), colorrange = (-U, 0))
+   
+   contour!(ax_symm_B, r_symm/1000, z, Q_function, color = :yellow, levels = 20)
+   contour!(ax_symm_U, r_symm/1000, z, Ψ_function, color = :yellow, levels = 20)
+   
+   Colorbar(fig_symm[2, 1], hm_symm_B, tickformat = "{:.1e}", label = "m/s²", 
+            vertical = false, width = Relative(3/4))
+   Colorbar(fig_symm[2, 2], hm_symm_U, tickformat = "{:.1e}", label = "m/s", 
+            vertical = false, width = Relative(3/4))
+
+   save(joinpath("./Plots", "background_fields_symmetric.png"), fig_symm)
 end
 
 function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
