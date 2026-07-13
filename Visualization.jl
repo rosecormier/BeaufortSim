@@ -48,7 +48,7 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
             vertical = false, width = Relative(3/4))
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "background_fields.png"), fig)
+   save(joinpath("./Plots", "analytical_background_fields.png"), fig)
 
    fig_symm  =  Figure(size = (1200, 600))
    ax_symm_B = Axis(fig_symm[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]",
@@ -69,7 +69,51 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
    Colorbar(fig_symm[2, 2], hm_symm_U, tickformat = "{:.1e}", label = "m/s", 
             vertical = false, width = Relative(3/4))
 
-   save(joinpath("./Plots", "background_fields_symmetric.png"), fig_symm)
+   save(joinpath("./Plots", "analytical_background_fields_symmetric.png"), fig_symm)
+end
+
+function visualize_Q_and_∂Q∂r_from_ICs(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_idx)
+   
+   x_interior = no_offset_view(adapt(Array, x))[5:length(x)-4]
+   z_interior = no_offset_view(adapt(Array, z))[5:length(z)-3]
+   
+   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
+   Q_QG    = no_offset_view(adapt(Array, Q_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
+
+   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
+   ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
+
+   fig_Q = Figure(size = (1200, 600))
+   
+   ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Ertel PV computed from initial state")
+   ax_Q_QG    = Axis(fig_Q[1, 2], title = "QG PV computed from initial state")
+   
+   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel)
+   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG)
+   
+   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :white)
+   contour!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, color = :white)
+   
+   Colorbar(fig_Q[2, 1], hm_Q_Ertel, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_Q[2, 2], hm_Q_QG, tickformat = "{:.1e}", vertical = false)
+   
+   save(joinpath("./Plots", "diagnosed_Q_j$(y_idx)_$(datetime).png"), fig_Q)
+   
+   fig_dQdr = Figure(size = (1200, 600))
+   
+   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], title = L"$\partial Q/\partial r$ (Ertel) computed from initial state")
+   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], title = L"$\partial Q/\partial r$ (QG) computed from initial state")
+   
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel)
+   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG)
+   
+   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :white, levels = 20)
+   contour!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG, color = :white, levels = 20)   
+   
+   Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
+   
+   save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx)_$(datetime).png"), fig_dQdr)
 end
 
 function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
@@ -124,10 +168,10 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_ux = nothing, idxEndLinGrowth_ux = nothing,
 		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
 		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
-		idxStartPlot = 2, idxEndPlot = -1)
+		idxStartPlot = 2, idxEndPlot = -1,
+    growth_rate = "linear_best_fit")
 
-   scalars_ds, times, Nt, chron_idcs = open_scalars_dataset(
-                      glob("./Output/scalars_$(datetime)*"))
+   scalars_ds, times, Nt, chron_idcs = open_scalars_dataset(glob("./Output/scalars_$(datetime)*"))
    
    if idxEndPlot < 0
       idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
@@ -183,107 +227,194 @@ function visualize_norms(datetime;
    scatter!(ax_uy, times, uy′_norm, color = :black)
    scatter!(ax_uz_Cart, times, uz′_norm, color = :black)
 
-   if idxEndLinGrowth_b > 0
-      growthIdcs_b = (idxStartLinGrowth_b, idxEndLinGrowth_b)
-   elseif idxEndLinGrowth_b < 0
-      growthIdcs_b = (idxStartLinGrowth_b, Nt + idxEndLinGrowth_b)
-   end
+   if growth_rate == "linear_best_fit" #Plot linear fit on restricted t-interval
 
-   function updateGrowthIdcs!(idxStart, idxEnd)
+      if idxEndLinGrowth_b > 0
+         growthIdcs_b = (idxStartLinGrowth_b, idxEndLinGrowth_b)
+      elseif idxEndLinGrowth_b < 0
+         growthIdcs_b = (idxStartLinGrowth_b, Nt + idxEndLinGrowth_b)
+      end
+
+      function updateGrowthIdcs!(idxStart, idxEnd)
       
-      if isnothing(idxStart) #Default to the start index used for b
-         idxStart = growthIdcs_b[1]
+         if isnothing(idxStart) #Default to the start index used for b
+            idxStart = growthIdcs_b[1]
+         end
+
+         if isnothing(idxEnd) #Default to the end index used for b
+            idxEnd = growthIdcs_b[2]
+         end
+
+         return idxStart, idxEnd
       end
 
-      if isnothing(idxEnd) #Default to the end index used for b
-         idxEnd = growthIdcs_b[2]
-      end
+      idxStartLinGrowth_ur, idxEndLinGrowth_ur = updateGrowthIdcs!(idxStartLinGrowth_ur, idxEndLinGrowth_ur)
+      idxStartLinGrowth_uφ, idxEndLinGrowth_uφ = updateGrowthIdcs!(idxStartLinGrowth_uφ, idxEndLinGrowth_uφ)
+      idxStartLinGrowth_ux, idxEndLinGrowth_ux = updateGrowthIdcs!(idxStartLinGrowth_ux, idxEndLinGrowth_ux)
+      idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, idxEndLinGrowth_uy)
+      idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz, idxEndLinGrowth_uz)
 
-      return idxStart, idxEnd
-   end
+      b′NormFitInterval  = b′_norm[growthIdcs_b[1]:growthIdcs_b[2]]
+      ur′NormFitInterval = ur′_norm[idxStartLinGrowth_ur:idxEndLinGrowth_ur]
+      uφ′NormFitInterval = uφ′_norm[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]
+      ux′NormFitInterval = ux′_norm[idxStartLinGrowth_ux:idxEndLinGrowth_ux]
+      uy′NormFitInterval = uy′_norm[idxStartLinGrowth_uy:idxEndLinGrowth_uy]
+      uz′NormFitInterval = uz′_norm[idxStartLinGrowth_uz:idxEndLinGrowth_uz]
 
-   idxStartLinGrowth_ur, idxEndLinGrowth_ur = updateGrowthIdcs!(idxStartLinGrowth_ur, 
-                                                                idxEndLinGrowth_ur)
-   idxStartLinGrowth_uφ, idxEndLinGrowth_uφ = updateGrowthIdcs!(idxStartLinGrowth_uφ, 
-                                                                idxEndLinGrowth_uφ)
-   idxStartLinGrowth_ux, idxEndLinGrowth_ux = updateGrowthIdcs!(idxStartLinGrowth_ux,
-                                                                idxEndLinGrowth_ux)
-   idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, 
-                                                                idxEndLinGrowth_uy)
-   idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz,
-                                                                idxEndLinGrowth_uz)
-
-   b′NormFitInterval  = b′_norm[growthIdcs_b[1]:growthIdcs_b[2]]
-   ur′NormFitInterval = ur′_norm[idxStartLinGrowth_ur:idxEndLinGrowth_ur]
-   uφ′NormFitInterval = uφ′_norm[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]
-   ux′NormFitInterval = ux′_norm[idxStartLinGrowth_ux:idxEndLinGrowth_ux]
-   uy′NormFitInterval = uy′_norm[idxStartLinGrowth_uy:idxEndLinGrowth_uy]
-   uz′NormFitInterval = uz′_norm[idxStartLinGrowth_uz:idxEndLinGrowth_uz]
-
-   b′NormLinearFitParams  = fit(times[growthIdcs_b[1]:growthIdcs_b[2]], 
-                                log.(b′NormFitInterval), 1, var = :times)
-   ur′NormLinearFitParams = fit(times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-                                log.(ur′NormFitInterval), 1, var = :times)
-   uφ′NormLinearFitParams = fit(times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-                                log.(uφ′NormFitInterval), 1, var = :times)
-   ux′NormLinearFitParams = fit(times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-                                log.(ux′NormFitInterval), 1, var = :times)
-   uy′NormLinearFitParams = fit(times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-                                log.(uy′NormFitInterval), 1, var = :times)
-   uz′NormLinearFitParams = fit(times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-                                log.(uz′NormFitInterval), 1, var = :times)
+      b′NormLinearFitParams  = fit(times[growthIdcs_b[1]:growthIdcs_b[2]], 
+                                   log.(b′NormFitInterval), 1, var = :times)
+      ur′NormLinearFitParams = fit(times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
+                                   log.(ur′NormFitInterval), 1, var = :times)
+      uφ′NormLinearFitParams = fit(times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
+                                   log.(uφ′NormFitInterval), 1, var = :times)
+      ux′NormLinearFitParams = fit(times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
+                                   log.(ux′NormFitInterval), 1, var = :times)
+      uy′NormLinearFitParams = fit(times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
+                                   log.(uy′NormFitInterval), 1, var = :times)
+      uz′NormLinearFitParams = fit(times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+                                   log.(uz′NormFitInterval), 1, var = :times)
    
-   @printf("Empirical growth rate:\n From b′-norm: %.5f per day\n From ur′-norm: %.5f per day\n From uφ′-norm: %.5f per day\n From ux′-norm: %.5f per day\n From uy′-norm: %.5f per day\n From uz′-norm: %.5f per day\n",
-	    b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
-	    uφ′NormLinearFitParams[1], ux′NormLinearFitParams[1],
-	    uy′NormLinearFitParams[1], uz′NormLinearFitParams[1])
+      @printf("Empirical growth rate:\n From b′-norm: %.5f per day\n From ur′-norm: %.5f per day\n From uφ′-norm: %.5f per day\n From ux′-norm: %.5f per day\n From uy′-norm: %.5f per day\n From uz′-norm: %.5f per day\n",
+	       b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
+	       uφ′NormLinearFitParams[1], ux′NormLinearFitParams[1],
+	       uy′NormLinearFitParams[1], uz′NormLinearFitParams[1])
 
-   @inline linearFunction(fitParams, tFitInterval; offset = 2) = @. offset * 
-   				exp(fitParams[0] + fitParams[1] * tFitInterval)
+      @inline linearFunction(fitParams, tFitInterval; offset = 2) = @. offset * 
+   				   exp(fitParams[0] + fitParams[1] * tFitInterval)
 
-   lines!(ax_b_cyl, times[growthIdcs_b[1]:growthIdcs_b[2]],
-          linearFunction(b′NormLinearFitParams, 
-                         times[growthIdcs_b[1]:growthIdcs_b[2]])
-         )
-   lines!(ax_ur, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-          linearFunction(ur′NormLinearFitParams, 
-                         times[idxStartLinGrowth_ur:idxEndLinGrowth_ur])
-         )
-   lines!(ax_uφ, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-          linearFunction(uφ′NormLinearFitParams, 
-                         times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ])
-         )
-   lines!(ax_uz_cyl, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-          linearFunction(uz′NormLinearFitParams, 
-                         times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
-         )
+      lines!(ax_b_cyl, times[growthIdcs_b[1]:growthIdcs_b[2]],
+             linearFunction(b′NormLinearFitParams, 
+                            times[growthIdcs_b[1]:growthIdcs_b[2]])
+            )
+      lines!(ax_ur, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
+             linearFunction(ur′NormLinearFitParams, 
+                            times[idxStartLinGrowth_ur:idxEndLinGrowth_ur])
+            )
+      lines!(ax_uφ, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
+             linearFunction(uφ′NormLinearFitParams, 
+                            times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ])
+            )
+      lines!(ax_uz_cyl, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+             linearFunction(uz′NormLinearFitParams, 
+                            times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
+            )
 
-   lines!(ax_b_Cart, times[growthIdcs_b[1]:growthIdcs_b[2]], 
-          linearFunction(b′NormLinearFitParams, 
-                         times[growthIdcs_b[1]:growthIdcs_b[2]])
-         )
-   lines!(ax_ux, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-          linearFunction(ux′NormLinearFitParams, 
-                         times[idxStartLinGrowth_ux:idxEndLinGrowth_ux])
-         )
-   lines!(ax_uy, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-          linearFunction(uy′NormLinearFitParams, 
-                         times[idxStartLinGrowth_uy:idxEndLinGrowth_uy])
-         )
-   lines!(ax_uz_Cart, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-          linearFunction(uz′NormLinearFitParams, 
-                         times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
-         )
+      lines!(ax_b_Cart, times[growthIdcs_b[1]:growthIdcs_b[2]], 
+             linearFunction(b′NormLinearFitParams, 
+                            times[growthIdcs_b[1]:growthIdcs_b[2]])
+            )
+      lines!(ax_ux, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
+             linearFunction(ux′NormLinearFitParams, 
+                            times[idxStartLinGrowth_ux:idxEndLinGrowth_ux])
+            )
+      lines!(ax_uy, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
+             linearFunction(uy′NormLinearFitParams, 
+                            times[idxStartLinGrowth_uy:idxEndLinGrowth_uy])
+            )
+      lines!(ax_uz_Cart, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
+             linearFunction(uz′NormLinearFitParams, 
+                            times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
+            )
+
+      fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields with best linear fits", fontsize = 24, tellwidth = false)
+      fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields with best linear fits", fontsize = 24, tellwidth = false)
+      
+   elseif growth_rate == "timeseries" #Plot time-derivative at all t
+   
+      timesGrowth, b′NormGrowthRate  = empirical_growth_rate(times, b′_norm)
+      timesGrowth, ur′NormGrowthRate = empirical_growth_rate(times, ur′_norm)
+      timesGrowth, uφ′NormGrowthRate = empirical_growth_rate(times, uφ′_norm)
+      timesGrowth, ux′NormGrowthRate = empirical_growth_rate(times, ux′_norm)
+      timesGrowth, uy′NormGrowthRate = empirical_growth_rate(times, uy′_norm)
+      timesGrowth, uz′NormGrowthRate = empirical_growth_rate(times, uz′_norm)
+      
+      ax_b_growth_cyl  = Axis(fig_cyl[2, 1]; 
+                              ylabel = "Growth rate [1/s]",
+                              ylabelcolor = :blue,
+                              yticklabelcolor = :blue, 
+                              backgroundcolor = :transparent, 
+                              yaxisposition = :right)
+      ax_ur_growth     = Axis(fig_cyl[2, 2]; 
+                              ylabel = "Growth rate [1/s]",
+                              ylabelcolor = :blue,
+                              yticklabelcolor = :blue, 
+                              backgroundcolor = :transparent, 
+                              yaxisposition = :right)
+      ax_uφ_growth     = Axis(fig_cyl[3, 1]; 
+                              ylabel = "Growth rate [1/s]",
+                              ylabelcolor = :blue,
+                              yticklabelcolor = :blue, 
+                              backgroundcolor = :transparent, 
+                              yaxisposition = :right)
+      ax_uz_growth_cyl = Axis(fig_cyl[3, 2]; 
+                              ylabel = "Growth rate [1/s]",
+                              ylabelcolor = :blue,
+                              yticklabelcolor = :blue, 
+                              backgroundcolor = :transparent, 
+                              yaxisposition = :right)
+
+      ax_b_growth_Cart  = Axis(fig_Cart[2, 1]; 
+                               ylabel = "Growth rate [1/s]",
+                               ylabelcolor = :blue,
+                               yticklabelcolor = :blue, 
+                               backgroundcolor = :transparent, 
+                               yaxisposition = :right)
+      ax_ux_growth      = Axis(fig_Cart[2, 2]; 
+                              ylabel = "Growth rate [1/s]",
+                              ylabelcolor = :blue,
+                              yticklabelcolor = :blue, 
+                              backgroundcolor = :transparent, 
+                              yaxisposition = :right)
+      ax_uy_growth      = Axis(fig_Cart[3, 1]; 
+                               ylabel = "Growth rate [1/s]",
+                               ylabelcolor = :blue,
+                               yticklabelcolor = :blue, 
+                               backgroundcolor = :transparent, 
+                               yaxisposition = :right)
+      ax_uz_growth_Cart = Axis(fig_Cart[3, 2]; 
+                               ylabel = "Growth rate [1/s]",
+                               ylabelcolor = :blue,
+                               yticklabelcolor = :blue, 
+                               backgroundcolor = :transparent, 
+                               yaxisposition = :right)
+   
+      hidexdecorations!(ax_b_growth_cyl)
+      hidexdecorations!(ax_ur_growth)
+      hidexdecorations!(ax_uφ_growth)
+      hidexdecorations!(ax_uz_growth_cyl)
+      hidespines!(ax_b_growth_cyl)
+      hidespines!(ax_ur_growth)
+      hidespines!(ax_uφ_growth)
+      hidespines!(ax_uz_growth_cyl)
+      ylims!(ax_b_growth_cyl, 0, 2e-1)
+      ylims!(ax_ur_growth, 0, 4)
+      ylims!(ax_uφ_growth, 0, 4)
+      ylims!(ax_uz_growth_cyl, 0, 3)
+
+      hidexdecorations!(ax_b_growth_Cart)
+      hidexdecorations!(ax_ux_growth)
+      hidexdecorations!(ax_uy_growth)
+      hidexdecorations!(ax_uz_growth_Cart)
+      hidespines!(ax_b_growth_Cart)
+      hidespines!(ax_ux_growth)
+      hidespines!(ax_uy_growth)
+      hidespines!(ax_uz_growth_Cart)
+
+      scatter!(ax_b_growth_cyl, timesGrowth, b′NormGrowthRate, color = :blue)
+      scatter!(ax_ur_growth, timesGrowth, ur′NormGrowthRate, color = :blue)
+      scatter!(ax_uφ_growth, timesGrowth, uφ′NormGrowthRate, color = :blue)
+      scatter!(ax_uz_growth_cyl, timesGrowth, uz′NormGrowthRate, color = :blue)
+      
+      lines!(ax_b_growth_Cart, timesGrowth, b′NormGrowthRate, color = :blue)
+      lines!(ax_ux_growth, timesGrowth, ux′NormGrowthRate, color = :blue)
+      lines!(ax_uy_growth, timesGrowth, uy′NormGrowthRate, color = :blue)
+      lines!(ax_uz_growth_Cart, timesGrowth, uz′NormGrowthRate, color = :blue)
+      
+      fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields with empirical growth rates", fontsize = 24, tellwidth = false)
+      fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields with empirical growth rates", fontsize = 24, tellwidth = false)
+   end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-
-   fig_cyl[1, 1:2]  = Label(fig_cyl, 
-			   "Norms of perturbation fields with best linear fits",
-                           fontsize = 24, tellwidth = false)
-   fig_Cart[1, 1:2] = Label(fig_Cart, 
-			   "Norms of perturbation fields with best linear fits",
-                           fontsize = 24, tellwidth = false)
-
    save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
    save(joinpath("./Plots", "norm_Cart_fields_$(datetime).png"), fig_Cart)
    close(scalars_ds)
