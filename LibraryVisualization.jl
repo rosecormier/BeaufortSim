@@ -17,13 +17,13 @@ function compute_polar_coords(grid)
       φij = atan(yCj, xCi)
    end
 
-   r_KernOp = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)
-   r        = Field(r_KernOp)
-   φ_KernOp = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
-   φ        = Field(φ_KernOp)
+   r_ccc = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)
+   @compute r     = Field(r_ccc)
+   φ_ccc = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
+   @compute φ     = Field(φ_ccc)
 
-   compute!(r)
-   compute!(φ)
+   #compute!(r)
+   #compute!(φ)
    return(r, φ)
 end
 
@@ -219,18 +219,13 @@ function q(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
    q                = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
 end
 
-function ∂r_q(q, x, y, i, j, k, Δx, Δy)
-   
-   ∂x_q = @. (q[i:i+1, j, k] - q[i-1:i, j, k]) / Δx
-   ∂y_q = @. (q[i, j:j+1, k] - q[i, j-1:j, k]) / Δy
-   
-   r    = sqrt(x^2 + y^2) 
-   ∂r_q = @. (x * ∂x_q + y * ∂y_q) / r
-   
-   return (∂r_q[1] + ∂r_q[2]) / 2
-end
+
 
 function field_norm(ψ, n; ψ_bkgd = 0)
+   #=
+   Compute L2-norm of a perturbation field.
+   =#
+
    ψ_n          = ψ[:, :, :, n]
    ψ_perturb_n  = ψ_n .- ψ_bkgd
    perturb_norm = norm(ψ_perturb_n)
@@ -333,6 +328,43 @@ function centered_difference(t, u)
    
    return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
               ./ (Delta_t_minus .+ Delta_t_plus))
+end
+
+function ∂r_q(q, x, y, zk, all_z)
+   
+   k = findfirst(==(zk), all_z)
+   
+   ∂x_qk = 0 .* q[2:end-1, 2:end-1, k]
+   ∂y_qk = 0 .* q[2:end-1, 2:end-1, k]
+   
+   for j in 1:(length(y)):1
+      ∂x_qk[:, j] += centered_difference(x, q[:, j, k])
+   end
+   
+   for i in 1:(length(x)):1
+      ∂y_qk[i, :] += centered_difference(y, q[i, :, k])
+   end
+
+   x = x[2:end-1]
+   y = y[2:end-1]
+   
+   r     = sqrt.(x.^2 + y.^2) 
+   ∂r_qk = @. (x * ∂x_qk + y * ∂y_qk) / r
+end
+
+function empirical_growth_rate(t, perturb_norm; differencing = "forward")
+   #=
+   Diagnose growth-rate timeseries of a field with L2-norm perturb_norm.
+   =#
+   
+   if differencing == "forward"
+      growth_rate = order1_forward_difference(t, log.(perturb_norm))
+      new_t       = t[1:end-1]
+   elseif differencing == "centered"
+      growth_rate = centered_difference(t, log.(perturb_norm))
+      new_t       = t[2:end-1]
+   end
+   return new_t, growth_rate
 end
 
 function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
