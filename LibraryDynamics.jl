@@ -284,9 +284,9 @@ function bkgd_B_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
    =#
    
    TWB_b_function = (r, z) -> (-(sqrt(2) * f * U * σr / (σz^2)) .* z
-                             .* exp(0.5 .- (z./σz).^2)
-                             .* (exp(-(r./σr).^2) .- 1)
-                           )
+                               .* exp(0.5 .- (z./σz).^2)
+                               .* (exp(-(r./σr).^2) .- 1)
+                              )
 
    if ambientStrat == "constant"
       B = (r, z) -> TWB_b_function(r, z) .+ (N²_far .* z)
@@ -302,9 +302,9 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
    Return anonymous function to evaluate Q at cylindrical coords (r, z).
    =#
 
-   @inline TWB_N²_function(r, z) = (-((sqrt(2) * f * U * σr / (σz^2))
-                                    .* exp(0.5 .- (z./σz).^2)
+   TWB_N²_function = (r, z) -> (-((sqrt(2) * f * U * σr / (σz^2))
                                     .* (exp.(-(r./σr).^2)) .- 1) 
+                                    .* exp.(0.5 .- (z./σz).^2)
                                     .* (1 .- 2 .* (z./σz).^2)
                                    )
    
@@ -319,20 +319,21 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
       C_d = doubleTanhParams.C_d
       z_d = doubleTanhParams.z_d
    
-      ∂N²∂z = ((2 * g / ρ₀) 
-               * ((A_s / C_s^2) * (sech((z - z_s) / C_s))^2 
-                  * tanh((z - z_s) / C_s)
-                  + (A_d / C_d^2) * (sech((z - z_d) / C_d))^2 
-                  * tanh((z - z_d) / C_d)
+      ∂N²∂z = @. ((2 * g / ρ₀) 
+                  * ((A_s / C_s^2) * (sech((z - z_s) / C_s))^2 
+                     * tanh((z - z_s) / C_s)
+                     + (A_d / C_d^2) * (sech((z - z_d) / C_d))^2 
+                     * tanh((z - z_d) / C_d)
+                    )
                  )
-              )
    end
    
-   @inline ∂N²∂z_TWB(r, z) = (-((sqrt(2) * f * U * σr / (σz^2))
+   ∂N²∂z_TWB = (r, z) -> (-((sqrt(2) * f * U * σr / (σz^2))
                               .* (exp.(-(r./σr).^2)) .- 1)
                               .* exp(0.5 .- (z./σz).^2)
                               .* ((2 / σz^2) .* z .* (2 .* (z./σz).^2 .- 3))
                              )
+   
    
    if ambientStrat == "constant"
       N2    = (r, z) -> TWB_N²_function(r, z) + (N²_far .* z)
@@ -346,9 +347,9 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
    end
    
    Q = (r, z) -> ((sqrt(8) * U / σr) 
-                  .* exp(0.5 .- (r./σr).^2) 
-                  * exp.(-(z./σz).^2) 
-                  * (1 .- (r./σr).^2 
+                  .* exp.(0.5 .- (r./σr).^2) 
+                  .* exp.(-(z./σz).^2) 
+                  .* (1 .- (r./σr).^2 
                        + (f^2 * σr^2 / (2 * σz^2)) 
                          .* ((1 ./ N2(r, z)) * (1 .- 2 .* (z./σz).^2) 
                              - (z / N2(r, z))^2 .* ∂N2∂z(r, z)
@@ -362,7 +363,7 @@ end
 function bkgd_Uφ_cylindrical_coords(σr, σz, U)
    #=
    Return anonymous function to evaluate Uφ at cylindrical coords (r, z). If r 
-    is provided as a negative value, it will be evaluated at abs(r).
+    is provided as a negative value, it will be treated as abs(r).
    =#
 
    Uφ = (r, z) -> (-(sqrt(2) * U / σr) .* abs.(r) .* exp.(0.5 .- (r./σr).^2) * exp.(-(z./σz).^2))
@@ -375,7 +376,7 @@ function bkgd_Ψ_cylindrical_coords(σr, σz, U)
    Return anonymous function to evaluate Ψ at cylindrical coords (r, z).
    =#
    
-   Ψ = (r, z) -> -(U * σr / sqrt(2)) .* exp(0.5 .- (r./σr).^2) * exp.(-(z/σz).^2)
+   Ψ = (r, z) -> -(U * σr / sqrt(2)) .* exp.(0.5 .- (r./σr).^2) .* exp.(-(z./σz).^2)
 
    return Ψ
 end
