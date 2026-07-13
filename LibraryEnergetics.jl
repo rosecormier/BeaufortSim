@@ -19,7 +19,7 @@ function totalKE(simulation)
 
    totalKE_op = KineticEnergy(simulation.model, u, v, w)
    
-   compute!(Integral(Field(2 * totalKE_op)))
+   compute!(Integral(Field(totalKE_op)))
 end
 
 function totalKEadvFlux(simulation; useOceanostics = false)
@@ -43,7 +43,9 @@ function totalKEadvFlux(simulation; useOceanostics = false)
       @compute ∂yKE = ∂y((Center, Center, Center), KE)
       @compute ∂zKE = ∂z((Center, Center, Center), KE)
       
-      @inline KEadvFlux_ccc(i, j, k, grid) = @inbounds (u[i, j, k] * ∂xKE[i, j, k] + v[i, j, k] * ∂yKE[i, j, k] + w[i, j, k] * ∂zKE[i, j, k])
+      @inline KEadvFlux_ccc(i, j, k, grid) = @inbounds (u[i, j, k] * ∂xKE[i, j, k] + v[i, j, k] * ∂yKE[i, j, k] + w[i, j, k] * ∂zKE[i, j, k]) / 2
+      #Note the factor of 1/2 is required for consistency with Oceanostics
+      # functions.
    
       totalKEadvFlux_op = KernelFunctionOperation{Center, Center, Center}(KEadvFlux_ccc, simulation.model.grid)
    end
