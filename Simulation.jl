@@ -60,10 +60,10 @@ const C_d = 60 * meter
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
-const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-
+#=
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -71,8 +71,10 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
+=#
+const Δt_save = 600
 
-const useGPU = true  #Whether to use GPU
+const useGPU = false  #Whether to use GPU
 const useNHS = true #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
@@ -84,7 +86,7 @@ const vis_const_z       = false
 const vis_norms         = false
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
-const vis_bkgd_profiles = false
+const vis_bkgd_profiles = true
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -218,7 +220,7 @@ end
                                          )
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
-
+#=
 simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
@@ -370,7 +372,7 @@ end
 #####################
 # RUN VISUALIZATION #
 #####################
-
+=#
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
                              t_idx_skip = t_idx_skip, plot_speed_animation = true)
@@ -394,7 +396,8 @@ if vis_norms
                    idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
                    idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
                    idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
-                   idxStartPlot = 2, idxEndPlot = -1)
+                   idxStartPlot = 540, idxEndPlot = -1, 
+                   growth_rate = "timeseries")
 end
 
 if vis_energetics
@@ -410,6 +413,32 @@ if vis_bkgd_profiles
    visualize_B_U_Q_Ψ_vs_r_and_z(U, model.grid, f, σr, σz, N²_far, 
                                 doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
                                 1e6, Lz)
-   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
-                           σr, σz, U, N²_far; Hz = Hz)
+   #visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
+   #                        σr, σz, U, N²_far; Hz = Hz)
+   
+   ωx_initial = CenterField(model.grid)
+   ωy_initial = CenterField(model.grid)
+   ωz_initial = CenterField(model.grid)
+   Q_Ertel    = CenterField(model.grid)
+   Q_QG       = CenterField(model.grid)
+   ∂rQ_Ertel  = CenterField(model.grid)
+   ∂rQ_QG     = CenterField(model.grid)
+   
+   rcoords = CenterField(model.grid)
+   set!(rcoords, compute_polar_coords(model.grid)[1])
+   
+   Ψ = CenterField(model.grid)
+   Ψ_function = bkgd_Ψ_cylindrical_coords(σr, σz, U)
+   
+   set!(Ψ, Ψ_function(rcoords, reshape(no_offset_view(adapt(Array, model.grid.z.cᵃᵃᶜ))[4:length(model.grid.z.cᵃᵃᶜ)-3], 1, 1, Nz)))
+   
+   set!(ωx_initial, ∂x(Uz) - ∂z(Uy))
+   set!(ωy_initial, ∂z(Ux) - ∂x(Uz))
+   set!(ωz_initial, ∂x(Uy) - ∂y(Ux))
+   set!(Q_Ertel, (ωx_initial / f) * ∂x(B) + (ωy_initial / f) * ∂y(B) + (f + (ωz_initial / f) * ∂z(B)))
+   set!(Q_QG, -(1/rcoords) * (cos(φcoords) * ∂x(rcoords * Uφ) + sin(φcoords) * ∂y(rcoords * Uφ)) + f^2 * ∂z(∂z(Ψ) / ∂z(B)) + f)
+   set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
+   set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
+   
+   visualize_Q_and_∂Q∂r_from_ICs(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
 end
