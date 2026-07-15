@@ -93,7 +93,6 @@ def QG_Vortex_Stability():
         for r_idx in range(rs.shape[0]):
         
             #Build discrete operators
-            ComputeRecips(params, geom, r = rs[r_idx])
             BuildBkgdOperators(params, geom, r_idx = r_idx)
 
             for kφ_idx in range(kφs.shape[0]):
