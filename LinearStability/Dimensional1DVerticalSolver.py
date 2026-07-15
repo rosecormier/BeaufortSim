@@ -88,6 +88,8 @@ def QG_Vortex_Stability():
     
         #Solve generalized eigenvalue problem
         
+        BuildGlobalUDerivMatrices(params, geom)
+        
         for r_idx in range(rs.shape[0]):
         
             #Build discrete operators
