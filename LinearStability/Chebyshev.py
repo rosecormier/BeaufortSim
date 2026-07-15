@@ -9,13 +9,15 @@ import scipy.sparse as ssp
 
 from math import pi
 
+from BuildDiscreteOperators import N2_profile
+
 class Parameters:
     
     def __init__(self, args, discretizeRadial = False,
                  discretizeVertical = False,
                  nondimensional = False):
 
-        self.Np     = args["Np"] #No. of azimuthal points (visualization only)
+        self.Np     = args["Np"] #No. of azimuthal points (for vis only)
         self.kps    = np.arange(args["k_phi"][0], args["k_phi"][1],
                                 args["k_phi"][2])
         self.nmodes = args["nmodes"]
@@ -25,7 +27,7 @@ class Parameters:
             self.Nr     = args["Nr"] #No. (odd) of radial points in comp. domain
             self.halfNr = self.Nr // 2   
                  
-            if not discretizeVertical:
+            if not discretizeVertical: #1D (r) problem
                 self.bkgd = args["bkgd"]
                 self.kzs  = np.arange(args["k_z"][0], args["k_z"][1],
                                       args["k_z"][2])
@@ -63,7 +65,7 @@ class Parameters:
                   or self.verticalBCs == "constantStreamfunction"):
                 self.DzSize = self.Nz + 1
                 
-            if not discretizeRadial:
+            if not discretizeRadial: #1D (z) problem
             
                 #Shorthand for linear spacing; parse as [start] [stop] [step]
                 if len(args["r"]) == 3:
@@ -203,6 +205,13 @@ class ChebyshevGeometry:
             
             if not params.discretizeRadial:
                 self.r = params.rs
+                
+            if params.discretizeVertical:
+
+                self.N2_function = N2_profile(params, 
+                                              dimensional_N2_far = params.N2_far)
+                #self.N2           = self.N2_function(r, self.z)
+                #self.N2Recip      = 1 / self.N2
 
         if params.discretizeRadial:
             #Compute differentiation matrix and Chebyshev-spaced grid
