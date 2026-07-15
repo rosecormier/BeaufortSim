@@ -193,6 +193,7 @@ class ChebyshevGeometry:
             self.sparse = True
                 
         if params.discretizeVertical:
+        
             #Compute differentiation matrix and Chebyshev-spaced grid
             Dz, z = Chebyshev(params.Nz, xIntervalScaleFactor = 0.5,
                               xIntervalShiftAmt = -0.5, sparse = self.sparse)
@@ -203,17 +204,16 @@ class ChebyshevGeometry:
             #Second-order z-differentiation matrix
             self.Dz2 = self.Dz @ self.Dz
             
-            if not params.discretizeRadial:
-                self.r = params.rs
+            if not params.discretizeRadial: #1D (z) eigenvalue problem
+                self.r      = params.rs
+                self.rRecip = 1 / self.r
                 
-            if params.discretizeVertical:
-
-                self.N2_function = N2_profile(params, 
-                                              dimensional_N2_far = params.N2_far)
-                #self.N2           = self.N2_function(r, self.z)
-                #self.N2Recip      = 1 / self.N2
+            #Save N^2 function for this particular geometry
+            self.N2_function = N2_profile(params, 
+                                          dimensional_N2_far = params.N2_far)
 
         if params.discretizeRadial:
+        
             #Compute differentiation matrix and Chebyshev-spaced grid
             Dr, r = Chebyshev(params.Nr, sparse = self.sparse)
                             
@@ -225,3 +225,11 @@ class ChebyshevGeometry:
                 self.Dr2 = self.Dr @ self.Dr
             elif not self.sparse:
                 self.Dr2 = np.matmul(self.Dr, self.Dr)
+                
+            if not params.discretizeVertical: #1D (r) eigenvalue problem
+                self.rRecip = np.diag(1 / self.r[1:(params.halfNr + 1)])
+                
+            elif params.discretizeVertical: #2D eigenvalue problem
+                self.rRecip = ssp.diags_array(1 / self.r[1:(params.halfNr 
+                                                            + 1)],
+                                              format = "csr")
