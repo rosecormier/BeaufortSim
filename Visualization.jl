@@ -66,7 +66,7 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
    
    Colorbar(fig_symm[2, 1], hm_symm_B, tickformat = "{:.1e}", label = "m/s²", 
             vertical = false, width = Relative(3/4))
-   Colorbar(fig_symm[2, 2], hm_symm_U, tickformat = "{:.1e}", label = "m/s", 
+   Colorbar(fig_symm[2, 2], hm_symm_U, tickformat = "{:.1e}", label = "m/s",
             vertical = false, width = Relative(3/4))
 
    save(joinpath("./Plots", "analytical_background_fields_symmetric.png"), fig_symm)
@@ -79,6 +79,9 @@ function visualize_Q_and_∂Q∂r_from_ICs(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel,
    
    Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
    Q_QG    = no_offset_view(adapt(Array, Q_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
+   
+   lims_Q_Ertel = (-maximum(abs.(Q_Ertel)), maximum(abs.(Q_Ertel)))
+   lims_Q_QG    = (-maximum(abs.(Q_QG)), maximum(abs.(Q_QG)))
 
    ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
    ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
@@ -88,8 +91,8 @@ function visualize_Q_and_∂Q∂r_from_ICs(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel,
    ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Ertel PV computed from initial state")
    ax_Q_QG    = Axis(fig_Q[1, 2], title = "QG PV computed from initial state")
    
-   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel)
-   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG)
+   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, colorrange = lims_Q_Ertel, colormap = :balance)
+   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, colorrange = lims_Q_QG, colormap = :balance)
    
    contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :white)
    contour!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, color = :white)
@@ -329,50 +332,50 @@ function visualize_norms(datetime;
       timesGrowth, uz′NormGrowthRate = empirical_growth_rate(times, uz′_norm)
       
       ax_b_growth_cyl  = Axis(fig_cyl[2, 1]; 
-                              ylabel = "Growth rate [1/s]",
+                              ylabel = "Growth rate [1/day]",
                               ylabelcolor = :blue,
                               yticklabelcolor = :blue, 
                               backgroundcolor = :transparent, 
                               yaxisposition = :right)
       ax_ur_growth     = Axis(fig_cyl[2, 2]; 
-                              ylabel = "Growth rate [1/s]",
+                              ylabel = "Growth rate [1/day]",
                               ylabelcolor = :blue,
                               yticklabelcolor = :blue, 
                               backgroundcolor = :transparent, 
                               yaxisposition = :right)
       ax_uφ_growth     = Axis(fig_cyl[3, 1]; 
-                              ylabel = "Growth rate [1/s]",
+                              ylabel = "Growth rate [1/day]",
                               ylabelcolor = :blue,
                               yticklabelcolor = :blue, 
                               backgroundcolor = :transparent, 
                               yaxisposition = :right)
       ax_uz_growth_cyl = Axis(fig_cyl[3, 2]; 
-                              ylabel = "Growth rate [1/s]",
+                              ylabel = "Growth rate [1/day]",
                               ylabelcolor = :blue,
                               yticklabelcolor = :blue, 
                               backgroundcolor = :transparent, 
                               yaxisposition = :right)
 
       ax_b_growth_Cart  = Axis(fig_Cart[2, 1]; 
-                               ylabel = "Growth rate [1/s]",
+                               ylabel = "Growth rate [1/day]",
                                ylabelcolor = :blue,
                                yticklabelcolor = :blue, 
                                backgroundcolor = :transparent, 
                                yaxisposition = :right)
       ax_ux_growth      = Axis(fig_Cart[2, 2]; 
-                              ylabel = "Growth rate [1/s]",
+                              ylabel = "Growth rate [1/day]",
                               ylabelcolor = :blue,
                               yticklabelcolor = :blue, 
                               backgroundcolor = :transparent, 
                               yaxisposition = :right)
       ax_uy_growth      = Axis(fig_Cart[3, 1]; 
-                               ylabel = "Growth rate [1/s]",
+                               ylabel = "Growth rate [1/day]",
                                ylabelcolor = :blue,
                                yticklabelcolor = :blue, 
                                backgroundcolor = :transparent, 
                                yaxisposition = :right)
       ax_uz_growth_Cart = Axis(fig_Cart[3, 2]; 
-                               ylabel = "Growth rate [1/s]",
+                               ylabel = "Growth rate [1/day]",
                                ylabelcolor = :blue,
                                yticklabelcolor = :blue, 
                                backgroundcolor = :transparent, 
