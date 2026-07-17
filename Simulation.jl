@@ -432,11 +432,13 @@ if vis_bkgd_profiles
    
    set!(Ψ, Ψ_function(rcoords, reshape(no_offset_view(adapt(Array, model.grid.z.cᵃᵃᶜ))[4:length(model.grid.z.cᵃᵃᶜ)-3], 1, 1, Nz)))
    
-   set!(ωx_initial, ∂x(Uz) - ∂z(Uy))
+   set!(ωx_initial, ∂y(Uz) - ∂z(Uy))
    set!(ωy_initial, ∂z(Ux) - ∂x(Uz))
    set!(ωz_initial, ∂x(Uy) - ∂y(Ux))
-   set!(Q_Ertel, (ωx_initial / f) * ∂x(B) + (ωy_initial / f) * ∂y(B) + (f + (ωz_initial / f) * ∂z(B)))
+   
+   set!(Q_Ertel, (ωx_initial * ∂x(B) + ωy_initial * ∂y(B) + (f + ωz_initial) * ∂z(B))/f)
    set!(Q_QG, -(1/rcoords) * (cos(φcoords) * ∂x(rcoords * Uφ) + sin(φcoords) * ∂y(rcoords * Uφ)) + f^2 * ∂z(∂z(Ψ) / ∂z(B)) + f)
+   #set!(Q_QG, ∂x(Uy) - ∂y(Ux) + (f^2 * ∂z(∂z(Ψ) / ∂z(B))) + f)
    set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
    set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
    
