@@ -376,7 +376,7 @@ function bkgd_Ψ_cylindrical_coords(σr, σz, U)
    Return anonymous function to evaluate Ψ at cylindrical coords (r, z).
    =#
    
-   Ψ = (r, z) -> -(U * σr / sqrt(2)) .* exp.(0.5 .- (r./σr).^2) .* exp.(-(z./σz).^2)
+   Ψ = (r, z) -> (U * σr / sqrt(2)) .* (1 .- exp.(-(r./σr).^2)) .* exp.(0.5 .- (z./σz).^2)
 
    return Ψ
 end
