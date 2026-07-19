@@ -45,6 +45,7 @@ const N²_far = 2e-5 * second^(-2)
 const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev'
 
 #Type of ambient stratification to construct ('doubleTanh' or 'constant')
+# (note that a TWB contribution will always be included)
 const ambientStrat = "doubleTanh"
 
 #Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
@@ -83,15 +84,15 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 const vis_const_x       = false
 const vis_const_y       = false
 const vis_const_z       = false
-const vis_norms         = false
+const vis_norms         = true
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
-const vis_bkgd_profiles = true
+const vis_bkgd_profiles = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
 const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
-const t_idx_skip = 1      #Step size for animations and timeseries
+const t_idx_skip = 10      #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -164,7 +165,7 @@ check_grav_stability(model.tracers.b, model.grid)
 ######################################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = "260706-163110" #format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
@@ -249,13 +250,13 @@ outputs = (ur = ur,
 	         uy = model.velocities.v,
 	         uz = model.velocities.w,
 	         b = model.tracers.b)
-
+=#
 #Define output filepaths
 outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
 scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 logfilepath    = joinpath("./Logs", "log_$(datetimenow).txt")
-
+#=
 #Make required paths if nonexistent
 mkpath(dirname(outfilepath))
 mkpath(dirname(scalarfilepath))
@@ -350,7 +351,7 @@ duration = canonicalize(now() - datetimestart)
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 pad_filenames(datetimenow; prefix = "scalars")
-
+=#
 #Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
@@ -358,6 +359,7 @@ open(logfilepath, "w") do file
    write(file, "σr, σz = $(σr), $(σz) \n")
    write(file, "U = $(U) \n")
    write(file, "Far-field N² term = $(N²_far) \n")
+   write(file, "Stratification type = $(ambientStrat) \n")
    write(file, "Stratification parameters: g = $(g), ρ₀ = $(ρ₀), A_s = $(A_s),
                 C_s = $(C_s), z_s = $(z_s), A_d = $(A_d), C_d = $(C_d), 
                 z_d = $(z_d) \n")
@@ -372,7 +374,7 @@ end
 #####################
 # RUN VISUALIZATION #
 #####################
-=#
+
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
                              t_idx_skip = t_idx_skip, plot_speed_animation = true)
@@ -413,8 +415,8 @@ if vis_bkgd_profiles
    visualize_B_U_Q_Ψ_vs_r_and_z(U, model.grid, f, σr, σz, N²_far, 
                                 doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
                                 1e6, Lz)
-   #visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
-   #                        σr, σz, U, N²_far; Hz = Hz)
+   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
+                           σr, σz, U, N²_far; Hz = Hz)
    
    ωx_initial = CenterField(model.grid)
    ωy_initial = CenterField(model.grid)
