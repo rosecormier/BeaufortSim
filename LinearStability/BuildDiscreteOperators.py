@@ -3,6 +3,8 @@ import scipy.sparse as ssp
 
 from math import e, pi
 
+from FiniteDiff import FiniteDiff
+
 def N2_profile(params, dimensional_N2_far = 1):
     """
     Return a function to compute N^2 at discrete values of z.
@@ -70,8 +72,6 @@ def BuildGlobalUDerivMatrices(params, geom):
     Build representations of various U-derivatives needed to construct bkgd
      operators, discretized on full rz-grid.
     """
-
-    from FiniteDiff import FiniteDiff
 
     if params.discretizeVertical:
     
@@ -190,7 +190,6 @@ def BuildBkgdOperators(params, geom, r_idx = None):
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
             Dz      = geom.Dz[zStartIdx:zEndIdx, zStartIdx:zEndIdx]
-            #N2Recip = geom.N2Recip[zStartIdx:zEndIdx]
 
             Ψ_opRadialFactor   = np.diag(np.sqrt(2 * e) * np.exp(-r2Tilde)
                                          * dimensional_U / dimensional_σr)
@@ -245,10 +244,11 @@ def BuildBkgdOperators(params, geom, r_idx = None):
                                       geom.z[zStartIdx:zEndIdx])
                                       
                 #Evaluate its z-derivative
-                dzN2    = np.matmul(Dz, N2)
+                dzN2 = np.matmul(Dz, N2)
                 
                 #Evaluate N^{-2} at this r-coordinate
-                N2Recip      = 1 / N2
+                N2Recip = 1 / N2
+                
                 #Update vector saved to 'geom', which is used again to construct B
                 geom.N2Recip = N2Recip
                 
@@ -277,9 +277,11 @@ def BuildBkgdOperators(params, geom, r_idx = None):
                 
                 U_phi = geom.U_phi_2D[(DzSize * r_idx):(DzSize * (r_idx + 1)), 
                                       (DzSize * r_idx):(DzSize * (r_idx + 1))]
-                """           
-                import matplotlib.pyplot as plt
+                        
+                #import matplotlib.pyplot as plt
                 
+                #plt.plot(np.diag(U_phi), z)
+                """
                 plt.plot(params.rs[r_idx]*np.diag(-(rRecip**2 * ((2 * U_phi * rRecip**2) 
                                       + (2 - rRecip) * (dr2U - 2 * rRecip * drU)
                                      )
@@ -290,10 +292,10 @@ def BuildBkgdOperators(params, geom, r_idx = None):
                                 * (dz2U**2 + dz3U - N2Recip**2 * dz2U * dzN2)
                              )
                         )), z)
-                
+                """
                 #plt.plot(params.rs[r_idx] * np.diag(Ψ_op), z)
-                plt.show()
-                """  
+                #plt.show()
+                
                 Q_op = (-rRecip**2 * ((2 * U_phi * rRecip**2) 
                                       + (2 - rRecip) * (dr2U - 2 * rRecip * drU)
                                      )
@@ -407,7 +409,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
         if params.verticalBCs == "homogeneous":
         
             #Retain interior values (eigfunction will vanish at boundary pts)
-            N2Recip = np.diag(geom.N2Recip[1:-1])
+            N2Recip = np.diag(geom.N2Recip)
             Dz      = geom.Dz[1:-1, 1:-1]
             Dz2     = geom.Dz2[1:-1, 1:-1]
             
@@ -428,10 +430,10 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
 
             N2Recip = np.diag(geom.N2Recip)
             Dz      = geom.Dz
-            Dz2Full = geom.Dz2[1:-1, :]
             
             #Impose BCs by zeroing first and last rows of the full Dz2
-            Dz2 = np.vstack((zz, Dz2Full, zz))
+            Dz2Full = geom.Dz2[1:-1, :]
+            Dz2     = np.vstack((zz, Dz2Full, zz))
 
         geom.B = -(np.matmul((params.f0**2 * N2Recip), Dz2)
                    + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
@@ -476,10 +478,10 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
             #Load these operators in full (w.r.t. z)
             N2Recip = np.diag(geom.N2Recip)
             Dz      = geom.Dz.toarray()
-            Dz2Full = geom.Dz2[1:-1, :].toarray()
             
             #Impose BCs by zeroing first and last rows of the full Dz2
-            Dz2 = np.vstack((zz, Dz2Full, zz))
+            Dz2Full = geom.Dz2[1:-1, :].toarray()
+            Dz2     = np.vstack((zz, Dz2Full, zz))
 
         #Terms depending on z, discretized on z-grid
         verticalB = -(np.matmul((params.f0**2 * N2Recip), Dz2)

@@ -136,7 +136,7 @@ def QG_Vortex_Stability():
                     modes[r_idx, kφ_idx, :, 0:nmodes] = eigVecs[:, 0:nmodes]
                 
         #Save results to nc file
-        SaveToNetCDF(params, geom, growth, prop, modes, saveStreamfnsAndVelocities = False)
+        SaveToNetCDF(params, geom, growth, prop, modes, saveStreamfnsAndVelocities = True)
     
     RunVisFromSavedData(params, geom)
 

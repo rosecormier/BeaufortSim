@@ -113,8 +113,8 @@ def LoadSavedData2D(params, geom):
     
 def plot_rMaxVelocity_polarGrid(ax, params):
     """
-    Plot indication of radial gyre length scale, if it is within domain, on 
-     polar rφ-grid.
+    Plot indication of radial gyre length scale, if it is within computational 
+     domain, on polar rφ-grid.
     """
     
     if ((params.discretizeRadial and params.sigmar < params.Lr) 
@@ -126,12 +126,13 @@ def plot_rMaxVelocity_polarGrid(ax, params):
                     
 def plot_rMaxVelocity_CartesianGrid(ax, params):
     """
-    Plot indication of radial gyre length scale, if it is within domain, on 
-     Cartesian grid with horizontal axis r.
+    Plot indication of radial gyre length scale, if it is within computational 
+     domain and plot domain, on Cartesian grid with horizontal axis r.
     """
     
     if ((params.discretizeRadial and params.sigmar < params.Lr) 
-        or (not params.discretizeRadial and params.sigmar < np.max(params.rs))):
+        or (not params.discretizeRadial and np.min(params.rs) < params.sigmar 
+            and params.sigmar < np.max(params.rs))):
 
         ax.axvline(params.sigmar / (2**0.5), color = "k", ls = "--", 
                    label = "Location of max. U")
@@ -193,6 +194,9 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
         axProp.set(title = "Propagation speed", 
                    xlabel = "Azimuthal wavenumber",
                    ylabel = "Angular velocity (s$^{{-1}}$)")
+                   
+        fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
+        plt.close(fig)
         
     elif (params.discretizeRadial and not params.discretizeVertical):
 
@@ -226,6 +230,9 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             #Set x-labels on lowest axes
             axGrowth.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
             axProp.set(xlabel = f"Vertical wavenumber ({params.units[xVariable]})")
+            
+            fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
+            plt.close(fig)
             
     elif (params.discretizeVertical and not params.discretizeRadial):
 
@@ -266,9 +273,9 @@ def PlotEigvals(params, nmodes, kφs, kzs, dimensionalGrowthRates,
             #Set x-labels on lowest axes
             axGrowth.set(xlabel = f"$r$ ({params.units[xVariable]})")
             axProp.set(xlabel = f"$r$ ({params.units[xVariable]})")
-        
-    fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
-    plt.close(fig)
+            
+            fig.savefig(f"./Graphs/omega_vs_{xVariable}_{modeString}_{params.dimString}gyre_{setupString}.png")
+            plt.close(fig)
         
 def PlotEigModeStructures(params, nmodes, kφs, kzs, r, z, eigModesReal, 
                           eigModesImag, setupString):
