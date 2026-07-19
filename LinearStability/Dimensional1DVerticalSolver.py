@@ -34,7 +34,7 @@ parser.add_argument("--strat_shape",
                     type = str, default = "doubleTanhTWB")
 parser.add_argument("--N2_far",
                     help = "Far-field squared buoyancy frequency (1/s^2)",
-                    type = float, default = 1e-6)
+                    type = float, default = 2e-5)
 parser.add_argument("-f0", "--Coriolis",
                     help = "Coriolis frequency f0 (Hz)",
                     type = float, default = 1.4e-4)
@@ -136,7 +136,7 @@ def QG_Vortex_Stability():
                     modes[r_idx, kφ_idx, :, 0:nmodes] = eigVecs[:, 0:nmodes]
                 
         #Save results to nc file
-        SaveToNetCDF(params, geom, growth, prop, modes)
+        SaveToNetCDF(params, geom, growth, prop, modes, saveStreamfnsAndVelocities = False)
     
     RunVisFromSavedData(params, geom)
 
