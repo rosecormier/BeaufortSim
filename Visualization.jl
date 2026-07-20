@@ -172,7 +172,7 @@ function visualize_norms(datetime;
 		idxStartLinGrowth_uy = nothing, idxEndLinGrowth_uy = nothing,
 		idxStartLinGrowth_uz = nothing, idxEndLinGrowth_uz = nothing,
 		idxStartPlot = 2, idxEndPlot = -1,
-    growth_rate = "linear_best_fit")
+    growth_rate = "linear_best_fit", t_skip_idx = 1)
 
    scalars_ds, times, Nt, chron_idcs = open_scalars_dataset(glob("./Output/scalars_$(datetime)*"))
    
@@ -181,16 +181,16 @@ function visualize_norms(datetime;
    end
    
    #Retain only necessary portion of 'times' data and update Nt accordingly
-   times = times[idxStartPlot:idxEndPlot]
+   times = times[idxStartPlot:t_skip_idx:idxEndPlot]
    Nt    = length(times)
 
    #Load data, sorted chronologically and then restricted to plot interval
-   b′_norm  = scalars_ds[:b′_norm][chron_idcs][idxStartPlot:idxEndPlot]
-   ux′_norm = scalars_ds[:ux′_norm][chron_idcs][idxStartPlot:idxEndPlot]
-   uy′_norm = scalars_ds[:uy′_norm][chron_idcs][idxStartPlot:idxEndPlot]
-   ur′_norm = scalars_ds[:ur′_norm][chron_idcs][idxStartPlot:idxEndPlot]
-   uφ′_norm = scalars_ds[:uφ′_norm][chron_idcs][idxStartPlot:idxEndPlot]
-   uz′_norm = scalars_ds[:uz′_norm][chron_idcs][idxStartPlot:idxEndPlot]
+   b′_norm  = scalars_ds[:b′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   ux′_norm = scalars_ds[:ux′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   uy′_norm = scalars_ds[:uy′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   ur′_norm = scalars_ds[:ur′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   uφ′_norm = scalars_ds[:uφ′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   uz′_norm = scalars_ds[:uz′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
    
    fig_cyl   = Figure(size = (1200, 700))
    ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
