@@ -92,7 +92,7 @@ const vis_bkgd_profiles = false
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
 const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
-const t_idx_skip = 10      #Step size for animations and timeseries
+const t_idx_skip = 5     #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -201,7 +201,7 @@ set!(∂zUφ, ∂z(Uφ))
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-
+#=
 #Add random perturbations to horizontal velocity components
 
 @inline u_perturbed(x, y, z) = @inbounds (ū(x, y, z)
@@ -221,7 +221,7 @@ end
                                          )
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
-#=
+
 simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
@@ -250,13 +250,13 @@ outputs = (ur = ur,
 	         uy = model.velocities.v,
 	         uz = model.velocities.w,
 	         b = model.tracers.b)
-=#
+
 #Define output filepaths
 outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
 scalarfilepath = joinpath("./Output", "scalars_$(datetimenow).nc")
 energyfilepath = joinpath("./Output", "energetics_$(datetimenow).nc")
 logfilepath    = joinpath("./Logs", "log_$(datetimenow).txt")
-#=
+
 #Make required paths if nonexistent
 mkpath(dirname(outfilepath))
 mkpath(dirname(scalarfilepath))
@@ -351,7 +351,7 @@ duration = canonicalize(now() - datetimestart)
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 pad_filenames(datetimenow; prefix = "scalars")
-=#
+
 #Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
@@ -374,7 +374,7 @@ end
 #####################
 # RUN VISUALIZATION #
 #####################
-
+=#
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
                              t_idx_skip = t_idx_skip, plot_speed_animation = true)
@@ -399,7 +399,7 @@ if vis_norms
                    idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
                    idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
                    idxStartPlot = 540, idxEndPlot = -1, 
-                   growth_rate = "timeseries")
+                   growth_rate = "timeseries", t_skip_idx = t_idx_skip)
 end
 
 if vis_energetics
