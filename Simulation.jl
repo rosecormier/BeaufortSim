@@ -20,8 +20,8 @@ using Printf, Random
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 400 #x-grid size
-const Ny = 400 #y-grid size
+const Nx = 500 #x-grid size
+const Ny = 500 #y-grid size
 const Nz = 100 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
@@ -84,10 +84,10 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 const vis_const_x       = false
 const vis_const_y       = false
 const vis_const_z       = false
-const vis_norms         = true
+const vis_norms         = false
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
-const vis_bkgd_profiles = false
+const vis_bkgd_profiles = true
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
@@ -165,20 +165,24 @@ check_grav_stability(model.tracers.b, model.grid)
 ######################################################
 
 datetimestart = now()
-datetimenow   = "260706-163110" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
 Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, model.velocities.v, 
                                    model.grid, useGPU)
 
-#Create fields to store background state
-Ux = XFaceField(model.grid)
-Uy = YFaceField(model.grid)
-Ur = CenterField(model.grid)
-Uφ = CenterField(model.grid)
-Uz = ZFaceField(model.grid)
-B  = CenterField(model.grid)
+#Create fields to store background-state primitive variables and PV quantities
+Ux        = XFaceField(model.grid)
+Uy        = YFaceField(model.grid)
+Ur        = CenterField(model.grid)
+Uφ        = CenterField(model.grid)
+Uz        = ZFaceField(model.grid)
+B         = CenterField(model.grid)
+Q_Ertel   = CenterField(model.grid)
+Q_QG      = CenterField(model.grid)
+∂rQ_Ertel = CenterField(model.grid)
+∂rQ_QG    = CenterField(model.grid)
 
 #Prescribe background values to those fields
 set!(Ux, ū)
@@ -194,9 +198,15 @@ set!(B, b̄ )
 ∂zUφ    = CenterField(model.grid)
 
 #Prescribe initial values to those fields
-set!(φcoords, compute_polar_coords(grid)[2])
+set!(φcoords, compute_polar_coords(model.grid)[2])
 set!(∂rUφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
 set!(∂zUφ, ∂z(Uφ))
+
+#Compute background PVs (and their r-derivatives) and prescribe to fields
+set!(Q_Ertel, compute_Q_Ertel_Cartesian(model.grid, f, Ux, Uy, Uz, B))
+set!(Q_QG, compute_Q_QG_cylindrical(model.grid, f, σr, σz, U, Uφ, B, φcoords))
+set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
+set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
 
 #############################
 # SET UP AND RUN SIMULATION #
@@ -417,32 +427,6 @@ if vis_bkgd_profiles
                                 1e6, Lz)
    visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
                            σr, σz, U, N²_far; Hz = Hz)
-   
-   ωx_initial = CenterField(model.grid)
-   ωy_initial = CenterField(model.grid)
-   ωz_initial = CenterField(model.grid)
-   Q_Ertel    = CenterField(model.grid)
-   Q_QG       = CenterField(model.grid)
-   ∂rQ_Ertel  = CenterField(model.grid)
-   ∂rQ_QG     = CenterField(model.grid)
-   
-   rcoords = CenterField(model.grid)
-   set!(rcoords, compute_polar_coords(model.grid)[1])
-   
-   Ψ = CenterField(model.grid)
-   Ψ_function = bkgd_Ψ_cylindrical_coords(σr, σz, U)
-   
-   set!(Ψ, Ψ_function(rcoords, reshape(no_offset_view(adapt(Array, model.grid.z.cᵃᵃᶜ))[4:length(model.grid.z.cᵃᵃᶜ)-3], 1, 1, Nz)))
-   
-   set!(ωx_initial, ∂y(Uz) - ∂z(Uy))
-   set!(ωy_initial, ∂z(Ux) - ∂x(Uz))
-   set!(ωz_initial, ∂x(Uy) - ∂y(Ux))
-   
-   set!(Q_Ertel, (ωx_initial * ∂x(B) + ωy_initial * ∂y(B) + (f + ωz_initial) * ∂z(B))/f)
-   set!(Q_QG, -(1/rcoords) * (cos(φcoords) * ∂x(rcoords * Uφ) + sin(φcoords) * ∂y(rcoords * Uφ)) + f^2 * ∂z(∂z(Ψ) / ∂z(B)) + f)
-   #set!(Q_QG, ∂x(Uy) - ∂y(Ux) + (f^2 * ∂z(∂z(Ψ) / ∂z(B))) + f)
-   set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
-   set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
-   
-   visualize_Q_and_∂Q∂r_from_ICs(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
+   visualize_Q_and_∂Q∂r_from_ICs(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
+                                 model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
 end

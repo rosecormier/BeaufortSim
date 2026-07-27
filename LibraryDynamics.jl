@@ -352,7 +352,7 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
                   .* (1 .- (r./σr).^2 
                        + (f^2 * σr^2 / (2 * σz^2)) 
                          .* ((1 ./ N2(r, z)) * (1 .- 2 .* (z./σz).^2) 
-                             - (z / N2(r, z))^2 .* ∂N2∂z(r, z)
+                             - z / (N2(r, z)^2) .* ∂N2∂z(r, z)
                             )
                     )
                  )
@@ -379,6 +379,65 @@ function bkgd_Ψ_cylindrical_coords(σr, σz, U)
    Ψ = (r, z) -> (U * σr / sqrt(2)) .* (1 .- exp.(-(r./σr).^2)) .* exp.(0.5 .- (z./σz).^2)
 
    return Ψ
+end
+
+function compute_Q_QG_Cartesian(grid, f, σr, σz, U, Ux, Uy, B; Hz = 3)
+   #=
+   Return background-state QG potential vorticity, computed at cell centres from
+    Cartesian components of velocity.
+   Equivalent to cylindrical formulation.
+   =#
+
+   rcoords = CenterField(grid)
+   Ψ       = CenterField(grid)
+   
+   set!(rcoords, compute_polar_coords(grid)[1])
+
+   Ψ_function = bkgd_Ψ_cylindrical_coords(σr, σz, U)
+   
+   set!(Ψ, Ψ_function(rcoords, 
+                      reshape(no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[4:length(grid.z.cᵃᵃᶜ)-3],
+                              1, 1, length(grid.z.cᵃᵃᶜ) - 2 * Hz)
+                             )
+                     )
+
+   return ∂x(Uy) - ∂y(Ux) + (f^2 * ∂z(∂z(Ψ) / ∂z(B))) + f
+end
+
+function compute_Q_QG_cylindrical(grid, f, σr, σz, U, Uφ, B, φcoords; Hz = 3)
+   #=
+   Return background-state QG potential vorticity, computed at cell centres from
+    cylindrical components of velocity.
+   Equivalent to Cartesian formulation.
+   =#
+
+   rcoords = CenterField(grid)
+   Ψ       = CenterField(grid)
+   
+   set!(rcoords, compute_polar_coords(grid)[1])
+
+   Ψ_function = bkgd_Ψ_cylindrical_coords(σr, σz, U)
+   
+   set!(Ψ, Ψ_function(rcoords,
+                      reshape(no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[4:length(grid.z.cᵃᵃᶜ)-3],
+                              1, 1, length(grid.z.cᵃᵃᶜ) - 2 * Hz)
+                             )
+                     )
+
+   return (-(1/rcoords) * (cos(φcoords) * ∂x(rcoords * Uφ) 
+              + sin(φcoords) * ∂y(rcoords * Uφ)) + f^2 * ∂z(∂z(Ψ) / ∂z(B)) + f)
+end
+
+function compute_Q_Ertel_Cartesian(grid, f, Ux, Uy, Uz, B)
+   #=
+   Return background-state Ertel potential vorticity, computed at cell centres
+    from Cartesian components of velocity.
+   =#
+   
+   ωx_initial, ωy_initial, ωz_initial = CenterFields_ω(grid, Ux, Uy, Uz)
+
+   return (ωx_initial * ∂x(B) + ωy_initial * ∂y(B) 
+           + (f + ωz_initial) * ∂z(B)) / f
 end
 
 function integrate_N²_upwards(i, j, k, grid, N²)
