@@ -230,6 +230,4 @@ class ChebyshevGeometry:
                 self.rRecip = np.diag(1 / self.r[1:(params.halfNr + 1)])
                 
             elif params.discretizeVertical: #2D eigenvalue problem
-                self.rRecip = ssp.diags_array(1 / self.r[1:(params.halfNr 
-                                                            + 1)],
-                                              format = "csr")
+                self.rRecip = 1 / self.r
