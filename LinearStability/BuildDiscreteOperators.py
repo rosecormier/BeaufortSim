@@ -16,7 +16,6 @@ def N2_profile(params, dimensional_N2_far = 1):
         Ro, Bu = params.Ro, params.Bu
         
         if params.nondimensional:
-        
             N2 = Bu * ((np.sqrt(2) * Ro * (f0**2)) * (1 - np.exp(-r**2)) 
                        * (1 - 2 * z) * np.exp(0.5 - (z**2))
                       )
@@ -26,12 +25,30 @@ def N2_profile(params, dimensional_N2_far = 1):
             dimensional_U                  = params.Umax
             dimensional_σr, dimensional_σz = params.sigmar, params.sigmaz
         
-            N2 = ((2**0.5 * dimensional_σr * f0 * dimensional_U 
-                   / (dimensional_σz**2))
-                  * (1 - np.exp(-(r / dimensional_σr)**2)) 
-                  * (1 - 2 * (z / dimensional_σz)**2) 
-                  * np.exp(0.5 - (z / dimensional_σz)**2)
-                 )
+            if not params.discretizeRadial: #1D (z) problem
+            
+                N2 = ((2**0.5 * dimensional_σr * f0 * dimensional_U 
+                       / (dimensional_σz**2))
+                      * (1 - np.exp(-(r / dimensional_σr)**2)) 
+                      * (1 - 2 * (z / dimensional_σz)**2) 
+                      * np.exp(0.5 - (z / dimensional_σz)**2)
+                     )
+                     
+            elif params.discretizeRadial: #2D problem
+
+                Ir = ssp.eye_array(len(r), format = "csr")
+                Iz = ssp.eye_array(params.DzSize, format = "csr")
+            
+                rdiag = ssp.diags_array(r, format = "csr")
+                zdiag = ssp.diags_array(z, format = "csr")
+                
+                N2 = ((2**0.5 * dimensional_σr * f0 * dimensional_U 
+                       / (dimensional_σz**2))
+                      * ssp.kron(-(-(rdiag / dimensional_σr)**2).expm1(), Iz)
+                      * ssp.kron(Ir, 
+                                 ssp.diags_array((1 - 2 * (z / dimensional_σz)**2) * np.exp(0.5 - (z / dimensional_σz)**2), format = "csr")
+                                )
+                     )
 
         return N2
 
@@ -50,11 +67,24 @@ def N2_profile(params, dimensional_N2_far = 1):
         return dimensional_N2_far * np.ones_like(z)
 
     if params.stratification_kw == "constant":
-        totalN2function = lambda r, z : constantN2(z)
+    
+        if not params.discretizeRadial: #1D (z) problem
+            totalN2function = lambda r, z : constantN2(z)
+            
+        elif params.discretizeRadial: #2D problem
+            totalN2function = lambda r, z : ssp.kron(ssp.eye_array(len(r), format = "csr"), ssp.diags_array(constantN2(z), format = "csr"))
+            
         print("Warning: to ensure thermal-wind balance of background state, ensure U is set to 0 (for no background flow) or sigma_z is set very large (to approximate a barotropic background). \n")
         
     elif params.stratification_kw == "TWB":
-        totalN2function = lambda r, z : constantN2(z) + TWB_N2(r, z)
+        
+        if not params.discretizeRadial: #1D (z) problem
+            totalN2function = lambda r, z : constantN2(z) + TWB_N2(r, z)
+            
+        elif params.discretizeRadial: #2D problem
+            def constantN2ssp(r, z):
+                return ssp.kron(ssp.eye_array(len(r), format = "csr"), ssp.diags_array(constantN2(z), format = "csr"))
+            totalN2function = lambda r, z : constantN2ssp(r, z) + TWB_N2(r, z)
 
     elif params.stratification_kw == "doubleTanh":
         totalN2function = lambda r, z : (constantN2(z) 
@@ -97,21 +127,24 @@ def BuildGlobalUDerivMatrices(params, geom):
         else:
             dimensional_U, dimensional_σr = params.Umax, params.sigmar
     
-        r_vector       = np.ravel(params.rs)
+        if not params.discretizeRadial: #1D (z) problem
+            r_vector = np.ravel(params.rs)
+            Dr       = FiniteDiff(r_vector, 2, sparse = True, uniform = True)
+        elif params.discretizeRadial: #2D problem
+            r_vector, Dr = geom.r[1:-1], geom.Dr[1:-1, 1:-1]
+        
         rTilde_vector  = r_vector / dimensional_σr
         r2Tilde_vector = rTilde_vector**2
-                
+        
         geom.U_phi_2D = -(2**0.5 * dimensional_U 
-                          * np.kron(rTilde_vector 
-                                    * np.diag(np.exp(0.5 - r2Tilde_vector)),
-                                    np.diag(np.exp(-z2Tilde))
+                          * ssp.kron(rTilde_vector * ssp.diags_array(np.exp(0.5 - r2Tilde_vector), format = "csr"),
+                                    ssp.diags_array(np.exp(-z2Tilde), format = "csr")
                                    )
                          )
                             
         Ir = ssp.eye_array(len(r_vector), format = "csr")
         Iz = ssp.eye_array(params.DzSize, format = "csr")
                             
-        Dr    = FiniteDiff(r_vector, 2, sparse = True, uniform = True)
         Dr_2D = ssp.kron(Dr, Iz)
                 
         geom.drU_2D  = Dr_2D @ geom.U_phi_2D
@@ -176,16 +209,13 @@ def BuildBkgdOperators(params, geom, r_idx = None):
         
             f0, dimensional_σz = params.f0, params.sigmaz
         
-            #2D eigenvalue problem
-            if params.discretizeRadial:
+            if params.discretizeRadial: #2D eigenvalue problem
                 rTilde = np.ravel(geom.r[1:-1]) / dimensional_σr
                 
-            #1D (z) eigenvalue problem
-            elif not params.discretizeRadial:
+            elif not params.discretizeRadial: #1D (z) eigenvalue problem
                 rTilde = np.array([params.rs[r_idx] / dimensional_σr])
                 
             r2Tilde = rTilde**2
-                
             z       = geom.z[zStartIdx:zEndIdx]
             zTilde  = np.ravel(z) / dimensional_σz
             z2Tilde = zTilde**2
@@ -202,42 +232,59 @@ def BuildBkgdOperators(params, geom, r_idx = None):
 
             Q_opFactor3RadialTerm = np.diag(2 * (rTilde**2 - 2))
             
-            #2D eigenvalue problem
-            if params.discretizeRadial:
-            
-                N2Recip = geom.N2Recip[zStartIdx:zEndIdx]
+            if params.discretizeRadial: #2D eigenvalue problem
             
                 Ir = ssp.eye_array(params.Nr - 1, format = "csr")
                 Iz = ssp.eye_array(params.DzSize, format = "csr")
+                
+                #Evaluate N^2
+                N2 = geom.N2_function(geom.r[1:-1], geom.z[zStartIdx:zEndIdx])
+                
+                #import matplotlib.pyplot as plt
+                #plt.plot(geom.z[zStartIdx:zEndIdx], np.diag(N2.toarray())[93*params.DzSize:94*params.DzSize])
+                #plt.show()
 
+                #Evaluate its z-derivative
+                dzN2 = ssp.kron(Ir, geom.Dz) @ N2
+                
+                #Evaluate N^{-2} and (N^{-2})^2
+                geom.N2Recip = ssp.diags_array(1 / np.diag(N2.todense()), format = "csr")
+                geom.N4Recip = ssp.diags_array(1 / np.diag(N2.todense()**2), format = "csr")
+                
                 Ψ_op = (ssp.kron(Ψ_opRadialFactor, Iz, format = "csr") @
                         ssp.kron(Ir, Ψ_opVerticalFactor, format = "csr"))
+                        
+                BuildGlobalUDerivMatrices(params, geom)
+                
+                drU  = geom.drU_2D
+                dr2U = geom.dr2U_2D
 
-            
-                Q_opFactor3VerticalTerm = np.diag(-(f0 * dimensional_σr 
-                                                    / dimensional_σz)**2 
-                                                  * (N2Recip * (1 - 2 * z2Tilde)
-                                                     + z 
-                                                       * np.matmul(Dz.toarray(),
-                                                                   N2Recip)
-                                                    )
-                                                 )
-  
-                Q_opFactor3 = (ssp.kron(Q_opFactor3RadialTerm, Iz, 
-                                        format = "csr")
-                               + ssp.kron(Ir, Q_opFactor3VerticalTerm, 
-                                          format = "csr")
-                              )
-
-                Q_op = ((ssp.kron(Q_opScaleFactor * Q_opFactor1, Iz, 
-                                  format = "csr") 
-                         @ ssp.kron(Ir, Q_opFactor2, format = "csr")
-                        ) 
-                        @ Q_opFactor3
+                dzU  = geom.dzU_2D
+                dz2U = geom.dz2U_2D
+                dz3U = geom.dz3U_2D
+    
+                dzdrU  = geom.dzdrU_2D
+                dz2drU = geom.dz2drU_2D
+                              
+                rRecip       = ssp.kron(np.diag(geom.rRecip[1:-1]), 
+                                        Iz, format = "csr")
+                rRecipMinus2 = ssp.kron(ssp.diags_array(geom.rRecip[1:-1] - 2,
+                                        format = "csr"), Iz)
+                
+                U_phi = geom.U_phi_2D
+                
+                Q_op = (-rRecip**2 @ ((2 * U_phi @ rRecip**2)
+                                      + (-rRecipMinus2) @ (dr2U - 2 * rRecip @ drU)
+                                     )
+                        + f0**2 * geom.N2Recip @ rRecip
+                           @ (geom.N2Recip @ dzN2 @ dzdrU 
+                              - dz2drU
+                              + f0 * geom.N2Recip
+                                @ (dz2U**2 + dz3U - geom.N4Recip @ dz2U @ dzN2)
+                             )
                        )
-                    
-            #1D (z) eigenvalue problem   
-            elif not params.discretizeRadial:
+
+            elif not params.discretizeRadial: #1D (z) eigenvalue problem
                 
                 #Evalute N^2 at this r-coordinate
                 N2 = geom.N2_function(params.rs[r_idx], 
@@ -277,24 +324,6 @@ def BuildBkgdOperators(params, geom, r_idx = None):
                 
                 U_phi = geom.U_phi_2D[(DzSize * r_idx):(DzSize * (r_idx + 1)), 
                                       (DzSize * r_idx):(DzSize * (r_idx + 1))]
-                        
-                #import matplotlib.pyplot as plt
-                
-                #plt.plot(np.diag(U_phi), z)
-                """
-                plt.plot(params.rs[r_idx]*np.diag(-(rRecip**2 * ((2 * U_phi * rRecip**2) 
-                                      + (2 - rRecip) * (dr2U - 2 * rRecip * drU)
-                                     )
-                         + f0**2 * N2Recip * rRecip
-                           * (N2Recip * dzN2 * dzdrU 
-                              - dz2drU
-                              + f0 * N2Recip
-                                * (dz2U**2 + dz3U - N2Recip**2 * dz2U * dzN2)
-                             )
-                        )), z)
-                """
-                #plt.plot(params.rs[r_idx] * np.diag(Ψ_op), z)
-                #plt.show()
                 
                 Q_op = (-rRecip**2 * ((2 * U_phi * rRecip**2) 
                                       + (2 - rRecip) * (dr2U - 2 * rRecip * drU)
@@ -335,30 +364,39 @@ def BuildHorizontalLaplacian(params, geom):
     """
 
     halfNr, Nr = params.halfNr, params.Nr
+    """
+    if params.discretizeVertical:
+        rRecip = ssp.diags_array(geom.rRecip[1:(halfNr + 1)], format = "csr")
+    elif not params.discretizeVertical:
+        rRecip = geom.rRecip
+    """
+    rRecip = np.diag(1 / geom.r[1:(params.halfNr + 1)])
+    print(np.shape(rRecip))
     
     #Quadrants of 1st-order r-derivative matrix
     geom.Dr_Q1 = geom.Dr[1:(halfNr + 1), 1:(halfNr + 1)]
     geom.Dr_Q2 = geom.Dr[1:(halfNr + 1), (Nr - 1):halfNr:-1]
-    geom.Dr_Q3 = geom.Dr[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    geom.Dr_Q3 = geom.Dr[(Nr - 1):halfNr:-1, 1:(halfNr + 1)]
     geom.Dr_Q4 = geom.Dr[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
-
+    
     #Quadrants of 2nd-order r-derivative matrix
     geom.Dr2_Q1 = geom.Dr2[1:(halfNr + 1), 1:(halfNr + 1)]
     geom.Dr2_Q2 = geom.Dr2[1:(halfNr + 1), (Nr - 1):halfNr:-1]
-    geom.Dr2_Q3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr+1)]
+    geom.Dr2_Q3 = geom.Dr2[(Nr - 1):halfNr:-1, 1:(halfNr + 1)]
     geom.Dr2_Q4 = geom.Dr2[(Nr - 1):halfNr:-1, (Nr - 1):halfNr:-1]
-
+    
     #Quadrants of the full horizontal Laplacian
-    geom.LapH_Q1 = geom.Dr2_Q1 + (geom.rRecip @ geom.Dr_Q1)
-    geom.LapH_Q2 = geom.Dr2_Q2 + (geom.rRecip @ geom.Dr_Q2)
-    geom.LapH_Q3 = geom.Dr2_Q3 + (geom.rRecip @ geom.Dr_Q3)
-    geom.LapH_Q4 = geom.Dr2_Q4 + (geom.rRecip @ geom.Dr_Q4)
+    geom.LapH_Q1 = geom.Dr2_Q1 + (rRecip @ geom.Dr_Q1)
+    geom.LapH_Q2 = geom.Dr2_Q2 + (rRecip @ geom.Dr_Q2)
+    geom.LapH_Q3 = geom.Dr2_Q3 + (rRecip @ geom.Dr_Q3)
+    geom.LapH_Q4 = geom.Dr2_Q4 + (rRecip @ geom.Dr_Q4)
+    
+    print(type(geom.LapH_Q1))
     
     geom.LapH = ConvertQuadsToBlock(geom, geom.LapH_Q1, geom.LapH_Q2, 
                                     geom.LapH_Q3, geom.LapH_Q4)
-    
-    #2D eigenvalue problem
-    if params.discretizeVertical:
+
+    if params.discretizeVertical: #Discretize on rz-grid for 2D problem
         Iz           = ssp.eye_array(params.Nz - 1, format = "csr")
         geom.LapH_2D = ssp.kron(geom.LapH, Iz, format = "csr")
     
@@ -372,7 +410,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
     
     if params.discretizeRadial:
         Nr, halfNr = params.Nr, params.halfNr
-        r2Recip    = geom.rRecip**2
+        r2Recip    = geom.rRecip[1:(params.halfNr + 1)]**2
 
     #1D (r) eigenvalue problem
     if (params.discretizeRadial and not params.discretizeVertical):
@@ -439,7 +477,7 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
                    + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
                   ) + kφ2 * geom.rRecip[r_idx]**2
     
-        return geom.B
+        return geom.B + 2e-7
         
     #2D eigenvalue problem
     elif (params.discretizeRadial and params.discretizeVertical):
@@ -454,15 +492,16 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
         horizontalB = ConvertQuadsToBlock(geom, horizontalB_Q1, horizontalB_Q2,
                                           horizontalB_Q3, horizontalB_Q4)
         
+        Ir = ssp.eye_array(params.Nr - 1, format = "csr")
         Iz = ssp.eye_array(params.DzSize, format = "csr")
+        
+        #Terms depending on r, discretized on rz-grid
+        horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr")
         
         #Deal with vertical boundary conditions
         
         if params.verticalBCs == "homogeneous":
         
-            #Terms depending on r, discretized on rz-grid
-            horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr")
-            
             #Retain interior values (eigfunction will vanish at boundary pts)
             N2Recip = np.diag(geom.N2Recip[1:-1])
             Dz      = geom.Dz[1:-1, 1:-1].toarray()
@@ -472,35 +511,28 @@ def BuildMatrixB(params, geom, kφ, kz = None, r_idx = None):
         
             zz = np.zeros((1, (params.Nz + 1)))
             
-            #Terms depending on r, discretized on rz-grid
-            horizontalB_2D = ssp.kron(horizontalB, Iz, format = "csr")
-            
             #Load these operators in full (w.r.t. z)
-            N2Recip = np.diag(geom.N2Recip)
-            Dz      = geom.Dz.toarray()
+            N2Recip = geom.N2Recip
+            Dz      = ssp.kron(Ir, geom.Dz, format = "csr")
             
             #Impose BCs by zeroing first and last rows of the full Dz2
-            Dz2Full = geom.Dz2[1:-1, :].toarray()
+            Dz2Full = geom.Dz2.toarray()[1:-1, :]
             Dz2     = np.vstack((zz, Dz2Full, zz))
+            Dz2     = ssp.kron(Ir, Dz2, format = "csr")
 
-        #Terms depending on z, discretized on z-grid
-        verticalB = -(np.matmul((params.f0**2 * N2Recip), Dz2)
-                      + np.matmul(np.matmul(params.f0**2 * Dz, N2Recip), Dz)
-                     )
-        
-        Ir = ssp.eye_array(params.Nr - 1, format = "csr")
-            
-        #Terms depending on z, discretized on rz-grid
-        verticalB_2D = ssp.kron(Ir, verticalB, format = "csr")
-            
-        geom.B_Q1 = (horizontalB_2D + verticalB_2D)[:(params.halfNr * params.DzSize),
-                                                    :(params.halfNr * params.DzSize)]
-        geom.B_Q2 = (horizontalB_2D + verticalB_2D)[(params.halfNr * params.DzSize):,
-                                                    :(params.halfNr * params.DzSize)]
-        geom.B_Q3 = (horizontalB_2D + verticalB_2D)[:(params.halfNr * params.DzSize),
-                                                    (params.halfNr * params.DzSize):]
-        geom.B_Q4 = (horizontalB_2D + verticalB_2D)[(params.halfNr * params.DzSize):,
-                                                    (params.halfNr * params.DzSize):]
+        #Terms depending on both r and z
+        mixedB = -(params.f0**2 * N2Recip @ Dz2
+                   + (params.f0**2 * Dz @ N2Recip) @ Dz
+                  )
+
+        geom.B_Q1 = (horizontalB_2D + mixedB)[:(params.halfNr * params.DzSize),
+                                              :(params.halfNr * params.DzSize)]
+        geom.B_Q2 = (horizontalB_2D + mixedB)[(params.halfNr * params.DzSize):,
+                                              :(params.halfNr * params.DzSize)]
+        geom.B_Q3 = (horizontalB_2D + mixedB)[:(params.halfNr * params.DzSize),
+                                              (params.halfNr * params.DzSize):]
+        geom.B_Q4 = (horizontalB_2D + mixedB)[(params.halfNr * params.DzSize):,
+                                              (params.halfNr * params.DzSize):]
 
         #Assemble square matrix to be used in gen. eig. solver
         geom.B = geom.B_Q1 + geom.B_Q2
@@ -516,14 +548,17 @@ def BuildMatrixA(params, geom):
     #Any 1D eigenvalue problem
     if ((params.discretizeRadial and not params.discretizeVertical) or
         (params.discretizeVertical and not params.discretizeRadial)):
-        geom.A = np.matmul(geom.Ψ_op, geom.B) + geom.Q_op  
+        geom.A = np.matmul(geom.Ψ_op, geom.B) ##+ geom.Q_op  
     
     #2D eigenvalue problem
     elif (params.discretizeRadial and params.discretizeVertical):
         geom.A = ((geom.Ψ_op[:(params.halfNr * params.DzSize),
                              :(params.halfNr * params.DzSize)] @ geom.B_Q1 
-                   + geom.B_Q2)
+                   + geom.Ψ_op[(params.halfNr * params.DzSize):,
+                             :(params.halfNr * params.DzSize)] @ geom.B_Q2)
                   + geom.Q_op[:(params.halfNr * params.DzSize),
+                              :(params.halfNr * params.DzSize)]
+                  + geom.Q_op[(params.halfNr * params.DzSize):,
                               :(params.halfNr * params.DzSize)]
                  )
 

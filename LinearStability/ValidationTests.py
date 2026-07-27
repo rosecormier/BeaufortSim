@@ -10,9 +10,9 @@ from Chebyshev import Parameters, ChebyshevGeometry
 
 def ErrorsInDiscreteHorizontalLaplacians():
     
-    testArgs = {"Nr": 201, "Lr": 1, "bkgd": "BG",
-                "buoyancyfreq": 1, "Coriolis": None, "bkgdU": None, 
-                "sigmar": None, "N2_far": 1e-6, "Np": None, "k_phi": [0, 1, 1],
+    testArgs = {"Nr": 201, "Lr": 10, "bkgd": "BG",
+                "buoyancyfreq": 1, "Coriolis": 1.4e-4, "bkgdU": 1, 
+                "sigmar": 1, "N2_far": 1e-6, "Np": None, "k_phi": [0, 1, 1],
                 "k_z": [0, 1, 1], "nmodes": None}
         
     params = Parameters(args = testArgs, discretizeRadial = True, 
@@ -37,9 +37,7 @@ def ErrorsInDiscreteHorizontalLaplacians():
     
         test1stDerivExpression = test1stDerivs[testFunctionExpression]
         test2ndDerivExpression = test2ndDerivs[testFunctionExpression]
-      
-        ComputeRecips(params, geom)
-      
+
         testFunction      = testFunctionExpression(geom.r)
         test1stDerivExact = test1stDerivExpression(geom.r)
         test2ndDerivExact = test2ndDerivExpression(geom.r)
@@ -54,13 +52,13 @@ def ErrorsInDiscreteHorizontalLaplacians():
         test1stDerivCompDomain = np.matmul(geom.Dr[1:-1, 1:-1],
                                            testFunction[1:-1])
         
-        print("Max. fractional error in 1st-order r-derivative applied to test function on computational 1D domain:",
+        print("Max. fractional error in 1st-order r-derivative applied to test function f(r) on computational 1D domain:",
               norm(((test1stDerivCompDomain - test1stDerivExact[1:-1]) 
                     / test1stDerivExact[1:-1]
                    ),
                    ord = inf
                   ),
-              "\nL2 fractional error in 1st-order r-derivative applied to test function on computational 1D domain:",
+              "\nL2 fractional error in 1st-order r-derivative applied to test function f(r) on computational 1D domain:",
               norm((test1stDerivCompDomain - test1stDerivExact[1:-1])
                     / test1stDerivExact[1:-1]
                   ),
@@ -72,14 +70,14 @@ def ErrorsInDiscreteHorizontalLaplacians():
         test1stDerivPhysDomain = np.matmul(geom.Dr_Q1 + geom.Dr_Q2,
                                            testFunction[1:(params.halfNr + 1)])
              
-        print("Max. fractional error in 1st-order r-derivative applied to test function on physical 1D domain:", 
+        print("Max. fractional error in 1st-order r-derivative applied to test function f(r) on physical 1D domain:", 
               norm(((test1stDerivPhysDomain
                      - test1stDerivExact[1:(params.halfNr + 1)])
                     / test1stDerivExact[1:(params.halfNr + 1)]
                    ),
                    ord = inf
                   ),
-              "\nL2 fractional error in 1st-order r-derivative applied to test function on computational 1D domain:",
+              "\nL2 fractional error in 1st-order r-derivative applied to test function f(r) on computational 1D domain:",
               norm((test1stDerivPhysDomain
                     - test1stDerivExact[1:(params.halfNr + 1)])
                    / test1stDerivExact[1:(params.halfNr + 1)]
@@ -89,15 +87,15 @@ def ErrorsInDiscreteHorizontalLaplacians():
              
         test2ndDerivPhysDomain = np.matmul(geom.Dr2_Q1 + geom.Dr2_Q2,
                                            testFunction[1:(params.halfNr + 1)])
-             
-        print("Max. fractional error in 2nd-order r-derivative applied to test function on physical 1D domain:", 
+        
+        print("Max. fractional error in 2nd-order r-derivative applied to test function f(r) on physical 1D domain:", 
               norm(((test2ndDerivPhysDomain
                      - test2ndDerivExact[1:(params.halfNr + 1)])
                     / test2ndDerivExact[1:(params.halfNr + 1)]
                    ),
                    ord = inf
                   ),
-              "\nL2 fractional error in 2nd-order r-derivative applied to test function on physical 1D domain:",
+              "\nL2 fractional error in 2nd-order r-derivative applied to test function f(r) on physical 1D domain:",
               norm((test2ndDerivPhysDomain
                     - test2ndDerivExact[1:(params.halfNr + 1)])
                    / test2ndDerivExact[1:(params.halfNr + 1)]
@@ -107,50 +105,70 @@ def ErrorsInDiscreteHorizontalLaplacians():
         
         testLapH = np.matmul(geom.LapH, testFunction[1:-1])[:params.halfNr]
         
-        print("Max. fractional error in horizontal Laplacian applied to test function on physical 1D domain:", 
+        print("Max. fractional error in horizontal Laplacian applied to test function f(r) on physical 1D domain:", 
               norm(((testLapH - testHorizontalLapExact) 
                     / testHorizontalLapExact),
                    ord = inf
                   ),
-              "\nL2 fractional error in horizontal Laplacian applied to test function on physical 1D domain:",
+              "\nL2 fractional error in horizontal Laplacian applied to test function f(r) on physical 1D domain:",
               norm((testLapH - testHorizontalLapExact) 
                    / testHorizontalLapExact
                   ),
               "\n"
              )
              
-        testArgs.update({"Nz": 20, "Lz": 1, "strat_shape": "constant",
-                         "sigmaz": None, "zBCs": "continuousBuoyancy"})
+        testArgs.update({"Nz": 4, "Lz": 3, "strat_shape": "constant",
+                         "sigmaz": 1, "zBCs": "continuousBuoyancy"})
              
         params2D = Parameters(args = testArgs, discretizeRadial = True, 
                               discretizeVertical = True)
         geom2D   = ChebyshevGeometry(params2D)
         
-        ComputeRecips(params2D, geom2D)
         BuildHorizontalLaplacian(params2D, geom2D)
 
         iz = np.ones(params2D.Nz - 1)
         
         test2DFunction = np.kron(testFunction[1:-1], iz)
 
-        test2DLapH = (geom2D.LapH_2D @ test2DFunction)[:(params2D.halfNr
+        test2DLapH = (geom2D.LapH_2D @ test2DFunction)[:(params2D.halfNr 
                                                         * (params2D.Nz - 1))]
-
-        print("Max. fractional error in horizontal Laplacian applied to test function on physical 2D domain:", 
+        """
+        import matplotlib.pyplot as plt
+        
+        plt.imshow(geom.LapH)
+        plt.show()
+        plt.close()
+        
+        plt.imshow(geom2D.LapH_2D.toarray())
+        plt.show()
+        plt.close()
+                                        
+        plt.plot(testLapH)
+        plt.show()
+        plt.close()
+        
+        plt.plot(np.kron(testLapH, iz))
+        plt.show()
+        plt.close()
+        
+        plt.plot(test2DLapH)
+        plt.show()
+        """
+        print("Max. fractional error in horizontal Laplacian applied to test function f(r) on physical 2D domain:", 
               norm(((test2DLapH - np.kron(testLapH, iz))
-                    / np.kron(testLapH, iz)
-                   ),
+                    / np.kron(testLapH, iz)),
                    ord = inf
                   ),
-              "\nL2 fractional error in horizontal Laplacian applied to test function on physical 2D domain:",
+              "\nL2 fractional error in horizontal Laplacian applied to test function f(r) on physical 2D domain:",
               norm((test2DLapH - np.kron(testLapH, iz)) 
                    / np.kron(testLapH, iz)
-                  )
+                  ),
+              "\n"
              )
              
 def ErrorsInDiscreteVerticalDerivs():
     
-    testArgs = {"Nz": 201, "Lz": 1, "zBCs": "homogeneous", "bkgd": "BG", 
+    testArgs = {"Nz": 200, "Lz": 1, "zBCs": "constantBuoyancy", "bkgd": "BG", 
                 "strat_shape": "constant", "sigmaz": 1, "N2_far": 1, 
                 "Coriolis": 1, "bkgdU": 1, "sigmar": 1, "r": [1e-2, 10, 1],
                 "Np": None, "k_phi": [0, 1, 1], "nmodes": None, 
@@ -162,7 +180,7 @@ def ErrorsInDiscreteVerticalDerivs():
 
     sineTestFunction = lambda z : np.sin(z * pi / params.Lz)
     
-    sineTest1stDeriv = lambda z : (pi / params.Lz)  * np.cos(z * pi / params.Lz)
+    sineTest1stDeriv = lambda z : (pi / params.Lz) * np.cos(z * pi / params.Lz)
     
     sineTest2ndDeriv = lambda z : (-(pi / params.Lz)**2
                                      * np.sin(z * pi / params.Lz))
@@ -205,13 +223,13 @@ def ErrorsInDiscreteVerticalDerivs():
             test1stDeriv = np.matmul(Dz, testFunction)[1:-1]
             test2ndDeriv = np.matmul(Dz2, testFunction)[1:-1]
         
-        print("Max. fractional error in 1st-order z-derivative applied to test function on 1D domain:",
+        print("Max. fractional error in 1st-order z-derivative applied to test function g(z) on 1D domain:",
               norm(((test1stDeriv - test1stDerivExact[1:-1]) 
                     / test1stDerivExact[1:-1]
                    ),
                    ord = inf
                   ),
-              "\nL2 fractional error in 1st-order z-derivative applied to test function on 1D domain:",
+              "\nL2 fractional error in 1st-order z-derivative applied to test function g(z) on 1D domain:",
               norm((test1stDeriv - test1stDerivExact[1:-1]) 
                    / test1stDerivExact[1:-1]
                   ),
@@ -220,11 +238,11 @@ def ErrorsInDiscreteVerticalDerivs():
              
         
         
-        print("Max. fractional error in 2nd-order z-derivative applied to test function on 1D domain:",
+        print("Max. fractional error in 2nd-order z-derivative applied to test function g(z) on 1D domain:",
               norm(((test2ndDeriv - test2ndDerivExact[1:-1]) / test2ndDerivExact[1:-1]),
                    ord = inf
                   ),
-              "\nL2 fractional error in 2nd-order z-derivative applied to test function on 1D domain:",
+              "\nL2 fractional error in 2nd-order z-derivative applied to test function g(z) on 1D domain:",
               norm((test2ndDeriv - test2ndDerivExact[1:-1]) / test2ndDerivExact[1:-1]),
               "\n"
              )

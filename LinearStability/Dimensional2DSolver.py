@@ -40,7 +40,7 @@ parser.add_argument("--zBCs",
 parser.add_argument("--strat_shape",
                     help = "Shape of ambient buoyancy profile",
                     choices = ("constant", "TWB", "doubleTanh", "doubleTanhTWB"),
-                    type = str, default = "linear")
+                    type = str, default = "doubleTanhTWB")
 parser.add_argument("--N2_far",
                     help = "Far-field squared buoyancy frequency (1/s^2)",
                     type = float, default = 1e-6)
@@ -80,7 +80,6 @@ def QG_Vortex_Stability():
     if not args["useSaved"]:
 
         #Build discrete operators
-        ComputeRecips(params, geom)
         BuildBkgdOperators(params, geom)
         BuildHorizontalLaplacian(params, geom)
          
