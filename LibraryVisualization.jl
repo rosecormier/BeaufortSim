@@ -4,6 +4,9 @@ using Oceananigans.AbstractOperations, Oceananigans.Fields
 ####################
 
 function compute_polar_coords(grid)
+   #=
+   Compute polar (r, φ) coordinates for each (x, y)-point on 'grid'.
+   =#
 
    function r_coord(i, j, k, grid)
       xCi = @views adapt(CuArray, xnodes(grid, Center()))[i]
@@ -28,6 +31,10 @@ function compute_polar_coords(grid)
 end
 
 function xy_vector_to_rφ(vx, vy, grid, useGPU)
+   #=
+   Given Cartesian (x, y) components of a vector, compute its projection to
+    polar (r, φ) coordinates.
+   =#
 
    r, φ = compute_polar_coords(grid)
 
@@ -73,18 +80,35 @@ function xy_vector_to_rφ(vx, vy, grid, useGPU)
    return vr, vφ
 end
 
-function ω(u, v, w, i, j, k, Δx, Δy, Δz)
+function pointwise_ω(ux, uy, uz, i, j, k, Δx_i, Δy_j, Δz_k)
+   #=
+   Compute Cartesian components of vorticity at all specified [i, j, k]
+    coordinate triples.
+   =#
    
-   ωx = @. ((w[i, j:j+1, k] - w[i, j-1:j, k]) / Δy 
-	          - (v[i, j, k:k+1] - v[i, j, k-1:k]) / Δz)
+   ωx = @. ((uz[i, j:j+1, k] - uz[i, j-1:j, k]) / Δy_j 
+	          - (uy[i, j, k:k+1] - uy[i, j, k-1:k]) / Δz_k)
    
-   ωy = @. ((u[i, j, k:k+1] - u[i, j, k-1:k]) / Δz
-	          - (w[i:i+1, j, k] - w[i-1:i, j, k]) / Δx)
+   ωy = @. ((ux[i, j, k:k+1] - ux[i, j, k-1:k]) / Δz_k
+	          - (uz[i:i+1, j, k] - uz[i-1:i, j, k]) / Δx_i)
    
-   ωz = @. ((v[i:i+1, j, k] - v[i-1:i, j, k]) / Δx
-	          - (u[i, j:j+1, k] - u[i, j-1:j, k]) / Δy)
+   ωz = @. ((uy[i:i+1, j, k] - uy[i-1:i, j, k]) / Δx_i
+	          - (ux[i, j:j+1, k] - ux[i, j-1:j, k]) / Δy_j)
    
    return (ωx[1] + ωx[2]) / 2, (ωy[1] + ωy[2]) / 2, (ωz[1] + ωz[2]) / 2
+end
+
+function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
+
+   ωx = CenterField(grid)
+   ωy = CenterField(grid)
+   ωz = CenterField(grid)
+
+   set!(ωx, ∂y(uz_Field) - ∂z(uy_Field))
+   set!(ωy, ∂z(ux_Field) - ∂x(uz_Field))
+   set!(ωz, ∂x(uy_Field) - ∂y(ux_Field))
+   
+   return ωx, ωy, ωz
 end
 
 function ωz(u, v, Δx, Δy; 
