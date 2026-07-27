@@ -100,7 +100,7 @@ def LoadSavedData2D(params, geom):
     Load results of 2D gen. eig. solver from nc file.
     """
     
-    ds = Dataset(f"./Data/{params.dimString}_Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
+    ds = Dataset(f"./Data/{params.dimString}_Lr{params.Lr:.1E}_Lz{params.Lz:.1E}_Nr{params.Nr}_Nz{params.Nz}_{params.stratification_kw}Strat_Ro{params.Ro:.1E}_Bu{params.Bu:.1E}_f{params.f0:.1E}.nc")
 
     commonVariables = LoadCommonVariables(ds)
     z               = ds.variables["z"][:]
