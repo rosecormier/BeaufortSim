@@ -72,30 +72,48 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
    save(joinpath("./Plots", "analytical_background_fields_symmetric.png"), fig_symm)
 end
 
-function visualize_Q_and_∂Q∂r_from_ICs(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_idx)
+function visualize_Q_and_∂Q∂r(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, 
+                              y_idx; Hx = 3, Hz = 3)
    
-   x_interior = no_offset_view(adapt(Array, x))[5:length(x)-4]
-   z_interior = no_offset_view(adapt(Array, z))[5:length(z)-3]
+   x_interior = no_offset_view(adapt(Array, x))[(Hx + 2):(length(x) - Hx - 1)]
+   z_interior = no_offset_view(adapt(Array, z))[(Hx + 2):(length(z) - Hz)]
    
-   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
-   Q_QG    = no_offset_view(adapt(Array, Q_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
+   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 2):(length(x) - Hx - 1), 
+                                                   y_idx,
+                                                   (Hz + 2):(length(z) - Hz)]
+   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 2):(length(x) - Hx - 1), 
+                                                y_idx, 
+                                                (2 * Hz):(length(z) - Hz - 1)]
    
    lims_Q_Ertel = (-maximum(abs.(Q_Ertel)), maximum(abs.(Q_Ertel)))
    lims_Q_QG    = (-maximum(abs.(Q_QG)), maximum(abs.(Q_QG)))
 
-   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[5:length(x)-4, y_idx, 5:length(z)-3]
-   ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[5:length(x)-4, y_idx, 6:length(z)-4]
+   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[(Hx + 2):(length(x) 
+                                                                 - Hx - 1), 
+                                                       y_idx, 
+                                                       (Hz + 2):(length(z) 
+                                                                 - Hz)]
+   ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[(Hx + 2):(length(x) 
+                                                              - Hx - 1), 
+                                                    y_idx, 
+                                                    (2 * Hz):(length(z) 
+                                                              - Hz - 1)]
+
+   lims_∂rQ_Ertel = (-maximum(abs.(∂rQ_Ertel)), maximum(abs.(∂rQ_Ertel)))
+   lims_∂rQ_QG    = (-maximum(abs.(∂rQ_QG)), maximum(abs.(∂rQ_QG)))
 
    fig_Q = Figure(size = (1200, 600))
    
-   ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Ertel PV computed from initial state")
-   ax_Q_QG    = Axis(fig_Q[1, 2], title = "QG PV computed from initial state")
+   ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Background-state Ertel PV")
+   ax_Q_QG    = Axis(fig_Q[1, 2], title = "Background-state QG PV")
    
-   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, colorrange = lims_Q_Ertel, colormap = :balance)
-   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, colorrange = lims_Q_QG, colormap = :balance)
+   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, 
+                         colorrange = lims_Q_Ertel, colormap = Reverse(:Reds))
+   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, 
+                         colorrange = lims_Q_QG, colormap = :balance)
    
-   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :white)
-   contour!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, color = :white)
+   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :yellow)
+   contour!(ax_Q_QG, x_interior, z_interior[2:(end - 1)], Q_QG, color = :yellow)
    
    Colorbar(fig_Q[2, 1], hm_Q_Ertel, tickformat = "{:.1e}", vertical = false)
    Colorbar(fig_Q[2, 2], hm_Q_QG, tickformat = "{:.1e}", vertical = false)
@@ -104,16 +122,22 @@ function visualize_Q_and_∂Q∂r_from_ICs(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel,
    
    fig_dQdr = Figure(size = (1200, 600))
    
-   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], title = L"$\partial Q/\partial r$ (Ertel) computed from initial state")
-   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], title = L"$\partial Q/\partial r$ (QG) computed from initial state")
+   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], 
+                        title = L"Background-state $\partial Q/\partial r$ (Ertel)")
+   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
+                        title = L"Background-state $\partial Q/\partial r$ (QG)")
    
-   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel)
-   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG)
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel,
+                            colorrange = lims_∂rQ_Ertel, colormap = :balance)
+   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:(end - 1)], 
+                            ∂rQ_QG, colorrange = lims_∂rQ_QG, colormap = :balance)
    
-   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :white, levels = 20)
-   contour!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG, color = :white, levels = 20)   
+   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
+   contour!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG, 
+            color = :yellow)
    
-   Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", 
+            vertical = false)
    Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
    
    save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx)_$(datetime).png"), fig_dQdr)
