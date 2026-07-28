@@ -427,6 +427,6 @@ if vis_bkgd_profiles
                                 1e6, Lz)
    visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
                            σr, σz, U, N²_far; Hz = Hz)
-   visualize_Q_and_∂Q∂r_from_ICs(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
-                                 model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
+   visualize_Q_and_∂Q∂r(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
+                        model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
 end
