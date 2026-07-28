@@ -203,14 +203,18 @@ function ζa(f, u, v, w, Δx, Δy, Δz)
    ζa         = f + ωz
 end
 
-function ∂z_b(b, i, j, k, Δz)
+function pointwise_∂b∂z(b, i, j, k, Δz)
+   #=
+   Compute vertical derivative of buoyancy at all specified [i, j, k]
+    coordinate triples.
+   =#
 
    ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz
    
    return @. (∂z_b[1] + ∂z_b[2]) / 2
 end
 
-function ∂b∂z_field(b, grid; returnAsArray = true)
+function CenterField_∂b∂z(b, grid; returnAsArray = true)
 
    @inline ∂b∂z_ccc(i, j, k, g) = @inbounds ((b[i, j, (k + 1)] - b[i, j, k])
                                              / Δzᶜᶜᶜ(i, j, k, g)
@@ -228,6 +232,7 @@ function ∂b∂z_field(b, grid; returnAsArray = true)
 end
 
 function ∇b(b, i, j, k, Δx, Δy, Δz)
+
    ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / Δx
    ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / Δy
    ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz

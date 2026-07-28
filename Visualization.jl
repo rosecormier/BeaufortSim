@@ -454,7 +454,7 @@ function visualize_total_energy_budgets(datetime, grid)
 
    total_KE            = ds[:total_KE][chron_idcs]
    total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
-   total_KE_production = ds[:total_KE_production][chron_idcs] #0.5
+   total_KE_production = ds[:total_KE_production][chron_idcs] *0.5
    total_pressure_work = ds[:total_pressure_work][chron_idcs] #0.5
    total_PE            = ds[:total_PE][chron_idcs]
    total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
@@ -1095,13 +1095,18 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
          
          hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total, colormap = :Reds)
          
+         ux_total = @lift ds[:ux][xyzC_idcs..., chron_idcs[$n]]
+         uy_total = @lift ds[:uy][xyzC_idcs..., chron_idcs[$n]]
+
+         arrows2d!(ax_speed, axis1, axis2_zC, ux_total, uy_total)
+         
          Colorbar(fig_speed[2, 2], hm_speed_total, tickformat = "{:.1e}", label = "m/s")
          
          title_speed = @lift @sprintf("Total horizontal speed at %s = %.2f km; t = %.2f days",
                                       const_dim, nearest, times[$n])
                                         
          fig_speed[1, 1:2] = Label(fig_speed, title_speed, fontsize = 24, tellwidth = false)
-         video_speed = VideoStream(fig_speed, format = "mp4", framerate = 6)
+         video_speed       = VideoStream(fig_speed, format = "mp4", framerate = 6)
       end
 
       frames = 1:Nt

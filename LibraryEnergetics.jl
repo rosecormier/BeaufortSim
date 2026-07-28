@@ -97,7 +97,9 @@ function totalProduction(simulation; useNHS = nothing)
    
       b, uz = simulation.model.tracers.b, simulation.model.velocities.w
 
-      @inline production_ccc(i, j, k, grid) = @inbounds b[i, j, k] * uz[i, j, k]
+      @inline production_ccc(i, j, k, grid) = @inbounds (b[i, j, k] * uz[i, j, k]) / 2
+      #Note the factor of 1/2 is required for consistency with Oceanostics
+      # functions.
    
       totalProduction_op = KernelFunctionOperation{Center, Center, Center}(production_ccc, simulation.model.grid)
    end
