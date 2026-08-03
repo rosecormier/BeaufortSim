@@ -7,8 +7,7 @@ using Oceananigans.Grids
 using Oceanostics.KineticEnergyEquation
 
 #Function to compute total potential energy in single control volume
-@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) 
-                                                      * grid.z.cᵃᵃᶜ[k])
+@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) * grid.z.cᵃᵃᶜ[k])
 
 function totalKE(simulation)
    #=
@@ -165,19 +164,15 @@ end
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
 
 #Function to compute PKE in single control volume
-@inline PKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (
-     		      		ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) + 
-     		      		ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) +
-                      		ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
+@inline PKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) + ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
 
 #Function to compute product of b′ and uz′ in single control volume
-@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (
-		  (b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
+@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
 function ∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
    #=
-   Function to compute (ur′ times uφ′ times r-derivative of Uφ) in single 
-    control volume.
+   Function to compute (negative ur′ times uφ′ times r-derivative of Uφ) in
+    single control volume.
    =#
 
    φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
