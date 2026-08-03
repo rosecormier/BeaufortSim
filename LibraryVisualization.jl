@@ -1,7 +1,9 @@
 using Adapt, CUDA, Glob, LinearAlgebra, NCDatasets
 using Oceananigans.AbstractOperations, Oceananigans.Fields
 
-####################
+#####################################
+# COORDINATE-TRANSFORMING FUNCTIONS #
+#####################################
 
 function compute_polar_coords(grid)
    #=
@@ -21,12 +23,11 @@ function compute_polar_coords(grid)
    end
 
    r_ccc = KernelFunctionOperation{Center, Center, Center}(r_coord, grid)
-   @compute r     = Field(r_ccc)
    φ_ccc = KernelFunctionOperation{Center, Center, Center}(φ_coord, grid)
-   @compute φ     = Field(φ_ccc)
+   
+   @compute r = Field(r_ccc)
+   @compute φ = Field(φ_ccc)
 
-   #compute!(r)
-   #compute!(φ)
    return(r, φ)
 end
 
@@ -56,49 +57,118 @@ function xy_vector_to_rφ(vx, vy, grid, useGPU)
    
       vxC_KernOp = KernelFunctionOperation{Center, Center, Center}(
                                         interpolate_vx, grid)
-      vxC        = Field(vxC_KernOp)
       vyC_KernOp = KernelFunctionOperation{Center, Center, Center}(
                                         interpolate_vy, grid)
-      vyC        = Field(vyC_KernOp)
       
-      compute!(vxC)
-      compute!(vyC)
+      @compute vxC = Field(vxC_KernOp)
+      @compute vyC = Field(vyC_KernOp)
 
       vr_BinaryOp = (vxC * cos(φ)) + (vyC * sin(φ))
-      vr          = Field(vr_BinaryOp)
       vφ_BinaryOp = (vyC * cos(φ)) - (vxC * sin(φ))
-      vφ          = Field(vφ_BinaryOp)
+      
+      @compute vr = Field(vr_BinaryOp)
+      @compute vφ = Field(vφ_BinaryOp)
       
    elseif !useGPU
-   
-      vr = @at (Center, Center, Center) (vx * cos(φ)) + (vy * sin(φ))
-      vφ = @at (Center, Center, Center) (vy * cos(φ)) - (vx * sin(φ))
+
+      @compute vr = @at (Center, Center, Center) (vx * cos(φ)) + (vy * sin(φ))
+      @compute vφ = @at (Center, Center, Center) (vy * cos(φ)) - (vx * sin(φ))
    end
 
-   compute!(vr)
-   compute!(vφ)
    return vr, vφ
 end
 
-function pointwise_ω(ux, uy, uz, i, j, k, Δx_i, Δy_j, Δz_k)
+#################################
+# FINITE-DIFFERENCING FUNCTIONS #
+#################################
+
+function order1_forward_difference(t, u)
+   return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
+end
+
+function centered_difference(t, u)
    #=
-   Compute Cartesian components of vorticity at all specified [i, j, k]
-    coordinate triples.
+   Compute centered-difference derivative of u w.r.t. t.
+   =#
+
+   u_i         = u[2:end-1]
+   u_i_minus_1 = u[1:end-2]
+   u_i_plus_1  = u[3:end]
+   
+   if length(t) > 3
+      Delta_t_minus = t[2:end-1] .- t[1:end-2] # t[2:end-1] .- t[1:end-2]
+      Delta_t_plus  = t[3:end] .- t[2:end-1] #t[3:end] .- t[2:end-1]
+   elseif length(t) == 3
+      Delta_t_minus = t[2] - t[1]
+      Delta_t_plus  = t[3] - t[2]
+   end
+   
+   A = -Delta_t_plus ./ Delta_t_minus
+   B = (Delta_t_plus ./ Delta_t_minus) .- (Delta_t_minus ./ Delta_t_plus)
+   C = Delta_t_minus ./ Delta_t_plus
+   
+   return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
+           ./ (Delta_t_minus .+ Delta_t_plus))
+end
+
+#########################################################
+# DIAGNOSTICS INVOLVING DERIVATIVES OF PRIMITIVE FIELDS #
+#########################################################
+
+function pointwise_∇b(i, j, k, b, xC, yC, zC)
+   #=
+   Provided buoyancy as a 3D array, compute Cartesian buoyancy-gradient
+    components via centered differencing at the specified [i, j, k] coordinate
+    triple.
+   Useful for constructing KernelFunctionOperations or computing gradient from
+    buoyancy data saved to NetCDF file.
+   =#
+
+   ∂x_b = centered_difference(xC[(i - 1):(i + 1)], b[(i - 1):(i + 1), j, k])
+   ∂y_b = centered_difference(yC[(j - 1):(j + 1)], b[i, (j - 1):(j + 1), k])
+   ∂z_b = centered_difference(zC[(k - 1):(k + 1)], b[i, j, (k - 1):(k + 1)])
+   
+   return ∂x_b, ∂y_b, ∂z_b
+end
+
+function CenterFields_∇b(b_Field)
+   #=
+   Provided buoyancy as a CenterField, return Cartesian components of ∇b as
+    CenterFields.
+   =#
+
+   return ∂x(b_Field), ∂y(b_Field), ∂z(b_Field)
+end
+
+function pointwise_ω(i, j, k, ux, uy, uz, xC, yC, zC)
+   #=
+   Provided Cartesian velocity components as 3D arrays, compute Cartesian 
+    vorticity components via centered differencing at the specified [i, j, k] 
+    coordinate triple.
+   Useful for constructing KernelFunctionOperations or computing vorticity from
+    velocity data saved to NetCDF file.
    =#
    
-   ωx = @. ((uz[i, j:j+1, k] - uz[i, j-1:j, k]) / Δy_j 
-	          - (uy[i, j, k:k+1] - uy[i, j, k-1:k]) / Δz_k)
+   ∂y_ux = centered_difference(yC[(j - 1):(j + 1)], uy[i, (j - 1):(j + 1), k])
+   ∂z_ux = centered_difference(zC[(k - 1):(k + 1)], uz[i, j, (k - 1):(k + 1)])
+   ∂x_uy = centered_difference(xC[(i - 1):(i + 1)], uy[(i - 1):(i + 1), j, k])
+   ∂z_uy = centered_difference(zC[(k - 1):(k + 1)], uy[i, j, (k - 1):(k + 1)])
+   ∂x_uz = centered_difference(xC[(i - 1):(i + 1)], uz[(i - 1):(i + 1), j, k])
+   ∂y_uz = centered_difference(yC[(j - 1):(j + 1)], uz[i, (j - 1):(j + 1), k]) 
    
-   ωy = @. ((ux[i, j, k:k+1] - ux[i, j, k-1:k]) / Δz_k
-	          - (uz[i:i+1, j, k] - uz[i-1:i, j, k]) / Δx_i)
+   ωx = ∂y_uz - ∂z_uy
+   ωy = ∂z_ux - ∂x_uz
+   ωz = ∂x_uy - ∂y_ux
    
-   ωz = @. ((uy[i:i+1, j, k] - uy[i-1:i, j, k]) / Δx_i
-	          - (ux[i, j:j+1, k] - ux[i, j-1:j, k]) / Δy_j)
-   
-   return (ωx[1] + ωx[2]) / 2, (ωy[1] + ωy[2]) / 2, (ωz[1] + ωz[2]) / 2
+   return ωx, ωy, ωz
 end
 
 function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
+   #=
+   Provided Cartesian velocity-component Fields (XFaceField, etc.) on 'grid', 
+    compute and return Cartesian vorticity components as a CenterField on
+    'grid'.
+   =#
 
    ωx = CenterField(grid)
    ωy = CenterField(grid)
@@ -111,84 +181,212 @@ function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
    return ωx, ωy, ωz
 end
 
-function ωz(u, v, Δx, Δy; 
-            x_idx = nothing, y_idx = nothing, z_idx = nothing)
+function ωz(ux, uy, x, y; x_idx = nothing, y_idx = nothing, z_idx = nothing)
+   #=
+   Compute only the vertical component of vorticity, via centered differencing, 
+    on a 2D slice.
+   =#
 
    if !isnothing(x_idx)
-      ωz = @. (((v[x_idx+1, 2:end-1, :] - v[x_idx, 2:end-1, :]) 
-                 + v[x_idx, 2:end-1, :] - v[x_idx-1, 2:end-1, :]) / (2 * Δx)
-                - (u[x_idx, 2:end, :] - u[x_idx, 1:end-1, :]) / Δy)
-   
+      ΔuyΔx = centered_difference(x[(x_idx - 1):(x_idx + 1)], 
+                                  uy[(x_idx - 1):(x_idx + 1), :, :])
+      ΔuxΔy = centered_difference(y, ux[x_idx, :, :])
    elseif !isnothing(y_idx)
-      ωz = @. ((v[2:end, y_idx, :] - v[1:end-1, y_idx, :]) / Δx
-	             - ((u[2:end-1, y_idx+1, :] - u[2:end-1, y_idx, :])
-		               + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2 * Δy))
-
+      ΔuyΔx = centered_difference(x, uy[:, y_idx, :])
+      ΔuxΔy = centered_difference(y[(y_idx - 1):(y_idx + 1)], 
+                                  ux[:, (y_idx -1):(y_idx + 1), :])
    elseif !isnothing(z_idx)
-      ωz = @. ((v[2:end, 2:end-1, z_idx] - v[1:end-1, 2:end-1, z_idx]) / Δx
-               - (u[2:end-1, 2:end, z_idx] - u[2:end-1, 1:end-1, z_idx]) / Δy)
+      ΔuyΔx = centered_difference(x, uy[:, :, z_idx])
+      ΔuxΔy = centered_difference(y, ux[:, :, z_idx])
    end
-   return ωz
+   
+   ωz = ΔuyΔx .- ΔuxΔy
 end
 
-function normalStrainInHorizontalFlow(u, v, Δx, Δy; 
+function pointwise_q_Ertel(i, j, k, b, ux, uy, uz, f, xC, yC, zC)
+
+   ω  = pointwise_ω(i, j, k, ux, uy, uz, xC, yC, zC)
+   ∇b = pointwise_∇b(i, j, k, b, xC, yC, zC)
+   
+   ωx, ωy, ωz       = ω[1][1], ω[2][1], ω[3][1]
+   ∂x_b, ∂y_b, ∂z_b = ∇b[1][1], ∇b[2][1], ∇b[3][1]
+
+   q = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
+end
+
+function CenterFields_q_Ertel(b_Field, ux_Field, uy_Field, uz_Field, grid, f; 
+                              returnAsArray = false)
+   
+   ∂x_b_Field, ∂y_b_Field, ∂z_b_Field = ∂x(b_Field), ∂y(b_Field), ∂z(b_Field)
+   ωx_Field, ωy_Field, ωz_Field       = CenterFields_ω(grid, ux_Field, uy_Field,
+                                                       uz_Field)
+   
+   q = (ωx_Field * ∂x_b_Field) + (ωy_Field * ∂y_b_Field) 
+        + ((f + ωz_Field) * ∂z_b_Field)
+
+   if returnAsArray
+      return adapt(Array, q)
+   elseif !returnAsArray
+      return q
+   end
+end
+
+function normalStrainInHorizontalFlow(ux, uy, Δx, Δy; 
                                       x_idx = nothing, 
                                       y_idx = nothing, 
                                       z_idx = nothing)
+   #=
+   On a 2D slice, compute normal strain in horizontal (i.e., to xy-plane) 
+    projection of flow.
+   =#
 
    if !isnothing(x_idx)
-      Sn = @. (((u[x_idx+1, 2:end-1, :] - u[x_idx, 2:end-1, :]) 
-                 + u[x_idx, 2:end-1, :] - u[x_idx-1, 2:end-1, :]) / (2 * Δx)
-                - (v[x_idx, 2:end, :] - v[x_idx, 1:end-1, :]) / Δy)
-
+      ΔuxΔx = centered_difference(x[(x_idx - 1):(x_idx + 1)],
+                                  ux[(x_idx - 1):(x_idx + 1), :, :])
+      ΔuyΔy = centered_difference(y, uy[x_idx, :, :])
    elseif !isnothing(y_idx)
-      Sn = @. ((u[2:end, y_idx, :] - u[1:end-1, y_idx, :]) / Δx
-	             - ((v[2:end-1, y_idx+1, :] - v[2:end-1, y_idx, :])
-		               + v[2:end-1, y_idx, :] - v[2:end-1, y_idx-1, :]) / (2 * Δy))
-                                  
+      ΔuxΔx = centered_difference(x, ux[:, y_idx, :])
+      ΔuyΔy = centered_difference(y[(y_idx - 1):(y_idx + 1)], 
+                                  uy[:, (y_idx -1):(y_idx + 1), :])
    elseif !isnothing(z_idx)
-      Sn = @. ((u[2:end, 2:end-1, z_idx] - u[1:end-1, 2:end-1, z_idx]) / Δx
-               - (v[2:end-1, 2:end, z_idx] - v[2:end-1, 1:end-1, z_idx]) / Δy)
+      ΔuxΔx = centered_difference(x, ux[:, :, z_idx])
+      ΔuyΔy = centered_difference(y, uy[:, :, z_idx])
    end
-   return Sn
+   
+   Sn = ΔuxΔx .- ΔuyΔy
 end
 
-function shearStrainInHorizontalFlow(u, v, Δx, Δy; 
+function shearStrainInHorizontalFlow(ux, uy, Δx, Δy; 
                                      x_idx = nothing, 
                                      y_idx = nothing,
                                      z_idx = nothing)
+   #=
+   On a 2D slice, compute shear strain in horizontal (i.e., to xy-plane)
+    projection of flow.
+   =#
                                      
    if !isnothing(x_idx)
-      Ss = @. (((v[x_idx+1, 2:end-1, :] - v[x_idx, 2:end-1, :]) 
-                 + v[x_idx, 2:end-1, :] - v[x_idx-1, 2:end-1, :]) / (2 * Δx)
-                + (u[x_idx, 2:end, :] - u[x_idx, 1:end-1, :]) / Δy)
-
+      ΔuyΔx = centered_difference(x[(x_idx - 1):(x_idx + 1)],
+                                  uy[(x_idx - 1):(x_idx + 1), :, :])
+      centered_difference(y, ux[x_idx, :, :])
    elseif !isnothing(y_idx)
-      Ss = @. ((v[2:end, y_idx, :] - v[1:end-1, y_idx, :]) / Δx
-	             + ((u[2:end-1, y_idx+1, :] - u[2:end-1, y_idx, :])
-		               + u[2:end-1, y_idx, :] - u[2:end-1, y_idx-1, :]) / (2 * Δy))
-                                  
+      ΔuyΔx = centered_difference(x, uy[:, y_idx, :])
+      ΔuxΔy = centered_difference(y[(y_idx - 1):(y_idx + 1)], 
+                                  ux[:, (y_idx -1):(y_idx + 1), :])
    elseif !isnothing(z_idx)
-      Ss = @. ((v[2:end, 2:end-1, z_idx] - v[1:end-1, 2:end-1, z_idx]) / Δx
-               + (u[2:end-1, 2:end, z_idx] - u[2:end-1, 1:end-1, z_idx]) / Δy)
+      ΔuyΔx = centered_difference(x, uy[:, :, z_idx])
+      ΔuxΔy = centered_difference(y, ux[:, :, z_idx])
    end
-   return Ss
+   
+   Ss = ΔuyΔx .+ ΔuxΔy
 end
 
 function OkuboWeiss(u, v, Δx, Δy; 
                     x_idx = nothing, y_idx = nothing, z_idx = nothing)
    #=
-   Compute W pointwise.   
+   Compute W pointwise on a 2D slice.
    =#
 
    Sn = normalStrainInHorizontalFlow(u, v, Δx, Δy; 
                                      x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
    Ss = shearStrainInHorizontalFlow(u, v, Δx, Δy; 
                                     x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
-   ζ = ωz(u, v, Δx, Δy; x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
+   ζ  = ωz(u, v, Δx, Δy; x_idx = x_idx, y_idx = y_idx, z_idx = z_idx)
 
-   return Sn^2 + Ss^2 - ζ^2
+   return @. Sn^2 + Ss^2 - ζ^2
 end
+
+#######################################
+# FUNCTIONS TO HANDLE NETCDF DATASETS #
+#######################################
+
+function pad_filenames(datetime; prefix = "output")
+   #=
+   Prefix filenames with zeros until alphanumeric order of filenames is the same
+    as chronological order of data intervals contained by the respective files.
+   =#
+
+   outfile_paths = glob("./Output/$(prefix)_$(datetime)_part*")
+
+   if length(outfile_paths) > 9
+      for file_path in outfile_paths
+         if length(file_path) == 38
+	          mv(file_path, replace(file_path, "_part" => "_part0"))
+         end
+      end
+   end
+   
+   return glob("./Output/$(prefix)_$(datetime)*")
+end
+
+function sort_times(unsortedTimes)
+   #=
+   Sort data chronologically (essential if simulation was ever picked up from a
+    checkpoint).
+   =#
+   
+   sorting_indices = sortperm(unsortedTimes)
+   t               = unsortedTimes[sorting_indices]
+   
+   return t, sorting_indices
+end
+
+function load_times_in_days(dataset)
+
+   unsorted_t               = dataset[:time][:] ./ 86400
+   t, chronological_indices = sort_times(unsorted_t)
+   Nt                       = length(t)
+   
+   return t, Nt, chronological_indices
+end
+
+function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
+   #=
+   Open a generic NetCDF dataset output by Oceananigans simulation.
+   Return the dataset itself as well as gridpoints and timeseries info.   
+   =#
+
+   ds = NCDataset(outfilename)
+
+   x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
+   
+   #Load coords of non-Flat dimensions; convert them to km for readability
+
+   if length(ds[:x_caa][:]) > 1
+      x = ds[:x_caa][:] ./ 1000 #ds[:x_caa][(Hx + 1):(length(ds[:x_caa][:]) - Hx)] ./ 1000
+   end
+
+   if length(ds[:y_aca][:]) > 1
+      y = ds[:y_aca][:] ./ 1000 #ds[:y_aca][(Hy + 1):(length(ds[:y_aca][:]) - Hy)] ./ 1000
+   end
+   
+   if length(ds[:z_aac][:]) > 1
+      zC = ds[:z_aac][:] ./ 1000 # ds[:z_aac][(Hz + 1):(length(ds[:z_aac][:]) - Hz)] ./ 1000
+      zF = ds[:z_aaf][:] ./ 1000 # ds[:z_aaf][(Hz + 1):(length(ds[:z_aaf][:]) - Hz)] ./ 1000
+   end
+
+   t, Nt, chronological_indices = load_times_in_days(ds)
+
+   return ds, x, y, zC, zF, t, Nt, chronological_indices
+end
+
+function open_energetics_dataset(energeticsfilename)
+   
+   energetics_ds                = NCDataset(energeticsfilename)
+   t, Nt, chronological_indices = load_times_in_days(energetics_ds)
+
+   return energetics_ds, t, Nt, chronological_indices
+end
+
+function open_scalars_dataset(scalarfilename)
+
+   scalars_ds                   = NCDataset(scalarfilename)
+   t, Nt, chronological_indices = load_times_in_days(scalars_ds)
+
+   return scalars_ds, t, Nt, chronological_indices
+end
+
+#######################################
 
 function ζa_b(U, f, σr, σz, x, y, z)
    r2_arr = @. x^2 + y^2
@@ -231,25 +429,6 @@ function CenterField_∂b∂z(b, grid; returnAsArray = true)
    end
 end
 
-function ∇b(b, i, j, k, Δx, Δy, Δz)
-
-   ∂x_b = @. (b[i:i+1, j, k] - b[i-1:i, j, k]) / Δx
-   ∂y_b = @. (b[i, j:j+1, k] - b[i, j-1:j, k]) / Δy
-   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz
-   
-   return ((∂x_b[1] + ∂x_b[2]) / 2, 
-           (∂y_b[1] + ∂y_b[2]) / 2, 
-           (∂z_b[1] + ∂z_b[2]) / 2)
-end
-
-function q(u, v, w, b, f, x_idx, y_idx, z_idx, Δx, Δy, Δz)
-   ωx, ωy, ωz       = ω(u, v, w, x_idx, y_idx, z_idx, Δx, Δy, Δz)
-   ∂x_b, ∂y_b, ∂z_b = ∇b(b, x_idx, y_idx, z_idx, Δx, Δy, Δz)
-   q                = (ωx * ∂x_b) + (ωy * ∂y_b) + ((f + ωz) * ∂z_b)
-end
-
-
-
 function field_norm(ψ, n; ψ_bkgd = 0)
    #=
    Compute L2-norm of a perturbation field.
@@ -258,105 +437,6 @@ function field_norm(ψ, n; ψ_bkgd = 0)
    ψ_n          = ψ[:, :, :, n]
    ψ_perturb_n  = ψ_n .- ψ_bkgd
    perturb_norm = norm(ψ_perturb_n)
-end
-
-function pad_filenames(datetime; prefix = "output")
-
-   outfile_paths = glob("./Output/$(prefix)_$(datetime)_part*")
-
-   if length(outfile_paths) > 9
-      for file_path in outfile_paths
-         if length(file_path) == 38
-	          mv(file_path, replace(file_path, "_part" => "_part0"))
-         end
-      end
-   end
-   
-   return glob("./Output/$(prefix)_$(datetime)*")
-end
-
-function sort_times(unsortedTimes)
-   #=
-   Sort data chronologically (essential if simulation was ever picked up from a
-    checkpoint).
-   =#
-   
-   sorting_indices = sortperm(unsortedTimes)
-   t               = unsortedTimes[sorting_indices]
-   
-   return t, sorting_indices
-end
-
-function load_times_in_days(dataset)
-
-   unsorted_t               = dataset[:time][:] ./ 86400
-   t, chronological_indices = sort_times(unsorted_t)
-   Nt                       = length(t)
-   
-   return t, Nt, chronological_indices
-end
-
-function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
-
-   ds = NCDataset(outfilename)
-
-   x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
-   
-   #Load coords of non-Flat dimensions; convert them to km for readability
-
-   if length(ds[:x_caa][:]) > 1
-      x = ds[:x_caa][(Hx + 1):(length(ds[:x_caa][:]) - Hx)] ./ 1000
-   end
-
-   if length(ds[:y_aca][:]) > 1
-      y = ds[:y_aca][(Hy + 1):(length(ds[:y_aca][:]) - Hy)] ./ 1000
-   end
-   
-   if length(ds[:z_aac][:]) > 1
-      zC = ds[:z_aac][(Hz + 1):(length(ds[:z_aac][:]) - Hz)] ./ 1000
-      zF = ds[:z_aaf][(Hz + 1):(length(ds[:z_aaf][:]) - Hz)] ./ 1000
-   end
-
-   t, Nt, chronological_indices = load_times_in_days(ds)
-
-   return ds, x, y, zC, zF, t, Nt, chronological_indices
-end
-
-function open_energetics_dataset(energeticsfilename)
-   
-   energetics_ds                = NCDataset(energeticsfilename)
-   t, Nt, chronological_indices = load_times_in_days(energetics_ds)
-
-   return energetics_ds, t, Nt, chronological_indices
-end
-
-function open_scalars_dataset(scalarfilename)
-
-   scalars_ds                   = NCDataset(scalarfilename)
-   t, Nt, chronological_indices = load_times_in_days(scalars_ds)
-
-   return scalars_ds, t, Nt, chronological_indices
-end
-
-function order1_forward_difference(t, u)
-   return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
-end
-
-function centered_difference(t, u)
-
-   u_i = u[2:end-1]
-   u_i_minus_1 = u[1:end-2]
-   u_i_plus_1 = u[3:end]
-   
-   Delta_t_minus = t[2:end-1] .- t[1:end-2]
-   Delta_t_plus = t[3:end] .- t[2:end-1]
-   
-   A = -Delta_t_plus ./ Delta_t_minus
-   B = (Delta_t_plus ./ Delta_t_minus) .- (Delta_t_minus ./ Delta_t_plus)
-   C = Delta_t_minus ./ Delta_t_plus
-   
-   return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
-              ./ (Delta_t_minus .+ Delta_t_plus))
 end
 
 function ∂r_q(q, x, y, zk, all_z)
@@ -410,11 +490,19 @@ function get_2D_spatial_axis_idcs(const_dim;
    if const_dim == "x"
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
-         yCzC_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
-         yCzF_idcs = (1, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz) 
+         yCzC_idcs = (1, 
+                      (Hy + 1):(length(yC) + Hy - 1), 
+                      (Hz + 1):(length(zC) + Hz))
+         yCzF_idcs = (1, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zF) + Hz)) 
       else #Grid is 3D
-         yCzC_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zC)+Hz)
-         yCzF_idcs = (x_idx, Hy+1:length(yC)+Hy, Hz+1:length(zF)+Hz)
+         yCzC_idcs = (x_idx, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zC) + Hz))
+         yCzF_idcs = (x_idx, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zF) + Hz))
       end
 
       return yCzC_idcs, yCzF_idcs
@@ -422,11 +510,19 @@ function get_2D_spatial_axis_idcs(const_dim;
    elseif const_dim == "y"
 
       if isnothing(y_idx) #Grid is 2D with only x and z axes
-         xCzC_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zC)+Hz)
-         xCzF_idcs = (Hx+1:length(xC)+Hx, 1, Hz+1:length(zF)+Hz)
+         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      1, 
+                      (Hz + 1):(length(zC) + Hz))
+         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      1, 
+                      (Hz + 1):(length(zF) + Hz))
       else #Grid is 3D
-         xCzC_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zC)+Hz)
-         xCzF_idcs = (Hx+1:length(xC)+Hx, y_idx, Hz+1:length(zF)+Hz)
+         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      y_idx, 
+                      (Hz + 1):(length(zC) + Hz))
+         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      y_idx, 
+                      (Hz + 1):(length(zF) + Hz))
       end
 
       return xCzC_idcs, xCzF_idcs
@@ -436,7 +532,7 @@ function get_2D_spatial_axis_idcs(const_dim;
       if isnothing(z_idx) #Grid is 2D with only x and y axes
          xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, 1)
       else #Grid is 3D
-         xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, z_idx)
+         xCyC_idcs = (Hx+1:length(xC)-2*Hx, Hy+1:length(yC)-2*Hy, z_idx-Hz)
       end
 
       return xCyC_idcs, xCyC_idcs
