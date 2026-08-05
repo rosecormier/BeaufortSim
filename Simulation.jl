@@ -37,16 +37,16 @@ const f   = fPlane.f #Coriolis frequency
 
 const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
-const σz = 300 * meter 	         #Vertical gyre length scale
+const σz = -300 * meter 	         #Vertical gyre length scale
 
 #Ambient (i.e., excluding gyre's TWB contribution) N²-value at z --> -infty
-const N²_far = 2e-5 * second^(-2)
+const N²_far = 4e-5 * second^(-2)
 
-const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev'
+const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev' 
 
 #Type of ambient stratification to construct ('doubleTanh' or 'constant')
 # (note that a TWB contribution will always be included)
-const ambientStrat = "doubleTanh"
+const ambientStrat = "constant"
 
 #Parameters for double-tanh stratification (defined as in Kosty et al., 2026)
 const g   = -9.81 * meter * (second^2)
@@ -75,24 +75,25 @@ end
 =#
 const Δt_save = 600
 
-const useGPU = false  #Whether to use GPU
-const useNHS = true #Whether to use NonhydrostaticModel
+const useGPU = false #Whether to use GPU
+const useNHS = true  #Whether to use NonhydrostaticModel
 
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x       = false
+const vis_const_x       = true
 const vis_const_y       = false
 const vis_const_z       = true
 const vis_norms         = false
 const vis_energetics    = false
-const vis_z_grid        = false #Note: currently can only be done on CPU
-const vis_bkgd_profiles = false
+const vis_z_grid        = true #Note: currently can only be done on CPU
+const vis_bkgd_profiles = true
+const vis_q_timeseries  = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
 const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
-const t_idx_skip = 5     #Step size for animations and timeseries
+const t_idx_skip = 1     #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -115,14 +116,14 @@ custom_z_grids = Dict("uniform"   => (-Lz, 0),
 grid = RectilinearGrid(architecture,
 		                   topology = (Periodic, Periodic, Bounded),
                        size = (Nx, Ny, Nz), 
-                       x = (-Lr, Lr),
-		                   y = (-Lr, Lr),
+                       x = (-Lr, Lr), 
+                       y = (-Lr, Lr), 
                        z = custom_z_grids[z_grid],
 		                   halo = (Hx, Hy, Hz)
                       )
 
-b̄_BCs = buoyancy_BCS(f, σr, σz, U, N²_far, grid, false;
-                      doubleTanhParams = doubleTanhParams)
+b̄_BCs = buoyancy_BCS(f, σr, σz, U, N²_far, grid, false, ambientStrat;
+                      Hz = Hz, doubleTanhParams = doubleTanhParams)
 
 #box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
 
@@ -148,9 +149,8 @@ elseif !useNHS
                                       )
 end
 
-b̄     = bkgd_buoyancy(f, σr, σz, U, N²_far;
-                       grid = model.grid,
-                       doubleTanhParams = doubleTanhParams)
+b̄     = bkgd_buoyancy(f, σr, σz, U, N²_far, ambientStrat;
+                       grid = model.grid, doubleTanhParams = doubleTanhParams)
 ū, v̄ = bkgd_velocities(σr, σz, U)
 
 set!(model, u = ū, v = v̄, b = b̄)
@@ -165,7 +165,7 @@ check_grav_stability(model.tracers.b, model.grid)
 ######################################################
 
 datetimestart = now()
-datetimenow   = "260728-084649" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
@@ -179,6 +179,7 @@ Ur        = CenterField(model.grid)
 Uφ        = CenterField(model.grid)
 Uz        = ZFaceField(model.grid)
 B         = CenterField(model.grid)
+B_gyre    = CenterField(model.grid)
 Q_Ertel   = CenterField(model.grid)
 Q_QG      = CenterField(model.grid)
 ∂rQ_Ertel = CenterField(model.grid)
@@ -191,6 +192,7 @@ set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
 set!(B, b̄ )
+set!(B_gyre, TWB_b_anon_function(f, σr, σz, U))
 
 #Create fields that are used in computing PKE budget terms
 φcoords = CenterField(model.grid)
@@ -204,14 +206,16 @@ set!(∂zUφ, ∂z(Uφ))
 
 #Compute background PVs (and their r-derivatives) and prescribe to fields
 set!(Q_Ertel, compute_Q_Ertel_Cartesian(model.grid, f, Ux, Uy, Uz, B))
-set!(Q_QG, compute_Q_QG_cylindrical(model.grid, f, σr, σz, U, Uφ, B, φcoords))
+set!(Q_QG, compute_Q_QG_Cartesian(model.grid, f, σr, σz, U, Ux, Uy, N²_far))
 set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
 set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
+
+print(Q_QG)
 
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 #Add random perturbations to horizontal velocity components
 
 @inline u_perturbed(x, y, z) = @inbounds (ū(x, y, z)
@@ -230,7 +234,7 @@ end
                                             )
                                          )
 
-set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
+#set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 
 simulation = Simulation(model;
                         Δt = Δt,
@@ -260,6 +264,10 @@ outputs = (ur = ur,
 	         uy = model.velocities.v,
 	         uz = model.velocities.w,
 	         b = model.tracers.b)
+                   
+#if vis_q_timeseries
+#   merge(outputs, (q_Ertel = CenterFields_q_Ertel(model.tracers.b, model.velocities.u, model.velocities.v, model.velocities.w, model.grid, f), ))
+#end
 
 #Define output filepaths
 outfilepath    = joinpath("./Output", "output_$(datetimenow).nc")
@@ -361,7 +369,7 @@ duration = canonicalize(now() - datetimestart)
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 pad_filenames(datetimenow; prefix = "scalars")
-
+#=
 #Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
@@ -380,14 +388,16 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-
+=#
 #####################
 # RUN VISUALIZATION #
 #####################
-=#
+
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 
-                             t_idx_skip = t_idx_skip, plot_speed_animation = true)
+                             t_idx_skip = t_idx_skip, 
+                             plot_speed_animation = false, 
+                             plot_animation = false)
 end
 
 if vis_const_y
@@ -397,7 +407,9 @@ end
 
 if vis_const_z
    visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Uφ; 
-                             t_idx_skip = t_idx_skip, plot_speed_animation = true)
+                             t_idx_skip = t_idx_skip, 
+                             plot_speed_animation = false, 
+                             plot_animation = false)
 end
 
 if vis_norms
@@ -424,9 +436,13 @@ end
 if vis_bkgd_profiles
    visualize_B_U_Q_Ψ_vs_r_and_z(U, model.grid, f, σr, σz, N²_far, 
                                 doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
-                                1e6, Lz)
+                                1e6, Lz) 
    visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
                            σr, σz, U, N²_far; Hz = Hz)
-   visualize_Q_and_∂Q∂r(datetimenow, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
+   visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
                         model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
+end
+
+if vis_q_timeseries
+   visualize_q_2D_slice(datetimenow, "z", z_idx, f; plot_animation = true)
 end

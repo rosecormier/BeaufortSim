@@ -12,7 +12,7 @@ using Printf
 
 update_theme!(theme_latexfonts(), fontsize = 16)
 
-####################
+################################################################################
 
 function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far, 
                                       doubleTanhParams, ambientStrat, Nr, Nz, 
@@ -72,43 +72,42 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
    save(joinpath("./Plots", "analytical_background_fields_symmetric.png"), fig_symm)
 end
 
-function visualize_Q_and_∂Q∂r(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, 
-                              y_idx; Hx = 3, Hz = 3)
-   
+################################################################################
+
+function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_idx; 
+                              Hx = 3, Hz = 3)
+
    x_interior = no_offset_view(adapt(Array, x))[(Hx + 2):(length(x) - Hx - 1)]
-   z_interior = no_offset_view(adapt(Array, z))[(Hx + 2):(length(z) - Hz)]
-   
-   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 2):(length(x) - Hx - 1), 
+   z_interior = no_offset_view(adapt(Array, z))[(Hz + 2):(length(z) - Hz)]
+                                                
+   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 2):(length(x) - Hx - 1),
                                                    y_idx,
                                                    (Hz + 2):(length(z) - Hz)]
-   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 2):(length(x) - Hx - 1), 
-                                                y_idx, 
+   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 2):(length(x) - Hx - 1),
+                                                 y_idx,
                                                 (2 * Hz):(length(z) - Hz - 1)]
+
    
-   lims_Q_Ertel = (-maximum(abs.(Q_Ertel)), maximum(abs.(Q_Ertel)))
-   lims_Q_QG    = (-maximum(abs.(Q_QG)), maximum(abs.(Q_QG)))
+   lims_Q_Ertel = (0, maximum(abs.(Q_Ertel)))
+   lims_Q_QG    = get_range_lims(Q_QG)
 
-   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[(Hx + 2):(length(x) 
-                                                                 - Hx - 1), 
+   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[Hx:(length(x) - Hx - 1), 
                                                        y_idx, 
-                                                       (Hz + 2):(length(z) 
-                                                                 - Hz)]
-   ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[(Hx + 2):(length(x) 
-                                                              - Hx - 1), 
-                                                    y_idx, 
-                                                    (2 * Hz):(length(z) 
-                                                              - Hz - 1)]
+                                                       Hz:(length(z) - Hz - 1)]
+   #∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[Hx:(length(x) - Hx - 1), 
+   #                                                 y_idx, 
+   #                                                 Hz:(length(z) - Hz - 1)]
 
-   lims_∂rQ_Ertel = (-maximum(abs.(∂rQ_Ertel)), maximum(abs.(∂rQ_Ertel)))
-   lims_∂rQ_QG    = (-maximum(abs.(∂rQ_QG)), maximum(abs.(∂rQ_QG)))
-
+   lims_∂rQ_Ertel = get_range_lims(∂rQ_Ertel)
+   #lims_∂rQ_QG    = get_range_lims(∂rQ_QG)
+   
    fig_Q = Figure(size = (1200, 600))
    
    ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Background-state Ertel PV")
    ax_Q_QG    = Axis(fig_Q[1, 2], title = "Background-state QG PV")
    
    hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, 
-                         colorrange = lims_Q_Ertel, colormap = Reverse(:Reds))
+                         colorrange = lims_Q_Ertel, colormap = :amp)
    hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, 
                          colorrange = lims_Q_QG, colormap = :balance)
    
@@ -118,48 +117,50 @@ function visualize_Q_and_∂Q∂r(datetime, Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG
    Colorbar(fig_Q[2, 1], hm_Q_Ertel, tickformat = "{:.1e}", vertical = false)
    Colorbar(fig_Q[2, 2], hm_Q_QG, tickformat = "{:.1e}", vertical = false)
    
-   save(joinpath("./Plots", "diagnosed_Q_j$(y_idx)_$(datetime).png"), fig_Q)
+   save(joinpath("./Plots", "diagnosed_Q_j$(y_idx).png"), fig_Q)
    
    fig_dQdr = Figure(size = (1200, 600))
    
    ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], 
                         title = L"Background-state $\partial Q/\partial r$ (Ertel)")
-   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
-                        title = L"Background-state $\partial Q/\partial r$ (QG)")
+   #ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
+   #                     title = L"Background-state $\partial Q/\partial r$ (QG)")
    
-   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel,
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel[3:end, 2:end],
                             colorrange = lims_∂rQ_Ertel, colormap = :balance)
-   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:(end - 1)], 
-                            ∂rQ_QG, colorrange = lims_∂rQ_QG, colormap = :balance)
+   #hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:(end - 1)], 
+   #                         ∂rQ_QG, colorrange = lims_∂rQ_QG, colormap = :balance)
    
-   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
-   contour!(ax_dQdr_QG, x_interior, z_interior[2:end-1], ∂rQ_QG, 
-            color = :yellow)
+   #contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
+   #contour!(ax_dQdr_QG, x_interior[2:end-1], z_interior, ∂rQ_QG, 
+   #         color = :yellow)
    
    Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", 
             vertical = false)
-   Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
+   #Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
    
-   save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx)_$(datetime).png"), fig_dQdr)
+   save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx).png"), fig_dQdr)
 end
+
+################################################################################
 
 function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
                                  σr, σz, U, N²_far; Hz = 3)
 
    B_total    = no_offset_view(adapt(Array, B)
-                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
+                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
    b_TWB      = no_offset_view(TWB_b_field(grid, f, σr, σz, U)
-                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
-   ∂B∂z_total = no_offset_view(∂b∂z_field(B, grid))[x_idx, y_idx, 
-                                                    Hz:(length(grid.z.cᵃᵃᶜ)
-                                                        - Hz)
+                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
+   ∂B∂z_total = no_offset_view(CenterField_∂b∂z(B, grid))[x_idx, y_idx, 
+                                                    Hz+1:(length(grid.z.cᵃᵃᶜ)
+                                                        - Hz+1)
                                                    ]
    ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U)
-                              )[x_idx, y_idx, Hz:length(grid.z.cᵃᵃᶜ) - Hz]
+                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
    
    x = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
    y = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
-   z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz:(length(grid.z.cᵃᵃᶜ) - Hz)]
+   z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz+1:(length(grid.z.cᵃᵃᶜ) - Hz+1)]
    
    fig   = Figure(size = (1400, 700))
    ax_B  = Axis(fig[2, 1], xlabel = L"$B$ [m/s$^{2}$]", ylabel = L"$z$ [m]")
@@ -177,7 +178,7 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f,
    lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
           label = "From double-tanh function")
    lines!(ax_N2, ∂b∂z_TWB, z, label = "Thermal-wind contribution")
-   lines!(ax_N2, N²_far .+ 0*z, z, label = "Linear term")
+   lines!(ax_N2, N²_far .+ 0 * z, z, label = "Linear term")
    
    fig[2, 3] = Legend(fig, ax_B)
    fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
@@ -187,6 +188,8 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f,
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "b_and_N2_profiles.png"), fig)
 end
+
+################################################################################
 
 function visualize_norms(datetime; 
 		idxStartLinGrowth_b = 2, idxEndLinGrowth_b = -1,
@@ -447,6 +450,8 @@ function visualize_norms(datetime;
    close(scalars_ds)
 end
 
+################################################################################
+
 function visualize_total_energy_budgets(datetime, grid)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
@@ -525,6 +530,8 @@ function visualize_total_energy_budgets(datetime, grid)
    close(ds)
 end
 
+################################################################################
+
 function visualize_PKE(datetime, grid)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
@@ -537,20 +544,20 @@ function visualize_PKE(datetime, grid)
    BTI_transfer = ds[:total_BTI_transfer][chron_idcs] / initialKE
    BCI_transfer = ds[:total_BCI_transfer][chron_idcs] / initialKE
    
-   PKE          = PKE .- PKE[1]
-   PAPE_to_PKE  = PAPE_to_PKE .- PAPE_to_PKE[1]
-   BTI_transfer = BTI_transfer .- BTI_transfer[1]
-   BCI_transfer = BCI_transfer .- BCI_transfer[1]
+   PKE          = PKE #.- PKE[1]
+   PAPE_to_PKE  = PAPE_to_PKE #.- PAPE_to_PKE[1]
+   BTI_transfer = BTI_transfer #.- BTI_transfer[1]
+   BCI_transfer = BCI_transfer #.- BCI_transfer[1]
    
    gyre_PKE          = ds[:gyre_PKE][chron_idcs]
    gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][chron_idcs]
    gyre_BTI_transfer = ds[:gyre_BTI_transfer][chron_idcs]
    gyre_BCI_transfer = ds[:gyre_BCI_transfer][chron_idcs]
    
-   gyre_PKE          = gyre_PKE .- gyre_PKE[1]
-   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE .- gyre_PAPE_to_PKE[1]
-   gyre_BTI_transfer = gyre_BTI_transfer .- gyre_BTI_transfer[1]
-   gyre_BCI_transfer = gyre_BCI_transfer .- gyre_BCI_transfer[1]
+   gyre_PKE          = gyre_PKE #.- gyre_PKE[1]
+   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE #.- gyre_PAPE_to_PKE[1]
+   gyre_BTI_transfer = gyre_BTI_transfer #.- gyre_BTI_transfer[1]
+   gyre_BCI_transfer = gyre_BCI_transfer #.- gyre_BCI_transfer[1]
 
    fig_PKEtotal = Figure(size = (1200, 700))
    ax_PKEtotal  = Axis(fig_PKEtotal[2, 1]; xlabel = "Time [days]",
@@ -594,7 +601,7 @@ function visualize_PKE(datetime, grid)
    scatter!(ax_budget, t[1:end-1], 
            (dt_PKE_total - PAPE_to_PKE[1:end-1] - BTI_transfer[1:end-1]
             - BCI_transfer[1:end-1]), 
-           label = "Residual", color = :red)
+          label = "Residual", color = :red)
    axislegend(ax_budget)
 
    fig_budget[1, 1] = Label(fig_budget, "Terms in PKE budget", fontsize = 24,
@@ -1042,12 +1049,19 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
                         ax_kwargs...)
                         
       if plot_speed_animation #Plot animation of (horizontal) speed
+      
          fig_speed = Figure(size = (800, 500))
          ax_speed  = Axis(fig_speed[2, 1]; ax_kwargs...)
+         
+         speed_f = sqrt.(ur_total_f.^2 .+ uφ_total_f.^2)
+         
+         lims_speed    = get_range_lims(speed_f)
+         lims_speed[1] = 0
       end
 
       ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
-                                                             Hx = Hx, Hy = Hy, 
+                                                             Hx = Hx,
+                                                             Hy = Hy, 
                                                              Hz = Hz)
 
       n = Observable(1)
@@ -1093,20 +1107,29 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
 
          speed_total = @lift sqrt.($ur_total.^2 .+ $uφ_total.^2)
          
-         hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total, colormap = :Reds)
+         hm_speed_total = heatmap!(ax_speed, axis1, axis2_zC, speed_total,
+                                   colormap = :Reds, colorrange = lims_speed)
          
          ux_total = @lift ds[:ux][xyzC_idcs..., chron_idcs[$n]]
          uy_total = @lift ds[:uy][xyzC_idcs..., chron_idcs[$n]]
 
-         arrows2d!(ax_speed, axis1, axis2_zC, ux_total, uy_total)
+         Nh, Nv = length(axis1), length(axis2_zC)
+         
+         #arrows2d!(ax_speed, axis1[1:(Nh ÷ 25):end], 
+         #                axis2_zC[1:(Nv ÷ 25):end],
+         #                ux_total[1:(Nh ÷ 25):end, 1:(Nv ÷ 25):end], 
+         #                uy_total[1:(Nh ÷ 25):end, 1:(Nv ÷ 25):end],
+         #                minshaftlength = 0, lengthscale = 500)
          
          Colorbar(fig_speed[2, 2], hm_speed_total, tickformat = "{:.1e}", label = "m/s")
          
          title_speed = @lift @sprintf("Total horizontal speed at %s = %.2f km; t = %.2f days",
                                       const_dim, nearest, times[$n])
                                         
-         fig_speed[1, 1:2] = Label(fig_speed, title_speed, fontsize = 24, tellwidth = false)
-         video_speed       = VideoStream(fig_speed, format = "mp4", framerate = 6)
+         fig_speed[1, 1:2] = Label(fig_speed, title_speed, fontsize = 24, 
+                                   tellwidth = false)
+         video_speed       = VideoStream(fig_speed, format = "mp4", 
+                                         framerate = 6)
       end
 
       frames = 1:Nt
@@ -1129,19 +1152,23 @@ function visualize_fields_2D_slice(datetime, const_dim, const_idx, B, Uφ;
          n[] = i
       end
 
-      save(joinpath("./Plots", "fields_$(const_dim)$(nearest)_$(datetime).mp4"), video_total)
-      save(joinpath("./Plots", "perturbs_$(const_dim)$(nearest)_$(datetime).mp4"), video_pert)
+      save(joinpath("./Plots", "fields_$(const_dim)$(nearest)_$(datetime).mp4"), 
+                    video_total)
+      save(joinpath("./Plots", "perturbs_$(const_dim)$(nearest)_$(datetime).mp4"), 
+                    video_pert)
       
       if plot_speed_animation
-         save(joinpath("./Plots", "horizontalSpeed_$(const_dim)$(nearest)_$(datetime).mp4"), video_speed)
+         save(joinpath("./Plots", "horizontalSpeed_$(const_dim)$(nearest)_$(datetime).mp4"), 
+                       video_speed)
       end
+      
+      close(ds)
    end
-   close(ds)
 end
 
-function open_computed_dataset(datetime, Δx, Δy, Δz, f)
+function open_computed_dataset(datetime, f)
    #=
-   Produced nc file containing computed diagnostics, if it does not already
+   Produce nc file containing computed diagnostics, if it does not already
     exist, and return the opened file in read mode.
    =#
 
@@ -1149,60 +1176,68 @@ function open_computed_dataset(datetime, Δx, Δy, Δz, f)
 
    if !isfile(computed_file) #Only compute if file does not already exist
 
-      ds, x, y, z, times, Nt = open_dataset(datetime)
+      outfile_list = glob("./Output/output_$(datetime)*")
 
-      frames = 1:Nt
-      x_idcs = 2:length(x)-2
-      y_idcs = 2:length(y)-2
-      z_idcs = 2:length(z)-2
+      ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list)
 
-      function update_data_array!(data_array, i, j, k, n, value)
-         data_array[i, j, k, n] = value
-         return data_array
-      end
+      if !("q_Ertel" in ds) #Only proceed if PV wasn't saved during simulation
+
+         frames = 1:Nt
+         x_idcs = 2:(length(x) - 2)
+         y_idcs = 2:(length(y) - 2)
+         z_idcs = 2:(length(zC) - 2)
+
+         function update_data_array!(data_array, i, j, k, n, value)
+            data_array[i, j, k, n] = value
+            return data_array
+         end
       
-      NCDataset(computed_file, "c") do comp_ds
+         NCDataset(computed_file, "c") do comp_ds
          
-         i, j, k = Observable(2), Observable(2), Observable(2)
-         n       = Observable(1)
+            i, j, k = Observable(2), Observable(2), Observable(2)
+            n       = Observable(1)
 
-         b  = @lift ds["b"][:, :, :, $n]
-         u  = @lift ds["u"][1:end-1, :, :, $n]
-         v  = @lift ds["v"][:, 1:end-1, :, $n]
-         w  = @lift ds["w"][:, :, 1:end-1, $n]
-         qn = @lift q($u, $v, $w, $b, f, $i, $j, $k, Δx, Δy, Δz)
+            b  = @lift ds["b"][:, :, :, $n]
+            ux = @lift ds["ux"][:, :, :, $n]
+            uy = @lift ds["uy"][:, :, :, $n]
+            uz = @lift ds["uz"][:, :, :, $n]
+            qn = @lift pointwise_q_Ertel($i, $j, $k, $b, $ux, $uy, $uz, f, 
+                                         x, y, zC)
 
-         defDim(comp_ds, "x", length(x)-2)
-         defDim(comp_ds, "y", length(y)-2)
-         defDim(comp_ds, "z", length(z)-2)
-         defDim(comp_ds, "time", length(times))
+            defDim(comp_ds, "x", length(x)-2)
+            defDim(comp_ds, "y", length(y)-2)
+            defDim(comp_ds, "z", length(zC)-2)
+            defDim(comp_ds, "time", length(times))
 
-         q_data  = Array{Float64, 4}(undef, length(x)-2, length(y)-2, 
-                                     length(z)-2, Nt)
+            q_data = Array{Float64, 4}(undef, length(x)-2, length(y)-2, 
+                                       length(zC)-2, Nt)
 
-         for t = 1:frames[end]
-            for z_idx = 2:z_idcs[end]
-               for x_idx = 2:x_idcs[end]
-               
-                  for y_idx = 2:y_idcs[end]
-                     update_data_array!(q_data, x_idx, y_idx, z_idx, t, 
-                                        to_value(qn))
-                     yield()
-                     j[] = y_idx
+            for t = 1:frames[end]
+               for z_idx = 2:z_idcs[end]
+                  for x_idx = 2:x_idcs[end]
+                     for y_idx = 2:y_idcs[end]
+
+                        update_data_array!(q_data, x_idx, y_idx, z_idx, t, 
+                                           to_value(qn))
+                        yield()
+                        j[] = y_idx
+                     end
+                     
+                     i[] = x_idx
                   end
                   
-                  i[] = x_idx
+                  k[] = z_idx
                end
                
-               k[] = z_idx
+               print("Computing q for time $(t) of $(Nt)" * " \r")
+               n[] = t
             end
-            
-            print("Computing q for time $(t) of $(Nt)" * " \r")
-            n[] = t
-         end
          
-         defVar(comp_ds, "q", q_data, ("x", "y", "z", "time"))
-      end #comp_ds gets closed automatically
+            defVar(comp_ds, "q_Ertel", q_data, ("x", "y", "zC", "time"))
+         end #comp_ds gets closed automatically
+      end
+      
+      close(ds)
    end
 
    return NCDataset(computed_file, "r")
@@ -1229,7 +1264,7 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
 					                                 outfile_list[length(outfile_list)];
                                            Hx = Hx, Hy = Hy, Hz = Hz)
    
-   comp_ds = open_computed_dataset(datetime, Δx, Δy, Δz, f)
+   comp_ds = open_computed_dataset(datetime, f)
    
    if const_dim == "x"
       x_idx, y_idx, z_idx       = const_idx, nothing, nothing
@@ -1243,14 +1278,14 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
    end
 
    xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dim;
-                                  Hx = Hx, Hy = Hy, Hz = Hz,
+                                  Hx = 1, Hy = 1, Hz = 1,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
-                                  
-   q_f = adapt(Array, comp_ds[:q])[xyzC_idcs..., chron_idcs[Nt]]
-   
+
+   q_f    = adapt(Array, comp_ds[:q_Ertel])[xyzC_idcs..., chron_idcs[Nt]]
    lims_q = get_range_lims(q_f)
    
+   close(ds_f)
    mkpath("./Plots") #Make visualization directory if nonexistent
    
    nearest, ax_kwargs = get_2D_spatial_axis_kwargs(x, y, zC, const_dim;
@@ -1259,50 +1294,51 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
                                                    z_idx = z_idx)
 
    #Plot static images (final frame, by default)
-   
-   
+
    fig_q = Figure(size = (1200, 800))
-   ax_q  = Axis(fig_q[2, 1]; title = L"Potential vorticity ($q$)", ax_kwargs...)
-
-   #=z_plt = div(length(z[:]), 2) #z-index to start plot at
-
-   n    = Observable(1)
-   b    = @lift ds[:b][:, :, z_plt:end, $n]
-   u    = @lift ds[:u][:, :, z_plt:end, $n]
-   v    = @lift ds[:v][:, :, z_plt:end, $n]
-   w    = @lift ds[:w][:, :, z_plt:end-1, $n]
-   q_yz = @lift comp_ds[:q][x_idx, :, z_plt:end, $n] 
-   
-   q_yz_f = comp_ds[:q][x_idx, :, z_plt:end, Nt]
-
-   lims_q = get_range_lims(q_yz_f)
-
-   x_nearest, axis_kwargs_yz = get_2D_spatial_axis_kwargs(x, y, z; x_idx = x_idx)
-
-   fig_q = Figure(size = (600, 600))
-   ax_q  = Axis(fig_q[2, 1]; axis_kwargs_yz...)
-   hm_q  = heatmap!(ax_q, y[2:end-1], z[z_plt:end], q_yz, colorrange = lims_q,
-		    colormap = :balance)
+   ax_q  = Axis(fig_q[2, 1]; ax_kwargs...)
+   hm_q  = heatmap!(ax_q, axis1, axis2_zC, q_f, colorrange = lims_q, 
+                    colormap = Reverse(:RdBu_5))
 
    Colorbar(fig_q[2, 2], hm_q, tickformat = "{:.1e}", label = "1/s³")
-
-   title_q       = @lift @sprintf("q at x = %i km; t = %.2f days",
-			           x_nearest, times[$n])
+   
+   title_q       = @sprintf("Ertel PV at %s = %.2f km; t = %.2f days",
+                            const_dim, nearest, times[Nt])
    fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
-   frames  = 1:Nt
-   video_q = VideoStream(fig_q, format = "mp4", framerate = 6)
+   save(joinpath("./Plots", "q_$(const_dim)$(nearest)_tf_$(datetime).png"), fig_q)
+   
+   #Plot animation, slicing timeseries at t_idx_skip
+
+   fig_anim = Figure(size = (1200, 800))
+   ax_anim  = Axis(fig_anim[2, 1]; ax_kwargs...)
+   
+   n = Observable(1)
+
+   q = @lift comp_ds[:q][xyzC_idcs..., chron_idcs[$n]]
+   
+   hm_anim = heatmap!(ax_anim, axis1, axis2_zC, q, colorrange = lims_q, 
+                      colormap = Reverse(:RdBu_5))
+   
+   Colorbar(fig_anim[2, 2], hm_anim, tickformat = "{:.1e}", label = "1/s³")
+   
+   title_anim       = @lift @sprintf("Ertel PV at %s = %.2f km; t = %.2f days",
+                                     const_dim, nearest, times[$n])
+   fig_anim[1, 1:2] = Label(fig_total, title_total, fontsize = 24, 
+                            tellwidth = false)
+
+   frames = 1:Nt
+   video  = VideoStream(fig_anim, format = "mp4", framerate = 6)
 
    for i = 1:frames[end]
-      recordframe!(video_q)
+      recordframe!(video)
       yield()
       print("Plotting frame(s) $(i) of $(frames[end])" * " \r")
       n[] = i
    end
 
-   save(joinpath("./Plots", "q_x$(x_nearest)_$(datetime).mp4"), video_q)
-   =#
-   close(ds)
+   save(joinpath("./Plots", "q_$(const_dim)$(nearest)_$(datetime).mp4"), video)
+   close(comp_ds)
 end
 
 function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
