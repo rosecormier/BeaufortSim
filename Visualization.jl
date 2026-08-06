@@ -84,7 +84,7 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
                                                    y_idx,
                                                    (Hz + 1):(length(z) - Hz)]
    Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 1):(length(x) - Hx),
-                                                 y_idx,
+                                                y_idx,
                                                 (2 * Hz):(length(z) - Hz)]
 
    
@@ -97,8 +97,8 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
                                (Hz + 1):(length(z) - Hz)]
    ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG)
                              )[(Hx + 1):(length(x) - Hx), 
-                                y_idx, 
-                                (Hz + 1):(length(z) - Hz)]
+                               y_idx, 
+                               (Hz + 1):(length(z) - Hz)]
 
    lims_∂rQ_Ertel = get_range_lims(∂rQ_Ertel)
    lims_∂rQ_QG    = get_range_lims(∂rQ_QG)
