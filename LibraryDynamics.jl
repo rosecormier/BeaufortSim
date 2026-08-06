@@ -9,12 +9,14 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
    
    pi_shift = asin(1 + (ξ0 / Lξ))
 
-   N_below_ξ0 = (Nξ * pi) / (2 * (pi - pi_shift)) 
+   N_below_ξ0 = ((Nξ + 1) * pi) / (2 * (pi - pi_shift)) 
 
-   if i <= N_below_ξ0
-      i_face = ξ0 + Lξ * (sin((pi - pi_shift) * i / Nξ) - 1)
+   if i == 1
+      i_face = ξ_min
+   elseif 1 < i <= N_below_ξ0
+      i_face = ξ0 + Lξ * (sin((pi - pi_shift) * (i - 1) / Nξ) - 1)
    elseif i > N_below_ξ0
-      i_face = ξ0 - Lξ * (sin((pi - pi_shift) * i / Nξ) - 1)
+      i_face = ξ0 - Lξ * (sin((pi - pi_shift) * (i - 1) / Nξ) - 1)
    end
 
    return i_face
@@ -77,16 +79,36 @@ function buoyancyDoubleTanh(z, parameters)
    return b
 end
 
-function TWB_b_field(grid, f, σr, σz, U; returnAsArray = true)
+function TWB_b_anon_function(f, σr, σz, U; yFlat = false)
+   #=
+   Return anonymous function to evaluate contribution to background buoyancy 
+    from thermal-wind balance with background velocity.
+   =#
+   
+   if !yFlat #Return 3D version of function
+      TWB_b = (x, y, z) -> -((sqrt(2) * f * U * σr * z / (σz^2))
+                             * exp(0.5 - (z/σz)^2)
+                             * (1 - exp(-(x^2 + y^2) / (σr^2)))
+                           )
+   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
+      TWB_b = (x, z) -> -((sqrt(2) * f * U * σr * z / (σz^2))
+                          * exp(0.5 - (z/σz)^2) * (1 - exp(-(x^2) / (σr^2)))
+                        )
+   end
+   return TWB_b
+end
 
-   @inline b_ccc(i, j, k, g) = @inbounds (-(sqrt(2) * f * U * σr * g.z.cᵃᵃᶜ[k]
-                                            / (σz^2)
-                                           )
-			                                     * exp(0.5 - (g.z.cᵃᵃᶜ[k]/σz)^2)
-			                                     * (exp(-(g.xᶜᵃᵃ[i]^2 + g.yᵃᶜᵃ[j]^2) 
-                                                   / (σr^2)) 
-                                              - 1)
-                                         )
+function TWB_b_field(grid, f, σr, σz, U; returnAsArray = true, yFlat = false)
+   #=
+   Compute thermal-wind-balance contribution to background buoyancy.
+   Convert to array before returning, if indicated; otherwise, return as a 
+    CenterField on 'grid'.
+   =#
+
+   TWB_b_function = TWB_b_anon_function(f, σr, σz, U; yFlat = yFlat)
+
+   @inline b_ccc(i, j, k, g) = @inbounds TWB_b_function(g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], 
+                                                        g.z.cᵃᵃᶜ[k])
 
    b_op = KernelFunctionOperation{Center, Center, Center}(b_ccc, grid)
    
@@ -99,33 +121,15 @@ function TWB_b_field(grid, f, σr, σz, U; returnAsArray = true)
    end
 end
 
-function TWB_b_anon_function(f, σr, σz, U; yFlat = false)
-   #=
-   Contribution to background buoyancy from thermal-wind balance with background
-    velocity.
-   =#
-   
-   if !yFlat #Return 3D version of function
-      TWB_b = (x, y, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
-                             * exp(0.5 - (z/σz)^2)
-                             * (exp(-(x^2 + y^2) / (σr^2)) - 1)
-                           )
-   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
-      TWB_b = (x, z) -> (-(sqrt(2) * f * U * σr * z / (σz^2))
-                          * exp((1/2) - (z/σz)^2) * (exp(-(x^2) / (σr^2)) - 1)
-                        )
-   end
-   return TWB_b
-end
-
-function TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U; returnAsArray = true)
+function TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U; 
+                        returnAsArray = true)
 
    @inline ∂b∂z_ccc(i, j, k, g) = @inbounds (-(sqrt(2) * f * U * σr / (σz^2))
                                               * exp(0.5 - (g.z.cᵃᵃᶜ[k] / σz)^2)
-                                              * (exp(-(g.xᶜᵃᵃ[i]^2 
+                                              * (1 - exp(-(g.xᶜᵃᵃ[i]^2 
                                                        + g.yᵃᶜᵃ[j]^2) 
                                                       / (σr^2))
-                                                 - 1) 
+                                                ) 
                                               * (1 - 2 * (g.z.cᵃᵃᶜ[k]/σz)^2)
                                             )
 
@@ -154,14 +158,14 @@ function buoyancy_BCS(f, σr, σz, U, N²_far, grid, yFlat, ambientStrat;
    else #Baroclinic case
    
       #Function to compute contribution from background-state thermal-wind balance
-      @inline TWB_∂b∂z_function(x, y, z) = (-(sqrt(2) * f * U * σr / (σz^2))
-                                              * (exp.(-(x.^2 .+ y.^2) ./ (σr^2)) .- 1) 
+      @inline TWB_∂b∂z_function(x, y, z) = (N²_far - (sqrt(2) * f * U * σr / (σz^2))
+                                              * (1 .- exp.(-(x.^2 .+ y.^2) ./ (σr^2))) 
                                               * (exp.(0.5 .- (z./σz).^2)
                                               .* (1 .- 2 .* (z./σz).^2))
                                            )
 
-      z_top = @view grid.z.cᵃᵃᶠ[end - Hz]
-      z_bot = @view grid.z.cᵃᵃᶠ[0]
+      z_top = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[end - Hz]
+      z_bot = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz + 1]
 
       if ambientStrat == "constant"
       
@@ -214,7 +218,7 @@ function bkgd_buoyancy(f, σr, σz, U, N²_far, ambientStrat;
       end
       
    else #Baroclinic case
-   
+      
       TWB_b_function = TWB_b_anon_function(f, σr, σz, U; yFlat = yFlat)
 
       if ambientStrat == "constant"
@@ -274,15 +278,13 @@ function bkgd_velocities(σr, σz, U; yFlat = false)
    return ū, v̄
 end
 
-function bkgd_B_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, ambientStrat)
+function bkgd_B_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, 
+                                   ambientStrat)
    #=
    Return anonymous function to evaluate B at cylindrical coords (r, z).
    =#
    
-   TWB_b_function = (r, z) -> (-(sqrt(2) * f * U * σr / (σz^2)) .* z
-                               .* exp(0.5 .- (z./σz).^2)
-                               .* (exp(-(r./σr).^2) .- 1)
-                              )
+   TWB_b_function = TWB_b_anon_function(f, σr, σz, U; yFlat = true)
 
    if ambientStrat == "constant"
       B = (r, z) -> TWB_b_function(r, z) + (N²_far .* z)
@@ -299,7 +301,7 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
    =#
 
    TWB_N²_function = (r, z) -> (-((sqrt(2) * f * U * σr / (σz^2))
-                                .* (exp.(-(r./σr).^2)) .- 1) 
+                                .* (1 .- exp.(-(r./σr).^2))) 
                                 .* exp.(0.5 .- (z./σz).^2)
                                 .* (1 .- 2 .* (z./σz).^2)
                                )
@@ -325,7 +327,7 @@ function bkgd_Q_cylindrical_coords(f, U, σr, σz, N²_far, doubleTanhParams, am
    end
    
    ∂N²∂z_TWB = (r, z) -> (-((sqrt(2) * f * U * σr / (σz^2))
-                              .* (exp.(-(r./σr).^2)) .- 1)
+                              .* (1 .- exp.(-(r./σr).^2)))
                               .* exp(0.5 .- (z./σz).^2)
                               .* ((2 / σz^2) .* z .* (2 .* (z./σz).^2 .- 3))
                              )
@@ -362,7 +364,8 @@ function bkgd_Uφ_cylindrical_coords(σr, σz, U)
     is provided as a negative value, it will be treated as abs(r).
    =#
 
-   Uφ = (r, z) -> (-(sqrt(2) * U / σr) .* abs.(r) .* exp.(0.5 .- (r./σr).^2) * exp.(-(z./σz).^2))
+   Uφ = (r, z) -> (-(sqrt(2) * U / σr) .* abs.(r) .* exp.(0.5 .- (r./σr).^2) 
+                   * exp.(-(z./σz).^2))
 
    return Uφ
 end
@@ -372,7 +375,8 @@ function bkgd_Ψ_cylindrical_coords(σr, σz, U)
    Return anonymous function to evaluate Ψ at cylindrical coords (r, z).
    =#
    
-   Ψ = (r, z) -> -(U * σr / sqrt(2)) .* (1 .- exp.(-(r./σr).^2)) .* exp.(0.5 .- (z./σz).^2)
+   Ψ = (r, z) -> ((U * σr / sqrt(2)) .* (1 .- exp.(-(r./σr).^2)) 
+                   .* exp.(0.5 .- (z./σz).^2))
 
    return Ψ
 end
@@ -436,7 +440,7 @@ function compute_Q_QG_cylindrical(grid, f, σr, σz, U, Uφ, N²_far, φcoords; 
    return (ζa + f^2 * ∂z2Ψ / N²_far) / f
 end
 
-function compute_Q_Ertel_Cartesian(grid, f, Ux, Uy, Uz, B)
+function compute_Q_Ertel_Cartesian(grid, f, N²_far, Ux, Uy, Uz, B)
    #=
    Return background-state Ertel potential vorticity, computed at cell centres
     from Cartesian components of velocity.
@@ -445,7 +449,7 @@ function compute_Q_Ertel_Cartesian(grid, f, Ux, Uy, Uz, B)
    ωx_initial, ωy_initial, ωz_initial = CenterFields_ω(grid, Ux, Uy, Uz)
 
    return (ωx_initial * ∂x(B) + ωy_initial * ∂y(B) 
-           + (f + ωz_initial) * ∂z(B)) / f
+           + (f + ωz_initial) * ∂z(B)) / (N²_far * f)
 end
 
 function integrate_N²_upwards(i, j, k, grid, N²)
