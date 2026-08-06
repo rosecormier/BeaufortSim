@@ -12,11 +12,11 @@ function ζz_abs_ffc(i, j, k, g, f, u, v)
    return f + ζ₃ᶠᶠᶜ(i, j, k, g, u, v)
 end
 
-function check_inert_stability(grid, f, u, v; 
-		                           plot_ζz_abs = false, 
-                               x_idx = nothing, 
-			                         y_idx = nothing, 
-                               z_idx = nothing)
+function check_inertial_stability(grid, f, u, v; 
+		                              plot_ζz_abs = false, 
+                                  x_idx = nothing, 
+			                            y_idx = nothing, 
+                                  z_idx = nothing)
   
    ζz_abs_KernOp = KernelFunctionOperation{Face, Face, Center}(ζz_abs_ffc, grid, f, u, v)
    ζz_abs        = Field(ζz_abs_KernOp)
@@ -83,12 +83,12 @@ function check_inert_stability(grid, f, u, v;
    end
 end
 
-function check_grav_stability(b, grid; 
-                              plot_∂b∂z = false,
-		                          x_idx = nothing, 
-                              y_idx = nothing, 
-                              z_idx = nothing,
-                              Hx = 3, Hy = 3, Hz = 3)
+function check_gravitational_stability(b, grid; 
+                                       plot_∂b∂z = false,
+		                                   x_idx = nothing, 
+                                       y_idx = nothing, 
+                                       z_idx = nothing,
+                                       Hx = 3, Hy = 3, Hz = 3)
    
    @compute @at (Center, Center, Center) ∂b∂z = Field(∂z(b))
    ∂b∂z_array = no_offset_view(adapt(Array, ∂b∂z))
