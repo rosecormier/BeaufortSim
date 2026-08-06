@@ -121,18 +121,43 @@ function TWB_b_field(grid, f, σr, σz, U; returnAsArray = true, yFlat = false)
    end
 end
 
+function TWB_∂b∂z_anon_function(f, σr, σz, U; yFlat = false)
+   #=
+   Return anonymous function to evaluate contribution to background z-derivative
+    of buoyancy from thermal-wind balance with background velocity.
+   =#
+
+   if !yFlat #Return 3D version of function
+      TWB_∂b∂z = (x, y, z) -> (-(sqrt(2) * f * U * σr / (σz^2))
+                               * exp(0.5 - (z/σz)^2)
+                               * (1 - exp(-(x^2 + y^2) / (σr^2))) 
+                               * (1 - 2 * (z/σz)^2)
+                              )
+   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
+      TWB_∂b∂z = (x, z) -> (-(sqrt(2) * f * U * σr / (σz^2))
+                               * exp(0.5 - (z/σz)^2)
+                               * (1 - exp(-(x/σr)^2)) 
+                               * (1 - 2 * (z/σz)^2)
+                           )
+   end
+   return TWB_∂b∂z
+end
+
 function TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U; 
-                        returnAsArray = true)
+                        returnAsArray = true, yFlat = false)
+   #=
+   Compute thermal-wind-balance contribution to background z-derivative of 
+    buoyancy.
+   Convert to array before returning, if indicated; otherwise, return as a 
+    CenterField on 'grid'.
+   =#                        
 
-   @inline ∂b∂z_ccc(i, j, k, g) = @inbounds (-(sqrt(2) * f * U * σr / (σz^2))
-                                              * exp(0.5 - (g.z.cᵃᵃᶜ[k] / σz)^2)
-                                              * (1 - exp(-(g.xᶜᵃᵃ[i]^2 
-                                                       + g.yᵃᶜᵃ[j]^2) 
-                                                      / (σr^2))
-                                                ) 
-                                              * (1 - 2 * (g.z.cᵃᵃᶜ[k]/σz)^2)
-                                            )
+   TWB_∂b∂z_function = TWB_∂b∂z_anon_function(f, σr, σz, U; yFlat = yFlat)
 
+   @inline ∂b∂z_ccc(i, j, k, g) = @inbounds TWB_∂b∂z_function(g.xᶜᵃᵃ[i],
+                                                              g.yᵃᶜᵃ[j],
+                                                              g.z.cᵃᵃᶜ[k])
+   
    ∂b∂z_op = KernelFunctionOperation{Center, Center, Center}(∂b∂z_ccc, grid)
                                                     
    @compute ∂b∂z = Field(∂b∂z_op)
