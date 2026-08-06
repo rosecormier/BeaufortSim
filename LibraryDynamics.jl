@@ -128,7 +128,7 @@ function TWB_∂b∂z_anon_function(f, σr, σz, U; yFlat = false)
    =#
 
    if !yFlat #Return 3D version of function
-      TWB_∂b∂z = (x, y, z) -> (-(sqrt(2) * f * U * σr / (σz^2))
+      TWB_∂b∂z = (x, y, z) -> @. (-(sqrt(2) * f * U * σr / (σz^2))
                                * exp(0.5 - (z/σz)^2)
                                * (1 - exp(-(x^2 + y^2) / (σr^2))) 
                                * (1 - 2 * (z/σz)^2)
@@ -182,12 +182,9 @@ function buoyancy_BCS(f, σr, σz, U, N²_far, grid, yFlat, ambientStrat;
       
    else #Baroclinic case
    
-      #Function to compute contribution from background-state thermal-wind balance
-      @inline TWB_∂b∂z_function(x, y, z) = (N²_far - (sqrt(2) * f * U * σr / (σz^2))
-                                              * (1 .- exp.(-(x.^2 .+ y.^2) ./ (σr^2))) 
-                                              * (exp.(0.5 .- (z./σz).^2)
-                                              .* (1 .- 2 .* (z./σz).^2))
-                                           )
+      TWB_∂b∂z_function = TWB_∂b∂z_anon_function(f, σr, σz, U; yFlat = yFlat)
+
+      @inline TWB_plus_const_∂b∂z(x, y, z) = N²_far + TWB_∂b∂z_function(x, y, z)
 
       z_top = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[end - Hz]
       z_bot = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz + 1]
@@ -195,11 +192,11 @@ function buoyancy_BCS(f, σr, σz, U, N²_far, grid, yFlat, ambientStrat;
       if ambientStrat == "constant"
       
          if !yFlat
-            b̄z_top = (x, y, t) -> TWB_∂b∂z_function(x, y, z_top)
-            b̄z_bot = (x, y, t) -> TWB_∂b∂z_function(x, y, z_bot)
+            b̄z_top = (x, y, t) -> TWB_plus_const_∂b∂z(x, y, z_top)
+            b̄z_bot = (x, y, t) -> TWB_plus_const_∂b∂z(x, y, z_bot)
          elseif yFlat #Note: this case needs to be tested
-            b̄z_top = (x, t) -> TWB_∂b∂z_function(x, 0, z_top)
-            b̄z_bot = (x, t) -> TWB_∂b∂z_function(x, 0, z_bot)
+            b̄z_top = (x, t) -> TWB_plus_const_∂b∂z(x, 0, z_top)
+            b̄z_bot = (x, t) -> TWB_plus_const_∂b∂z(x, 0, z_bot)
          end
          
          b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
@@ -209,17 +206,17 @@ function buoyancy_BCS(f, σr, σz, U, N²_far, grid, yFlat, ambientStrat;
 
          if !yFlat
             b̄z_top = (x, y, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                    .+ TWB_∂b∂z_function(x, y, z_top)
+                                    .+ TWB_plus_const_∂b∂z(x, y, z_top)
                                    )
             b̄z_bot = (x, y, t) -> (N²DoubleTanh(z_bot, doubleTanhParams) 
-                                    .+ TWB_∂b∂z_function(x, y, z_bot)
+                                    .+ TWB_plus_const_∂b∂z(x, y, z_bot)
                                    )
          elseif yFlat
             b̄z_top = (x, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                 .+ TWB_∂b∂z_function(x, 0, z_top)
+                                 .+ TWB_plus_const_∂b∂z(x, 0, z_top)
                                 )
             b̄z_bot = (x, t) -> (N²DoubleTanh(z_bot, doubleTanhParams)
-                                 .+ TWB_∂b∂z_function(x, 0, z_bot)
+                                 .+ TWB_plus_const_∂b∂z(x, 0, z_bot)
                                 )
          end
          
