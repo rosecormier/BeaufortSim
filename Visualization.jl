@@ -77,29 +77,31 @@ end
 function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_idx; 
                               Hx = 3, Hz = 3)
 
-   x_interior = no_offset_view(adapt(Array, x))[(Hx + 2):(length(x) - Hx - 1)]
-   z_interior = no_offset_view(adapt(Array, z))[(Hz + 2):(length(z) - Hz)]
+   x_interior = no_offset_view(adapt(Array, x))[(Hx + 1):(length(x) - Hx)]
+   z_interior = no_offset_view(adapt(Array, z))[(Hz + 1):(length(z) - Hz)]
                                                 
-   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 2):(length(x) - Hx - 1),
+   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 1):(length(x) - Hx),
                                                    y_idx,
-                                                   (Hz + 2):(length(z) - Hz)]
-   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 2):(length(x) - Hx - 1),
+                                                   (Hz + 1):(length(z) - Hz)]
+   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 1):(length(x) - Hx),
                                                  y_idx,
-                                                (2 * Hz):(length(z) - Hz - 1)]
+                                                (2 * Hz):(length(z) - Hz)]
 
    
-   lims_Q_Ertel = (0, maximum(abs.(Q_Ertel)))
-   lims_Q_QG    = get_range_lims(Q_QG)
+   lims_Q_Ertel = [0, maximum(abs.(Q_Ertel))]
+   lims_Q_QG    = [0, maximum(abs.(Q_QG))]
 
-   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[Hx:(length(x) - Hx - 1), 
-                                                       y_idx, 
-                                                       Hz:(length(z) - Hz - 1)]
-   #∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG))[Hx:(length(x) - Hx - 1), 
-   #                                                 y_idx, 
-   #                                                 Hz:(length(z) - Hz - 1)]
+   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel)
+                             )[(Hx + 1):(length(x) - Hx), 
+                               y_idx, 
+                               (Hz + 1):(length(z) - Hz)]
+   ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG)
+                             )[(Hx + 1):(length(x) - Hx), 
+                                y_idx, 
+                                (Hz + 1):(length(z) - Hz)]
 
    lims_∂rQ_Ertel = get_range_lims(∂rQ_Ertel)
-   #lims_∂rQ_QG    = get_range_lims(∂rQ_QG)
+   lims_∂rQ_QG    = get_range_lims(∂rQ_QG)
    
    fig_Q = Figure(size = (1200, 600))
    
@@ -108,8 +110,8 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
    
    hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, 
                          colorrange = lims_Q_Ertel, colormap = :amp)
-   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:end-1], Q_QG, 
-                         colorrange = lims_Q_QG, colormap = :balance)
+   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:(end - 1)], Q_QG,
+                         colorrange = lims_Q_QG, colormap = :amp)
    
    contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :yellow)
    contour!(ax_Q_QG, x_interior, z_interior[2:(end - 1)], Q_QG, color = :yellow)
@@ -123,21 +125,22 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
    
    ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], 
                         title = L"Background-state $\partial Q/\partial r$ (Ertel)")
-   #ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
-   #                     title = L"Background-state $\partial Q/\partial r$ (QG)")
+   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
+                        title = L"Background-state $\partial Q/\partial r$ (QG)")
    
-   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel[3:end, 2:end],
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, 
+                            ∂rQ_Ertel[3:end, 2:end],
                             colorrange = lims_∂rQ_Ertel, colormap = :balance)
-   #hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior[2:(end - 1)], 
-   #                         ∂rQ_QG, colorrange = lims_∂rQ_QG, colormap = :balance)
+   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior,
+                            ∂rQ_QG, colorrange = lims_∂rQ_QG, 
+                            colormap = :balance)
    
-   #contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
-   #contour!(ax_dQdr_QG, x_interior[2:end-1], z_interior, ∂rQ_QG, 
-   #         color = :yellow)
+   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
+   contour!(ax_dQdr_QG, x_interior, z_interior, ∂rQ_QG, color = :yellow)
    
    Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", 
             vertical = false)
-   #Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
    
    save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx).png"), fig_dQdr)
 end
@@ -145,40 +148,43 @@ end
 ################################################################################
 
 function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
-                                 σr, σz, U, N²_far; Hz = 3)
+                                 σr, σz, U, N²_far; Hz = 3, yFlat = false)
 
    B_total    = no_offset_view(adapt(Array, B)
-                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
-   b_TWB      = no_offset_view(TWB_b_field(grid, f, σr, σz, U)
-                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
-   ∂B∂z_total = no_offset_view(CenterField_∂b∂z(B, grid))[x_idx, y_idx, 
-                                                    Hz+1:(length(grid.z.cᵃᵃᶜ)
-                                                        - Hz+1)
-                                                   ]
+                              )[x_idx, y_idx, 
+                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
+   b_TWB      = no_offset_view(TWB_b_field(grid, f, σr, σz, U, yFlat = yFlat)
+                              )[x_idx, y_idx, 
+                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
+   ∂B∂z_total = no_offset_view(CenterField_∂b∂z(B, grid)
+                              )[x_idx, y_idx, 
+                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U)
-                              )[x_idx, y_idx, Hz+1:length(grid.z.cᵃᵃᶜ) - Hz+1]
+                              )[x_idx, y_idx, 
+                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    
-   x = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
-   y = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
-   z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[Hz+1:(length(grid.z.cᵃᵃᶜ) - Hz+1)]
+   x  = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
+   y  = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
+   zC = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
+                      )[(Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    
    fig   = Figure(size = (1400, 700))
    ax_B  = Axis(fig[2, 1], xlabel = L"$B$ [m/s$^{2}$]", ylabel = L"$z$ [m]")
    ax_N2 = Axis(fig[2, 2], xlabel = L"$N^2$ [s$^{-2}$]", ylabel = L"$z$ [m]")
    
-   lines!(ax_B, B_total, z, label = "Total")
-   scatter!(ax_B, B_total, z, label = "Total (at gridpoints)")
-   lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
-          label = "From double-tanh function")
-   lines!(ax_B, b_TWB, z, label = "Thermal-wind contribution")
-   lines!(ax_B, N²_far .* z, z, label = "Linear term")
+   lines!(ax_B, B_total, zC, label = "Total")
+   scatter!(ax_B, B_total, zC, label = "Total (at gridpoints)")
+   #lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
+   #       label = "From double-tanh function")
+   lines!(ax_B, b_TWB, zC, label = "Thermal-wind contribution")
+   lines!(ax_B, N²_far .* zC, zC, label = "Linear term")
    
-   lines!(ax_N2, ∂B∂z_total, z, label = "Total")
-   scatter!(ax_N2, ∂B∂z_total, z, label = "Total (at gridpoints)")
-   lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
-          label = "From double-tanh function")
-   lines!(ax_N2, ∂b∂z_TWB, z, label = "Thermal-wind contribution")
-   lines!(ax_N2, N²_far .+ 0 * z, z, label = "Linear term")
+   lines!(ax_N2, ∂B∂z_total, zC, label = "Total")
+   scatter!(ax_N2, ∂B∂z_total, zC, label = "Total (at gridpoints)")
+   #lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
+   #       label = "From double-tanh function")
+   lines!(ax_N2, ∂b∂z_TWB, zC, label = "Thermal-wind contribution")
+   lines!(ax_N2, N²_far .+ 0 * zC, zC, label = "Linear term")
    
    fig[2, 3] = Legend(fig, ax_B)
    fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
