@@ -131,15 +131,6 @@ function pointwise_∇b(i, j, k, b, xC, yC, zC)
    return ∂x_b, ∂y_b, ∂z_b
 end
 
-function CenterFields_∇b(b_Field)
-   #=
-   Provided buoyancy as a CenterField, return Cartesian components of ∇b as
-    CenterFields.
-   =#
-
-   return ∂x(b_Field), ∂y(b_Field), ∂z(b_Field)
-end
-
 function pointwise_ω(i, j, k, ux, uy, uz, xC, yC, zC)
    #=
    Provided Cartesian velocity components as 3D arrays, compute Cartesian 
@@ -168,6 +159,8 @@ function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
    Provided Cartesian velocity-component Fields (XFaceField, etc.) on 'grid', 
     compute and return Cartesian vorticity components as a CenterField on
     'grid'.
+   Useful for computing vorticity directly on Oceananigans grid, including at
+    simulation runtime.
    =#
 
    ωx = CenterField(grid)
@@ -399,34 +392,6 @@ end
 function ζa(f, u, v, w, Δx, Δy, Δz)
    ωx, ωy, ωz = ω(u, v, w, Δx, Δy, Δz)
    ζa         = f + ωz
-end
-
-function pointwise_∂b∂z(b, i, j, k, Δz)
-   #=
-   Compute vertical derivative of buoyancy at all specified [i, j, k]
-    coordinate triples.
-   =#
-
-   ∂z_b = @. (b[i, j, k:k+1] - b[i, j, k-1:k]) / Δz
-   
-   return @. (∂z_b[1] + ∂z_b[2]) / 2
-end
-
-function CenterField_∂b∂z(b, grid; returnAsArray = true)
-
-   @inline ∂b∂z_ccc(i, j, k, g) = @inbounds ((b[i, j, (k + 1)] - b[i, j, k])
-                                             / Δzᶜᶜᶜ(i, j, k, g)
-                                            )
-
-   ∂b∂z_op = KernelFunctionOperation{Center, Center, Center}(∂b∂z_ccc, grid)
-   
-   @compute ∂b∂z = Field(∂b∂z_op)
-   
-   if returnAsArray
-      return adapt(Array, ∂b∂z)
-   elseif !returnAsArray
-      return ∂b∂z
-   end
 end
 
 function field_norm(ψ, n; ψ_bkgd = 0)
