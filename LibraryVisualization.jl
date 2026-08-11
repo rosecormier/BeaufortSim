@@ -157,7 +157,7 @@ end
 function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
    #=
    Provided Cartesian velocity-component Fields (XFaceField, etc.) on 'grid', 
-    compute and return Cartesian vorticity components as a CenterField on
+    compute and return Cartesian vorticity components as CenterFields on
     'grid'.
    Useful for computing vorticity directly on Oceananigans grid, including at
     simulation runtime.
@@ -172,6 +172,33 @@ function CenterFields_ω(grid, ux_Field, uy_Field, uz_Field)
    set!(ωz, ∂x(uy_Field) - ∂y(ux_Field))
    
    return ωx, ωy, ωz
+end
+
+function CenterField_ωr(grid, uφ_Field, uz_Field, rCenterField, φCenterField)
+   #=
+   Provided Cartesian velocity-component Fields (XFaceField, etc.) on 'grid', 
+    compute and return radial vorticity component as a CenterField on 'grid'.
+   Useful for computing vorticity directly on Oceananigans grid, including at
+    simulation runtime.
+   =#
+   
+   @inline S(i, j, k, g) = @inbounds sin(φCenterField)[i, j, k]
+   @inline C(i, j, k, g) = @inbounds cos(φCenterField)[i, j, k]
+
+   @inline ωr_ccc(i, j, k, g) = @inbounds ((C(i, j, k, g) 
+                                            * ∂y(uz_Field)[i, j, k] 
+                                            - S(i, j, k, g) 
+                                            * ∂x(uz_Field)[i, j, k]
+                                           ) - (∂z(uφ_Field)[i, j, k] 
+                                                / rCenterField[i, j, k]
+                                               )
+                                          )
+   
+   ωr_op = KernelFunctionOperation{Center, Center, Center}(ωr_ccc, grid)
+   
+   @compute ωr = Field(ωr_op)
+   
+   return ωr
 end
 
 function ωz(ux, uy, x, y; x_idx = nothing, y_idx = nothing, z_idx = nothing)
