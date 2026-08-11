@@ -6,11 +6,7 @@ using Oceananigans.Fields
 using Oceananigans.Operators 
 using OffsetArrays, Printf
 
-####################
-
-function ζz_abs_ffc(i, j, k, g, f, u, v)
-   return f + ζ₃ᶠᶠᶜ(i, j, k, g, u, v)
-end
+@inline ζz_abs_ffc(i, j, k, g, f, u, v) = @inbounds f + ζ₃ᶠᶠᶜ(i, j, k, g, u, v)
 
 function check_inertial_stability(grid, f, u, v; 
 		                              plot_ζz_abs = false, 
@@ -19,9 +15,8 @@ function check_inertial_stability(grid, f, u, v;
                                   z_idx = nothing)
   
    ζz_abs_KernOp = KernelFunctionOperation{Face, Face, Center}(ζz_abs_ffc, grid, f, u, v)
-   ζz_abs        = Field(ζz_abs_KernOp)
    
-   compute!(ζz_abs)
+   @compute ζz_abs = Field(ζz_abs_KernOp)
 
    if any(z -> z < 0, ζz_abs)
       print("Warning: system is inertially unstable.\n")
@@ -31,14 +26,17 @@ function check_inertial_stability(grid, f, u, v;
 
       mkpath("./Plots") #Make visualization directory if nonexistent
       
-      x = xnodes(grid, Face()) ./ 1000 #Convert to km for readability
-      y = ynodes(grid, Face()) ./ 1000 #Convert to km for readability
-      z = znodes(grid, Center())
+      #Convert spatial coords to km for readability
+      x = no_offset_view(adapt(Array, grid.xᶠᵃᵃ)
+                        )[(Hx + 1):(length(grid.xᶠᵃᵃ) - Hx)] ./ 1000
+      y = no_offset_view(adapt(Array, grid.yᵃᶠᵃ)
+                        )[(Hy + 1):(length(grid.yᵃᶠᵃ) - Hy)] ./ 1000
+      z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
+                        )[(Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)] ./ 1000
 
       if !isnothing(x_idx)
 
-         ζz_abs_x     = @views OffsetArrays.no_offset_view(ζz_abs[x_idx, :, :].data)
-         ζz_abs_slice = @views adapt(Array, ζz_abs_x)[1, :, :]
+         ζz_abs_slice = interior(ζz_abs)[x_idx, :, :]
 
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "x";
                                                            x_idx = x_idx)
@@ -47,8 +45,7 @@ function check_inertial_stability(grid, f, u, v;
 
       elseif !isnothing(y_idx)
 
-         ζz_abs_y     = @views OffsetArrays.no_offset_view(ζz_abs[:, y_idx, :].data)
-         ζz_abs_slice = @views adapt(Array, ζz_abs_y)[:, y, :]
+         ζz_abs_slice = interior(ζz_abs)[:, y_idx, :]
 
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "y";
                                                            y_idx = y_idx)
@@ -57,8 +54,7 @@ function check_inertial_stability(grid, f, u, v;
 
       elseif !isnothing(z_idx)
 
-         ζz_abs_z     = @views OffsetArrays.no_offset_view(ζz_abs[:, :, z_idx].data)
-	       ζz_abs_slice = @views adapt(Array, ζz_abs_z)[:, :, 1]
+         ζz_abs_slice = interior(ζz_abs)[:, :, z_idx]
 
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "z";
 							                                             z_idx = z_idx)
@@ -69,8 +65,7 @@ function check_inertial_stability(grid, f, u, v;
       fig = Figure(size = (500, 400))
       ax  = Axis(fig[2, 1]; axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ζz_abs_slice,
-	             colorrange = get_range_lims(ζz_abs_slice), 
-		     colormap = :balance)
+	                   colorrange = get_range_lims(ζz_abs_slice), colormap = :balance)
 
       Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
 
@@ -90,14 +85,10 @@ function check_gravitational_stability(b, grid;
                                        z_idx = nothing,
                                        Hx = 3, Hy = 3, Hz = 3)
    
-   @compute @at (Center, Center, Center) ∂b∂z = Field(∂z(b))
-   ∂b∂z_array = no_offset_view(adapt(Array, ∂b∂z))
-   
-   ∂b∂z_interior = ∂b∂z_array[Hx + 1:length(no_offset_view(grid.xᶜᵃᵃ)) - Hx,
-                              Hy + 1:length(no_offset_view(grid.yᵃᶜᵃ)) - Hy, 
-                              Hz + 1:length(grid.z.cᵃᵃᶜ) - Hz]
-   
-   if any(n -> n < 0, ∂b∂z_interior)
+   ∂b∂z = ZFaceField(grid)
+   set!(∂b∂z, ∂z(b))
+
+   if any(n -> n < 0, interior(∂b∂z))
       print("Warning: system is gravitationally unstable.\n")
    end
    
@@ -105,13 +96,17 @@ function check_gravitational_stability(b, grid;
 
       mkpath("./Plots") #Make visualization directory if nonexistent
 
-      x = adapt(Array, grid.xᶜᵃᵃ)[Hx+1:length(grid.xᶜᵃᵃ)-Hx] ./ 1000 #Convert to km for readability
-      y = adapt(Array, grid.yᵃᶜᵃ)[Hy+1:length(grid.yᵃᶜᵃ)-Hy] ./ 1000 #Convert to km for readability
-      z = adapt(Array, grid.z.cᵃᵃᶜ)[1:length(grid.z.cᵃᵃᶜ)-2*Hz]
-
+      #Load interior spatial coords; convert them to km for readability
+      x = no_offset_view(adapt(Array, grid.xᶜᵃᵃ)
+                        )[(Hx + 1):(length(grid.xᶜᵃᵃ) - Hx)] ./ 1000
+      y = no_offset_view(adapt(Array, grid.yᵃᶜᵃ)
+                        )[(Hy + 1):(length(grid.yᵃᶜᵃ) - Hy)] ./ 1000
+      z = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ)
+                        )[(Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)] ./ 1000
+      
       if !isnothing(x_idx)
 
-         ∂b∂z_slice = ∂b∂z_interior[x_idx, :, :] #@views adapt(Array, ∂z(b))[x_idx, :, :]
+         ∂b∂z_slice = interior(∂b∂z)[x_idx, :, :]
          
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "x";
                                                            x_idx = x_idx)
@@ -120,7 +115,7 @@ function check_gravitational_stability(b, grid;
 
       elseif !isnothing(y_idx)
 
-         ∂b∂z_slice = @views adapt(Array, ∂z(b))[:, y_idx, :]
+         ∂b∂z_slice = interior(∂b∂z)[:, y_idx, :]
 
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "y";
                                                            y_idx = y_idx)
@@ -129,7 +124,7 @@ function check_gravitational_stability(b, grid;
 
       elseif !isnothing(z_idx)
 
-         ∂b∂z_slice = @views adapt(Array, ∂z(b))[:, :, z_idx]
+         ∂b∂z_slice = interior(∂b∂z)[:, :, z_idx]
 
          nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "z";
                                                            z_idx = z_idx)
@@ -140,7 +135,7 @@ function check_gravitational_stability(b, grid;
       fig = Figure(size = (500, 400))
       ax  = Axis(fig[2, 1]; axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ∂b∂z_slice,
-                     colorrange = get_range_lims(∂b∂z_slice),
+                     colorrange = get_range_lims(∂b∂z_slice), 
                      colormap = :balance)
 
       Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s²")
