@@ -83,29 +83,6 @@ function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    compute!(Integral(Field(totalPressureWork_op)))
 end
 
-function totalProduction(simulation; useNHS = nothing)
-   #=
-   Return computed integral, over entire domain, of total KE-production.
-   =#
-   
-   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
-   
-      totalProduction_op = BuoyancyProduction(simulation.model)
-      
-   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
-   
-      b, uz = simulation.model.tracers.b, simulation.model.velocities.w
-
-      @inline production_ccc(i, j, k, grid) = @inbounds (b[i, j, k] * uz[i, j, k]) / 2
-      #Note the factor of 1/2 is required for consistency with Oceanostics
-      # functions.
-   
-      totalProduction_op = KernelFunctionOperation{Center, Center, Center}(production_ccc, simulation.model.grid)
-   end
-   
-   compute!(Integral(Field(totalProduction_op)))
-end
-
 function totalPE(simulation, g)
    #=
    Return computed integral, over entire domain, of total kinetic energy.
@@ -169,7 +146,30 @@ end
 #Function to compute product of b′ and uz′ in single control volume
 @inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
-function ∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
+function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Uφ) ##Ur, Uφ, ∂rUφ)
+   #=
+   Function to compute (1/r times ur′ times uφ′ times Uφ) in single control
+    volume.
+   =#
+
+   r = @inbounds sqrt(xnodes(grid, Center())[i, j, k]^2 + ynodes(grid, Center())[i, j, k]^2)
+   φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
+                      ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center()))
+                     )
+
+   ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
+   uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
+   ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
+   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
+
+   ur′_ccc       = @inbounds ur′(i, j, k, grid, ur_ccc, 0) #Ur)
+   uφ′_ccc       = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
+   Uφ_over_r_ccc = @inbounds Uφ[i, j, k] / r[i, j, k]
+
+   return @inbounds -(Uφ_over_r_ccc * ur′_ccc * uφ′_ccc)
+end
+
+function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Uφ, ∂rUφ) ##Ur, Uφ, ∂rUφ)
    #=
    Function to compute (negative ur′ times uφ′ times r-derivative of Uφ) in
     single control volume.
@@ -184,14 +184,14 @@ function ∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
    ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
    uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
 
-   ur′_ccc  = @inbounds ur′(i, j, k, grid, ur_ccc, Ur)
+   ur′_ccc  = @inbounds ur′(i, j, k, grid, ur_ccc, 0) #Ur)
    uφ′_ccc  = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
    ∂rUφ_ccc = @inbounds ∂rUφ[i, j, k]
 
    return @inbounds -(∂rUφ_ccc * ur′_ccc * uφ′_ccc)
 end
 
-function ∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ)
+function neg∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ)
    #=
    Function to compute (negative uφ′ times uz′ times z-derivative of Uφ) in 
     single control volume.
@@ -316,7 +316,9 @@ function BTI_transfer(simulation; bkgdParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
    
-   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, grid, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Uφ, ∂rUφ)
+   
+   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
    
    compute!(Integral(Field(BTI_transfer_op)))
 end
@@ -336,8 +338,12 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, 
-                                                         grid, u, v, Ur, Uφ, ∂rUφ)
+   #BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, 
+   #                                                      grid, u, v, Uφ, ∂rUφ) ## Ur, Uφ, ∂rUφ)
+
+   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Uφ, ∂rUφ)
+   
+   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
    BTI_transfer    = Field(BTI_transfer_op)
 
    #Mask areas far from gyre
@@ -360,7 +366,7 @@ function BCI_transfer(simulation; bkgdParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
 
    compute!(Integral(Field(BCI_transfer_op)))
 end
@@ -380,7 +386,7 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂zUφ_uφ′_uz′_ccc, 
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, 
                                                         grid, u, v, w, Uφ, Uz, ∂zUφ)
    BCI_transfer    = Field(BCI_transfer_op)
    
