@@ -14,33 +14,32 @@ update_theme!(theme_latexfonts(), fontsize = 16)
 
 ################################################################################
 
-function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far, 
-                                      doubleTanhParams, ambientStrat, Nr, Nz, 
-                                      Lr, Lz)
+function visualize_B_U_Q_Ψ_vs_r_and_z(grid, gyreParams, doubleTanhParams,
+                                      ambientStrat, Nr, Nz, Lr, Lz)
 
    r      = range(0, stop = Lr, length = Nr)
    r_symm = range(-Lr, stop = Lr, length = 2 * Nr)
    z      = range(-Lz, stop = 0, length = Nz)
    
-   B_function  = bkgd_B_cylindrical_coords(f, U, σr/1000, σz, N²_far, 
-                                           doubleTanhParams, ambientStrat)
-   Q_function  = bkgd_Q_cylindrical_coords(f, U, σr/1000, σz, N²_far, 
-                                           doubleTanhParams, ambientStrat)
-   Uφ_function = bkgd_Uφ_cylindrical_coords(σr/1000, σz, U)
-   Ψ_function  = bkgd_Ψ_cylindrical_coords(σr/1000, σz, U)
+   B_function  = bkgd_B_cylindrical_coords(gyreParams, doubleTanhParams, 
+                                           ambientStrat)
+   Q_function  = bkgd_Q_cylindrical_coords(gyreParams, doubleTanhParams,
+                                           ambientStrat)
+   Uφ_function = bkgd_Uφ_cylindrical_coords(gyreParams)
+   Ψ_function  = bkgd_Ψ_cylindrical_coords(gyreParams)
 
    fig  = Figure(size = (1200, 600))
-   ax_B = Axis(fig[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+   ax_B = Axis(fig[1, 1], xlabel = L"$r$ [m]", ylabel = L"$z$ [m]", 
                title = "Background buoyancy with QG-PV contours")
-   ax_U = Axis(fig[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+   ax_U = Axis(fig[1, 2], xlabel = L"$r$ [m]", ylabel = L"$z$ [m]", 
                title = "Background velocity with QG-streamfunction contours")
 
-   hm_B = heatmap!(ax_B, r/1000, z, B_function, colormap = :balance)
-   hm_U = heatmap!(ax_U, r/1000, z, Uφ_function, colormap = Reverse(:Blues), 
-                   colorrange = (-U, 0))
+   hm_B = heatmap!(ax_B, r, z, B_function, colormap = :balance)
+   hm_U = heatmap!(ax_U, r, z, Uφ_function, colormap = Reverse(:Blues), 
+                   colorrange = (-gyreParams.U, 0))
    
-   contour!(ax_B, r/1000, z, Q_function, color = :yellow, levels = 20)
-   contour!(ax_U, r/1000, z, Ψ_function, color = :yellow, levels = 20)
+   contour!(ax_B, r, z, Q_function, color = :yellow, levels = 20)
+   contour!(ax_U, r, z, Ψ_function, color = :yellow, levels = 20)
    
    Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = "m/s²", 
             vertical = false, width = Relative(3/4))
@@ -50,19 +49,19 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "analytical_background_fields.png"), fig)
 
-   fig_symm  =  Figure(size = (1200, 600))
-   ax_symm_B = Axis(fig_symm[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]",
+   fig_symm  = Figure(size = (1200, 600))
+   ax_symm_B = Axis(fig_symm[1, 1], xlabel = L"$r$ [m]", ylabel = L"$z$ [m]",
                     title = "Background buoyancy with QG-PV contours")
-   ax_symm_U = Axis(fig_symm[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]", 
+   ax_symm_U = Axis(fig_symm[1, 2], xlabel = L"$r$ [m]", ylabel = L"$z$ [m]", 
                     title = "Background velocity with QG-streamfunction contours")
 
-   hm_symm_B = heatmap!(ax_symm_B, r_symm/1000, z, B_function, 
+   hm_symm_B = heatmap!(ax_symm_B, r_symm, z, B_function, 
                         colormap = :balance)
-   hm_symm_U = heatmap!(ax_symm_U, r_symm/1000, z, Uφ_function, 
+   hm_symm_U = heatmap!(ax_symm_U, r_symm, z, Uφ_function, 
                         colormap = Reverse(:Blues), colorrange = (-U, 0))
    
-   contour!(ax_symm_B, r_symm/1000, z, Q_function, color = :yellow, levels = 20)
-   contour!(ax_symm_U, r_symm/1000, z, Ψ_function, color = :yellow, levels = 20)
+   contour!(ax_symm_B, r_symm, z, Q_function, color = :yellow, levels = 20)
+   contour!(ax_symm_U, r_symm, z, Ψ_function, color = :yellow, levels = 20)
    
    Colorbar(fig_symm[2, 1], hm_symm_B, tickformat = "{:.1e}", label = "m/s²", 
             vertical = false, width = Relative(3/4))
@@ -70,6 +69,17 @@ function visualize_B_U_Q_Ψ_vs_r_and_z(U, grid, f, σr, σz, N²_far,
             vertical = false, width = Relative(3/4))
 
    save(joinpath("./Plots", "analytical_background_fields_symmetric.png"), fig_symm)
+   
+   fig_symm_Q = Figure(size = (600, 600))
+   ax_symm_Q  = Axis(fig_symm_Q[1, 1], xlabel = L"$r$ [m]", ylabel = L"$z$ [m]",
+                     title = "Analytical QGPV")
+
+   hm_symm_Q = heatmap!(ax_symm_Q, r_symm, z, Q_function, colormap = :amp)
+   
+   Colorbar(fig_symm_Q[2, 1], hm_symm_Q, tickformat = "{:.1e}", label = "1/s", 
+            vertical = false, width = Relative(3/4))
+
+   save(joinpath("./Plots", "analytical_Q_symmetric.png"), fig_symm_Q)
 end
 
 ################################################################################
@@ -85,36 +95,37 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
                                                    (Hz + 1):(length(z) - Hz)]
    Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 1):(length(x) - Hx),
                                                 y_idx,
-                                                (2 * Hz):(length(z) - Hz)]
+                                                (Hz + 1):(length(z) - Hz)]
 
    
    lims_Q_Ertel = [0, maximum(abs.(Q_Ertel))]
-   lims_Q_QG    = [0, maximum(abs.(Q_QG))]
+   lims_Q_QG    = get_range_lims(Q_QG)
 
    ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel)
-                             )[(Hx + 1):(length(x) - Hx), 
+                             )[(Hx + 2):(length(x) - Hx - 1), 
                                y_idx, 
                                (Hz + 1):(length(z) - Hz)]
    ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG)
-                             )[(Hx + 1):(length(x) - Hx), 
+                             )[(Hx + 2):(length(x) - Hx - 1),
                                y_idx, 
                                (Hz + 1):(length(z) - Hz)]
 
    lims_∂rQ_Ertel = get_range_lims(∂rQ_Ertel)
    lims_∂rQ_QG    = get_range_lims(∂rQ_QG)
    
-   fig_Q = Figure(size = (1200, 600))
+   fig_Q = Figure(size = (1400, 600))
    
-   ax_Q_Ertel = Axis(fig_Q[1, 1], title = "Background-state Ertel PV")
-   ax_Q_QG    = Axis(fig_Q[1, 2], title = "Background-state QG PV")
+   ax_Q_Ertel = Axis(fig_Q[1, 1], title = L"Background-state Ertel PV, normalized by $N_{\text{far}}^2 f_0$")
+   ax_Q_QG    = Axis(fig_Q[1, 2], title = L"Background-state QG PV, normalized by $f_0$")
    
    hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, 
                          colorrange = lims_Q_Ertel, colormap = :amp)
-   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior[2:(end - 1)], Q_QG,
-                         colorrange = lims_Q_QG, colormap = :amp)
+   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior, Q_QG,
+                         colorrange = lims_Q_QG, colormap = :balance)
    
-   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :yellow)
-   contour!(ax_Q_QG, x_interior, z_interior[2:(end - 1)], Q_QG, color = :yellow)
+   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :yellow, 
+            levels = 20)
+   contour!(ax_Q_QG, x_interior, z_interior, Q_QG, color = :yellow, levels = 20)
    
    Colorbar(fig_Q[2, 1], hm_Q_Ertel, tickformat = "{:.1e}", vertical = false)
    Colorbar(fig_Q[2, 2], hm_Q_QG, tickformat = "{:.1e}", vertical = false)
@@ -123,20 +134,20 @@ function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_
    
    fig_dQdr = Figure(size = (1200, 600))
    
-   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], 
-                        title = L"Background-state $\partial Q/\partial r$ (Ertel)")
-   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
-                        title = L"Background-state $\partial Q/\partial r$ (QG)")
+   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], title = L"Background-state $\partial Q/\partial r$ (Ertel; normalized by $N_{\text{far}}^2 f_0$)")
+   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], title = L"Background-state $\partial Q/\partial r$ (QG; normalized by $f_0$)")
    
-   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior, z_interior, 
-                            ∂rQ_Ertel[3:end, 2:end],
-                            colorrange = lims_∂rQ_Ertel, colormap = :balance)
-   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior, z_interior,
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior[2:(end - 1)], z_interior, 
+                            ∂rQ_Ertel, colorrange = lims_∂rQ_Ertel, 
+                            colormap = :balance)
+   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior[2:(end - 1)], z_interior,
                             ∂rQ_QG, colorrange = lims_∂rQ_QG, 
                             colormap = :balance)
    
-   contour!(ax_dQdr_Ertel, x_interior, z_interior, ∂rQ_Ertel, color = :yellow)
-   contour!(ax_dQdr_QG, x_interior, z_interior, ∂rQ_QG, color = :yellow)
+   contour!(ax_dQdr_Ertel, x_interior[2:(end - 1)], z_interior, ∂rQ_Ertel, 
+            color = :yellow, levels = 20)
+   contour!(ax_dQdr_QG, x_interior[2:(end - 1)], z_interior, ∂rQ_QG, 
+            color = :yellow, levels = 20)
    
    Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", 
             vertical = false)
@@ -147,44 +158,50 @@ end
 
 ################################################################################
 
-function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, doubleTanhParams, f, 
-                                 σr, σz, U, N²_far; Hz = 3, yFlat = false)
+function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams, doubleTanhParams; Hz = 3, yFlat = false)
 
    B_total    = no_offset_view(adapt(Array, B)
-                              )[x_idx, y_idx, 
-                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
-   b_TWB      = no_offset_view(TWB_b_field(grid, f, σr, σz, U, yFlat = yFlat)
-                              )[x_idx, y_idx, 
-                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
-   ∂B∂z_total = no_offset_view(CenterField_∂b∂z(B, grid)
-                              )[x_idx, y_idx, 
-                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
-   ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, N²_far, f, σr, σz, U)
+                              )[x_idx, y_idx, :]
+   b_TWB      = no_offset_view(TWB_b_field(grid, gyreParams; yFlat = yFlat)
                               )[x_idx, y_idx, 
                                 (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    
-   x  = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
-   y  = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
-   zC = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
-                      )[(Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
+   ∂B∂z_total_Field = ZFaceField(grid)
+   
+   set!(∂B∂z_total_Field, ∂z(B))
+   
+   ∂B∂z_total = no_offset_view(adapt(Array, ∂B∂z_total_Field)
+                              )[x_idx, y_idx, :]
+   ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, gyreParams)
+                              )[x_idx, y_idx, 
+                                (Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
+   
+   x      = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
+   y      = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
+   zC     = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
+                          )[(Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
+   zC_all = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))
+   zF     = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ)
+                          )[(Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
+   zF_all = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ))
    
    fig   = Figure(size = (1400, 700))
    ax_B  = Axis(fig[2, 1], xlabel = L"$B$ [m/s$^{2}$]", ylabel = L"$z$ [m]")
    ax_N2 = Axis(fig[2, 2], xlabel = L"$N^2$ [s$^{-2}$]", ylabel = L"$z$ [m]")
    
-   lines!(ax_B, B_total, zC, label = "Total")
-   scatter!(ax_B, B_total, zC, label = "Total (at gridpoints)")
+   lines!(ax_B, B_total, zC_all, label = "Total")
+   scatter!(ax_B, B_total, zC_all, label = "Total (at gridpoints)")
    #lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
    lines!(ax_B, b_TWB, zC, label = "Thermal-wind contribution")
    lines!(ax_B, N²_far .* zC, zC, label = "Linear term")
    
-   lines!(ax_N2, ∂B∂z_total, zC, label = "Total")
-   scatter!(ax_N2, ∂B∂z_total, zC, label = "Total (at gridpoints)")
+   lines!(ax_N2, ∂B∂z_total, zF_all, label = "Total")
+   scatter!(ax_N2, ∂B∂z_total, zF_all, label = "Total (at gridpoints)")
    #lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
-   lines!(ax_N2, ∂b∂z_TWB, zC, label = "Thermal-wind contribution")
-   lines!(ax_N2, N²_far .+ 0 * zC, zC, label = "Linear term")
+   lines!(ax_N2, ∂b∂z_TWB, zF, label = "Thermal-wind contribution")
+   lines!(ax_N2, N²_far .+ 0 * zF, zF, label = "Linear term")
    
    fig[2, 3] = Legend(fig, ax_B)
    fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
@@ -458,14 +475,14 @@ end
 
 ################################################################################
 
-function visualize_total_energy_budgets(datetime, grid)
+function visualize_total_QG_energy_budgets(datetime, grid)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
    ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
 
    total_KE            = ds[:total_KE][chron_idcs]
    total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
-   total_KE_production = ds[:total_KE_production][chron_idcs] *0.5
+   total_KE_production = ds[:total_KE_production][chron_idcs] #*0.5
    total_pressure_work = ds[:total_pressure_work][chron_idcs] #0.5
    total_PE            = ds[:total_PE][chron_idcs]
    total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
