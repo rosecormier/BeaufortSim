@@ -1,3 +1,5 @@
+include("LibraryCoordinateTransforms.jl")
+
 using CSV
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
@@ -374,7 +376,7 @@ function bkgd_Q_cylindrical_coords(gyreParams, doubleTanhParams,
                               .* (1 .- exp.(-(r./σr).^2)))
                               .* exp(0.5 .- (z./σz).^2)
                               .* ((2 / σz^2) .* z .* (2 .* (z./σz).^2 .- 3))
-                             )
+                         )
    
    
    if ambientStrat == "constant"
@@ -440,7 +442,7 @@ function compute_Q_QG_Cartesian(grid, gyreParams, Ux, Uy; Hz = 3)
    rcoords = CenterField(grid)
    Ψ       = CenterField(grid)
    
-   set!(rcoords, compute_polar_coords(grid)[1])
+   set!(rcoords, polar_coords_Fields(grid, "c", "c", "c")[1])
 
    Ψ_function = bkgd_Ψ_cylindrical_coords(gyreParams)
    
@@ -470,7 +472,7 @@ function compute_Q_QG_cylindrical(grid, gyreParams, Uφ, φcoords; Hz = 3)
    rcoords = CenterField(grid)
    Ψ       = CenterField(grid)
    
-   set!(rcoords, compute_polar_coords(grid)[1])
+   set!(rcoords, polar_coords_Fields(grid, "c", "c", "c")[1])
 
    Ψ_function = bkgd_Ψ_cylindrical_coords(gyreParams)
    
