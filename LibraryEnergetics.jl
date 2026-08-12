@@ -83,6 +83,29 @@ function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    compute!(Integral(Field(totalPressureWork_op)))
 end
 
+function totalProduction(simulation; useNHS = nothing)
+   #=
+   Return computed integral, over entire domain, of total KE-production.
+   =#
+   
+   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+   
+      totalProduction_op = BuoyancyProduction(simulation.model)
+      
+   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   
+      b, uz = simulation.model.tracers.b, simulation.model.velocities.w
+
+      @inline production_ccc(i, j, k, grid) = @inbounds (b[i, j, k] * uz[i, j, k]) / 2
+      #Note the factor of 1/2 is required for consistency with Oceanostics
+      # functions.
+   
+      totalProduction_op = KernelFunctionOperation{Center, Center, Center}(production_ccc, simulation.model.grid)
+   end
+   
+   compute!(Integral(Field(totalProduction_op)))
+end
+
 function totalPE(simulation, g)
    #=
    Return computed integral, over entire domain, of total kinetic energy.
@@ -240,8 +263,7 @@ function PKE(simulation, Ux, Uy, Uz)
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
    
-   PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, 
-                                       grid, u, v, w, Ux, Uy, Uz)
+   PKE_op = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, grid, u, v, w, Ux, Uy, Uz)
    
    compute!(Integral(Field(PKE_op)))
 end
