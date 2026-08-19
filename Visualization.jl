@@ -158,7 +158,9 @@ end
 
 ################################################################################
 
-function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams, doubleTanhParams; Hz = 3, yFlat = false)
+function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams, 
+                                 doubleTanhParams; 
+                                 Hz = 3, yFlat = false)
 
    B_total    = no_offset_view(adapt(Array, B)
                               )[x_idx, y_idx, :]
@@ -193,14 +195,14 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams, doubleTanhP
    scatter!(ax_B, B_total, zC_all, label = "Total (at gridpoints)")
    #lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
-   lines!(ax_B, b_TWB, zC, label = "Thermal-wind contribution")
+   lines!(ax_B, b_TWB, zC, label = "Thermal-wind contribution\n(computed analytically)")
    lines!(ax_B, N²_far .* zC, zC, label = "Linear term")
    
    lines!(ax_N2, ∂B∂z_total, zF_all, label = "Total")
    scatter!(ax_N2, ∂B∂z_total, zF_all, label = "Total (at gridpoints)")
    #lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
-   lines!(ax_N2, ∂b∂z_TWB, zF, label = "Thermal-wind contribution")
+   lines!(ax_N2, ∂b∂z_TWB, zF, label = "Thermal-wind contribution\n(computed analytically)")
    lines!(ax_N2, N²_far .+ 0 * zF, zF, label = "Linear term")
    
    fig[2, 3] = Legend(fig, ax_B)
@@ -439,10 +441,10 @@ function visualize_norms(datetime;
       hidespines!(ax_ur_growth)
       hidespines!(ax_uφ_growth)
       hidespines!(ax_uz_growth_cyl)
-      ylims!(ax_b_growth_cyl, 0, 2e-1)
-      ylims!(ax_ur_growth, 0, 4)
-      ylims!(ax_uφ_growth, 0, 4)
-      ylims!(ax_uz_growth_cyl, 0, 3)
+      #ylims!(ax_b_growth_cyl, 0, 2e-1)
+      #ylims!(ax_ur_growth, 0, 4)
+      #ylims!(ax_uφ_growth, 0, 4)
+      #ylims!(ax_uz_growth_cyl, 0, 3)
 
       hidexdecorations!(ax_b_growth_Cart)
       hidexdecorations!(ax_ux_growth)

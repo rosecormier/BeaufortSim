@@ -10,7 +10,7 @@ using Oceananigans.AbstractOperations, Oceananigans.Fields
 @inline φ_fca(i, j, k, grid) = @inbounds atan(grid.yᵃᶜᵃ[j], grid.xᶠᵃᵃ[i])
 @inline φ_ffa(i, j, k, grid) = @inbounds atan(grid.yᵃᶠᵃ[j], grid.xᶠᵃᵃ[i])
 
-function polar_coords_Fields(grid, xLoc, yLoc, zLoc; new = false)
+function polar_coords_Fields(grid, xLoc, yLoc, zLoc)
    #=
    Compute polar (r, φ) coordinates for each (x, y)-point at specified 'loc' on
     'grid'; return 'r' and 'φ' as Fields (at appropriate location 'loc') on

@@ -1,11 +1,11 @@
+include("LibraryCoordinateTransforms.jl")
 include("LibraryDynamics.jl")
 include("LibraryEnergetics.jl")
-include("LibraryOptionalSimOutputs.jl")
 include("LibraryStability.jl")
 include("LibraryVisualization.jl")
 include("Visualization.jl")
 
-using Adapt, CUDA
+using CUDA
 using Dates: canonicalize, format, now
 using Oceananigans
 using Oceananigans.Architectures
@@ -15,6 +15,8 @@ using Oceananigans.OutputWriters
 using Oceananigans.Units
 using Oceananigans.Utils 
 using Printf, Random
+
+using CairoMakie
 
 ######################
 # SPECIFY PARAMETERS #
@@ -37,12 +39,14 @@ const f   = fPlane.f #Coriolis frequency
 
 const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
-const σz = -300 * meter 	         #Vertical gyre length scale
+const σz = 300 * meter 	         #Vertical gyre length scale
 
-#Ambient (i.e., excluding gyre's TWB contribution) N²-value at z --> -infty
-const N²_far = 4e-5 * second^(-2)
+#Ambient (i.e., excluding gyre's TWB contribution) N²-value at z -> -infty
+const N²_far = 5e-5 * second^(-2)
 
-const z_grid = "chebyshev" #Either 'uniform' or 'chebyshev' 
+gyreScaleParams = (f = f, U = U, σr = σr, σz = σz, N²_far = N²_far)
+
+const z_grid = "uniform" #Either 'uniform' or 'chebyshev' 
 
 #Type of ambient stratification to construct ('doubleTanh' or 'constant')
 # (note that a TWB contribution will always be included)
@@ -86,14 +90,14 @@ const vis_const_y       = false
 const vis_const_z       = true
 const vis_norms         = false
 const vis_energetics    = false
-const vis_z_grid        = true #Note: currently can only be done on CPU
+const vis_z_grid        = false #Note: currently can only be done on CPU
 const vis_bkgd_profiles = true
 const vis_q_timeseries  = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
 const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
 const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
-const t_idx_skip = 1     #Step size for animations and timeseries
+const t_idx_skip = 1      #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -121,9 +125,16 @@ grid = RectilinearGrid(architecture,
                        z = custom_z_grids[z_grid],
 		                   halo = (Hx, Hy, Hz)
                       )
+                      
+#Note -- will need to fix zgrid (put this all into a function)
+tallGrid = RectilinearGrid(architecture, topology = (Periodic, Periodic, Bounded), size = (Nx, Ny, Nz + 2), x = (-Lr, Lr), y = (-Lr, Lr), z = custom_z_grids[z_grid], halo = (Hx, Hy, Hz-1))
+                      
+size(grid.yᵃᶜᵃ)[1] > 1 ? yFlat = false : yFlat = true
 
-b̄_BCs = buoyancy_BCS(f, σr, σz, U, N²_far, grid, false, ambientStrat;
-                      Hz = Hz, doubleTanhParams = doubleTanhParams)
+b̄, ū, v̄, b̄_BCs, u_BCs, v_BCs = discrete_Cartesian_TWB_ICs(grid, tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat; Hz = Hz)
+
+#b̄_BCs = buoyancy_BCs(gyreScaleParams, grid, yFlat, ambientStrat;
+#                      Hz = Hz, doubleTanhParams = doubleTanhParams)
 
 #box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
 
@@ -135,7 +146,7 @@ if useNHS
                                coriolis = fPlane,
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
-                               boundary_conditions = (; b = b̄_BCs)
+                               boundary_conditions = (; b = b̄_BCs, u = u_BCs, v = v_BCs)
                               )
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
@@ -149,16 +160,36 @@ elseif !useNHS
                                       )
 end
 
-b̄     = bkgd_buoyancy(f, σr, σz, U, N²_far, ambientStrat;
-                       grid = model.grid, doubleTanhParams = doubleTanhParams)
-ū, v̄ = bkgd_velocities(σr, σz, U)
-
+#=
+b̄     = bkgd_buoyancy(gyreScaleParams, ambientStrat;
+                       grid = model.grid, yFlat = yFlat, 
+                       doubleTanhParams = doubleTanhParams)
+ū, v̄ = bkgd_velocities(gyreScaleParams; yFlat = yFlat)
+=#
 set!(model, u = ū, v = v̄, b = b̄)
 
+pHY_initial = no_offset_view(adapt(Array, model.pressures.pHY′))[:, 25, :]
+pNHS_initial = no_offset_view(adapt(Array, model.pressures.pNHS))[:, 25, :]
+
+fig  = Figure(size = (1200, 600))
+ax_HY = Axis(fig[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = "Initial hydrostatic pressure anomaly")
+ax_NHS = Axis(fig[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = "Initial NHS pressure")
+
+hm_HY = heatmap!(ax_HY, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), pHY_initial, colormap = :balance)
+hm_NHS = heatmap!(ax_NHS, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), pNHS_initial, colormap = :balance)
+
+Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "", 
+            vertical = false, width = Relative(3/4))
+Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "", 
+            vertical = false, width = Relative(3/4))
+            
+save(joinpath("./Plots", "ptest.png"), fig)
+
 #Print warnings if the respective instabilities are present
-check_inert_stability(model.grid, f, model.velocities.u, model.velocities.v; 
-                      z_idx = z_idx)
-check_grav_stability(model.tracers.b, model.grid)
+check_inertial_stability(model.grid, f, model.velocities.u, model.velocities.v)
+check_gravitational_stability(model.tracers.b, model.grid)
 
 ######################################################
 # SAVE BACKGROUND STATE AND DEFINE DIAGNOSTIC FIELDS #
@@ -178,8 +209,17 @@ Uy        = YFaceField(model.grid)
 Ur        = CenterField(model.grid)
 Uφ        = CenterField(model.grid)
 Uz        = ZFaceField(model.grid)
-B         = CenterField(model.grid)
-B_gyre    = CenterField(model.grid)
+B         = CenterField(model.grid;
+                        boundary_conditions = discrete_Cartesian_TWB_ICs(grid, tallGrid, gyreScaleParams, 
+                                    bkgd_Ψ_cylindrical_coords, ambientStrat;
+                                    Hz = Hz, includeDefaultBCs = true))
+                        
+                        #= buoyancy_BCs(gyreScaleParams, 
+                         grid, yFlat, ambientStrat; 
+                         Hz = Hz, 
+                         doubleTanhParams = doubleTanhParams, 
+                         includeDefaultBCs = true)
+                       ) =#
 Q_Ertel   = CenterField(model.grid)
 Q_QG      = CenterField(model.grid)
 ∂rQ_Ertel = CenterField(model.grid)
@@ -191,26 +231,33 @@ set!(Uy, v̄)
 set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
 set!(Uz, model.velocities.w)
-set!(B, b̄ )
-set!(B_gyre, TWB_b_anon_function(f, σr, σz, U))
+set!(B, b̄)
+
+fill_halo_regions!(B, model.clock, B)
+#Note: this syntax is necessary because 'B' isn't a prognostic field of 'model'
 
 #Create fields that are used in computing PKE budget terms
-φcoords = CenterField(model.grid)
-∂rUφ    = CenterField(model.grid)
-∂zUφ    = CenterField(model.grid)
+φ_ccc_vals = CenterField(model.grid)
+∂rUφ       = CenterField(model.grid)
+∂zUφ       = CenterField(model.grid)
 
 #Prescribe initial values to those fields
-set!(φcoords, compute_polar_coords(model.grid)[2])
-set!(∂rUφ, cos(φcoords) * ∂x(Uφ) + sin(φcoords) * ∂y(Uφ))
+set!(φ_ccc_vals, polar_coords_Fields(model.grid, "c", "c", "c")[2])
+set!(∂rUφ, cos(φ_ccc_vals) * ∂x(Uφ) + sin(φ_ccc_vals) * ∂y(Uφ))
 set!(∂zUφ, ∂z(Uφ))
 
-#Compute background PVs (and their r-derivatives) and prescribe to fields
-set!(Q_Ertel, compute_Q_Ertel_Cartesian(model.grid, f, Ux, Uy, Uz, B))
-set!(Q_QG, compute_Q_QG_Cartesian(model.grid, f, σr, σz, U, Ux, Uy, N²_far))
-set!(∂rQ_Ertel, cos(φcoords) * ∂x(Q_Ertel) + sin(φcoords) * ∂y(Q_Ertel))
-set!(∂rQ_QG, cos(φcoords) * ∂x(Q_QG) + sin(φcoords) * ∂y(Q_QG))
+### testing ###
+Q_QG_fn = bkgd_Q_cylindrical_coords(gyreScaleParams, doubleTanhParams, 
+                                   ambientStrat)
+Q_QG_xyz(x, y, z) = Q_QG_fn(sqrt(x^2 + y^2), z)
 
-print(Q_QG)
+#Compute background PVs (and their r-derivatives) and prescribe to fields
+set!(Q_Ertel, 
+     compute_Q_Ertel_Cartesian(model.grid, gyreScaleParams, Ux, Uy, Uz, B)
+    )
+set!(Q_QG, Q_QG_xyz) ##compute_Q_QG_Cartesian(model.grid, gyreScaleParams, Ux, Uy; Hz = Hz))
+set!(∂rQ_Ertel, cos(φ_ccc_vals) * ∂x(Q_Ertel) + sin(φ_ccc_vals) * ∂y(Q_Ertel))
+set!(∂rQ_QG, cos(φ_ccc_vals) * ∂x(Q_QG) + sin(φ_ccc_vals) * ∂y(Q_QG))
 
 #############################
 # SET UP AND RUN SIMULATION #
@@ -247,9 +294,11 @@ function progress(sim)
    umax = maximum(abs, sim.model.velocities.u)
    wmax = maximum(abs, sim.model.velocities.w)
    bmax = maximum(abs, sim.model.tracers.b)
+   pmax = maximum(abs, sim.model.pressures.pNHS)
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
    @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e", umax, wmax, bmax)
+   @info @sprintf("max |pNHS|: %.2e", pmax)
    @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
    return nothing
 end
@@ -282,10 +331,12 @@ mkpath(dirname(energyfilepath))
 mkpath(dirname(logfilepath))
 mkpath("./Checkpoints")
 
-field_writer = NetCDFWriter(model, outputs,
+field_writer = NetCDFWriter(model, 
+                            outputs,
                             filename = outfilepath, 
                             schedule = TimeInterval(Δt_save),
-                            file_splitting = FileSizeLimit(30GiB))
+                            file_splitting = FileSizeLimit(30GiB)
+                           )
 
 ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
 uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
@@ -299,27 +350,30 @@ scalar_diagnostics = (ux′_norm = ux_perturbation_norm,
 		                  ur′_norm = ur_perturbation_norm,
 		                  uφ′_norm = uφ_perturbation_norm,
 		                  uz′_norm = uz_perturbation_norm,
-		                  b′_norm  = b_perturbation_norm)
+		                  b′_norm  = b_perturbation_norm
+                     )
 
-scalar_writer = NetCDFWriter(model, scalar_diagnostics,
+scalar_writer = NetCDFWriter(model, 
+                             scalar_diagnostics,
 		                         filename = scalarfilepath, 
-				                     schedule = TimeInterval(1 * hour),
+				                     schedule = TimeInterval(Δt_save),
                              file_splitting = FileSizeLimit(30GiB),
 		                         dimensions = (ux′_norm = (),
 					                                 uy′_norm = (),
 					                                 ur′_norm = (),
 					                                 uφ′_norm = (),
 					                                 uz′_norm = (),
-					                                 b′_norm  = ()))
+					                                 b′_norm  = ()
+                                          )
+                            )
 
 bkgdParameters = (Ur = Ur, Uφ = Uφ, Uz = Uz, ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
-gyreParameters = (σr = σr, σz = σz)
 
 energy_diagnostics = (; 
    total_KE            = totalKE(simulation),
    total_KE_adv_flux   = totalKEadvFlux(simulation),
-   total_KE_production = totalProduction(simulation; useNHS = useNHS),
    total_pressure_work = totalPressureWork(simulation; useNHS = useNHS),
+   total_KE_production = totalProduction(simulation; useNHS = useNHS),
    total_PE            = totalPE(simulation, g),
    total_b_adv_flux    = totalBuoyancyAdvFlux(simulation),
    total_gravity_work  = totalGravityWork(simulation, g),
@@ -330,15 +384,15 @@ energy_diagnostics = (;
    total_BCI_transfer  = BCI_transfer(simulation; 
                                       bkgdParameters = bkgdParameters),
    gyre_PKE            = gyre_PKE(simulation; 
-                                  gyreParameters = gyreParameters),
+                                  gyreParameters = gyreScaleParams),
    gyre_PAPE_to_PKE    = gyre_PAPE_to_PKE(simulation; 
-                                          gyreParameters = gyreParameters),
+                                          gyreParameters = gyreScaleParams),
    gyre_BTI_transfer   = gyre_BTI_transfer(simulation; 
                                            bkgdParameters = bkgdParameters, 
-                                           gyreParameters = gyreParameters),
+                                           gyreParameters = gyreScaleParams),
    gyre_BCI_transfer   = gyre_BCI_transfer(simulation; 
                                            bkgdParameters = bkgdParameters, 
-                                           gyreParameters = gyreParameters)
+                                           gyreParameters = gyreScaleParams)
                      )
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
@@ -365,11 +419,12 @@ run!(simulation; pickup = false)
 
 duration = canonicalize(now() - datetimestart)
 
+#=
 #Append zeros to filenames so they can be accessed in chronological order
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 pad_filenames(datetimenow; prefix = "scalars")
-#=
+
 #Save parameters to logfile
 open(logfilepath, "w") do file
    write(file, "Nx, Ny, Nz = $(Nx), $(Ny), $(Nz) \n")
@@ -425,7 +480,7 @@ if vis_norms
 end
 
 if vis_energetics
-   visualize_total_energy_budgets(datetimenow, model.grid)
+   visualize_total_QG_energy_budgets(datetimenow, model.grid)
    visualize_PKE(datetimenow, model.grid)
 end
 
@@ -434,11 +489,11 @@ if vis_z_grid
 end
 
 if vis_bkgd_profiles
-   visualize_B_U_Q_Ψ_vs_r_and_z(U, model.grid, f, σr, σz, N²_far, 
+   visualize_B_U_Q_Ψ_vs_r_and_z(model.grid, gyreScaleParams, 
                                 doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
                                 1e6, Lz) 
-   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, doubleTanhParams, f, 
-                           σr, σz, U, N²_far; Hz = Hz)
+   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, gyreScaleParams, 
+                           doubleTanhParams; yFlat = yFlat, Hz = Hz)
    visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
                         model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
 end

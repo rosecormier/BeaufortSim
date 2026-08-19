@@ -1,9 +1,12 @@
 include("LibraryCoordinateTransforms.jl")
 
 using CSV
+using Oceananigans.AbstractOperations
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using SpecialFunctions, Tables
+
+using Adapt, CairoMakie
 
 function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 
@@ -285,6 +288,116 @@ function bkgd_buoyancy(gyreParams, ambientStrat;
       end
    end
    return B
+end
+
+function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams, 
+                                    cylindrical_Ψ_anon_function, ambientStrat;
+                                    Hz = 3, includeDefaultBCs = false)
+
+   cylindrical_Ψ_function = cylindrical_Ψ_anon_function(gyreParams)
+
+   @inline Ψ_ccc(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_cca(i, j, k, g), g.z.cᵃᵃᶜ[k])
+   @inline Ψ_ccf(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_cca(i, j, k, g), g.z.cᵃᵃᶠ[k])
+   @inline Ψ_ffc(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_ffa(i, j, k, g), g.z.cᵃᵃᶜ[k])
+   
+   Ψ_ccc_op = KernelFunctionOperation{Center, Center, Center}(Ψ_ccc, tallGrid)
+   Ψ_ccf_op = KernelFunctionOperation{Center, Center, Face}(Ψ_ccf, tallGrid)
+   Ψ_ffc_op = KernelFunctionOperation{Face, Face, Center}(Ψ_ffc, tallGrid)
+   
+   #Compute Ψ Fields at necessary locations
+   @compute tempTall_Ψ_ccc_Field = Field(Ψ_ccc_op)
+   @compute tempTall_Ψ_ccf_Field = Field(Ψ_ccf_op)
+   @compute tempTall_Ψ_ffc_Field = Field(Ψ_ffc_op)
+   
+   #Compute Ψ-derivative Fields at necessary locations
+   @compute tempTall_∂Ψ∂x_cfc_Field    = Field(∂x(tempTall_Ψ_ffc_Field))
+   @compute tempTall_∂Ψ∂y_fcc_Field    = Field(∂y(tempTall_Ψ_ffc_Field))
+   @compute tempTall_∂Ψ∂z_ccc_Field    = Field(∂z(tempTall_Ψ_ccf_Field))
+   @compute tempTall_∂2Ψ∂z∂x_cff_Field = Field(∂z(tempTall_∂Ψ∂x_cfc_Field))
+   @compute tempTall_∂2Ψ∂z∂y_fcf_Field = Field(∂z(tempTall_∂Ψ∂y_fcc_Field))
+   @compute tempTall_∂2Ψ∂z2_ccf_Field  = Field(∂z(tempTall_∂Ψ∂z_ccc_Field))
+   
+   #We now need to impose constancy of the first derivatives of Ψ across the top
+   # and bottom boundaries (of 'simGrid').
+   #It's not actually important that the Fields involving second derivatives of
+   # Ψ satisfy these boundary conditions, because we never use the second-
+   # derivative Fields directly, but they do need to be applied to the first-
+   # derivative Fields before we can diagnose the thermal-wind-balanced buoyancy
+   # and velocity.
+   
+   ∂2Ψ∂z∂x_top = @view tempTall_∂2Ψ∂z∂x_cff_Field[:, :, (end - Hz)]
+   ∂2Ψ∂z∂x_bot = @view tempTall_∂2Ψ∂z∂x_cff_Field[:, :, 2]
+
+   ∂2Ψ∂z∂y_top = @view tempTall_∂2Ψ∂z∂y_fcf_Field[:, :, (end - Hz)]
+   ∂2Ψ∂z∂y_bot = @view tempTall_∂2Ψ∂z∂y_fcf_Field[:, :, 2]
+   
+   ∂2Ψ∂z2_top = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
+   ∂2Ψ∂z2_bot = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, 2]
+
+   fig = Figure(size = (1400, 700))
+   ax0 = Axis(fig[1, 1], xlabel = "Psi", ylabel = L"$z$ [m]")
+   ax1 = Axis(fig[1, 2], xlabel = "dPsi/dz", ylabel = L"$z$ [m]")
+   ax2 = Axis(fig[1, 3], xlabel = "d2Psi/dz2", ylabel = L"$z$ [m]")
+
+   lines!(ax0, no_offset_view(adapt(Array, tempTall_Ψ_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "Ψ_ccf_Field")
+   scatter!(ax0, no_offset_view(adapt(Array, tempTall_Ψ_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "Ψ_ccf_Field (at gridpoints)")
+   
+   lines!(ax1, no_offset_view(adapt(Array, tempTall_∂Ψ∂z_ccc_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), label = "∂Ψ∂z_ccc_Field")
+   scatter!(ax1, no_offset_view(adapt(Array, tempTall_∂Ψ∂z_ccc_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), label = "∂Ψ∂z_ccc_Field (at gridpoints)")
+
+   lines!(ax2, no_offset_view(adapt(Array, tempTall_∂2Ψ∂z2_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "∂2Ψ∂z2_ccf_Field")
+   scatter!(ax2, no_offset_view(adapt(Array, tempTall_∂2Ψ∂z2_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "∂2Ψ∂z2_ccf_Field (at gridpoints)")
+   lines!(ax2, no_offset_view(adapt(Array, Field(∂z(tempTall_∂Ψ∂z_ccc_Field))[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)))
+   
+   save(joinpath("./Plots", "testPsi.png"), fig)
+   
+   @inline u_TWB_fcc(i, j, k, g) = @inbounds tempTall_∂Ψ∂y_fcc_Field[i, j, (k + 1)]
+   @inline v_TWB_cfc(i, j, k, g) = @inbounds -tempTall_∂Ψ∂x_cfc_Field[i, j, (k + 1)]
+   
+   u_TWB_op = KernelFunctionOperation{Face, Center, Center}(u_TWB_fcc, simGrid)
+   v_TWB_op = KernelFunctionOperation{Center, Face, Center}(v_TWB_cfc, simGrid)
+
+   @compute u_TWB = Field(u_TWB_op)
+   @compute v_TWB = Field(v_TWB_op)
+   
+   @inline b_linear_ccc(i, j, k, g) = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
+   @inline b_TWB_ccc(i, j, k, g) = @inbounds gyreParams.f * tempTall_∂Ψ∂z_ccc_Field[i, j, (k + 1)]
+
+   if ambientStrat == "constant"
+   
+      b_linear_op = KernelFunctionOperation{Center, Center, Center}(b_linear_ccc, simGrid)
+      b_TWB_op    = KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, simGrid)
+      
+      @compute b_total = Field(b_linear_op + b_TWB_op)
+
+      ∂b∂z_TWB_top = @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
+      ∂b∂z_TWB_bot = @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
+   end
+   
+   if includeDefaultBCs #Return conditions, even defaults, on all boundaries
+   
+      b_TWB_BCs = FieldBoundaryConditions(grid, 
+                                          (Center(), Center(), Center()), 
+                                          east = PeriodicBoundaryCondition(), 
+                                          west = PeriodicBoundaryCondition(), 
+                                          north = PeriodicBoundaryCondition(), 
+                                          south = PeriodicBoundaryCondition(), 
+                                          top = GradientBoundaryCondition(∂b∂z_TWB_top), 
+                                          bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
+                                          
+      return b_TWB_BCs
+      
+   else #Return the prognostic variables and only the non-default BCs
+   
+      b_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_TWB_top),
+                                          bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
+      u_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂2Ψ∂z∂y_top), 
+                                          bottom = GradientBoundaryCondition(∂2Ψ∂z∂y_bot))
+      v_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(-∂2Ψ∂z∂x_top),
+                                          bottom = GradientBoundaryCondition(-∂2Ψ∂z∂x_bot))
+      
+      return b_total, u_TWB, v_TWB, b_TWB_BCs, u_TWB_BCs, v_TWB_BCs
+   end
 end
 
 function bkgd_velocities(gyreParams; yFlat = false)
