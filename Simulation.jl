@@ -17,6 +17,7 @@ using Oceananigans.Utils
 using Printf, Random
 
 using CairoMakie
+using Oceananigans.Solvers
 
 ######################
 # SPECIFY PARAMETERS #
@@ -65,8 +66,8 @@ const C_d = 60 * meter
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
-const Δt         = 600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 #=
 #Set save interval
@@ -77,7 +78,7 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 =#
-const Δt_save = 600
+const Δt_save = 3
 
 const useGPU = false #Whether to use GPU
 const useNHS = true  #Whether to use NonhydrostaticModel
@@ -126,15 +127,19 @@ grid = RectilinearGrid(architecture,
 		                   halo = (Hx, Hy, Hz)
                       )
                       
-#Note -- will need to fix zgrid (put this all into a function)
-tallGrid = RectilinearGrid(architecture, topology = (Periodic, Periodic, Bounded), size = (Nx, Ny, Nz + 2), x = (-Lr, Lr), y = (-Lr, Lr), z = custom_z_grids[z_grid], halo = (Hx, Hy, Hz-1))
+#Note -- will need to fix zgrid (put this all into a function) and update for Chebyshev case
+tallGrid = RectilinearGrid(architecture, 
+                           topology = (Periodic, Periodic, Bounded), 
+                           size = (Nx, Ny, Nz + 2), 
+                           x = (-Lr, Lr), 
+                           y = (-Lr, Lr), 
+                           z = (-Lz - (Lz/Nz), Lz/Nz), 
+                           halo = (Hx, Hy, Hz - 1)
+                          )
                       
 size(grid.yᵃᶜᵃ)[1] > 1 ? yFlat = false : yFlat = true
 
-b̄, ū, v̄, b̄_BCs, u_BCs, v_BCs = discrete_Cartesian_TWB_ICs(grid, tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat; Hz = Hz)
-
-#b̄_BCs = buoyancy_BCs(gyreScaleParams, grid, yFlat, ambientStrat;
-#                      Hz = Hz, doubleTanhParams = doubleTanhParams)
+B_vals, Ux_vals, Uy_vals, Uz_vals, B_BCs = discrete_Cartesian_TWB_ICs(grid, tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat; Hz = Hz)
 
 #box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
 
@@ -144,9 +149,10 @@ if useNHS
                                timestepper = :RungeKutta3,
                                advection = WENO(),
                                coriolis = fPlane,
+                               pressure_solver = FourierTridiagonalPoissonSolver(grid),
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
-                               boundary_conditions = (; b = b̄_BCs, u = u_BCs, v = v_BCs)
+                               boundary_conditions = (; b = B_BCs)
                               )
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
@@ -156,36 +162,55 @@ elseif !useNHS
                                        coriolis = fPlane,
                                        tracers = (:b),
                                        buoyancy = BuoyancyTracer(),
-                                       boundary_conditions = (; b = b̄_BCs)
+                                       boundary_conditions = (; b = B_BCs)
                                       )
 end
 
-#=
-b̄     = bkgd_buoyancy(gyreScaleParams, ambientStrat;
-                       grid = model.grid, yFlat = yFlat, 
-                       doubleTanhParams = doubleTanhParams)
-ū, v̄ = bkgd_velocities(gyreScaleParams; yFlat = yFlat)
-=#
-set!(model, u = ū, v = v̄, b = b̄)
+#Note: we must 'set!' in separate lines because we are setting with Fields, not
+# functions.
+set!(model.velocities.u, Ux_vals)
+set!(model.velocities.v, Uy_vals)
+set!(model.velocities.w, Uz_vals)
+set!(model.tracers.b, B_vals)
 
 pHY_initial = no_offset_view(adapt(Array, model.pressures.pHY′))[:, 25, :]
 pNHS_initial = no_offset_view(adapt(Array, model.pressures.pNHS))[:, 25, :]
 
-fig  = Figure(size = (1200, 600))
+fig  = Figure(size = (1800, 600))
 ax_HY = Axis(fig[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
                title = "Initial hydrostatic pressure anomaly")
 ax_NHS = Axis(fig[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
                title = "Initial NHS pressure")
+ax_b = Axis(fig[1, 3], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", title = "Initial buoyancy")
 
 hm_HY = heatmap!(ax_HY, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), pHY_initial, colormap = :balance)
 hm_NHS = heatmap!(ax_NHS, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), pNHS_initial, colormap = :balance)
+hm_b = heatmap!(ax_b, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.tracers.b))[:, 25, :], colormap = :balance)
 
 Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "", 
             vertical = false, width = Relative(3/4))
 Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "", 
             vertical = false, width = Relative(3/4))
+Colorbar(fig[2, 3], hm_b, tickformat = "{:.1e}", label = "", vertical = false, width = Relative(3/4))
             
-save(joinpath("./Plots", "ptest.png"), fig)
+save(joinpath("./Plots", "ptest_initial.png"), fig)
+
+@compute hdiv_initial = Field(∂x(model.velocities.u) + ∂y(model.velocities.v))
+@compute vdiv_initial = Field(∂z(model.velocities.w))
+
+fig_div = Figure(size = (1200, 600))
+ax_hdiv = Axis(fig_div[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = L"Initial $\nabla_h \cdot \vec{u}$ [1/s]")
+ax_vdiv = Axis(fig_div[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = L"Initial $\partial_z w$ [1/s]")
+               
+hm_hdiv = heatmap!(ax_hdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, hdiv_initial))[:, 25, :], colormap = :balance)
+hm_vdiv = heatmap!(ax_vdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, vdiv_initial))[:, 25, :], colormap = :balance)
+
+Colorbar(fig_div[2, 1], hm_hdiv, vertical = false)
+Colorbar(fig_div[2, 2], hm_vdiv, vertical = false)
+
+save(joinpath("./Plots", "div_initial.png"), fig_div)
 
 #Print warnings if the respective instabilities are present
 check_inertial_stability(model.grid, f, model.velocities.u, model.velocities.v)
@@ -210,28 +235,24 @@ Ur        = CenterField(model.grid)
 Uφ        = CenterField(model.grid)
 Uz        = ZFaceField(model.grid)
 B         = CenterField(model.grid;
-                        boundary_conditions = discrete_Cartesian_TWB_ICs(grid, tallGrid, gyreScaleParams, 
-                                    bkgd_Ψ_cylindrical_coords, ambientStrat;
-                                    Hz = Hz, includeDefaultBCs = true))
-                        
-                        #= buoyancy_BCs(gyreScaleParams, 
-                         grid, yFlat, ambientStrat; 
-                         Hz = Hz, 
-                         doubleTanhParams = doubleTanhParams, 
-                         includeDefaultBCs = true)
-                       ) =#
+                        boundary_conditions = discrete_Cartesian_TWB_ICs(grid,
+                           tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords,
+                           ambientStrat;
+                           Hz = Hz, includeDefaultBCs = true)
+                       )
+
 Q_Ertel   = CenterField(model.grid)
 Q_QG      = CenterField(model.grid)
 ∂rQ_Ertel = CenterField(model.grid)
 ∂rQ_QG    = CenterField(model.grid)
 
 #Prescribe background values to those fields
-set!(Ux, ū)
-set!(Uy, v̄)
+set!(Ux, Ux_vals)
+set!(Uy, Uy_vals)
 set!(Ur, Ur_vals)
 set!(Uφ, Uφ_vals)
-set!(Uz, model.velocities.w)
-set!(B, b̄)
+set!(Uz, Uz_vals)
+set!(B, B_vals)
 
 fill_halo_regions!(B, model.clock, B)
 #Note: this syntax is necessary because 'B' isn't a prognostic field of 'model'
@@ -262,7 +283,7 @@ set!(∂rQ_QG, cos(φ_ccc_vals) * ∂x(Q_QG) + sin(φ_ccc_vals) * ∂y(Q_QG))
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-
+#=
 #Add random perturbations to horizontal velocity components
 
 @inline u_perturbed(x, y, z) = @inbounds (ū(x, y, z)
@@ -281,8 +302,8 @@ end
                                             )
                                          )
 
-#set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
-
+set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
+=#
 simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
@@ -291,15 +312,32 @@ simulation = Simulation(model;
                        )
 
 function progress(sim)
-   umax = maximum(abs, sim.model.velocities.u)
-   wmax = maximum(abs, sim.model.velocities.w)
-   bmax = maximum(abs, sim.model.tracers.b)
-   pmax = maximum(abs, sim.model.pressures.pNHS)
+
+   u_absmax             = maximum(abs, sim.model.velocities.u)
+   w_absmax             = maximum(abs, sim.model.velocities.w)
+   b_absmax             = maximum(abs, sim.model.tracers.b)
+   pNHS_absmax          = maximum(abs, sim.model.pressures.pNHS)
+   interior_pNHS_absmax = maximum(abs, interior(sim.model.pressures.pNHS))
+   interior_pNHS_absmin = minimum(abs, interior(sim.model.pressures.pNHS))
+   interior_hdiv_absmax = maximum(abs, interior(∂x(sim.model.velocities.u) 
+                                                + ∂y(sim.model.velocities.v)
+                                               )
+                                 )
+   interior_vdiv_absmax = maximum(abs, interior(∂z(sim.model.velocities.w)))
+   
    @info @sprintf("Iter: %d; time: %.2e days; Δt: %s",
 		  iteration(sim), (time(sim)/day),  prettytime(sim.Δt))
-   @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e", umax, wmax, bmax)
-   @info @sprintf("max |pNHS|: %.2e", pmax)
+   @info @sprintf("max|u|: %.2e; max|w|: %.2e; max|b|: %.2e", 
+                  u_absmax, w_absmax, b_absmax)
+   @info @sprintf("max|pNHS|: %.2e", pNHS_absmax)
+   @info @sprintf("max|pNHS| in interior: %.2e", interior_pNHS_absmax)
+   @info @sprintf("min|pNHS| in interior: %.2e", interior_pNHS_absmin)
+   @info @sprintf("max|horizontal divergence of velocity| in interior: %.2e",
+                  interior_hdiv_absmax)
+   @info @sprintf("max|vertical divergence of velocity| in interior: %.2e", 
+                  interior_vdiv_absmax)
    @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
+   
    return nothing
 end
 
@@ -419,7 +457,6 @@ run!(simulation; pickup = false)
 
 duration = canonicalize(now() - datetimestart)
 
-#=
 #Append zeros to filenames so they can be accessed in chronological order
 pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
@@ -443,10 +480,46 @@ open(logfilepath, "w") do file
    write(file, "Simulation runtime = $(duration) \n")
    write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
 end
-=#
+
 #####################
 # RUN VISUALIZATION #
 #####################
+
+pHY_final = no_offset_view(adapt(Array, interior(model.pressures.pHY′)))[:, 25, :]
+pNHS_final = no_offset_view(adapt(Array, interior(model.pressures.pNHS)))[:, 25, :]
+
+fig  = Figure(size = (1200, 600))
+ax_HY = Axis(fig[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = "Final hydrostatic pressure anomaly")
+ax_NHS = Axis(fig[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = "Final NHS pressure")
+
+hm_HY = heatmap!(ax_HY, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], pHY_final, colormap = :balance)
+hm_NHS = heatmap!(ax_NHS, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], pNHS_final, colormap = :balance)
+
+Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "", 
+            vertical = false, width = Relative(3/4))
+Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "", 
+            vertical = false, width = Relative(3/4))
+            
+save(joinpath("./Plots", "ptest_final.png"), fig)
+
+@compute hdiv_final = Field(∂x(model.velocities.u) + ∂y(model.velocities.v))
+@compute vdiv_final = Field(∂z(model.velocities.w))
+
+fig_div = Figure(size = (1200, 600))
+ax_hdiv = Axis(fig_div[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = L"Final $\nabla_h \cdot \vec{u}$ [1/s]")
+ax_vdiv = Axis(fig_div[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
+               title = L"Final $\partial_z w$ [1/s]")
+               
+hm_hdiv = heatmap!(ax_hdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, hdiv_final))[:, 25, :], colormap = :balance)
+hm_vdiv = heatmap!(ax_vdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, vdiv_final))[:, 25, :], colormap = :balance)
+
+Colorbar(fig_div[2, 1], hm_hdiv, vertical = false)
+Colorbar(fig_div[2, 2], hm_vdiv, vertical = false)
+
+save(joinpath("./Plots", "div_final.png"), fig_div)
 
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Uφ; 

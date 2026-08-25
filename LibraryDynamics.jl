@@ -313,8 +313,8 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    @compute tempTall_∂Ψ∂x_cfc_Field    = Field(∂x(tempTall_Ψ_ffc_Field))
    @compute tempTall_∂Ψ∂y_fcc_Field    = Field(∂y(tempTall_Ψ_ffc_Field))
    @compute tempTall_∂Ψ∂z_ccc_Field    = Field(∂z(tempTall_Ψ_ccf_Field))
-   @compute tempTall_∂2Ψ∂z∂x_cff_Field = Field(∂z(tempTall_∂Ψ∂x_cfc_Field))
-   @compute tempTall_∂2Ψ∂z∂y_fcf_Field = Field(∂z(tempTall_∂Ψ∂y_fcc_Field))
+   #@compute tempTall_∂2Ψ∂z∂x_cff_Field = Field(∂z(tempTall_∂Ψ∂x_cfc_Field))
+   #@compute tempTall_∂2Ψ∂z∂y_fcf_Field = Field(∂z(tempTall_∂Ψ∂y_fcc_Field))
    @compute tempTall_∂2Ψ∂z2_ccf_Field  = Field(∂z(tempTall_∂Ψ∂z_ccc_Field))
    
    #We now need to impose constancy of the first derivatives of Ψ across the top
@@ -325,11 +325,19 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    # derivative Fields before we can diagnose the thermal-wind-balanced buoyancy
    # and velocity.
    
-   ∂2Ψ∂z∂x_top = @view tempTall_∂2Ψ∂z∂x_cff_Field[:, :, (end - Hz)]
-   ∂2Ψ∂z∂x_bot = @view tempTall_∂2Ψ∂z∂x_cff_Field[:, :, 2]
+   ###
+   @compute tempTall_∂Ψ∂x_fcf_Field    = Field(∂x(tempTall_Ψ_ccf_Field))
+   @compute tempTall_∂Ψ∂y_cff_Field    = Field(∂y(tempTall_Ψ_ccf_Field))
+   
+   @compute tempTall_∂2Ψ∂z∂x_fcc_Field = Field(∂z(tempTall_∂Ψ∂x_fcf_Field))
+   @compute tempTall_∂2Ψ∂z∂y_cfc_Field = Field(∂z(tempTall_∂Ψ∂y_cff_Field))
+   ###
+   
+   ∂2Ψ∂z∂x_east = @view tempTall_∂2Ψ∂z∂x_fcc_Field[(end - Hz), :, :]
+   ∂2Ψ∂z∂x_west = @view tempTall_∂2Ψ∂z∂x_fcc_Field[2, :, :]
 
-   ∂2Ψ∂z∂y_top = @view tempTall_∂2Ψ∂z∂y_fcf_Field[:, :, (end - Hz)]
-   ∂2Ψ∂z∂y_bot = @view tempTall_∂2Ψ∂z∂y_fcf_Field[:, :, 2]
+   ∂2Ψ∂z∂y_north = @view tempTall_∂2Ψ∂z∂y_cfc_Field[:, (end - Hz), :]
+   ∂2Ψ∂z∂y_south = @view tempTall_∂2Ψ∂z∂y_cfc_Field[:, 2, :]
    
    ∂2Ψ∂z2_top = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
    ∂2Ψ∂z2_bot = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, 2]
@@ -360,6 +368,18 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    @compute u_TWB = Field(u_TWB_op)
    @compute v_TWB = Field(v_TWB_op)
    
+   @compute ∂u∂x_TWB = Field(∂x(u_TWB))
+   @compute ∂v∂y_TWB = Field(∂y(v_TWB))
+
+   @inline ∂w∂z_TWB_ccc(i, j, k, g) = @inbounds -∂u∂x_TWB[i, j, k] - ∂v∂y_TWB[i, j, k]
+   @inline w_TWB_ccf(i, j, k, g) = @inbounds ∂w∂z_TWB_ccc(i, j, k, g) * Δzᶜᶜᶜ(i, j, k, g)
+   
+   w_TWB_op = KernelFunctionOperation{Center, Center, Face}(w_TWB_ccf, simGrid)
+   
+   @compute w_TWB = Field(w_TWB_op)
+   
+   print(adapt(Array, w_TWB)[25, :, 1])
+   
    @inline b_linear_ccc(i, j, k, g) = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
    @inline b_TWB_ccc(i, j, k, g) = @inbounds gyreParams.f * tempTall_∂Ψ∂z_ccc_Field[i, j, (k + 1)]
 
@@ -370,8 +390,12 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
       
       @compute b_total = Field(b_linear_op + b_TWB_op)
 
-      ∂b∂z_TWB_top = @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
-      ∂b∂z_TWB_bot = @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
+      ∂b∂z_TWB_top   = @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
+      ∂b∂z_TWB_bot   = @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
+      ∂b∂x_TWB_east  = @. gyreParams.f * ∂2Ψ∂z∂x_east
+      ∂b∂x_TWB_west  = @. gyreParams.f * ∂2Ψ∂z∂x_west
+      ∂b∂y_TWB_north = @. gyreParams.f * ∂2Ψ∂z∂y_north
+      ∂b∂y_TWB_south = @. gyreParams.f * ∂2Ψ∂z∂y_south
    end
    
    if includeDefaultBCs #Return conditions, even defaults, on all boundaries
@@ -391,12 +415,12 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    
       b_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_TWB_top),
                                           bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
-      u_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂2Ψ∂z∂y_top), 
-                                          bottom = GradientBoundaryCondition(∂2Ψ∂z∂y_bot))
-      v_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(-∂2Ψ∂z∂x_top),
-                                          bottom = GradientBoundaryCondition(-∂2Ψ∂z∂x_bot))
+      #u_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂2Ψ∂z∂y_top), 
+      #                                    bottom = GradientBoundaryCondition(∂2Ψ∂z∂y_bot))
+      #v_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(-∂2Ψ∂z∂x_top),
+      #                                    bottom = GradientBoundaryCondition(-∂2Ψ∂z∂x_bot))
       
-      return b_total, u_TWB, v_TWB, b_TWB_BCs, u_TWB_BCs, v_TWB_BCs
+      return b_total, u_TWB, v_TWB, w_TWB, b_TWB_BCs #, u_TWB_BCs, v_TWB_BCs
    end
 end
 
