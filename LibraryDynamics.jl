@@ -292,7 +292,8 @@ end
 
 function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams, 
                                     cylindrical_Ψ_anon_function, ambientStrat;
-                                    Hz = 3, includeDefaultBCs = false)
+                                    Hz = 3, includeDefaultBCs = false,
+                                    visualizePsi = false)
 
    cylindrical_Ψ_function = cylindrical_Ψ_anon_function(gyreParams)
 
@@ -331,33 +332,22 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    
    @compute tempTall_∂2Ψ∂z∂x_fcc_Field = Field(∂z(tempTall_∂Ψ∂x_fcf_Field))
    @compute tempTall_∂2Ψ∂z∂y_cfc_Field = Field(∂z(tempTall_∂Ψ∂y_cff_Field))
-   ###
    
    ∂2Ψ∂z∂x_east = @view tempTall_∂2Ψ∂z∂x_fcc_Field[(end - Hz), :, :]
    ∂2Ψ∂z∂x_west = @view tempTall_∂2Ψ∂z∂x_fcc_Field[2, :, :]
 
    ∂2Ψ∂z∂y_north = @view tempTall_∂2Ψ∂z∂y_cfc_Field[:, (end - Hz), :]
    ∂2Ψ∂z∂y_south = @view tempTall_∂2Ψ∂z∂y_cfc_Field[:, 2, :]
+   ###
    
    ∂2Ψ∂z2_top = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
    ∂2Ψ∂z2_bot = @view tempTall_∂2Ψ∂z2_ccf_Field[:, :, 2]
 
-   fig = Figure(size = (1400, 700))
-   ax0 = Axis(fig[1, 1], xlabel = "Psi", ylabel = L"$z$ [m]")
-   ax1 = Axis(fig[1, 2], xlabel = "dPsi/dz", ylabel = L"$z$ [m]")
-   ax2 = Axis(fig[1, 3], xlabel = "d2Psi/dz2", ylabel = L"$z$ [m]")
-
-   lines!(ax0, no_offset_view(adapt(Array, tempTall_Ψ_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "Ψ_ccf_Field")
-   scatter!(ax0, no_offset_view(adapt(Array, tempTall_Ψ_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "Ψ_ccf_Field (at gridpoints)")
-   
-   lines!(ax1, no_offset_view(adapt(Array, tempTall_∂Ψ∂z_ccc_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), label = "∂Ψ∂z_ccc_Field")
-   scatter!(ax1, no_offset_view(adapt(Array, tempTall_∂Ψ∂z_ccc_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), label = "∂Ψ∂z_ccc_Field (at gridpoints)")
-
-   lines!(ax2, no_offset_view(adapt(Array, tempTall_∂2Ψ∂z2_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "∂2Ψ∂z2_ccf_Field")
-   scatter!(ax2, no_offset_view(adapt(Array, tempTall_∂2Ψ∂z2_ccf_Field[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "∂2Ψ∂z2_ccf_Field (at gridpoints)")
-   lines!(ax2, no_offset_view(adapt(Array, Field(∂z(tempTall_∂Ψ∂z_ccc_Field))[28, 28, :])), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)))
-   
-   save(joinpath("./Plots", "testPsi.png"), fig)
+   if visualizePsi
+      visualize_Ψ_and_z_derivs(simGrid, tempTall_Ψ_ccf_Field, 
+                               tempTall_∂Ψ∂z_ccc_Field, 
+                               tempTall_∂2Ψ∂z2_ccf_Field)
+   end
    
    @inline u_TWB_fcc(i, j, k, g) = @inbounds tempTall_∂Ψ∂y_fcc_Field[i, j, (k + 1)]
    @inline v_TWB_cfc(i, j, k, g) = @inbounds -tempTall_∂Ψ∂x_cfc_Field[i, j, (k + 1)]
@@ -377,8 +367,6 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    w_TWB_op = KernelFunctionOperation{Center, Center, Face}(w_TWB_ccf, simGrid)
    
    @compute w_TWB = Field(w_TWB_op)
-   
-   print(adapt(Array, w_TWB)[25, :, 1])
    
    @inline b_linear_ccc(i, j, k, g) = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
    @inline b_TWB_ccc(i, j, k, g) = @inbounds gyreParams.f * tempTall_∂Ψ∂z_ccc_Field[i, j, (k + 1)]
@@ -415,12 +403,8 @@ function discrete_Cartesian_TWB_ICs(simGrid, tallGrid, gyreParams,
    
       b_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_TWB_top),
                                           bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
-      #u_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂2Ψ∂z∂y_top), 
-      #                                    bottom = GradientBoundaryCondition(∂2Ψ∂z∂y_bot))
-      #v_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(-∂2Ψ∂z∂x_top),
-      #                                    bottom = GradientBoundaryCondition(-∂2Ψ∂z∂x_bot))
       
-      return b_total, u_TWB, v_TWB, w_TWB, b_TWB_BCs #, u_TWB_BCs, v_TWB_BCs
+      return b_total, u_TWB, v_TWB, w_TWB, b_TWB_BCs
    end
 end
 
