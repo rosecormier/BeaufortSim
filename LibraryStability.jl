@@ -65,7 +65,7 @@ function check_inertial_stability(grid, f, u, v;
       fig = Figure(size = (500, 400))
       ax  = Axis(fig[2, 1]; axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ζz_abs_slice,
-	                   colorrange = get_range_lims(ζz_abs_slice), colormap = :balance)
+	                   colorrange = get_symm_range_lims(ζz_abs_slice), colormap = :balance)
 
       Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s")
 
@@ -135,7 +135,7 @@ function check_gravitational_stability(b, grid;
       fig = Figure(size = (500, 400))
       ax  = Axis(fig[2, 1]; axis_kwargs...)
       hm  = heatmap!(ax, h_dim, v_dim, ∂b∂z_slice,
-                     colorrange = get_range_lims(∂b∂z_slice), 
+                     colorrange = get_symm_range_lims(∂b∂z_slice), 
                      colormap = :balance)
 
       Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "1/s²")

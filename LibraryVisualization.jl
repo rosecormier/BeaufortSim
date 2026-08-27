@@ -1,17 +1,171 @@
 using Adapt, CUDA, Glob, LinearAlgebra, NCDatasets
 using Oceananigans.AbstractOperations, Oceananigans.Fields
 
+###########################################################################
+# HELPER FUNCTIONS TO PLOT 2D SLICES OF PRIMITIVE OR DIAGNOSTIC VARIABLES #
+###########################################################################
+
+function get_symm_range_lims(scalar_field; 
+                             max_fraction = 1, prescribed_max = 1e-16)
+   #=
+   Given a scalar field, extract appropriate limits for a colorbar that is
+    symmetric about 0.
+   Scale the absolute maximum of the data by 'max_fraction'.
+   If the absolute maximum of the data is less than 'prescribed_max', treat
+    'prescribed_max' as the absolute maximum of the data instead.
+   =#
+   
+   field_max  = max(maximum(abs.(scalar_field)), prescribed_max)
+   field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
+end
+
+function get_2D_spatial_axis_idcs(const_dimension;
+                                  Hx = 3, Hy = 3, Hz = 3,
+		                              x_idx = nothing, 
+                                  y_idx = nothing, 
+                                  z_idx = nothing,
+				                          xC = nothing, yC = nothing, zC = nothing,
+                      				    zF = nothing)         
+   #=
+   Return two arrays of coordinate indices partitioning a 2D slice (constant
+    along 'const_dimension').
+   The first array can be used to project a field located at
+    (Center, Center, Center)-points onto the 2D slice; the second array can be
+    used to project a field located at (Center, Center, Face)-points onto the 2D
+    slice.
+   =#
+
+   if const_dimension == "x"
+
+      if isnothing(x_idx) #Grid is 2D with only y and z axes
+         yCzC_idcs = (1, 
+                      (Hy + 1):(length(yC) + Hy - 1), 
+                      (Hz + 1):(length(zC) + Hz)
+                     )
+         yCzF_idcs = (1, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zF) + Hz)
+                     ) 
+      else #Grid is 3D
+         yCzC_idcs = (x_idx, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zC) + Hz)
+                     )
+         yCzF_idcs = (x_idx, 
+                      (Hy + 1):(length(yC) + Hy), 
+                      (Hz + 1):(length(zF) + Hz)
+                     )
+      end
+
+      return yCzC_idcs, yCzF_idcs
+
+   elseif const_dimension == "y"
+
+      if isnothing(y_idx) #Grid is 2D with only x and z axes
+         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      1, 
+                      (Hz + 1):(length(zC) + Hz)
+                     )
+         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      1, 
+                      (Hz + 1):(length(zF) + Hz)
+                     )
+      else #Grid is 3D
+         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      y_idx, 
+                      (Hz + 1):(length(zC) + Hz)
+                     )
+         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      y_idx, 
+                      (Hz + 1):(length(zF) + Hz)
+                     )
+      end
+
+      return xCzC_idcs, xCzF_idcs
+
+   elseif const_dimension == "z"
+
+      if isnothing(z_idx) #Grid is 2D with only x and y axes
+         xCyC_idcs = ((Hx + 1):(length(xC) + Hx), 
+                      (Hy + 1):(length(yC) + Hy),
+                      1
+                     )
+      else #Grid is 3D
+         xCyC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+                      (Hy + 1):(length(yC) - (2 * Hy)), 
+                      (z_idx - Hz)
+                     )
+      end
+
+      return xCyC_idcs, xCyC_idcs #zC or zF is irrelevant on a constant-z slice
+   end
+end
+
+#function get_2D_spatial_axis_kwargs(x, y, z, const_dimension_idx)#;
+#                                    #x_idx = nothing,#
+#				                            #y_idx = nothing,
+#                                   #z_idx = nothing)
+
+function get_2D_spatial_axis_kwargs(const_dimension, const_dimension_idx, const_dimension_coords)
+   #=
+   Return the rounded-off value of the constant dimension at the specified
+    index.
+   Also return a tuple of axis labels for plots on a 2D slice.
+   =#
+
+   if const_dimension == "x"
+      nearest     = round(Int, const_dimension_coords[const_dimension_idx])
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
+   elseif const_dimension == "y"
+      nearest     = round(Int, const_dimension_coords[const_dimension_idx])
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
+   elseif const_dimension == "z"
+      nearest     = round(const_dimension_coords[const_dimension_idx],
+                          digits = 2)
+      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
+   end
+
+   #nearest = 0
+
+   #=
+   if !isnothing(x_idx)
+      const_dim = "x"
+      nearest   = round(Int, x[x_idx])
+   elseif !isnothing(y_idx)
+      const_dim = "y"
+      nearest   = round(Int, y[y_idx])
+   elseif !isnothing(z_idx)
+      const_dim = "z"
+      nearest   = round(z[z_idx], digits = 2)
+   end
+
+   if const_dim == "x"
+      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
+   elseif const_dim == "y"
+      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
+   elseif const_dim == "z"
+      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
+   end
+   =#
+   
+   return nearest, axis_kwargs
+end
+
 #################################
 # FINITE-DIFFERENCING FUNCTIONS #
 #################################
 
 function order1_forward_difference(t, u)
+   #=
+   Compute du/dt by first-order forward-differencing.
+   =#
+   
    return @. (u[2:end] - u[1:end-1]) / (t[2:end] - t[1:end-1])
 end
 
 function centered_difference(t, u)
    #=
-   Compute centered-difference derivative of u w.r.t. t.
+   Compute du/dt by centered-differencing.
    =#
 
    u_i         = u[2:end-1]
@@ -329,7 +483,7 @@ function open_scalars_dataset(scalarfilename)
    return scalars_ds, t, Nt, chronological_indices
 end
 
-#######################################
+###################################
 
 function ζa_b(U, f, σr, σz, x, y, z)
    r2_arr = @. x^2 + y^2
@@ -389,98 +543,6 @@ function empirical_growth_rate(t, perturb_norm; differencing = "forward")
       new_t       = t[2:end-1]
    end
    return new_t, growth_rate
-end
-
-function get_range_lims(final_field; max_fraction = 1, prescribed_max = 1e-16)
-   field_max  = max(maximum(abs.(final_field)), prescribed_max)
-   field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
-end
-
-function get_2D_spatial_axis_idcs(const_dim;
-                                  Hx = 3, Hy = 3, Hz = 3,
-		                              x_idx = nothing, y_idx = nothing, z_idx = nothing,
-				                          xC = nothing, yC = nothing, zC = nothing,
-                      				    zF = nothing)
-
-   if const_dim == "x"
-
-      if isnothing(x_idx) #Grid is 2D with only y and z axes
-         yCzC_idcs = (1, 
-                      (Hy + 1):(length(yC) + Hy - 1), 
-                      (Hz + 1):(length(zC) + Hz))
-         yCzF_idcs = (1, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zF) + Hz)) 
-      else #Grid is 3D
-         yCzC_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zC) + Hz))
-         yCzF_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zF) + Hz))
-      end
-
-      return yCzC_idcs, yCzF_idcs
-
-   elseif const_dim == "y"
-
-      if isnothing(y_idx) #Grid is 2D with only x and z axes
-         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
-                      1, 
-                      (Hz + 1):(length(zC) + Hz))
-         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
-                      1, 
-                      (Hz + 1):(length(zF) + Hz))
-      else #Grid is 3D
-         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
-                      y_idx, 
-                      (Hz + 1):(length(zC) + Hz))
-         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
-                      y_idx, 
-                      (Hz + 1):(length(zF) + Hz))
-      end
-
-      return xCzC_idcs, xCzF_idcs
-
-   elseif const_dim == "z"
-
-      if isnothing(z_idx) #Grid is 2D with only x and y axes
-         xCyC_idcs = (Hx+1:length(xC)+Hx, Hy+1:length(yC)+Hy, 1)
-      else #Grid is 3D
-         xCyC_idcs = (Hx+1:length(xC)-2*Hx, Hy+1:length(yC)-2*Hy, z_idx-Hz)
-      end
-
-      return xCyC_idcs, xCyC_idcs
-   end
-end
-
-function get_2D_spatial_axis_kwargs(x, y, z, const_dim;
-                                    x_idx = nothing,
-				                            y_idx = nothing,
-                                    z_idx = nothing)
-
-   nearest = 0
-
-   if !isnothing(x_idx)
-      const_dim = "x"
-      nearest   = round(Int, x[x_idx])
-   elseif !isnothing(y_idx)
-      const_dim = "y"
-      nearest   = round(Int, y[y_idx])
-   elseif !isnothing(z_idx)
-      const_dim = "z"
-      nearest   = round(z[z_idx], digits = 2)
-   end
-
-   if const_dim == "x"
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
-   elseif const_dim == "y"
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
-   elseif const_dim == "z"
-      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
-   end
-   
-   return nearest, axis_kwargs
 end
 
 #=
