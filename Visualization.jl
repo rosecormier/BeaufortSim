@@ -972,10 +972,10 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
-   B  = no_offset_view(adapt(Array, B))[xyzC_idcs...]
-   Ur = no_offset_view(adapt(Array, Ur))[xyzC_idcs...]
-   Uφ = no_offset_view(adapt(Array, Uφ))[xyzC_idcs...]
-   Uz = no_offset_view(adapt(Array, Uz))[xyzF_idcs...]
+   B  = adapt(Array, B)[xyzC_idcs...]
+   Ur = adapt(Array, Ur)[xyzC_idcs...]
+   Uφ = adapt(Array, Uφ)[xyzC_idcs...]
+   Uz = adapt(Array, Uz)[xyzF_idcs...]
 
    b_total_i  = adapt(Array, ds_i[:b])[xyzC_idcs..., chron_idcs[1]]
    b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., chron_idcs[Nt]]
@@ -1063,9 +1063,7 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       end
 
       ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
-                                                             Hx = Hx,
-                                                             Hy = Hy, 
-                                                             Hz = Hz)
+                                                      Hx = Hx, Hy = Hy, Hz = Hz)
 
       n = Observable(1)
 
