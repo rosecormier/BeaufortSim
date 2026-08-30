@@ -158,7 +158,7 @@ end
 @inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
 
 #Function to compute 2-norm of a perturbation field
-@inline perturbation_norm(field, bkgd_field) = norm(field - bkgd_field)
+@inline perturbation_norm(field, bkgd_field) = @inbounds norm(field - bkgd_field)
 
 #Function to compute square of a perturbation field
 @inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
