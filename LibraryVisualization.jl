@@ -101,12 +101,9 @@ function get_2D_spatial_axis_idcs(const_dimension;
    end
 end
 
-#function get_2D_spatial_axis_kwargs(x, y, z, const_dimension_idx)#;
-#                                    #x_idx = nothing,#
-#				                            #y_idx = nothing,
-#                                   #z_idx = nothing)
 
-function get_2D_spatial_axis_kwargs(const_dimension, const_dimension_idx, const_dimension_coords)
+function get_2D_spatial_axis_kwargs(const_dimension, const_dimension_idx,
+                                    const_dimension_coords)
    #=
    Return the rounded-off value of the constant dimension at the specified
     index.
@@ -125,30 +122,104 @@ function get_2D_spatial_axis_kwargs(const_dimension, const_dimension_idx, const_
       axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
    end
 
-   #nearest = 0
+   return nearest, axis_kwargs
+end
 
+function set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs, ax_titles)
+                                                
+   fig = Figure(size = (1200, 800))
+   
+   ax_b  = Axis(fig[2, 1]; title = ax_titles["b"], ax_kwargs...)
+   ax_ur = Axis(fig[2, 3]; title = ax_titles["ur"], ax_kwargs...) 
+   ax_uφ = Axis(fig[3, 1]; title = ax_titles["uφ"], ax_kwargs...)
+   ax_uz = Axis(fig[3, 3]; title = ax_titles["uz"], ax_kwargs...)
+   
+   return fig, ax_b, ax_ur, ax_uφ, ax_uz
+end
+
+function plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, ax_uφ, ax_uz, dictFields,
+                                        axis1, axis2_zC, axis2_zF, colorranges,
+                                        colormap)
+                                        
+   b, ur, uφ, uz = dictFields["b"], dictFields["ur"], dictFields["uφ"], dictFields["uz"]
+
+   hm_b  = heatmap!(ax_b, axis1, axis2_zC, b, colorrange = colorranges["b"], 
+                    colormap = colormap)
+   hm_ur = heatmap!(ax_ur, axis1, axis2_zC, ur, colorrange = colorranges["ur"],
+                    colormap = colormap)
+   hm_uφ = heatmap!(ax_uφ, axis1, axis2_zC, uφ, colorrange = colorranges["uφ"], 
+                    colormap = colormap)
+   hm_uz = heatmap!(ax_uz, axis1, axis2_zF, uz, colorrange = colorranges["uz"], 
+                    colormap = colormap)
+
+   return hm_b, hm_ur, hm_uφ, hm_uz
+end
+
+function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF, 
+                                  nearest, ax_kwargs, figtitle; 
+                                  ax_titles = Dict("b" => L"$b$", 
+                                                   "ur" => L"$u_r$", 
+                                                   "uφ" => L"$u_{\phi}$", 
+                                                   "uz" => L"$u_z$"), 
+                                  colorranges = Dict(), 
+                                  colormap = Reverse(:RdBu_5))
    #=
-   if !isnothing(x_idx)
-      const_dim = "x"
-      nearest   = round(Int, x[x_idx])
-   elseif !isnothing(y_idx)
-      const_dim = "y"
-      nearest   = round(Int, y[y_idx])
-   elseif !isnothing(z_idx)
-      const_dim = "z"
-      nearest   = round(z[z_idx], digits = 2)
-   end
-
-   if const_dim == "x"
-      axis_kwargs = (xlabel = "y [km]", ylabel = "z [km]")
-   elseif const_dim == "y"
-      axis_kwargs = (xlabel = "x [km]", ylabel = "z [km]")
-   elseif const_dim == "z"
-      axis_kwargs = (xlabel = "x [km]", ylabel = "y [km]")
-   end
+   Given arrays of data for fields b, ur, uφ, uz, plot heatmaps of all 4
+    variables, on the slice defined by "nearest" and "ax_kwargs", together in a
+    single figure.
    =#
    
-   return nearest, axis_kwargs
+   #Default to symmetric colorranges based on limits of data
+   for key in keys(dictFields)
+      if !(key in keys(colorranges))
+         colorranges[key] = get_symm_range_lims(dictFields[key])
+      end
+   end
+   
+   fig, ax_b, ax_ur, ax_uφ, ax_uz = set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs,
+                                                                   ax_titles)
+   
+   hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
+     ax_uφ, ax_uz, dictFields, axis1, axis2_zC, axis2_zF, colorranges, colormap)
+                    
+   Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 2], hm_uφ, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 4], hm_uz, tickformat = "{:.1e}", label = "m/s")
+   
+   fig[1, 1:4] = Label(fig, figtitle, fontsize = 24, tellwidth = false)
+   
+   return fig
+end
+
+function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
+                                  nearest, ax_kwargs;
+                                  ax_titles = Dict("b" => L"$b$", 
+                                                   "ur" => L"$u_r$", 
+                                                   "uφ" => L"$u_{\phi}$", 
+                                                   "uz" => L"$u_z$"),
+                                  colorranges = Dict(), 
+                                  colormap = Reverse(:RdBu_5))
+   
+   #Default to symmetric colorranges based on limits of data
+   for key in keys(dictFields)
+      if !(key in keys(colorranges))
+         colorranges[key] = get_symm_range_lims(dictFields[key])
+      end
+   end
+   
+   fig, ax_b, ax_ur, ax_uφ, ax_uz = set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs,
+                                                                   ax_titles)
+                                  
+   hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
+     ax_uφ, ax_uz, dictFields, axis1, axis2_zC, axis2_zF, colorranges, colormap)
+                    
+   Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
+   Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 2], hm_uφ, tickformat = "{:.1e}", label = "m/s")
+   Colorbar(fig[3, 4], hm_uz, tickformat = "{:.1e}", label = "m/s")
+   
+   return fig
 end
 
 #################################
