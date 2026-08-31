@@ -69,7 +69,19 @@ function polar_coords_Fields(grid, xLoc, yLoc, zLoc)
    @compute r = Field(r_op)
    @compute φ = Field(φ_op)
 
-   return(r, φ)
+   return r, φ
+end
+
+function compute_Cart_coords(r, φ, z)
+   #=
+   Given cylindrical (r, φ, z) coordinates of a point, compute its Cartesian
+    (x, y, z) coordinates.
+   =#
+   
+   x = r * cos(φ)
+   y = r * sin(φ)
+
+   return x, y, z
 end
 
 function xy_vector_to_rφ(vx, vy, grid, useGPU)
