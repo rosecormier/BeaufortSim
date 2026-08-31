@@ -1,4 +1,4 @@
-include("LibraryCoordinateTransforms.jl")
+include("LibraryCoordinates.jl")
 include("LibraryDynamics.jl")
 include("LibraryEnergetics.jl")
 include("LibraryStability.jl")
@@ -67,7 +67,7 @@ doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
 const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 21 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const tf         = 3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 #=
 #Set save interval
@@ -89,7 +89,7 @@ const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 const vis_const_x       = false
 const vis_const_y       = false
 const vis_const_z       = false
-const vis_norms         = true
+const vis_norms         = false
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
 const vis_bkgd_profiles = true
@@ -114,33 +114,19 @@ end
 
 useGPU ? architecture = GPU() : architecture = CPU()
 
-custom_z_grids = Dict("uniform"   => (-Lz, 0),
-                      "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, Nz + 1)
-                     )
+gridParams = (architecture = architecture,
+              topology = (Periodic, Periodic, Bounded),
+              Nx = Nx, Ny = Ny, Nz = Nz,
+              Hx = Hx, Hy = Hy, Hz = Hz,
+              Lr = Lr, Lz = Lz,
+              z_grid_type = z_grid)
 
-grid = RectilinearGrid(architecture,
-		                   topology = (Periodic, Periodic, Bounded),
-                       size = (Nx, Ny, Nz), 
-                       x = (-Lr, Lr), 
-                       y = (-Lr, Lr), 
-                       z = custom_z_grids[z_grid],
-		                   halo = (Hx, Hy, Hz)
-                      )
-                      
-#Note -- will need to put this all into a function and update for Chebyshev case
-tallGrid = RectilinearGrid(architecture, 
-                           topology = (Periodic, Periodic, Bounded), 
-                           size = (Nx, Ny, Nz + 2), 
-                           x = (-Lr, Lr), 
-                           y = (-Lr, Lr), 
-                           z = (-Lz - (Lz/Nz), Lz/Nz), 
-                           halo = (Hx, Hy, Hz - 1)
-                          )
-                      
+grid = build_Oceananigans_RectilinearGrid(gridParams)
+
 size(grid.yᵃᶜᵃ)[1] > 1 ? yFlat = false : yFlat = true
 
 B_vals, Ux_vals, Uy_vals, Uz_vals, B_BCs = discrete_Cartesian_TWB_ICs(
-       grid, tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat;
+       grid, gridParams, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat;
        Hz = Hz, visualizePsi = true)
 
 #box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
@@ -185,7 +171,7 @@ check_gravitational_stability(model.tracers.b, model.grid)
 ######################################################
 
 datetimestart = now()
-datetimenow   = "260830-154223" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
@@ -200,7 +186,7 @@ Uφ        = CenterField(model.grid)
 Uz        = ZFaceField(model.grid)
 B         = CenterField(model.grid;
                         boundary_conditions = discrete_Cartesian_TWB_ICs(grid,
-                           tallGrid, gyreScaleParams, bkgd_Ψ_cylindrical_coords,
+                           gridParams, gyreScaleParams, bkgd_Ψ_cylindrical_coords,
                            ambientStrat;
                            Hz = Hz, includeDefaultBCs = true)
                        )
@@ -267,7 +253,7 @@ end
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 =#
-#=
+
 simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
@@ -448,7 +434,6 @@ end
 #####################
 # RUN VISUALIZATION #
 #####################
-=#
 
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Ur, Uφ, Uz; 
@@ -494,8 +479,8 @@ if vis_bkgd_profiles
    #visualize_B_U_Q_Ψ_vs_r_and_z(model.grid, gyreScaleParams, 
    #                             doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
    #                             1e6, Lz) 
-   #visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, gyreScaleParams, 
-   #                        doubleTanhParams; yFlat = yFlat, Hz = Hz)
+   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, gyreScaleParams, 
+                           doubleTanhParams; yFlat = yFlat, Hz = Hz)
    visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
                         model.grid.xᶜᵃᵃ, model.grid.yᵃᶜᵃ, model.grid.z.cᵃᵃᶜ, 
                         model.grid.z.cᵃᵃᶠ; 
