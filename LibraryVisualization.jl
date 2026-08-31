@@ -1,4 +1,4 @@
-using Adapt, CUDA, Glob, LinearAlgebra, NCDatasets
+using Adapt, CairoMakie, CUDA, Glob, LinearAlgebra, NCDatasets
 using Oceananigans.AbstractOperations, Oceananigans.Fields
 
 ###########################################################################
