@@ -4,6 +4,7 @@ include("LibraryVisualization.jl")
 using Adapt, CairoMakie, CommonDataModel, CUDA, DataStructures
 using Glob, LaTeXStrings, NCDatasets
 using Oceananigans
+using Oceananigans.AbstractOperations
 using Oceananigans.Fields
 using Oceananigans.OutputReaders
 using OffsetArrays: no_offset_view
@@ -127,75 +128,98 @@ end
 
 ################################################################################
 
-function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, z, y_idx; 
-                              Hx = 3, Hz = 3)
-
-   x_interior = no_offset_view(adapt(Array, x))[(Hx + 1):(length(x) - Hx)]
-   z_interior = no_offset_view(adapt(Array, z))[(Hz + 1):(length(z) - Hz)]
-                                                
-   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[(Hx + 1):(length(x) - Hx),
-                                                   y_idx,
-                                                   (Hz + 1):(length(z) - Hz)]
-   Q_QG    = no_offset_view(adapt(Array, Q_QG))[(Hx + 1):(length(x) - Hx),
-                                                y_idx,
-                                                (Hz + 1):(length(z) - Hz)]
-
+function visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG, x, y, zC, zF;
+                              x_idx = nothing, y_idx = nothing, z_idx = nothing,
+                              Hx = 3, Hy = 3, Hz = 3)
+   #=
+   Plot 2D slices of Ertel & QG PVs and, in a separate figure, their 
+    r-derivatives.
+   By default, data are assumed to INCLUDE halos.
+   =#
    
-   lims_Q_Ertel = [0, maximum(abs.(Q_Ertel))]
-   lims_Q_QG    = get_symm_range_lims(Q_QG)
+   #Coordinate values in grid interior
+   x_int  = no_offset_view(adapt(Array, x))[(Hx + 1):(length(x) - Hx)]
+   y_int  = no_offset_view(adapt(Array, y))[(Hy + 1):(length(y) - Hz)]
+   zC_int = no_offset_view(adapt(Array, zC))[(Hz + 1):(length(zC) - Hz)]
+   zF_int = no_offset_view(adapt(Array, zF))[(Hz + 1):(length(zF) - Hz)]
 
-   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel)
-                             )[(Hx + 2):(length(x) - Hx - 1), 
-                               y_idx, 
-                               (Hz + 1):(length(z) - Hz)]
+   if !isnothing(x_idx)
+      const_dimension           = "x"
+      const_dimension_coords    = x_int
+      axis1, axis2_zC, axis2_zF = y_int, zC_int, zF_int
+   elseif !isnothing(y_idx)
+      const_dimension           = "y"
+      const_dimension_coords    = y_int
+      axis1, axis2_zC, axis2_zF = x_int, zC_int, zF_int
+   elseif !isnothing(z_idx)
+      const_dimension           = "z"
+      const_dimension_coords    = zC_int
+      axis1, axis2_zC, axis2_zF = x_int, y_int, y_int
+   end
+   
+   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension; 
+                              Hx = Hx, Hy = Hy, Hz = Hz, 
+                              x_idx = x_idx, y_idx = y_idx, z_idx = z_idx, 
+                              xC = no_offset_view(adapt(Array, x))[(Hx + 1):(length(x) - Hx)], 
+                              yC = no_offset_view(adapt(Array, y))[(Hy + 1):(length(y) - Hy)], 
+                              zC = no_offset_view(adapt(Array, zC))[(Hz + 1):(length(zC) - Hz)], 
+                              zF = no_offset_view(adapt(Array, zF))[(Hz + 1):(length(zF) - Hz)])
+   
+   Q_Ertel = no_offset_view(adapt(Array, Q_Ertel))[xyzC_idcs...]
+   Q_QG    = no_offset_view(adapt(Array, Q_QG))[xyzC_idcs...]
+
+   ### These need to be updated (currently they only work for slice at constant y) ###
+   ∂rQ_Ertel = no_offset_view(adapt(Array, ∂rQ_Ertel))[(Hx + 2):(length(x) - Hx - 1), y_idx, 
+                               (Hz + 1):(length(zC) - Hz)]
    ∂rQ_QG    = no_offset_view(adapt(Array, ∂rQ_QG)
                              )[(Hx + 2):(length(x) - Hx - 1),
                                y_idx, 
-                               (Hz + 1):(length(z) - Hz)]
-
-   lims_∂rQ_Ertel = get_symm_range_lims(∂rQ_Ertel)
-   lims_∂rQ_QG    = get_symm_range_lims(∂rQ_QG)
+                               (Hz + 1):(length(zC) - Hz)]
    
-   fig_Q = Figure(size = (1400, 600))
+   fig_Q    = Figure(size = (1400, 600))
+   fig_dQdr = Figure(size = (1200, 600))
    
-   ax_Q_Ertel = Axis(fig_Q[1, 1], title = L"Background-state Ertel PV, normalized by $N_{\text{far}}^2 f_0$")
-   ax_Q_QG    = Axis(fig_Q[1, 2], title = L"Background-state QG PV, normalized by $f_0$")
+   ax_Q_Ertel = Axis(fig_Q[1, 1], 
+                     title = L"Background-state Ertel PV, normalized by $N_{\text{far}}^2 f_0$")
+   ax_Q_QG    = Axis(fig_Q[1, 2], 
+                     title = L"Background-state QG PV, normalized by $f_0$")
+                     
+   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], 
+                        title = L"Background-state $\partial Q/\partial r$ (Ertel; normalized by $N_{\text{far}}^2 f_0$)")
+   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], 
+                        title = L"Background-state $\partial Q/\partial r$ (QG; normalized by $f_0$)")
    
-   hm_Q_Ertel = heatmap!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, 
-                         colorrange = lims_Q_Ertel, colormap = :amp)
-   hm_Q_QG    = heatmap!(ax_Q_QG, x_interior, z_interior, Q_QG,
-                         colorrange = lims_Q_QG, colormap = :balance)
+   hm_Q_Ertel = heatmap!(ax_Q_Ertel, axis1, axis2_zC, Q_Ertel, 
+                         colorrange = [0, maximum(abs.(Q_Ertel))], 
+                         colormap = :amp)
+   hm_Q_QG    = heatmap!(ax_Q_QG, axis1, axis2_zC, Q_QG,
+                         colorrange = get_symm_range_lims(Q_QG), 
+                         colormap = :balance)
+                         
+   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_int[2:(end - 1)], zC_int, ∂rQ_Ertel, 
+                            colorrange = get_symm_range_lims(∂rQ_Ertel), 
+                            colormap = :balance)
+   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_int[2:(end - 1)], zC_int, ∂rQ_QG, 
+                            colorrange = get_symm_range_lims(∂rQ_QG), 
+                            colormap = :balance)
    
-   contour!(ax_Q_Ertel, x_interior, z_interior, Q_Ertel, color = :yellow, 
+   contour!(ax_Q_Ertel, axis1, axis2_zC, Q_Ertel, color = :yellow, levels = 20)
+   contour!(ax_Q_QG, axis1, axis2_zC, Q_QG, color = :yellow, levels = 20)
+   
+   contour!(ax_dQdr_Ertel, x_int[2:(end - 1)], zC_int, ∂rQ_Ertel, 
+            color = :yellow, levels = 20)
+   contour!(ax_dQdr_QG, x_int[2:(end - 1)], zC_int, ∂rQ_QG, color = :yellow,
             levels = 20)
-   contour!(ax_Q_QG, x_interior, z_interior, Q_QG, color = :yellow, levels = 20)
    
    Colorbar(fig_Q[2, 1], hm_Q_Ertel, tickformat = "{:.1e}", vertical = false)
    Colorbar(fig_Q[2, 2], hm_Q_QG, tickformat = "{:.1e}", vertical = false)
-   
-   save(joinpath("./Plots", "diagnosed_Q_j$(y_idx).png"), fig_Q)
-   
-   fig_dQdr = Figure(size = (1200, 600))
-   
-   ax_dQdr_Ertel = Axis(fig_dQdr[1, 1], title = L"Background-state $\partial Q/\partial r$ (Ertel; normalized by $N_{\text{far}}^2 f_0$)")
-   ax_dQdr_QG    = Axis(fig_dQdr[1, 2], title = L"Background-state $\partial Q/\partial r$ (QG; normalized by $f_0$)")
-   
-   hm_dQdr_Ertel = heatmap!(ax_dQdr_Ertel, x_interior[2:(end - 1)], z_interior, 
-                            ∂rQ_Ertel, colorrange = lims_∂rQ_Ertel, 
-                            colormap = :balance)
-   hm_dQdr_QG    = heatmap!(ax_dQdr_QG, x_interior[2:(end - 1)], z_interior,
-                            ∂rQ_QG, colorrange = lims_∂rQ_QG, 
-                            colormap = :balance)
-   
-   contour!(ax_dQdr_Ertel, x_interior[2:(end - 1)], z_interior, ∂rQ_Ertel, 
-            color = :yellow, levels = 20)
-   contour!(ax_dQdr_QG, x_interior[2:(end - 1)], z_interior, ∂rQ_QG, 
-            color = :yellow, levels = 20)
-   
+
    Colorbar(fig_dQdr[2, 1], hm_dQdr_Ertel, tickformat = "{:.1e}", 
             vertical = false)
    Colorbar(fig_dQdr[2, 2], hm_dQdr_QG, tickformat = "{:.1e}", vertical = false)
    
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "diagnosed_Q_j$(y_idx).png"), fig_Q)
    save(joinpath("./Plots", "diagnosed_dQdr_j$(y_idx).png"), fig_dQdr)
 end
 
@@ -223,10 +247,10 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams,
    
    x      = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
    y      = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
-   zC     = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
+   zC_int = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
                           )[(Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    zC_all = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))
-   zF     = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ)
+   zF_int = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ)
                           )[(Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
    zF_all = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ))
    
@@ -238,15 +262,16 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams,
    scatter!(ax_B, B_total, zC_all, label = "Total (at gridpoints)")
    #lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
-   lines!(ax_B, b_TWB, zC, label = "Thermal-wind contribution\n(computed analytically)")
-   lines!(ax_B, N²_far .* zC, zC, label = "Linear term")
+   lines!(ax_B, b_TWB, zC_int, label = "Thermal-wind contribution\n(computed analytically)")
+   lines!(ax_B, N²_far .* zC_int, zC_int, label = "Linear term")
    
    lines!(ax_N2, ∂B∂z_total, zF_all, label = "Total")
    scatter!(ax_N2, ∂B∂z_total, zF_all, label = "Total (at gridpoints)")
    #lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
    #       label = "From double-tanh function")
-   lines!(ax_N2, ∂b∂z_TWB, zF, label = "Thermal-wind contribution\n(computed analytically)")
-   lines!(ax_N2, N²_far .+ 0 * zF, zF, label = "Linear term")
+   lines!(ax_N2, ∂b∂z_TWB, zF_int, 
+          label = "Thermal-wind contribution\n(computed analytically)")
+   lines!(ax_N2, N²_far .+ 0 * zF_int, zF_int, label = "Linear term")
    
    fig[2, 3] = Legend(fig, ax_B)
    fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
@@ -275,56 +300,24 @@ function visualize_norms(datetime;
       idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
    end
    
+   #Define range of t-indices to be plotted (this is only for readability)
+   tPlotRange = idxStartPlot:t_skip_idx:idxEndPlot
+   
    #Retain only necessary portion of 'times' data and update Nt accordingly
-   times = times[idxStartPlot:t_skip_idx:idxEndPlot]
+   times = times[tPlotRange]
    Nt    = length(times)
 
    #Load data, sorted chronologically and then restricted to plot interval
-   b′_norm  = scalars_ds[:b′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
-   ux′_norm = scalars_ds[:ux′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
-   uy′_norm = scalars_ds[:uy′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
-   ur′_norm = scalars_ds[:ur′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
-   uφ′_norm = scalars_ds[:uφ′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
-   uz′_norm = scalars_ds[:uz′_norm][chron_idcs][idxStartPlot:t_skip_idx:idxEndPlot]
+   b′_norm  = scalars_ds[:b′_norm][chron_idcs][tPlotRange]
+   ux′_norm = scalars_ds[:ux′_norm][chron_idcs][tPlotRange]
+   uy′_norm = scalars_ds[:uy′_norm][chron_idcs][tPlotRange]
+   ur′_norm = scalars_ds[:ur′_norm][chron_idcs][tPlotRange]
+   uφ′_norm = scalars_ds[:uφ′_norm][chron_idcs][tPlotRange]
+   uz′_norm = scalars_ds[:uz′_norm][chron_idcs][tPlotRange]
    
-   fig_cyl   = Figure(size = (1200, 700))
-   ax_b_cyl  = Axis(fig_cyl[2, 1]; title = L"Norm of $b'$", 
-                    xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
-                    yscale = log10)
-   ax_ur     = Axis(fig_cyl[2, 2]; title = L"Norm of $u_r'$",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u_r'||$ [m/s]",
-                    yscale = log10)
-   ax_uφ     = Axis(fig_cyl[3, 1]; title = L"Norm of $u_{\phi}'$",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u_{\phi}'||$ [m/s]",
-                    yscale = log10)
-   ax_uz_cyl = Axis(fig_cyl[3, 2]; title = L"Norm of $u_z'$",
-                    xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                    yscale = log10)
-
-   fig_Cart   = Figure(size = (1200, 700))
-   ax_b_Cart  = Axis(fig_Cart[2, 1]; title = L"Norm of $b'$",
-                     xlabel = L"$t$ [days]", ylabel = L"$||b'||$ [m/s^2]",
-                     yscale = log10)
-   ax_ux      = Axis(fig_Cart[2, 2]; title = L"Norm of $u_x'$",
-                     xlabel = L"$t$ [days]", ylabel = L"$||u_x'||$ [m/s]",
-                     yscale = log10)
-   ax_uy      = Axis(fig_Cart[3, 1]; title = L"Norm of $u_y'$",
-                     xlabel = L"$t$ [days]", ylabel = L"$||u_y'||$ [m/s]",
-                     yscale = log10)
-   ax_uz_Cart = Axis(fig_Cart[3, 2]; title = L"Norm of $u_z'$",
-                     xlabel = L"$t$ [days]", ylabel = L"$||u_z'||$ [m/s]",
-                     yscale = log10)
-
-   scatter!(ax_b_cyl, times, b′_norm, color = :black)
-   scatter!(ax_ur, times, ur′_norm, color = :black)
-   scatter!(ax_uφ, times, uφ′_norm, color = :black)
-   scatter!(ax_uz_cyl, times, uz′_norm, color = :black)
-
-   scatter!(ax_b_Cart, times, b′_norm, color = :black)
-   scatter!(ax_ux, times, ux′_norm, color = :black)
-   scatter!(ax_uy, times, uy′_norm, color = :black)
-   scatter!(ax_uz_Cart, times, uz′_norm, color = :black)
-
+   fig_cyl, ax_b_cyl, ax_ur, ax_uφ, ax_uz_cyl = set_up_fig_perturb_norms(times, b′_norm, ur′_norm, uφ′_norm, uz′_norm; growth_rate = growth_rate)
+   fig_Cart, ax_b_Cart, ax_ux, ax_uy, ax_uz_Cart = set_up_fig_perturb_norms(times, b′_norm, ur′_norm, uφ′_norm, uz′_norm; Cartesian = true, growth_rate = growth_rate)
+   
    if growth_rate == "linear_best_fit" #Plot linear fit on restricted t-interval
 
       if idxEndLinGrowth_b > 0
@@ -352,130 +345,41 @@ function visualize_norms(datetime;
       idxStartLinGrowth_uy, idxEndLinGrowth_uy = updateGrowthIdcs!(idxStartLinGrowth_uy, idxEndLinGrowth_uy)
       idxStartLinGrowth_uz, idxEndLinGrowth_uz = updateGrowthIdcs!(idxStartLinGrowth_uz, idxEndLinGrowth_uz)
 
-      b′NormFitInterval  = b′_norm[growthIdcs_b[1]:growthIdcs_b[2]]
-      ur′NormFitInterval = ur′_norm[idxStartLinGrowth_ur:idxEndLinGrowth_ur]
-      uφ′NormFitInterval = uφ′_norm[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ]
-      ux′NormFitInterval = ux′_norm[idxStartLinGrowth_ux:idxEndLinGrowth_ux]
-      uy′NormFitInterval = uy′_norm[idxStartLinGrowth_uy:idxEndLinGrowth_uy]
-      uz′NormFitInterval = uz′_norm[idxStartLinGrowth_uz:idxEndLinGrowth_uz]
-
-      b′NormLinearFitParams  = fit(times[growthIdcs_b[1]:growthIdcs_b[2]], 
-                                   log.(b′NormFitInterval), 1, var = :times)
-      ur′NormLinearFitParams = fit(times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-                                   log.(ur′NormFitInterval), 1, var = :times)
-      uφ′NormLinearFitParams = fit(times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-                                   log.(uφ′NormFitInterval), 1, var = :times)
-      ux′NormLinearFitParams = fit(times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-                                   log.(ux′NormFitInterval), 1, var = :times)
-      uy′NormLinearFitParams = fit(times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-                                   log.(uy′NormFitInterval), 1, var = :times)
-      uz′NormLinearFitParams = fit(times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-                                   log.(uz′NormFitInterval), 1, var = :times)
-   
+      #=
       @printf("Empirical growth rate:\n From b′-norm: %.5f per day\n From ur′-norm: %.5f per day\n From uφ′-norm: %.5f per day\n From ux′-norm: %.5f per day\n From uy′-norm: %.5f per day\n From uz′-norm: %.5f per day\n",
 	       b′NormLinearFitParams[1], ur′NormLinearFitParams[1],
 	       uφ′NormLinearFitParams[1], ux′NormLinearFitParams[1],
 	       uy′NormLinearFitParams[1], uz′NormLinearFitParams[1])
-
-      @inline linearFunction(fitParams, tFitInterval; offset = 2) = @. offset * 
-   				   exp(fitParams[0] + fitParams[1] * tFitInterval)
-
-      lines!(ax_b_cyl, times[growthIdcs_b[1]:growthIdcs_b[2]],
-             linearFunction(b′NormLinearFitParams, 
-                            times[growthIdcs_b[1]:growthIdcs_b[2]])
-            )
-      lines!(ax_ur, times[idxStartLinGrowth_ur:idxEndLinGrowth_ur], 
-             linearFunction(ur′NormLinearFitParams, 
-                            times[idxStartLinGrowth_ur:idxEndLinGrowth_ur])
-            )
-      lines!(ax_uφ, times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ], 
-             linearFunction(uφ′NormLinearFitParams, 
-                            times[idxStartLinGrowth_uφ:idxEndLinGrowth_uφ])
-            )
-      lines!(ax_uz_cyl, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-             linearFunction(uz′NormLinearFitParams, 
-                            times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
-            )
-
-      lines!(ax_b_Cart, times[growthIdcs_b[1]:growthIdcs_b[2]], 
-             linearFunction(b′NormLinearFitParams, 
-                            times[growthIdcs_b[1]:growthIdcs_b[2]])
-            )
-      lines!(ax_ux, times[idxStartLinGrowth_ux:idxEndLinGrowth_ux], 
-             linearFunction(ux′NormLinearFitParams, 
-                            times[idxStartLinGrowth_ux:idxEndLinGrowth_ux])
-            )
-      lines!(ax_uy, times[idxStartLinGrowth_uy:idxEndLinGrowth_uy], 
-             linearFunction(uy′NormLinearFitParams, 
-                            times[idxStartLinGrowth_uy:idxEndLinGrowth_uy])
-            )
-      lines!(ax_uz_Cart, times[idxStartLinGrowth_uz:idxEndLinGrowth_uz], 
-             linearFunction(uz′NormLinearFitParams, 
-                            times[idxStartLinGrowth_uz:idxEndLinGrowth_uz])
-            )
-
-      fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields with best linear fits", fontsize = 24, tellwidth = false)
-      fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields with best linear fits", fontsize = 24, tellwidth = false)
+      =#
+      
+      plot_growth_fit_line!(ax_b_cyl, times, growthIdcs_b, b′_norm)
+      plot_growth_fit_line!(ax_ur, times, (idxStartLinGrowth_ur, 
+                                          idxEndLinGrowth_ur), 
+                            ur′_norm)
+      plot_growth_fit_line!(ax_uφ, times, (idxStartLinGrowth_uφ, 
+                                           idxEndLinGrowth_uφ), 
+                            uφ′_norm)
+      plot_growth_fit_line!(ax_uz_cyl, times, (idxStartLinGrowth_uz, 
+                                               idxEndLinGrowth_uz), 
+                            uz′_norm)
+      
+      plot_growth_fit_line!(ax_b_Cart, times, growthIdcs_b, b′_norm)
+      plot_growth_fit_line!(ax_ux, times, (idxStartLinGrowth_ux, 
+                                           idxEndLinGrowth_ux),
+                            ux′_norm)
+      plot_growth_fit_line!(ax_uy, times, (idxStartLinGrowth_uy, 
+                                           idxEndLinGrowth_uy), 
+                            uy′_norm)
+      plot_growth_fit_line!(ax_uz_Cart, times, (idxStartLinGrowth_uz, 
+                                                idxEndLinGrowth_uz), 
+                            uz′_norm)
       
    elseif growth_rate == "timeseries" #Plot time-derivative at all t
    
-      timesGrowth, b′NormGrowthRate  = empirical_growth_rate(times, b′_norm)
-      timesGrowth, ur′NormGrowthRate = empirical_growth_rate(times, ur′_norm)
-      timesGrowth, uφ′NormGrowthRate = empirical_growth_rate(times, uφ′_norm)
-      timesGrowth, ux′NormGrowthRate = empirical_growth_rate(times, ux′_norm)
-      timesGrowth, uy′NormGrowthRate = empirical_growth_rate(times, uy′_norm)
-      timesGrowth, uz′NormGrowthRate = empirical_growth_rate(times, uz′_norm)
-      
-      growth_ax_kwargs = (ylabel = "Growth rate [1/day]", 
-                          ylabelcolor = :blue,
-                          yticklabelcolor = :blue, 
-                          backgroundcolor = :transparent, 
-                          yaxisposition = :right)
-      
-      ax_b_growth_cyl  = Axis(fig_cyl[2, 1]; growth_ax_kwargs...)
-      ax_ur_growth     = Axis(fig_cyl[2, 2]; growth_ax_kwargs...)
-      ax_uφ_growth     = Axis(fig_cyl[3, 1]; growth_ax_kwargs...)
-      ax_uz_growth_cyl = Axis(fig_cyl[3, 2]; growth_ax_kwargs...)
-
-      ax_b_growth_Cart  = Axis(fig_Cart[2, 1]; growth_ax_kwargs...)
-      ax_ux_growth      = Axis(fig_Cart[2, 2]; growth_ax_kwargs...)
-      ax_uy_growth      = Axis(fig_Cart[3, 1]; growth_ax_kwargs...)
-      ax_uz_growth_Cart = Axis(fig_Cart[3, 2]; growth_ax_kwargs...)
-   
-      hidexdecorations!(ax_b_growth_cyl)
-      hidexdecorations!(ax_ur_growth)
-      hidexdecorations!(ax_uφ_growth)
-      hidexdecorations!(ax_uz_growth_cyl)
-      hidespines!(ax_b_growth_cyl)
-      hidespines!(ax_ur_growth)
-      hidespines!(ax_uφ_growth)
-      hidespines!(ax_uz_growth_cyl)
-      #ylims!(ax_b_growth_cyl, 0, 2e-1)
-      #ylims!(ax_ur_growth, 0, 4)
-      #ylims!(ax_uφ_growth, 0, 4)
-      #ylims!(ax_uz_growth_cyl, 0, 3)
-
-      hidexdecorations!(ax_b_growth_Cart)
-      hidexdecorations!(ax_ux_growth)
-      hidexdecorations!(ax_uy_growth)
-      hidexdecorations!(ax_uz_growth_Cart)
-      hidespines!(ax_b_growth_Cart)
-      hidespines!(ax_ux_growth)
-      hidespines!(ax_uy_growth)
-      hidespines!(ax_uz_growth_Cart)
-
-      scatter!(ax_b_growth_cyl, timesGrowth, b′NormGrowthRate, color = :blue)
-      scatter!(ax_ur_growth, timesGrowth, ur′NormGrowthRate, color = :blue)
-      scatter!(ax_uφ_growth, timesGrowth, uφ′NormGrowthRate, color = :blue)
-      scatter!(ax_uz_growth_cyl, timesGrowth, uz′NormGrowthRate, color = :blue)
-      
-      lines!(ax_b_growth_Cart, timesGrowth, b′NormGrowthRate, color = :blue)
-      lines!(ax_ux_growth, timesGrowth, ux′NormGrowthRate, color = :blue)
-      lines!(ax_uy_growth, timesGrowth, uy′NormGrowthRate, color = :blue)
-      lines!(ax_uz_growth_Cart, timesGrowth, uz′NormGrowthRate, color = :blue)
-      
-      fig_cyl[1, 1:2]  = Label(fig_cyl, "Norms of perturbation fields with empirical growth rates", fontsize = 24, tellwidth = false)
-      fig_Cart[1, 1:2] = Label(fig_Cart, "Norms of perturbation fields with empirical growth rates", fontsize = 24, tellwidth = false)
+      superimpose_growth_plots!(fig_cyl, times, b′_norm, ur′_norm, uφ′_norm, 
+                                uz′_norm)
+      superimpose_growth_plots!(fig_Cart, times, b′_norm, ux′_norm, uy′_norm, 
+                                uz′_norm)
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -513,6 +417,7 @@ function visualize_total_QG_energy_budgets(datetime, grid)
                         tellwidth = false)
 
    axislegend(ax_ME)
+   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "MEbudget_$(datetime).png"), fig_ME)
    
    #Convert time to s to compute time-derivative of KE
@@ -743,8 +648,6 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
    lims_Δω = get_symm_range_lims(Δω_f_slice;
                             max_fraction = 0.75, prescribed_max = 1e-16)
 
-   mkpath("./Plots") #Make visualization directory if nonexistent
-
    #Plot static images (final frame, by default)
 
    fig_total   = Figure(size = (1200, 500))
@@ -797,6 +700,7 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
    fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
                                tellwidth = false)
 
+   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots",
                  "bzeta_total_$(const_dim)$(nearest)_tf_$(datetime).png"),
         fig_total)
@@ -916,8 +820,6 @@ end
 
 function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
 
-   mkpath("./Plots") #Make visualization directory if nonexistent
-
    zc = znodes(grid, Center())
    zf = znodes(grid, Face())
    Δz = zspacings(grid, Center())
@@ -937,6 +839,7 @@ function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
 
    rowsize!(fig.layout, 1, Relative(0.1))
 
+   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "zgrid_$(datetime).png"), fig)
 end
 
@@ -995,8 +898,6 @@ function visualize_fields_2D_slice(datetime, const_dimension,
    Δuz_i = uz_total_i .- Uz
    Δuz_f = uz_total_f .- Uz
 
-   mkpath("./Plots") #Make visualization directory if nonexistent
-
    nearest, ax_kwargs = get_2D_spatial_axis_kwargs(const_dimension,
                                                    const_dimension_idx, 
                                                    const_dimension_coords)
@@ -1042,10 +943,15 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                "uz" => L"Vertical velocity perturbation ($u_z$')")
                                          )
 
-   save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_total_i)
-   save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total_f)
-   save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_pert_i)
-   save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_pert_f)
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", 
+        "fields_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_total_i)
+   save(joinpath("./Plots", 
+        "fields_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total_f)
+   save(joinpath("./Plots", 
+        "perturbs_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_pert_i)
+   save(joinpath("./Plots",
+        "perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_pert_f)
    close(ds_i)
    close(ds_f)
 
@@ -1176,6 +1082,74 @@ end
 
 ################################################################################
 
+function plot_NonhydrostaticModel_pressures(model; x_idx = nothing, y_idx = nothing, z_idx = nothing, Hx = 3, Hy = 3, Hz = 3)
+
+   #Note: this function needs to be updated to generalize to plots on a constant-x or constant-z slice. Only handles constant-y case right now.
+
+   @at (Center, Center, Center) @compute residual = ∂z(model.pressures.pHY′) .- model.tracers.b
+
+   #Convert coordinates to km for readability
+   x  = no_offset_view(model.grid.xᶜᵃᵃ) ./ 1000
+   y  = no_offset_view(model.grid.yᵃᶜᵃ) ./ 1000
+   zC = no_offset_view(model.grid.z.cᵃᵃᶜ) ./ 1000
+   
+   #Coordinates in grid interior
+   x_int  = x[(Hx + 1):(end - Hx)]
+   y_int  = y[(Hy + 1):(end - Hy)]
+   zC_int = zC[(Hz + 1):(end - Hz)]
+
+   fig = Figure(size = (1000, 700))
+   ax  = Axis(fig[2, 1], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]")
+
+   hm = heatmap!(ax, x_int, zC_int, no_offset_view(adapt(Array, residual))[:, 25, :], colormap = :balance)
+
+   Colorbar(fig[3, 1], hm, tickformat = "{:.1e}", vertical = false)
+   
+   fig[1, 1] = Label(fig, L"$\partial p_{HY'} /\partial z - b$", 
+                     fontsize = 24, tellwidth = false)
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "hydrostatic_pressure_residual.png"), fig)
+
+   fig        = Figure(size = (2000, 700))
+   ax_HY      = Axis(fig[1, 1], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]", 
+                     title = "Hydrostatic pressure anomaly")
+   ax_NHS     = Axis(fig[1, 2], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]", 
+                     title = "Nonhydrostatic pressure")
+   ax_b       = Axis(fig[1, 3], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]",
+                     title = "Buoyancy")
+   ax_HY_int  = Axis(fig[3, 1], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]", 
+                     title = "Hydrostatic pressure anomaly, domain interior")
+   ax_NHS_int = Axis(fig[3, 2], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]", 
+                     title = "Nonhydrostatic pressure, domain interior")
+   ax_b_int   = Axis(fig[3, 3], xlabel = L"$x$ [km]", ylabel = L"$z$ [km]", 
+                     title = "Buoyancy, domain interior")
+   
+   hm_HY      = heatmap!(ax_HY, x, zC, no_offset_view(adapt(Array, model.pressures.pHY′))[:, 25, :], colormap = :balance)
+   hm_NHS     = heatmap!(ax_NHS, x, zC, no_offset_view(adapt(Array, model.pressures.pNHS))[:, 25, :], colormap = :balance)
+   hm_b       = heatmap!(ax_b, x, zC, no_offset_view(adapt(Array, model.tracers.b))[:, 25, :], colormap = :balance)
+   hm_HY_int  = heatmap!(ax_HY_int, x_int, zC_int, no_offset_view(adapt(Array, interior(model.pressures.pHY′)))[:, 25, :], colormap = :balance)
+   hm_NHS_int = heatmap!(ax_NHS_int, x_int, zC_int, no_offset_view(adapt(Array, interior(model.pressures.pNHS)))[:, 25, :], colormap = :balance)
+   hm_b_int   = heatmap!(ax_b_int, x_int, zC_int, no_offset_view(adapt(Array, interior(model.tracers.b)))[:, 25, :], colormap = :balance)
+
+   Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "m²/s²", 
+            vertical = false)
+   Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "m²/s²", 
+            vertical = false)
+   Colorbar(fig[2, 3], hm_b, tickformat = "{:.1e}", label = "m/s²", 
+            vertical = false)
+   Colorbar(fig[4, 1], hm_HY_int, tickformat = "{:.1e}", label = "m²/s²", 
+            vertical = false)
+   Colorbar(fig[4, 2], hm_NHS_int, tickformat = "{:.1e}", label = "m²/s²",
+            vertical = false)
+   Colorbar(fig[4, 3], hm_b_int, tickformat = "{:.1e}", label = "m/s²",
+            vertical = false)
+
+   save(joinpath("./Plots", "model_pressures.png"), fig)
+end
+
+################################################################################
+
 function open_computed_dataset(datetime, f)
    #=
    Produce nc file containing computed diagnostics, if it does not already
@@ -1296,7 +1270,6 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
    lims_q = get_symm_range_lims(q_f)
    
    close(ds_f)
-   mkpath("./Plots") #Make visualization directory if nonexistent
    
    nearest, ax_kwargs = get_2D_spatial_axis_kwargs(x, y, zC, const_dim;
                                                    x_idx = x_idx, 
@@ -1316,6 +1289,7 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
                             const_dim, nearest, times[Nt])
    fig_q[1, 1:2] = Label(fig_q, title_q, fontsize = 24, tellwidth = false)
 
+   mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "q_$(const_dim)$(nearest)_tf_$(datetime).png"), fig_q)
    
    #Plot animation, slicing timeseries at t_idx_skip

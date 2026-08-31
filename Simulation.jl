@@ -38,7 +38,7 @@ const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const U  = 0.0 #5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
+const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
 const σz = 300 * meter 	         #Vertical gyre length scale
 
@@ -67,7 +67,7 @@ doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
 const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 0#e3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const tf         = 21 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 #=
 #Set save interval
@@ -86,10 +86,10 @@ const useNHS = true  #Whether to use NonhydrostaticModel
 const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x       = true
+const vis_const_x       = false
 const vis_const_y       = false
-const vis_const_z       = true
-const vis_norms         = false
+const vis_const_z       = false
+const vis_norms         = true
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
 const vis_bkgd_profiles = true
@@ -152,6 +152,7 @@ if useNHS
                                advection = WENO(),
                                coriolis = fPlane,
                                pressure_solver = FourierTridiagonalPoissonSolver(grid),
+                               hydrostatic_pressure_anomaly = CenterField(grid),
                                tracers = (:b),
                                buoyancy = BuoyancyTracer(),
                                boundary_conditions = (; b = B_BCs)
@@ -168,62 +169,12 @@ elseif !useNHS
                                       )
 end
 
-#Note: we must 'set!' in separate lines because we are setting with Fields, not
-# functions.
+#Must 'set!' in separate lines because we are setting with Fields, not functions
 set!(model.velocities.u, Ux_vals)
 set!(model.velocities.v, Uy_vals)
 set!(model.velocities.w, Uz_vals)
 set!(model.tracers.b, B_vals)
 fill_halo_regions!(model.tracers.b)
-
-fig  = Figure(size = (2000, 700))
-ax_HY = Axis(fig[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Initial hydrostatic pressure anomaly")
-ax_NHS = Axis(fig[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Initial NHS pressure")
-ax_b = Axis(fig[1, 3], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", title = "Initial buoyancy")
-ax_HY_int = Axis(fig[3, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Initial hydrostatic pressure anomaly, domain interior")
-ax_NHS_int = Axis(fig[3, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Initial NHS pressure, domain interior")
-ax_b_int = Axis(fig[3, 3], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", title = "Initial buoyancy, domain interior")
-
-hm_HY = heatmap!(ax_HY, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.pressures.pHY′))[:, 25, :], colormap = :balance)
-hm_NHS = heatmap!(ax_NHS, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.pressures.pNHS))[:, 25, :], colormap = :balance)
-hm_b = heatmap!(ax_b, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.tracers.b))[:, 25, :], colormap = :balance)
-hm_HY_int = heatmap!(ax_HY_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.pressures.pHY′)))[:, 25, :], colormap = :balance)
-hm_NHS_int = heatmap!(ax_NHS_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.pressures.pNHS)))[:, 25, :], colormap = :balance)
-hm_b_int = heatmap!(ax_b_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.tracers.b)))[:, 25, :], colormap = :balance)
-
-Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[2, 3], hm_b, tickformat = "{:.1e}", label = "", vertical = false)
-Colorbar(fig[4, 1], hm_HY_int, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[4, 2], hm_NHS_int, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[4, 3], hm_b_int, tickformat = "{:.1e}", label = "", vertical = false)
-
-save(joinpath("./Plots", "ptest_initial.png"), fig)
-
-@compute hdiv_initial = Field(∂x(model.velocities.u) + ∂y(model.velocities.v))
-@compute vdiv_initial = Field(∂z(model.velocities.w))
-
-fig_div = Figure(size = (1200, 600))
-ax_hdiv = Axis(fig_div[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = L"Initial $\nabla_h \cdot \vec{u}$ [1/s]")
-ax_vdiv = Axis(fig_div[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = L"Initial $\partial_z w$ [1/s]")
-               
-hm_hdiv = heatmap!(ax_hdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, hdiv_initial))[:, 25, :], colormap = :balance)
-hm_vdiv = heatmap!(ax_vdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, vdiv_initial))[:, 25, :], colormap = :balance)
-
-Colorbar(fig_div[2, 1], hm_hdiv, vertical = false)
-Colorbar(fig_div[2, 2], hm_vdiv, vertical = false)
-
-save(joinpath("./Plots", "div_initial.png"), fig_div)
 
 #Print warnings if the respective instabilities are present
 check_inertial_stability(model.grid, f, model.velocities.u, model.velocities.v)
@@ -234,7 +185,7 @@ check_gravitational_stability(model.tracers.b, model.grid)
 ######################################################
 
 datetimestart = now()
-datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = "260830-154223" #format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
@@ -253,7 +204,6 @@ B         = CenterField(model.grid;
                            ambientStrat;
                            Hz = Hz, includeDefaultBCs = true)
                        )
-
 Q_Ertel   = CenterField(model.grid)
 Q_QG      = CenterField(model.grid)
 ∂rQ_Ertel = CenterField(model.grid)
@@ -317,6 +267,7 @@ end
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
 =#
+#=
 simulation = Simulation(model;
                         Δt = Δt,
                         stop_time = tf, 
@@ -497,61 +448,13 @@ end
 #####################
 # RUN VISUALIZATION #
 #####################
-
-fig  = Figure(size = (2000, 700))
-ax_HY = Axis(fig[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Final hydrostatic pressure anomaly")
-ax_NHS = Axis(fig[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Final NHS pressure")
-ax_b = Axis(fig[1, 3], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", title = "Final buoyancy")
-ax_HY_int = Axis(fig[3, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Final hydrostatic pressure anomaly, domain interior")
-ax_NHS_int = Axis(fig[3, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = "Final NHS pressure, domain interior")
-ax_b_int = Axis(fig[3, 3], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", title = "Final buoyancy, domain interior")
-
-hm_HY = heatmap!(ax_HY, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.pressures.pHY′))[:, 25, :], colormap = :balance)
-hm_NHS = heatmap!(ax_NHS, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.pressures.pNHS))[:, 25, :], colormap = :balance)
-hm_b = heatmap!(ax_b, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, model.tracers.b))[:, 25, :], colormap = :balance)
-hm_HY_int = heatmap!(ax_HY_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.pressures.pHY′)))[:, 25, :], colormap = :balance)
-hm_NHS_int = heatmap!(ax_NHS_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.pressures.pNHS)))[:, 25, :], colormap = :balance)
-hm_b_int = heatmap!(ax_b_int, no_offset_view(model.grid.xᶜᵃᵃ)[4:end-3], no_offset_view(model.grid.z.cᵃᵃᶜ)[4:end-3], no_offset_view(adapt(Array, interior(model.tracers.b)))[:, 25, :], colormap = :balance)
-
-Colorbar(fig[2, 1], hm_HY, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[2, 2], hm_NHS, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[2, 3], hm_b, tickformat = "{:.1e}", label = "", vertical = false)
-Colorbar(fig[4, 1], hm_HY_int, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[4, 2], hm_NHS_int, tickformat = "{:.1e}", label = "", 
-            vertical = false)
-Colorbar(fig[4, 3], hm_b_int, tickformat = "{:.1e}", label = "", vertical = false)
-
-save(joinpath("./Plots", "ptest_final.png"), fig)
-
-@compute hdiv_final = Field(∂x(model.velocities.u) + ∂y(model.velocities.v))
-@compute vdiv_final = Field(∂z(model.velocities.w))
-
-fig_div = Figure(size = (1200, 600))
-ax_hdiv = Axis(fig_div[1, 1], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = L"Final $\nabla_h \cdot \vec{u}$ [1/s]")
-ax_vdiv = Axis(fig_div[1, 2], xlabel = L"$x$ [m]", ylabel = L"$z$ [m]", 
-               title = L"Final $\partial_z w$ [1/s]")
-               
-hm_hdiv = heatmap!(ax_hdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, hdiv_final))[:, 25, :], colormap = :balance)
-hm_vdiv = heatmap!(ax_vdiv, no_offset_view(model.grid.xᶜᵃᵃ), no_offset_view(model.grid.z.cᵃᵃᶜ), no_offset_view(adapt(Array, vdiv_final))[:, 25, :], colormap = :balance)
-
-Colorbar(fig_div[2, 1], hm_hdiv, vertical = false)
-Colorbar(fig_div[2, 2], hm_vdiv, vertical = false)
-
-save(joinpath("./Plots", "div_final.png"), fig_div)
+=#
 
 if vis_const_x
    visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Ur, Uφ, Uz; 
                              t_idx_skip = t_idx_skip, 
                              plot_speed_animation = false, 
-                             plot_animation = false)
+                             plot_animation = true)
 end
 
 if vis_const_y
@@ -568,13 +471,13 @@ end
 
 if vis_norms
    visualize_norms(datetimenow; 
-                   idxStartLinGrowth_b = 24, idxEndLinGrowth_b = 37,
-                   idxStartLinGrowth_ur = 100, idxEndLinGrowth_ur = 103,
-                   idxStartLinGrowth_uφ = 100, idxEndLinGrowth_uφ = 103,
-                   idxStartLinGrowth_ux = 1, idxEndLinGrowth_ux = 5,
-                   idxStartLinGrowth_uy = 1, idxEndLinGrowth_uy = 5,
-                   idxStartLinGrowth_uz = 24, idxEndLinGrowth_uz = 37,
-                   idxStartPlot = 540, idxEndPlot = -1, 
+                   idxStartLinGrowth_b = 2, idxEndLinGrowth_b = -1,
+                   idxStartLinGrowth_ur = 2, idxEndLinGrowth_ur = 5,
+                   idxStartLinGrowth_uφ = 2, idxEndLinGrowth_uφ = 5,
+                   idxStartLinGrowth_ux = 2, idxEndLinGrowth_ux = 5,
+                   idxStartLinGrowth_uy = 2, idxEndLinGrowth_uy = 5,
+                   idxStartLinGrowth_uz = 2, idxEndLinGrowth_uz = 5,
+                   idxStartPlot = 2, idxEndPlot = -1, 
                    growth_rate = "timeseries", t_skip_idx = t_idx_skip)
 end
 
@@ -591,10 +494,13 @@ if vis_bkgd_profiles
    #visualize_B_U_Q_Ψ_vs_r_and_z(model.grid, gyreScaleParams, 
    #                             doubleTanhParams, ambientStrat, Nx ÷ 2, Nz, 
    #                             1e6, Lz) 
-   visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, gyreScaleParams, 
-                           doubleTanhParams; yFlat = yFlat, Hz = Hz)
-   #visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
-   #                     model.grid.xᶜᵃᵃ, model.grid.z.cᵃᵃᶜ, y_idx)
+   #visualize_B_and_N²_vs_z(B, model.grid, x_idx, y_idx, gyreScaleParams, 
+   #                        doubleTanhParams; yFlat = yFlat, Hz = Hz)
+   visualize_Q_and_∂Q∂r(Q_Ertel, Q_QG, ∂rQ_Ertel, ∂rQ_QG,
+                        model.grid.xᶜᵃᵃ, model.grid.yᵃᶜᵃ, model.grid.z.cᵃᵃᶜ, 
+                        model.grid.z.cᵃᵃᶠ; 
+                        y_idx = y_idx, Hx = Hx, Hy = Hy, Hz = Hz)
+
 end
 
 if vis_q_timeseries

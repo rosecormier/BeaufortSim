@@ -21,11 +21,11 @@ end
 
 function get_2D_spatial_axis_idcs(const_dimension;
                                   Hx = 3, Hy = 3, Hz = 3,
-		                              x_idx = nothing, 
+                                  x_idx = nothing,
                                   y_idx = nothing, 
                                   z_idx = nothing,
-				                          xC = nothing, yC = nothing, zC = nothing,
-                      				    zF = nothing)         
+                                  xC = nothing, yC = nothing, zC = nothing,
+                                  zF = nothing)         
    #=
    Return two arrays of coordinate indices partitioning a 2D slice (constant
     along 'const_dimension').
@@ -33,6 +33,8 @@ function get_2D_spatial_axis_idcs(const_dimension;
     (Center, Center, Center)-points onto the 2D slice; the second array can be
     used to project a field located at (Center, Center, Face)-points onto the 2D
     slice.
+   'xC' (resp. 'yC', 'zC', 'zF') must include 'Hx' (resp. 'Hy', 'Hz', 'Hz') halo
+    points at each boundary.
    =#
 
    if const_dimension == "x"
@@ -257,6 +259,126 @@ function centered_difference(t, u)
    
    return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
            ./ (Delta_t_minus .+ Delta_t_plus))
+end
+
+########################################################
+# HELPER FUNCTIONS FOR PLOTTING NORMS AND GROWTH RATES #
+########################################################
+
+function set_up_fig_perturb_norms(times, b′_norm, u1′_norm, u2′_norm, uz′_norm;
+                                  Cartesian = false, 
+                                  growth_rate = "linear_best_fit")
+   #=
+   Set up a figure to plot perturbation norms and growth rates.
+   Plot the perturbation norms as scattered points.
+   =#
+   
+   if !Cartesian
+      u1_ylabel, u1_title = L"$||u_r'||$ [m/s]", L"Norm of $u_r'$"
+      u2_ylabel, u2_title = L"$||u_{\phi}'||$ [m/s]", L"Norm of $u_{\phi}'$"
+   elseif Cartesian
+      u1_ylabel, u1_title = L"$||u_x'||$ [m/s]", L"Norm of $u_x'$"
+      u2_ylabel, u2_title = L"$||u_y'||$ [m/s]", L"Norm of $u_y'$"
+   end
+   
+   fig = Figure(size = (1200, 700))
+   
+   ax_b  = Axis(fig[2, 1]; title = L"Norm of $b'$", xlabel = L"$t$ [days]", 
+                ylabel = L"$||b'||$ [m/s^2]", yscale = log10)
+   ax_u1 = Axis(fig[2, 2]; title = u1_title, xlabel = L"$t$ [days]", 
+                ylabel = u1_ylabel, yscale = log10)
+   ax_u2 = Axis(fig[3, 1]; title = u2_title, xlabel = L"$t$ [days]", 
+                ylabel = u2_ylabel, yscale = log10)
+   ax_uz = Axis(fig[3, 2]; title = L"Norm of $u_z'$", xlabel = L"$t$ [days]",
+                ylabel = L"$||u_z'||$ [m/s]", yscale = log10)
+                
+   scatter!(ax_b, times, b′_norm, color = :black)
+   scatter!(ax_u1, times, u1′_norm, color = :black)
+   scatter!(ax_u2, times, u2′_norm, color = :black)
+   scatter!(ax_uz, times, uz′_norm, color = :black)
+   
+   if growth_rate == "linear_best_fit"
+      fig[1, 1:2] = Label(fig, 
+                          "Norms of perturbation fields with best linear fits", 
+                          fontsize = 24, tellwidth = false)
+   elseif growth_rate == "timeseries"
+      fig[1, 1:2] = Label(fig,
+                          "Norms of perturbation fields with empirical growth rates", 
+                          fontsize = 24, tellwidth = false)
+   end
+   
+   return fig, ax_b, ax_u1, ax_u2, ax_uz
+end
+
+@inline linearFunction(fit_params, fit_interval; offset = 2) = @. offset * 
+   				                        exp(fit_params[0] + fit_params[1] * fit_interval)
+
+function plot_growth_fit_line!(ax, times, growth_idcs, perturb_norm)
+   #=
+   Superimpose line of best fit on an existing axis containing graph of 
+    perturbation norms.
+   =#
+
+   norm_fit_interval      = perturb_norm[growth_idcs[1]:growth_idcs[2]]
+   norm_linear_fit_params = fit(times[growth_idcs[1]:growth_idcs[2]], 
+                                log.(norm_fit_interval), 1, var = :times)
+                                
+   lines!(ax, times[growth_idcs[1]:growth_idcs[2]],
+          linearFunction(norm_linear_fit_params, 
+                         times[growth_idcs[1]:growth_idcs[2]])
+         )
+
+   return ax
+end
+
+function empirical_growth_rate(times, perturb_norm; differencing = "forward")
+   #=
+   Diagnose growth-rate timeseries of a field with L2-norm 'perturb_norm'.
+   =#
+   
+   if differencing == "forward"
+      growth_rate = order1_forward_difference(times, log.(perturb_norm))
+      new_times   = times[1:end-1]
+   elseif differencing == "centered"
+      growth_rate = centered_difference(times, log.(perturb_norm))
+      new_times   = times[2:end-1]
+   end
+   
+   return new_times, growth_rate
+end
+
+function superimpose_growth_plots!(fig, times, b′_norm, u1′_norm, u2′_norm,
+                                   uz′_norm)
+   #=
+   Superimpose timeseries of growth rates of perturbation norms on existing
+    graphs of the respective norms.
+   =#
+
+   growth_ax_kwargs = (ylabel = "Growth rate [1/day]", ylabelcolor = :blue,
+                       yticklabelcolor = :blue, backgroundcolor = :transparent,
+                       yaxisposition = :right)
+                       
+   times_growth, b′_norm_growth_rate  = empirical_growth_rate(times, b′_norm)
+   times_growth, u1′_norm_growth_rate = empirical_growth_rate(times, u1′_norm)
+   times_growth, u2′_norm_growth_rate = empirical_growth_rate(times, u2′_norm)
+   times_growth, uz′_norm_growth_rate = empirical_growth_rate(times, uz′_norm)
+   
+   ax_b_growth  = Axis(fig[2, 1]; growth_ax_kwargs...)
+   ax_u1_growth = Axis(fig[2, 2]; growth_ax_kwargs...)
+   ax_u2_growth = Axis(fig[3, 1]; growth_ax_kwargs...)
+   ax_uz_growth = Axis(fig[3, 2]; growth_ax_kwargs...)
+   
+   for ax in [ax_b_growth, ax_u1_growth, ax_u2_growth, ax_uz_growth]
+      hidexdecorations!(ax)
+      hidespines!(ax)
+   end
+   
+   lines!(ax_b_growth, times_growth, b′_norm_growth_rate, color = :blue)
+   lines!(ax_u1_growth, times_growth, u1′_norm_growth_rate, color = :blue)
+   lines!(ax_u2_growth, times_growth, u2′_norm_growth_rate, color = :blue)
+   lines!(ax_uz_growth, times_growth, uz′_norm_growth_rate, color = :blue)
+   
+   return fig                   
 end
 
 #########################################################
@@ -599,21 +721,6 @@ function ∂r_q(q, x, y, zk, all_z)
    
    r     = sqrt.(x.^2 + y.^2) 
    ∂r_qk = @. (x * ∂x_qk + y * ∂y_qk) / r
-end
-
-function empirical_growth_rate(t, perturb_norm; differencing = "forward")
-   #=
-   Diagnose growth-rate timeseries of a field with L2-norm perturb_norm.
-   =#
-   
-   if differencing == "forward"
-      growth_rate = order1_forward_difference(t, log.(perturb_norm))
-      new_t       = t[1:end-1]
-   elseif differencing == "centered"
-      growth_rate = centered_difference(t, log.(perturb_norm))
-      new_t       = t[2:end-1]
-   end
-   return new_t, growth_rate
 end
 
 #=
