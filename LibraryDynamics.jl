@@ -2,6 +2,7 @@ include("LibraryCoordinates.jl")
 
 using Adapt
 using CSV
+using CUDA
 using Oceananigans.AbstractOperations
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
@@ -254,7 +255,7 @@ function bkgd_buoyancy(gyreParams, ambientStrat;
 end
 
 function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams, 
-                                    cylindrical_Ψ_anon_function, ambientStrat;
+                                    cylindrical_Ψ_anon_function, ambientStrat, useGPU;
                                     Hz = 3, includeDefaultBCs = false,
                                     visualizePsi = false)
 
@@ -285,15 +286,26 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
    ∂2Ψ∂z∂y_south = @view tall_∂2Ψ∂z∂y_cfc_Field[:, 2, :]
 
    @compute tall_∂Ψ∂z_ccc_Field   = Field(∂z(tall_Ψ_ccf_Field))
-   @compute tall_∂2Ψ∂z2_ccf_Field = Field(∂z(tall_∂Ψ∂z_ccc_Field)) 
+   @compute tall_∂2Ψ∂z2_ccf_Field = Field(∂z(tall_∂Ψ∂z_ccc_Field))
    
-   ∂2Ψ∂z2_top = @view tall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
-   ∂2Ψ∂z2_bot = @view tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
-
    if visualizePsi
       visualize_Ψ_and_z_derivs(simGrid, tall_Ψ_ccf_Field, 
                                tall_∂Ψ∂z_ccc_Field, 
                                tall_∂2Ψ∂z2_ccf_Field)
+   end
+   
+   if useGPU #On GPU, must compute boundary values using CUDA.jl functionality
+
+      ∂2Ψ∂z2_top = CuArray{Float64}(undef, (gridParams.Nx, gridParams.Ny))
+      ∂2Ψ∂z2_bot = CuArray{Float64}(undef, (gridParams.Nx, gridParams.Ny))
+      
+      @views ∂2Ψ∂z2_top[:, :] .= tall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
+      @views ∂2Ψ∂z2_bot[:, :] .= tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
+      
+   elseif !useGPU #On CPU, can compute boundary values by direct scalar indexing
+   
+      ∂2Ψ∂z2_top = @view tall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
+      ∂2Ψ∂z2_bot = @view tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
    end
    
    #Compute Ψ-derivative Fields at necessary locations to diagnose velocities
@@ -329,13 +341,14 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
       b_TWB_op    = KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, simGrid)
       
       @compute b_total = Field(b_linear_op + b_TWB_op)
-
-      ∂b∂z_TWB_top   = @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
-      ∂b∂z_TWB_bot   = @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
-      ∂b∂x_TWB_east  = @. gyreParams.f * ∂2Ψ∂z∂x_east
-      ∂b∂x_TWB_west  = @. gyreParams.f * ∂2Ψ∂z∂x_west
-      ∂b∂y_TWB_north = @. gyreParams.f * ∂2Ψ∂z∂y_north
-      ∂b∂y_TWB_south = @. gyreParams.f * ∂2Ψ∂z∂y_south
+      
+      ∂b∂z_TWB_top = @views @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
+      ∂b∂z_TWB_bot = @views @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
+      
+      #∂b∂x_TWB_east  = gyreParams.f * ∂2Ψ∂z∂x_east
+      #∂b∂x_TWB_west  = gyreParams.f * ∂2Ψ∂z∂x_west
+      #∂b∂y_TWB_north = gyreParams.f * ∂2Ψ∂z∂y_north
+      #∂b∂y_TWB_south = gyreParams.f * ∂2Ψ∂z∂y_south
    end
    
    if includeDefaultBCs #Return conditions, even defaults, on all boundaries
