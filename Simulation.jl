@@ -23,9 +23,9 @@ using Oceananigans.Solvers
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 50 #x-grid size
-const Ny = 50 #y-grid size
-const Nz = 10 #z-grid size
+const Nx = 500 #x-grid size
+const Ny = 500 #y-grid size
+const Nz = 100 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -66,8 +66,8 @@ const C_d = 60 * meter
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
-const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 3 #600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 3 #600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 #=
 #Set save interval
@@ -78,21 +78,21 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 =#
-const Δt_save = 3
+Δt_save = 3 #600
 
 const useGPU = false #Whether to use GPU
 const useNHS = true  #Whether to use NonhydrostaticModel
 
-const max_u′ = 1e-10 #Max. relative magnitude of initial velocity perturbation
+const max_u′ = 0 #1e-10 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x       = false
+const vis_const_x       = true
 const vis_const_y       = false
-const vis_const_z       = false
+const vis_const_z       = true
 const vis_norms         = false
 const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
-const vis_bkgd_profiles = true
+const vis_bkgd_profiles = false #Note: currently can only be done on CPU
 const vis_q_timeseries  = false
 
 const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
@@ -126,8 +126,8 @@ grid = build_Oceananigans_RectilinearGrid(gridParams)
 size(grid.yᵃᶜᵃ)[1] > 1 ? yFlat = false : yFlat = true
 
 B_vals, Ux_vals, Uy_vals, Uz_vals, B_BCs = discrete_Cartesian_TWB_ICs(
-       grid, gridParams, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat;
-       Hz = Hz, visualizePsi = true)
+       grid, gridParams, gyreScaleParams, bkgd_Ψ_cylindrical_coords, ambientStrat, useGPU;
+       Hz = Hz, visualizePsi = false)
 
 #box_sponge = Relaxation(rate = 1, mask = PiecewiseLinearMask{:x}(center = 9 * σr, width = σr))
 
@@ -187,7 +187,7 @@ Uz        = ZFaceField(model.grid)
 B         = CenterField(model.grid;
                         boundary_conditions = discrete_Cartesian_TWB_ICs(grid,
                            gridParams, gyreScaleParams, bkgd_Ψ_cylindrical_coords,
-                           ambientStrat;
+                           ambientStrat, useGPU;
                            Hz = Hz, includeDefaultBCs = true)
                        )
 Q_Ertel   = CenterField(model.grid)
