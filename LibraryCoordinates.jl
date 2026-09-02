@@ -12,16 +12,16 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 
    Lξ = ξ_max - ξ_min
    
-   pi_shift = asin(1 + (ξ0 / Lξ))
+   π_shift = asin(1 + (ξ0 / Lξ))
 
-   N_below_ξ0 = ((Nξ + 1) * pi) / (2 * (pi - pi_shift)) 
+   N_below_ξ0 = ((Nξ + 1) * π) / (2 * (π - π_shift)) 
 
    if i == 1
       i_face = ξ_min
    elseif 1 < i <= N_below_ξ0
-      i_face = ξ0 + Lξ * (sin((pi - pi_shift) * (i - 1) / Nξ) - 1)
+      i_face = ξ0 + Lξ * (sin((π - π_shift) * (i - 1) / Nξ) - 1)
    elseif i > N_below_ξ0
-      i_face = ξ0 - Lξ * (sin((pi - pi_shift) * (i - 1) / Nξ) - 1)
+      i_face = ξ0 - Lξ * (sin((π - π_shift) * (i - 1) / Nξ) - 1)
    end
 
    return i_face
@@ -202,9 +202,9 @@ function xy_vector_to_rφ(vx, vy, grid, useGPU)
 
    if useGPU
    
-      @inline interpolate_vx_to_ccc(i, j, k, grid) = @inbounds interpolate((grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], grid.z.cᵃᵃᶜ[k]), vx, (Face(), Center(), Center()), grid)
+      @inline interpolate_vx_to_ccc(i, j, k, g) = @inbounds interpolate((g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k]), vx, (Face(), Center(), Center()), g)
 
-      @inline interpolate_vy_to_ccc(i, j, k, grid) = @inbounds interpolate((grid.xᶜᵃᵃ[i], grid.yᵃᶜᵃ[j], grid.z.cᵃᵃᶜ[k]), vy, (Center(), Face(), Center()), grid)
+      @inline interpolate_vy_to_ccc(i, j, k, grid) = @inbounds interpolate((g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k]), vy, (Center(), Face(), Center()), g)
    
       interpolate_vx_to_ccc_op = KernelFunctionOperation{Center, Center, Center}(interpolate_vx_to_ccc, grid)
       interpolate_vy_to_ccc_op = KernelFunctionOperation{Center, Center, Center}(interpolate_vy_to_ccc, grid)
