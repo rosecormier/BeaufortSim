@@ -260,7 +260,7 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
                                     visualizePsi = false)
 
    cylindrical_Ψ_function = cylindrical_Ψ_anon_function(gyreParams)
-
+   
    @inline Ψ_ccf(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_cca(i, j, k, g), g.z.cᵃᵃᶠ[k])
    @inline Ψ_ffc(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_ffa(i, j, k, g), g.z.cᵃᵃᶜ[k])
    
@@ -272,19 +272,8 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
    #Compute Ψ Fields at necessary locations
    @compute tall_Ψ_ccf_Field = Field(Ψ_ccf_op)
    @compute tall_Ψ_ffc_Field = Field(Ψ_ffc_op)
-   
-   @compute tall_∂Ψ∂x_fcf_Field    = Field(∂x(tall_Ψ_ccf_Field))
-   @compute tall_∂2Ψ∂z∂x_fcc_Field = Field(∂z(tall_∂Ψ∂x_fcf_Field))
-   
-   ∂2Ψ∂z∂x_east = @view tall_∂2Ψ∂z∂x_fcc_Field[(end - Hz), :, :]
-   ∂2Ψ∂z∂x_west = @view tall_∂2Ψ∂z∂x_fcc_Field[2, :, :]
 
-   @compute tall_∂Ψ∂y_cff_Field    = Field(∂y(tall_Ψ_ccf_Field))
-   @compute tall_∂2Ψ∂z∂y_cfc_Field = Field(∂z(tall_∂Ψ∂y_cff_Field))
-
-   ∂2Ψ∂z∂y_north = @view tall_∂2Ψ∂z∂y_cfc_Field[:, (end - Hz), :]
-   ∂2Ψ∂z∂y_south = @view tall_∂2Ψ∂z∂y_cfc_Field[:, 2, :]
-
+   #Compute Ψ-derivative Fields at necessary locations to diagnose buoyancy
    @compute tall_∂Ψ∂z_ccc_Field   = Field(∂z(tall_Ψ_ccf_Field))
    @compute tall_∂2Ψ∂z2_ccf_Field = Field(∂z(tall_∂Ψ∂z_ccc_Field))
    
@@ -344,21 +333,27 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
       
       ∂b∂z_TWB_top = @views @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
       ∂b∂z_TWB_bot = @views @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
-      
-      #∂b∂x_TWB_east  = gyreParams.f * ∂2Ψ∂z∂x_east
-      #∂b∂x_TWB_west  = gyreParams.f * ∂2Ψ∂z∂x_west
-      #∂b∂y_TWB_north = gyreParams.f * ∂2Ψ∂z∂y_north
-      #∂b∂y_TWB_south = gyreParams.f * ∂2Ψ∂z∂y_south
    end
    
    if includeDefaultBCs #Return conditions, even defaults, on all boundaries
    
-      b_TWB_BCs = FieldBoundaryConditions(grid, 
-                                          (Center(), Center(), Center()), 
-                                          east = PeriodicBoundaryCondition(), 
-                                          west = PeriodicBoundaryCondition(), 
-                                          north = PeriodicBoundaryCondition(), 
-                                          south = PeriodicBoundaryCondition(), 
+      if gridParams.Tx == Periodic
+         x_BC = PeriodicBoundaryCondition()
+      elseif gridParams.Tx == Bounded
+         x_BC = GradientBoundaryCondition(0)
+      end
+      
+      if gridParams.Ty == Periodic
+         y_BC = PeriodicBoundaryCondition()
+      elseif gridParams.Ty == Bounded
+         y_BC = GradientBoundaryCondition(0)
+      elseif gridParams.Ty == Flat
+         y_BC = nothing
+      end
+   
+      b_TWB_BCs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+                                          east = x_BC, west = x_BC, 
+                                          north = y_BC, south = y_BC, 
                                           top = GradientBoundaryCondition(∂b∂z_TWB_top), 
                                           bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
                                           
