@@ -875,19 +875,19 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
-   B  = adapt(Array, B)[xyzC_idcs...]
-   Ur = adapt(Array, Ur)[xyzC_idcs...]
-   Uφ = adapt(Array, Uφ)[xyzC_idcs...]
-   Uz = adapt(Array, Uz)[xyzF_idcs...]
+   B  = no_offset_view(adapt(Array, B))[xyzC_idcs...]
+   Ur = no_offset_view(adapt(Array, Ur))[xyzC_idcs...]
+   Uφ = no_offset_view(adapt(Array, Uφ))[xyzC_idcs...]
+   Uz = no_offset_view(adapt(Array, Uz))[xyzF_idcs...]
 
-   b_total_i  = adapt(Array, ds_i[:b])[xyzC_idcs..., chron_idcs[1]]
-   b_total_f  = adapt(Array, ds_f[:b])[xyzC_idcs..., chron_idcs[Nt]]
-   ur_total_i = adapt(Array, ds_i[:ur])[xyzC_idcs..., chron_idcs[1]]
-   ur_total_f = adapt(Array, ds_f[:ur])[xyzC_idcs..., chron_idcs[Nt]]
-   uφ_total_i = adapt(Array, ds_i[:uφ])[xyzC_idcs..., chron_idcs[1]]
-   uφ_total_f = adapt(Array, ds_f[:uφ])[xyzC_idcs..., chron_idcs[Nt]]
-   uz_total_i = adapt(Array, ds_i[:uz])[xyzF_idcs..., chron_idcs[1]]
-   uz_total_f = adapt(Array, ds_f[:uz])[xyzF_idcs..., chron_idcs[Nt]]
+   b_total_i  = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
+   b_total_f  = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
+   ur_total_i = ds_i[:ur][xyzC_idcs..., chron_idcs[1]]
+   ur_total_f = ds_f[:ur][xyzC_idcs..., chron_idcs[Nt]]
+   uφ_total_i = ds_i[:uφ][xyzC_idcs..., chron_idcs[1]]
+   uφ_total_f = ds_f[:uφ][xyzC_idcs..., chron_idcs[Nt]]
+   uz_total_i = ds_i[:uz][xyzF_idcs..., chron_idcs[1]]
+   uz_total_f = ds_f[:uz][xyzF_idcs..., chron_idcs[Nt]]
 
    Δb_i  = b_total_i .- B
    Δb_f  = b_total_f .- B
