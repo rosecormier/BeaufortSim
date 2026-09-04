@@ -23,9 +23,9 @@ using Oceananigans.Solvers
 # SPECIFY PARAMETERS #
 ######################
 
-const Nx = 500 #x-grid size
-const Ny = 500 #y-grid size
-const Nz = 100 #z-grid size
+const Nx = 50 #x-grid size
+const Ny = 50 #y-grid size
+const Nz = 10 #z-grid size
 
 const Hx = 3 #Number of x halo cells per boundary
 const Hy = 3 #Number of y halo cells per boundary
@@ -66,8 +66,8 @@ const C_d = 60 * meter
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
-const Δt         = 3 #600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 3 #600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = 3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
 #=
 #Set save interval
@@ -78,7 +78,7 @@ else
    const Δt_save = parse(Float64, ARGS[3])
 end
 =#
-Δt_save = 3 #600
+Δt_save = 3
 
 const useGPU = false #Whether to use GPU
 const useNHS = true  #Whether to use NonhydrostaticModel
@@ -89,8 +89,8 @@ const max_u′ = 0 #1e-10 #Max. relative magnitude of initial velocity perturbat
 const vis_const_x       = true
 const vis_const_y       = false
 const vis_const_z       = true
-const vis_norms         = false
-const vis_energetics    = false
+const vis_norms         = true
+const vis_energetics    = true
 const vis_z_grid        = false #Note: currently can only be done on CPU
 const vis_bkgd_profiles = false #Note: currently can only be done on CPU
 const vis_q_timeseries  = false
@@ -115,7 +115,7 @@ end
 useGPU ? architecture = GPU() : architecture = CPU()
 
 gridParams = (architecture = architecture,
-              topology = (Periodic, Periodic, Bounded),
+              Tx = Periodic, Ty = Periodic, Tz = Bounded,
               Nx = Nx, Ny = Ny, Nz = Nz,
               Hx = Hx, Hy = Hy, Hz = Hz,
               Lr = Lr, Lz = Lz,
@@ -323,9 +323,11 @@ field_writer = NetCDFWriter(model,
                             outputs,
                             filename = outfilepath, 
                             schedule = TimeInterval(Δt_save),
+                            array_type = Array{Float64},
+                            with_halos = true,
                             file_splitting = FileSizeLimit(30GiB)
                            )
-
+                           
 ux_perturbation_norm(model) = perturbation_norm(model.velocities.u, Ux)
 uy_perturbation_norm(model) = perturbation_norm(model.velocities.v, Uy)
 ur_perturbation_norm(model) = perturbation_norm(ur, Ur)
@@ -345,6 +347,7 @@ scalar_writer = NetCDFWriter(model,
                              scalar_diagnostics,
 		                         filename = scalarfilepath, 
 				                     schedule = TimeInterval(Δt_save),
+                             array_type = Array{Float64},
                              file_splitting = FileSizeLimit(30GiB),
 		                         dimensions = (ux′_norm = (),
 					                                 uy′_norm = (),
@@ -384,15 +387,16 @@ energy_diagnostics = (;
                      )
 
 energy_writer = NetCDFWriter(model, energy_diagnostics,
-                             filename       = energyfilepath,
-                             schedule       = TimeInterval(Δt_save),
+                             filename = energyfilepath,
+                             schedule = TimeInterval(Δt_save),
+                             array_type = Array{Float64},
                              file_splitting = FileSizeLimit(30GiB)
                             )
 
 checkpointer = Checkpointer(model; 
-                            schedule   = TimeInterval(Δt_checkpt),
-                            dir        = "Checkpoints", 
-			    	                prefix     = "checkpoint_$(datetimenow)", 
+                            schedule = TimeInterval(Δt_checkpt),
+                            dir = "Checkpoints", 
+			    	                prefix = "checkpoint_$(datetimenow)", 
 		    	                  properties = [:grid, :clock, :timestepper,
 					                                :velocities, :tracers]
                            )
