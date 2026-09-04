@@ -47,7 +47,7 @@ function build_Oceananigans_RectilinearGrid(gridParams)
    Lr, Lz     = gridParams.Lr, gridParams.Lz
    
    grid = RectilinearGrid(gridParams.architecture,
-                          topology = gridParams.topology,
+                          topology = (gridParams.Tx, gridParams.Ty, Bounded),
                           size = (Nx, Ny, Nz), 
                           x = (-Lr, Lr), 
                           y = (-Lr, Lr), 
@@ -76,7 +76,7 @@ function build_tall_copy_Oceananigans_RectilinearGrid(gridParams)
    zF = @view no_offset_view(adapt(Array, regularGrid.z.cᵃᵃᶠ))[Hz:(end - (Hz - 1))]
 
    tallGrid = RectilinearGrid(gridParams.architecture, 
-                              topology = gridParams.topology, 
+                              topology = (gridParams.Tx, gridParams.Ty, Bounded), 
                               size = (Nx, Ny, Nz + 2), 
                               x = (-Lr, Lr), 
                               y = (-Lr, Lr), 
@@ -200,29 +200,8 @@ function xy_vector_to_rφ(vx, vy, grid, useGPU)
 
    r, φ = polar_coords_Fields(grid, "c", "c", "c")
 
-   if useGPU
-   
-      @inline interpolate_vx_to_ccc(i, j, k, g) = @inbounds interpolate((g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k]), vx, (Face(), Center(), Center()), g)
-
-      @inline interpolate_vy_to_ccc(i, j, k, grid) = @inbounds interpolate((g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k]), vy, (Center(), Face(), Center()), g)
-   
-      interpolate_vx_to_ccc_op = KernelFunctionOperation{Center, Center, Center}(interpolate_vx_to_ccc, grid)
-      interpolate_vy_to_ccc_op = KernelFunctionOperation{Center, Center, Center}(interpolate_vy_to_ccc, grid)
-      
-      @compute vx_ccc_vals = Field(interpolate_vx_to_ccc_op)
-      @compute vy_ccc_vals = Field(interpolate_vx_to_ccc_op)
-
-      vr_binaryOp = (vx_ccc_vals * cos(φ)) + (vy_ccc_vals * sin(φ))
-      vφ_binaryOp = (vy_ccc_vals * cos(φ)) - (vx_ccc_vals * sin(φ))
-      
-      @compute vr = Field(vr_binaryOp)
-      @compute vφ = Field(vφ_binaryOp)
-      
-   elseif !useGPU
-
-      @compute vr = @at (Center, Center, Center) (vx * cos(φ)) + (vy * sin(φ))
-      @compute vφ = @at (Center, Center, Center) (vy * cos(φ)) - (vx * sin(φ))
-   end
+   @compute vr = @at (Center, Center, Center) (vx * cos(φ)) + (vy * sin(φ))
+   @compute vφ = @at (Center, Center, Center) (vy * cos(φ)) - (vx * sin(φ))
 
    return vr, vφ
 end
