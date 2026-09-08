@@ -406,14 +406,8 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
-@compute ur_norm = Field(Integral(ur * conj(ur)))
-print(ur_norm)
-
 run!(simulation; pickup = false)
     #pickup = joinpath("./Checkpoints", "checkpoint_260605-075732_iteration6.jld2"))
-    
-@compute ux_perturb_norm = Field(Integral((model.velocities.u - Ux) * conj(model.velocities.u - Ux)))
-print(ux_perturb_norm)
 
 duration = canonicalize(now() - datetimestart)
 
