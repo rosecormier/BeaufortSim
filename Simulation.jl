@@ -12,12 +12,11 @@ using Oceananigans.Architectures
 using Oceananigans.Coriolis
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
+using Oceananigans.Solvers
 using Oceananigans.Units
 using Oceananigans.Utils 
 using Printf, Random
 
-using CairoMakie
-using Oceananigans.Solvers
 
 ######################
 # SPECIFY PARAMETERS #
@@ -38,7 +37,7 @@ const lat = 74.0     #Latitude (deg. N)
 fPlane    = FPlane(latitude = lat)
 const f   = fPlane.f #Coriolis frequency
 
-const U  = 5e-2 * (meter/second) #Maximum gyre velocity scale (at surface)
+const U  = 5e-2 * (meter/second) #Maximum gyre speed (at surface)
 const σr = 250 * kilometer       #Radial gyre length scale
 const σz = 300 * meter 	         #Vertical gyre length scale
 
@@ -66,10 +65,10 @@ const C_d = 60 * meter
 doubleTanhParams = (g = g, ρ₀ = ρ₀, A_s = A_s, C_s = C_s, z_s = z_s,
                     A_d = A_d, C_d = C_d, z_d = z_d)
 
-const Δt         = 3 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf         = 3 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+const Δt         = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf         = parse(Float64, ARGS[2]) #Simulation stop time (s)
 const Δt_checkpt = 250 * day   		         #Checkpoint interval
-#=
+
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -77,28 +76,26 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-Δt_save = 3
 
-const useGPU = false #Whether to use GPU
-const useNHS = true  #Whether to use NonhydrostaticModel
+const useGPU = true #Whether to use GPU
+const useNHS = true #Whether to use NonhydrostaticModel
 
-const max_u′ = 0 #1e-10 #Max. relative magnitude of initial velocity perturbation
+const max_u′ = 5e-3 #Max. relative magnitude of initial velocity perturbation
 
 #Whether to run visualization functions
-const vis_const_x       = true
+const vis_const_x       = false
 const vis_const_y       = false
-const vis_const_z       = true
-const vis_norms         = true
-const vis_energetics    = true
+const vis_const_z       = false
+const vis_norms         = false
+const vis_energetics    = false
 const vis_z_grid        = false #Note: currently can only be done on CPU
 const vis_bkgd_profiles = false #Note: currently can only be done on CPU
 const vis_q_timeseries  = false
 
-const x_idx      = Nx ÷ 2 #Visualize yz-slice at this x-index
-const y_idx      = Ny ÷ 2 #Visualize xz-slice at this y-index
-const z_idx      = Nz - 1 #Visualize xy-slice at this z-index
-const t_idx_skip = 1      #Step size for animations and timeseries
+const x_idx      = Hx + (Nx ÷ 2) #Visualize yz-slice at this x-index
+const y_idx      = Hy + (Ny ÷ 2) #Visualize xz-slice at this y-index
+const z_idx      = Hz + Nz       #Visualize xy-slice at this z-index
+const t_idx_skip = 1             #Step size for animations and timeseries
 
 #Seeds for 2 random-number generators
 const seed1 = 12345
@@ -133,15 +130,15 @@ B_vals, Ux_vals, Uy_vals, Uz_vals, B_BCs = discrete_Cartesian_TWB_ICs(
 
 if useNHS
    model = NonhydrostaticModel(;
-                               grid = grid, 
-                               timestepper = :RungeKutta3,
-                               advection = WENO(),
-                               coriolis = fPlane,
-                               pressure_solver = FourierTridiagonalPoissonSolver(grid),
-                               hydrostatic_pressure_anomaly = CenterField(grid),
-                               tracers = (:b),
-                               buoyancy = BuoyancyTracer(),
-                               boundary_conditions = (; b = B_BCs)
+                        grid = grid, 
+                        timestepper = :RungeKutta3,
+                        advection = WENO(),
+                        coriolis = fPlane,
+                        pressure_solver = FourierTridiagonalPoissonSolver(grid),
+                        hydrostatic_pressure_anomaly = CenterField(grid),
+                        tracers = (:b),
+                        buoyancy = BuoyancyTracer(),
+                        boundary_conditions = (; b = B_BCs)
                               )
 elseif !useNHS
    model = HydrostaticFreeSurfaceModel(;
@@ -161,6 +158,8 @@ set!(model.velocities.v, Uy_vals)
 set!(model.velocities.w, Uz_vals)
 set!(model.tracers.b, B_vals)
 fill_halo_regions!(model.tracers.b)
+fill_halo_regions!(model.velocities.u)
+fill_halo_regions!(model.velocities.v)
 
 #Print warnings if the respective instabilities are present
 check_inertial_stability(model.grid, f, model.velocities.u, model.velocities.v)
@@ -175,8 +174,7 @@ datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
-Ur_vals, Uφ_vals = xy_vector_to_rφ(model.velocities.u, model.velocities.v, 
-                                   model.grid, useGPU)
+Ur_vals, Uφ_vals = xy_vector_to_rφ(Ux_vals, Uy_vals, model.grid, useGPU)
 
 #Create fields to store background-state primitive variables and PV quantities
 Ux        = XFaceField(model.grid)
@@ -203,8 +201,12 @@ set!(Uφ, Uφ_vals)
 set!(Uz, Uz_vals)
 set!(B, B_vals)
 
+#Note: this syntax is necessary because these aren't prognostic model fields
 fill_halo_regions!(B, model.clock, B_vals)
-#Note: this syntax is necessary because 'B' isn't a prognostic field of 'model'
+fill_halo_regions!(Ux, model.clock, Ux_vals)
+fill_halo_regions!(Uy, model.clock, Uy_vals)
+fill_halo_regions!(Ur, model.clock, Ur_vals)
+fill_halo_regions!(Uφ, model.clock, Uφ_vals)
 
 #Create fields that are used in computing PKE budget terms
 φ_ccc_vals = CenterField(model.grid)
@@ -232,27 +234,26 @@ set!(∂rQ_QG, cos(φ_ccc_vals) * ∂x(Q_QG) + sin(φ_ccc_vals) * ∂y(Q_QG))
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 #Add random perturbations to horizontal velocity components
 
-@inline u_perturbed(x, y, z) = @inbounds (ū(x, y, z)
-                                          * (1 + 2 * (rand() - 0.5) * max_u′
-                                                 / (U * sqrt(2))
-                                            )
-                                         )
+u_perturbed = @views (adapt(Array, interior(Ux_vals)) 
+                      .* (1 .+ 2 * (rand(Float64, (Nx, Ny, Nz)) .- 0.5) 
+                                 * max_u′ / (U * sqrt(2))
+                         )
+                     )
 
 if !isnothing(seed2)
    Random.seed!(seed2) #Update seed so next random number is independent
 end
 
-@inline v_perturbed(x, y, z) = @inbounds (v̄(x, y, z)
-                                          * (1 + 2 * (rand() - 0.5) * max_u′ 
-                                                 / (U * sqrt(2))
-                                            )
-                                         )
+v_perturbed = @views (adapt(Array, interior(Uy_vals)) 
+                      .* (1 .+ 2 * (rand(Float64, (Nx, Ny, Nz)) .- 0.5) 
+                                 * max_u′ / (U * sqrt(2))
+                         )
+                     )
 
 set!(model, u = u_perturbed, v = v_perturbed) #Set perturbed ICs
-=#
 
 simulation = Simulation(model;
                         Δt = Δt,
@@ -286,7 +287,6 @@ function progress(sim)
                   interior_hdiv_absmax)
    @info @sprintf("max|vertical divergence of velocity| in interior: %.2e", 
                   interior_vdiv_absmax)
-   @info @sprintf("Norm of u' = %.10e", norm(sim.model.velocities.u - Ux))
    
    return nothing
 end
@@ -406,8 +406,14 @@ simulation.output_writers[:scalar_writer] = scalar_writer
 simulation.output_writers[:energy_writer] = energy_writer
 simulation.output_writers[:checkpointer]  = checkpointer
 
+@compute ur_norm = Field(Integral(ur * conj(ur)))
+print(ur_norm)
+
 run!(simulation; pickup = false)
     #pickup = joinpath("./Checkpoints", "checkpoint_260605-075732_iteration6.jld2"))
+    
+@compute ux_perturb_norm = Field(Integral((model.velocities.u - Ux) * conj(model.velocities.u - Ux)))
+print(ux_perturb_norm)
 
 duration = canonicalize(now() - datetimestart)
 
@@ -440,19 +446,19 @@ end
 #####################
 
 if vis_const_x
-   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Ur, Uφ, Uz; 
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Ur, Uφ, Uz, Hx, Hy, Hz;
                              t_idx_skip = t_idx_skip, 
                              plot_speed_animation = false, 
                              plot_animation = true)
 end
 
 if vis_const_y
-   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Ur, Uφ, Uz; 
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Ur, Uφ, Uz, Hx, Hy, Hz; 
                              t_idx_skip = t_idx_skip) 
 end
 
 if vis_const_z
-   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Ur, Uφ, Uz; 
+   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Ur, Uφ, Uz, Hx, Hy, Hz; 
                              t_idx_skip = t_idx_skip, 
                              plot_speed_animation = false, 
                              plot_animation = false)
