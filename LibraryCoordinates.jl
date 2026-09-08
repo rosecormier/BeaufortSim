@@ -180,12 +180,18 @@ end
 
 function compute_Cart_coords(r, φ, z)
    #=
-   Given cylindrical (r, φ, z) coordinates of a point, compute its Cartesian
-    (x, y, z) coordinates.
+   Given cylindrical (r, φ, z) coordinates of point(s), compute representation
+   in Cartesian (x, y, z) coordinates.
    =#
    
-   x = r * cos(φ)
-   y = r * sin(φ)
+   x = Array{Float64}(undef, length(r), length(φ))
+   y = Array{Float64}(undef, length(r), length(φ))
+   
+   #If r and φ both 'StepRangeLen', must loop over one of them (can't broadcast)
+   for r_idx in 1:1:length(r)
+      x[r_idx, :] = r[r_idx] * cos.(φ)
+      y[r_idx, :] = r[r_idx] * sin.(φ)
+   end
 
    return x, y, z
 end
