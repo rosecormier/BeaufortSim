@@ -316,7 +316,7 @@ function visualize_norms(datetime;
    uz′_norm = scalars_ds[:uz′_norm][chron_idcs][tPlotRange]
    
    fig_cyl, ax_b_cyl, ax_ur, ax_uφ, ax_uz_cyl = set_up_fig_perturb_norms(times, b′_norm, ur′_norm, uφ′_norm, uz′_norm; growth_rate = growth_rate)
-   fig_Cart, ax_b_Cart, ax_ux, ax_uy, ax_uz_Cart = set_up_fig_perturb_norms(times, b′_norm, ur′_norm, uφ′_norm, uz′_norm; Cartesian = true, growth_rate = growth_rate)
+   fig_Cart, ax_b_Cart, ax_ux, ax_uy, ax_uz_Cart = set_up_fig_perturb_norms(times, b′_norm, ux′_norm, uy′_norm, uz′_norm; Cartesian = true, growth_rate = growth_rate)
    
    if growth_rate == "linear_best_fit" #Plot linear fit on restricted t-interval
 
@@ -383,7 +383,7 @@ function visualize_norms(datetime;
    end
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "norm_fields_$(datetime).png"), fig_cyl)
+   save(joinpath("./Plots", "norm_cyl_fields_$(datetime).png"), fig_cyl)
    save(joinpath("./Plots", "norm_Cart_fields_$(datetime).png"), fig_Cart)
    close(scalars_ds)
 end
@@ -846,13 +846,13 @@ end
 ################################################################################
 
 function visualize_fields_2D_slice(datetime, const_dimension, 
-                                   const_dimension_idx, B, Ur, Uφ, Uz;
-                                   Hx = 0, Hy = 0, Hz = 0, 
+                                   const_dimension_idx, B, Ur, Uφ, Uz,
+                                   Hx, Hy, Hz;
                                    plot_animation = true, t_idx_skip = 1,
                                    plot_speed_animation = false)
    #=
    Plot 2D slices of prognostic fields and, optionally, horizontal speed. 
-    By default, data are assumed to exclude halos.
+    ~~By default, data are assumed to exclude halos.~~ (updating this)
    =#
 
    outfile_list = glob("./Output/output_$(datetime)*")
@@ -870,8 +870,9 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       const_dimension_coords, axis1, axis2_zC, axis2_zF = zC, x, y, y
    end
 
+   #halos 0 only for testing
    xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension;
-                                  Hx = Hx, Hy = Hy, Hz = Hz,
+                                  Hx = 0, Hy = 0, Hz = 0,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
