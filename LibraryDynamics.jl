@@ -351,7 +351,7 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
          y_BC = nothing
       end
    
-      b_TWB_BCs = FieldBoundaryConditions(grid, (Center(), Center(), Center()),
+      b_TWB_BCs = FieldBoundaryConditions(simGrid, (Center(), Center(), Center()),
                                           east = x_BC, west = x_BC, 
                                           north = y_BC, south = y_BC, 
                                           top = GradientBoundaryCondition(∂b∂z_TWB_top), 
