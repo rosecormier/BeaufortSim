@@ -1,8 +1,6 @@
 include("LibraryCoordinates.jl")
 
-using Adapt
-using CSV
-using CUDA
+using Adapt, CSV, CUDA
 using Oceananigans.AbstractOperations
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
