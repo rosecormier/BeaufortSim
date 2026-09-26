@@ -28,7 +28,7 @@ end
 
 function buoyancyDoubleTanh(z, parameters)
    #=
-   Evaluate, at z, buoyancy field from double-tanh function.
+   Evaluate, at z, double-tanh buoyancy function.
    =#
 
    g   = parameters.g
@@ -255,7 +255,7 @@ end
 function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams, 
                                     cylindrical_Ψ_anon_function, ambientStrat, useGPU;
                                     Hz = 3, includeDefaultBCs = false,
-                                    visualizePsi = false)
+                                    visualizePsi = false, doubleTanhParams = nothing)
 
    cylindrical_Ψ_function = cylindrical_Ψ_anon_function(gyreParams)
    
@@ -322,15 +322,29 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
    @inline b_linear_ccc(i, j, k, g) = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
    @inline b_TWB_ccc(i, j, k, g) = @inbounds gyreParams.f * tall_∂Ψ∂z_ccc_Field[i, j, (k + 1)]
 
+   b_linear_op = KernelFunctionOperation{Center, Center, Center}(b_linear_ccc, simGrid)
+   b_TWB_op    = KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, simGrid)
+
    if ambientStrat == "constant"
-   
-      b_linear_op = KernelFunctionOperation{Center, Center, Center}(b_linear_ccc, simGrid)
-      b_TWB_op    = KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, simGrid)
       
       @compute b_total = Field(b_linear_op + b_TWB_op)
       
-      ∂b∂z_TWB_top = @views @. gyreParams.f * ∂2Ψ∂z2_top + gyreParams.N²_far
-      ∂b∂z_TWB_bot = @views @. gyreParams.f * ∂2Ψ∂z2_bot + gyreParams.N²_far
+      ∂b∂z_top = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_top
+      ∂b∂z_bot = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_bot
+      
+   elseif ambientStrat == "doubleTanh"
+   
+      @inline b_double_tanh_ccc(i, j, k, g) = @inbounds buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], doubleTanhParams)
+      
+      b_double_tanh_op = KernelFunctionOperation{Center, Center, Center}(b_double_tanh_ccc, simGrid)
+      
+      @compute b_total = Field(b_linear_op + b_TWB_op + b_double_tanh_op)
+      
+      N²DoubleTanh_top = @views N²DoubleTanh(simGrid.z.cᵃᵃᶠ[simGrid.Nz + 1], doubleTanhParams)
+      N²DoubleTanh_bot = @views N²DoubleTanh(simGrid.z.cᵃᵃᶠ[1], doubleTanhParams)
+      
+      ∂b∂z_top = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_top + N²DoubleTanh_top
+      ∂b∂z_bot = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_bot + N²DoubleTanh_bot
    end
    
    if includeDefaultBCs #Return conditions, even defaults, on all boundaries
@@ -349,20 +363,20 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
          y_BC = nothing
       end
    
-      b_TWB_BCs = FieldBoundaryConditions(simGrid, (Center(), Center(), Center()),
-                                          east = x_BC, west = x_BC, 
-                                          north = y_BC, south = y_BC, 
-                                          top = GradientBoundaryCondition(∂b∂z_TWB_top), 
-                                          bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
+      b_total_BCs = FieldBoundaryConditions(simGrid, (Center(), Center(), Center()),
+                                            east = x_BC, west = x_BC, 
+                                            north = y_BC, south = y_BC, 
+                                            top = GradientBoundaryCondition(∂b∂z_top), 
+                                            bottom = GradientBoundaryCondition(∂b∂z_bot))
                                           
-      return b_TWB_BCs
+      return b_total_BCs
       
    else #Return the prognostic variables and only the non-default BCs
    
-      b_TWB_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_TWB_top),
-                                          bottom = GradientBoundaryCondition(∂b∂z_TWB_bot))
+      b_total_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_top),
+                                            bottom = GradientBoundaryCondition(∂b∂z_bot))
       
-      return b_total, u_TWB, v_TWB, w_TWB, b_TWB_BCs
+      return b_total, u_TWB, v_TWB, w_TWB, b_total_BCs
    end
 end
 
