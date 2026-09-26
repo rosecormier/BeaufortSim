@@ -4,13 +4,12 @@ using AbstractFFTs
 using Interpolations
 using Oceananigans.Grids
 using OffsetArrays: no_offset_view
-
-using CairoMakie
+using Statistics
 
 function construct_uniform_polar_grid(Lr, Nr, Nφ)
    #=
    Return Nr evenly spaced gridpoints between 'dr' and 'Lr', and Nφ evenly
-    spaced gridpoints between 0 and 2π (without double-counting φ = 0).
+    spaced gridpoints between 0 and 2π (without double-counting φ % 2π = 0).
    =#
 
    dr = Lr / (Nr + 1)
@@ -22,7 +21,9 @@ function construct_uniform_polar_grid(Lr, Nr, Nφ)
    return r_gridpoints, φ_gridpoints
 end
 
-function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams, Nr, Nφ; Hx = nothing, Hy = nothing, Hz = nothing)
+function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams,
+                                  Nr, Nφ;
+                                  Hx = nothing, Hy = nothing, Hz = nothing)
    #=
    Compute the Nφ-point azimuthal Fourier transform of 'simField' (which need
     not actually be a prognostic field of a simulation, but does need to be
@@ -44,97 +45,75 @@ function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams,
    #First, construct a uniformly spaced (Nr x Nφ x Nz) grid
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
-   rCylGrid, φCylGrid = construct_uniform_polar_grid(1, Nr, Nφ) #gridParams.Lr, Nr, Nφ)
-   
-   rCylGrid = collect(rCylGrid)
+   rCylGrid, φCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
    
    #Read in the coordinates of Oceananigans gridpoints
    
    if (xLoc == "c" || xLoc == "Center")
-      xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx - 1)]
+      xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
    elseif (xLoc == "f" || xLoc == "Face")
-      xCartVec = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx - 1)]
-   end
-   
-   if (yLoc == "c" || yLoc == "Center")
-      yCartVec = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy - 1)]
-   elseif (yLoc == "f" || yLoc == "Face")
-      yCartVec = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy - 1)]
+      xCartVec = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx)]
    end
 
-   #=
-   if (zLoc == "c" || zLoc == "Center")
-      zCartVec = grid.z.cᵃᵃᶜ[Hz:(end - Hz)]
-   elseif (zLoc == "f" || zLoc == "Face")
-      zCartVec = grid.z.cᵃᵃᶠ[Hz:(end - Hz)]
+   if (yLoc == "c" || yLoc == "Center")
+      yCartVec = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy)]
+   elseif (yLoc == "f" || yLoc == "Face")
+      yCartVec = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy)]
    end
-   =#
+
+   if (zLoc == "c" || zLoc == "Center")
+      zCartVec = no_offset_view(grid.z.cᵃᵃᶜ)[(Hz + 1):(end - Hz)]
+   elseif (zLoc == "f" || zLoc == "Face")
+      zCartVec = no_offset_view(grid.z.cᵃᵃᶠ)[(Hz + 1):(end - Hz)]
+   end
    
    #Tile xCartVec and yCartVec along complementary dimensions, such that each
    # point (x[i], y[j]) on the Oceananigans horizontal grid is represented by
-   # (xCartGrid[i, j], yCartGrid[i, j]).
+   # (xCartGrid[i, j], yCartGrid[i, j]). Then tile zCartVec in both x- and
+   # y-directions to match.
    
    xCartGrid = repeat(xCartVec, inner = [length(yCartVec)])
    yCartGrid = repeat(yCartVec, outer = [length(xCartVec)])
+   zCartGrid = repeat(zCartVec, inner = [length(yCartVec)], 
+                      outer = [length(xCartVec)])
 
    #Cartesian coordinates of the points on the cylindrically uniform grid
    xCylGrid, yCylGrid, zCylGrid = compute_Cart_coords(rCylGrid,
-                                                       φCylGrid,
-                                                       1) #zCartGrid)
-                                                       
-   #Create a linear interpolation (CartGrid -> CylGrid) object without
-   # extrapolation.
-   #Note that the interpolation only needs to be done in 2D (zCart = zCyl).
+                                                      φCylGrid,
+                                                      zCartVec)
+
+   #Construct an uninitialized Array to store interpolated data
+   interpolated_data = Array{Float64}(undef, size(xCylGrid)[1], 
+                                      size(xCylGrid)[2], length(zCylGrid))
    
-   interp = Interpolations.scale(Interpolations.interpolate(
-                        no_offset_view(simField.data)[(Hx + 1):(end - Hx - 1), 
-                                                      (Hy + 1):(end - Hy - 1), 
-                                                      1], 
-                                          BSpline(Interpolations.Linear())), 
+   #Interpolate data at each z-level. Interpolation only needs to be done in 2D
+   # (since zCylGrid == zCartGrid).
+   
+   for k in 1:1:length(zCylGrid)
+
+      #Create a linear interpolation object without extrapolation
+      interp = Interpolations.scale(Interpolations.interpolate(
+                              interior(simField)[:, :, k],
+                              BSpline(Interpolations.Linear())), 
                         (xCartVec, yCartVec)
-                                )
+                                   )
 
-   #Interpolate 'simField' to CylGrid points
-   interpolated = interp.(xCylGrid, yCylGrid)
+      #Interpolate 'simField' to CylGrid points
+      interpolated_k = interp.(xCylGrid, yCylGrid)
+      
+      interpolated_data[:, :, k] = interpolated_k
+   end
 
-   fig = Figure(size=(700, 700))
-   ax = Axis(fig[1, 1])
-   scatter!(ax, xCartGrid, yCartGrid)
-   scatter!(ax, vec(xCylGrid), vec(yCylGrid))
-   save("testuniformgrid.png", fig)
+   kφs = (rfftfreq(Nφ, 2π * Nφ)) ./ 2π #The azimuthal wavenumbers of the FFT
    
-   cylPoints = Point2f.(vec(xCylGrid), vec(yCylGrid))
+   #Construct an uninitialized Array to store Fourier-transformed data
+   simFieldφFFT = Array{ComplexF64}(undef, Nr, length(kφs), length(zCylGrid))
    
-   fig = Figure(size=(700, 700))
-   ax = Axis(fig[1, 1])
-   sc = scatter!(ax, cylPoints, colormap = :viridis, color = vec(interpolated), colorrange = (0, 1.5), markersize = 50)
-   save("testinterpfield.png", fig)
- 
-   simFieldφFFT = rfft(interpolated)
-   print(simFieldφFFT)
-   kφs = rfftfreq(Nφ, (Nφ / 2π))
- 
-   return interpolated
+   for k in 1:1:length(zCylGrid) #Loop over z-coords
+      for i in 1:1:length(rCylGrid) #Loop over r-coords
+         simFieldφFFT[i, :, k] = rfft(interpolated_data[i, :, k]) #[Real] DFT
+      end
+   end
+
+   return kφs, simFieldφFFT
 end
-
-testGrid = RectilinearGrid(CPU(),
-                          topology = (Bounded, Bounded, Grids.Flat),
-                          size = (12, 12), 
-                          x = (-1, 1), 
-                          y = (-1, 1),
-                          halo = (1, 1)
-                         )
-                         
-testField = CenterField(testGrid)
-
-@inline r2function(x, y) = x^2 + y^2
-
-set!(testField, r2function)
-
-fig = Figure(size=(700, 700))
-ax = Axis(fig[1, 1])
-hm = heatmap!(ax, view(testField, :, :, 1), colorrange = (0, 1.5))
-Colorbar(fig[1, 2], hm)
-save("testfield.png", fig)
-
-testInterpolated = compute_φFFT_of_sim_data(testField, "c", "c", "c", testGrid, nothing, 1, 5; Hx = 0, Hy = 0, Hz = 0)
