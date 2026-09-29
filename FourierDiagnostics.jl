@@ -21,14 +21,16 @@ function construct_uniform_polar_grid(Lr, Nr, Nφ)
    return r_gridpoints, φ_gridpoints
 end
 
-function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams,
-                                  Nr, Nφ;
-                                  Hx = nothing, Hy = nothing, Hz = nothing)
+function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
+                                  Hx = nothing, Hy = nothing, Hz = nothing,
+                                  rAvg = false, zAvg = false)
    #=
    Compute the Nφ-point azimuthal Fourier transform of 'simField' (which need
     not actually be a prognostic field of a simulation, but does need to be
     defined on an Oceananigans Grid) by first interpolating to a uniformly-
     spaced grid in cylindrical coordinates.
+   Default returns a 3D Nr x Nkφ x Nz field, but options 'rAvg' and 'zAvg'
+    perform r- and z-averaging, respectively, before returning.
    =#
 
    #If halos not otherwise specified, set them to 'grid' halo sizes
@@ -45,25 +47,25 @@ function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams,
    #First, construct a uniformly spaced (Nr x Nφ x Nz) grid
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
-   rCylGrid, φCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
+   rCylGrid, φCylGrid = construct_uniform_polar_grid(1, Nr, Nφ) #gridParams.Lr, Nr, Nφ)
    
    #Read in the coordinates of Oceananigans gridpoints
    
-   if (xLoc == "c" || xLoc == "Center")
+   if location(simField)[1] == Center
       xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
-   elseif (xLoc == "f" || xLoc == "Face")
+   elseif location(simField)[1] == Face
       xCartVec = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx)]
    end
 
-   if (yLoc == "c" || yLoc == "Center")
+   if location(simField)[2] == Center
       yCartVec = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy)]
-   elseif (yLoc == "f" || yLoc == "Face")
+   elseif location(simField)[2] == Face
       yCartVec = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy)]
    end
 
-   if (zLoc == "c" || zLoc == "Center")
+   if location(simField)[3] == Center
       zCartVec = no_offset_view(grid.z.cᵃᵃᶜ)[(Hz + 1):(end - Hz)]
-   elseif (zLoc == "f" || zLoc == "Face")
+   elseif location(simField)[3] == Face
       zCartVec = no_offset_view(grid.z.cᵃᵃᶠ)[(Hz + 1):(end - Hz)]
    end
    
@@ -115,5 +117,18 @@ function compute_φFFT_of_sim_data(simField, xLoc, yLoc, zLoc, grid, gridParams,
       end
    end
 
-   return kφs, simFieldφFFT
+   if rAvg
+   
+      if zAvg
+         return kφs, mean(simFieldφFFT, dims = (1, 3))
+      elseif !zAvg
+         return kφs, mean(simFieldφFFT, dims = 1)
+      end
+      
+   elseif (!rAvg && zAvg)
+      return kφs, mean(simFieldφFFT, dims = 3)
+   
+   else
+      return kφs, simFieldφFFT
+   end
 end
