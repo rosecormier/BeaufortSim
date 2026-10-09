@@ -41,21 +41,21 @@ function get_2D_spatial_axis_idcs(const_dimension;
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
          yCzC_idcs = (1, 
-                      (Hy + 1):(length(yC) + Hy - 1), 
-                      (Hz + 1):(length(zC) + Hz)
+                      (Hy + 1):(length(yC) - (2 * Hy)), 
+                      (Hz + 1):(length(zC) - (2 * Hz))
                      )
          yCzF_idcs = (1, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zF) + Hz)
+                      (Hy + 1):(length(yC) - (2 * Hy)), 
+                      (Hz + 1):(length(zF) - (2 * Hz))
                      ) 
       else #Grid is 3D
          yCzC_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zC) + Hz)
+                      (Hy + 1):(length(yC) - (2 * Hy)), 
+                      (Hz + 1):(length(zC) - (2 * Hz))
                      )
          yCzF_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) + Hy), 
-                      (Hz + 1):(length(zF) + Hz)
+                      (Hy + 1):(length(yC) - (2 * Hy)), 
+                      (Hz + 1):(length(zF) - (2 * Hz) - 1)
                      )
       end
 
@@ -64,22 +64,22 @@ function get_2D_spatial_axis_idcs(const_dimension;
    elseif const_dimension == "y"
 
       if isnothing(y_idx) #Grid is 2D with only x and z axes
-         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+         xCzC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
                       1, 
-                      (Hz + 1):(length(zC) + Hz)
+                      (Hz + 1):(length(zC) - (2 * Hz))
                      )
-         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+         xCzF_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
                       1, 
-                      (Hz + 1):(length(zF) + Hz)
+                      (Hz + 1):(length(zF) - (2 * Hz))
                      )
       else #Grid is 3D
-         xCzC_idcs = ((Hx + 1):(length(xC) + Hx), 
+         xCzC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
                       y_idx, 
-                      (Hz + 1):(length(zC) + Hz)
+                      (Hz + 1):(length(zC) - (2 * Hz))
                      )
-         xCzF_idcs = ((Hx + 1):(length(xC) + Hx), 
+         xCzF_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
                       y_idx, 
-                      (Hz + 1):(length(zF) + Hz)
+                      (Hz + 1):(length(zF) - (2 * Hz))
                      )
       end
 
@@ -88,14 +88,14 @@ function get_2D_spatial_axis_idcs(const_dimension;
    elseif const_dimension == "z"
 
       if isnothing(z_idx) #Grid is 2D with only x and y axes
-         xCyC_idcs = ((Hx + 1):(length(xC) + Hx), 
-                      (Hy + 1):(length(yC) + Hy),
+         xCyC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+                      (Hy + 1):(length(yC) - (2 * Hy)),
                       1
                      )
       else #Grid is 3D
          xCyC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
                       (Hy + 1):(length(yC) - (2 * Hy)), 
-                      (z_idx - Hz)
+                      z_idx
                      )
       end
 
@@ -246,19 +246,19 @@ function centered_difference(t, u)
    u_i_plus_1  = u[3:end]
    
    if length(t) > 3
-      Delta_t_minus = t[2:end-1] .- t[1:end-2] # t[2:end-1] .- t[1:end-2]
-      Delta_t_plus  = t[3:end] .- t[2:end-1] #t[3:end] .- t[2:end-1]
+      Δt_minus = t[2:end-1] .- t[1:end-2]
+      Δt_plus  = t[3:end] .- t[2:end-1]
    elseif length(t) == 3
-      Delta_t_minus = t[2] - t[1]
-      Delta_t_plus  = t[3] - t[2]
+      Δt_minus = t[2] - t[1]
+      Δt_plus  = t[3] - t[2]
    end
    
-   A = -Delta_t_plus ./ Delta_t_minus
-   B = (Delta_t_plus ./ Delta_t_minus) .- (Delta_t_minus ./ Delta_t_plus)
-   C = Delta_t_minus ./ Delta_t_plus
+   A = -Δt_plus ./ Δt_minus
+   B = (Δt_plus ./ Δt_minus) .- (Δt_minus ./ Δt_plus)
+   C = Δt_minus ./ Δt_plus
    
    return ((A .* u_i_minus_1 .+ B .* u_i .+ C .* u_i_plus_1) 
-           ./ (Delta_t_minus .+ Delta_t_plus))
+           ./ (Δt_minus .+ Δt_plus))
 end
 
 ########################################################
@@ -313,7 +313,7 @@ end
 @inline linearFunction(fit_params, fit_interval; offset = 2) = @. offset * 
    				                        exp(fit_params[0] + fit_params[1] * fit_interval)
 
-function plot_growth_fit_line!(ax, times, growth_idcs, perturb_norm)
+function plot_growth_fit_line!(ax, times, growth_idcs, perturb_norm, perturb_name)
    #=
    Superimpose line of best fit on an existing axis containing graph of 
     perturbation norms.
@@ -327,6 +327,9 @@ function plot_growth_fit_line!(ax, times, growth_idcs, perturb_norm)
           linearFunction(norm_linear_fit_params, 
                          times[growth_idcs[1]:growth_idcs[2]])
          )
+         
+   #Also print the value of the growth rate
+   print("Empirical growth rate from $(perturb_name)-norm: $(norm_linear_fit_params[1]:.5f) per day\n")
 
    return ax
 end
@@ -642,17 +645,17 @@ function open_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
    
    #Load coords of non-Flat dimensions; convert them to km for readability
 
-   if length(ds[:x_caa][:]) > 1
-      x = ds[:x_caa][:] ./ 1000 #ds[:x_caa][(Hx + 1):(length(ds[:x_caa][:]) - Hx)] ./ 1000
+   if length(ds[:x_caa]) > 1
+      x = ds[:x_caa][:] ./ 1000 #ds[:x_caa][(Hx + 1):(end - Hx)] ./ 1000
    end
 
-   if length(ds[:y_aca][:]) > 1
-      y = ds[:y_aca][:] ./ 1000 #ds[:y_aca][(Hy + 1):(length(ds[:y_aca][:]) - Hy)] ./ 1000
+   if length(ds[:y_aca]) > 1
+      y = ds[:y_aca][:] ./1000 #ds[:y_aca][(Hy + 1):(end - Hy)] ./ 1000
    end
    
-   if length(ds[:z_aac][:]) > 1
-      zC = ds[:z_aac][:] ./ 1000 # ds[:z_aac][(Hz + 1):(length(ds[:z_aac][:]) - Hz)] ./ 1000
-      zF = ds[:z_aaf][:] ./ 1000 # ds[:z_aaf][(Hz + 1):(length(ds[:z_aaf][:]) - Hz)] ./ 1000
+   if length(ds[:z_aac]) > 1
+      zC = ds[:z_aac][:] ./ 1000 # ds[:z_aac][(Hz + 1):(end - Hz)] ./ 1000
+      zF = ds[:z_aaf][:] ./ 1000 # ds[:z_aaf][(Hz + 1):(end - Hz)] ./ 1000
    end
 
    t, Nt, chronological_indices = load_times_in_days(ds)
@@ -689,16 +692,6 @@ end
 function ζa(f, u, v, w, Δx, Δy, Δz)
    ωx, ωy, ωz = ω(u, v, w, Δx, Δy, Δz)
    ζa         = f + ωz
-end
-
-function field_norm(ψ, n; ψ_bkgd = 0)
-   #=
-   Compute L2-norm of a perturbation field.
-   =#
-
-   ψ_n          = ψ[:, :, :, n]
-   ψ_perturb_n  = ψ_n .- ψ_bkgd
-   perturb_norm = norm(ψ_perturb_n)
 end
 
 function ∂r_q(q, x, y, zk, all_z)
