@@ -1,7 +1,9 @@
 include("LibraryCoordinates.jl")
+include("Visualization.jl")
 
 using AbstractFFTs
 using Interpolations
+using Oceananigans.BoundaryConditions
 using Oceananigans.Grids
 using OffsetArrays: no_offset_view
 using Statistics
@@ -47,8 +49,8 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
    #First, construct a uniformly spaced (Nr x Nφ x Nz) grid
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
-   rCylGrid, φCylGrid = construct_uniform_polar_grid(1, Nr, Nφ) #gridParams.Lr, Nr, Nφ)
-   
+   rCylGrid, φCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
+
    #Read in the coordinates of Oceananigans gridpoints
    
    if location(simField)[1] == Center
@@ -132,3 +134,34 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
       return kφs, simFieldφFFT
    end
 end
+
+function testing(gridParams, testFunctionAnon, Nr, Nφ)
+
+   testGrid = build_Oceananigans_RectilinearGrid(gridParams)
+
+   testField = CenterField(testGrid)
+   
+   @inline testFunctionInstance(x, y, z) = testFunctionAnon(x, y, z)
+   
+   set!(testField, testFunctionInstance)
+   fill_halo_regions!(testField)
+   
+   plot_rzMean_φDFT_field(testField, testGrid, gridParams, Nr, Nφ, "testField")
+   plot_rMean_φDFT_field(testField, testGrid, gridParams, Nr, Nφ, "testField")
+   plot_zMean_φDFT_field(testField, testGrid, gridParams, gridParams.Lr, Nr, Nφ, "testField")
+end
+
+testGridParams = (architecture = CPU(),
+                  Tx = Bounded, Ty = Bounded, Tz = Bounded,
+                  Nx = 18, Ny = 12, Nz = 11,
+                  Hx = 3, Hy = 3, Hz = 3,
+                  Lr = 1, Lz = 1,
+                  z_grid_type = "uniform")
+                  
+Nr, Nφ = 11, 51
+
+φ(x, y) = atan(y, x)
+
+sumSines = (x, y, z) -> @. sin(φ(x, y)) + (1/2) * sin(2*φ(x, y)) + (1/3) * sin(3*φ(x, y)) + (1/4) * sin(4*φ(x, y)) + (1/5) * sin(5*φ(x, y))
+
+testing(testGridParams, sumSines, Nr, Nφ)
