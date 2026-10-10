@@ -4,14 +4,19 @@ using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
+using Oceananigans.Operators
 using Oceanostics.KineticEnergyEquation
+using Oceanostics.PotentialEnergyEquation
 
-#Function to compute total potential energy in single control volume
-@inline totalPE_ccc(i, j, k, grid, b, g) = @inbounds ((g - b[i, j, k]) * grid.z.cᵃᵃᶜ[k])
+#Function to compute square of a field in single control volume
+@inline ψ²(i, j, k, grid, ψ) = @inbounds ψ[i, j, k]^2
+
+#Function to compute total KE in single control volume
+@inline KE_ccc(i, j, k, grid, u, v, w) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)) / 2
 
 function totalKE(simulation)
    #=
-   Return computed integral, over entire domain, of total kinetic energy.
+   Compute integral, over entire domain, of total specific kinetic energy.
    =#
 
    u, v, w = simulation.model.velocities
@@ -23,7 +28,7 @@ end
 
 function totalKEadvFlux(simulation; useOceanostics = false)
    #=
-   Return computed integral, over entire domain, of total advective KE-flux.
+   Compute integral, over entire domain, of total advective flux of specific KE.
    =#
    
    if useOceanostics #Note this requires a NonhydrostaticModel
@@ -31,30 +36,24 @@ function totalKEadvFlux(simulation; useOceanostics = false)
       totalKEadvFlux_op = KineticEnergyAdvection(simulation.model)
       
    elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
-   
+
       u, v, w = simulation.model.velocities
-   
-      totalKE_op = KineticEnergy(simulation.model, u, v, w)
       
-      @compute KE = Field(totalKE_op)
+      @inline KE_xAdvFlux_fcc(i, j, k, grid) = @inbounds u[i, j, k] * ∂xᶠᶜᶜ(i, j, k, grid, KE_ccc, u, v, w)
+      @inline KE_yAdvFlux_cfc(i, j, k, grid) = @inbounds v[i, j, k] * ∂yᶜᶠᶜ(i, j, k, grid, KE_ccc, u, v, w)
+      @inline KE_zAdvFlux_ccf(i, j, k, grid) = @inbounds w[i, j, k] * ∂zᶜᶜᶠ(i, j, k, grid, KE_ccc, u, v, w)
       
-      @compute ∂xKE = ∂x((Center, Center, Center), KE)
-      @compute ∂yKE = ∂y((Center, Center, Center), KE)
-      @compute ∂zKE = ∂z((Center, Center, Center), KE)
+      @inline negativeKEadvFlux_ccc(i, j, k, grid) = @inbounds -(ℑxᶜᵃᵃ(i, j, k, grid, KE_xAdvFlux_fcc) + ℑyᵃᶜᵃ(i, j, k, grid, KE_yAdvFlux_cfc) + ℑzᵃᵃᶜ(i, j, k, grid, KE_zAdvFlux_ccf))
       
-      @inline KEadvFlux_ccc(i, j, k, grid) = @inbounds (u[i, j, k] * ∂xKE[i, j, k] + v[i, j, k] * ∂yKE[i, j, k] + w[i, j, k] * ∂zKE[i, j, k]) / 2
-      #Note the factor of 1/2 is required for consistency with Oceanostics
-      # functions.
-   
-      totalKEadvFlux_op = KernelFunctionOperation{Center, Center, Center}(KEadvFlux_ccc, simulation.model.grid)
+      totalKEadvFlux_op = KernelFunctionOperation{Center, Center, Center}(negativeKEadvFlux_ccc, simulation.model.grid)
    end
    
-   compute!(Integral(Field(-totalKEadvFlux_op)))
+   compute!(Integral(Field(totalKEadvFlux_op)))
 end
 
 function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    #=
-   Return computed integral, over entire domain, of total pressure work.
+   Compute integral, over entire domain, of total pressure work.
    =#
    
    if useOceanostics #Note this requires a NonhydrostaticModel
@@ -64,18 +63,20 @@ function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
    
       if useNHS
-         p = simulation.model.pressures.pNHS #Note this is kinematic pressure
+         p = simulation.model.pressures.pNHS + simulation.model.pressures.pHY′
       elseif !useNHS
-         p = simulation.model.pressure.pHY′ #Note this is kinematic pressure
+         p = simulation.model.pressure.pHY′
       end
-
+      #Note 'p' is a kinematic pressure
+      
       u, v, w = simulation.model.velocities
       
-      @compute ∂xp = ∂x(p)
-      @compute ∂yp = ∂y(p)
-      @compute ∂zp = ∂z(p)
+      #Note: These fields need to be explicitly computed (i.e., can't use ∂xᶠᶜᶜ and the other operator functions), but I can't figure out why!
+      @compute p_xAdvFlux_fcc = u * ∂x(p)
+      @compute p_yAdvFlux_cfc = v * ∂y(p)
+      @compute p_zAdvFlux_ccf = w * ∂z(p)
       
-      @inline pressureWork_ccc(i, j, k, grid) = @inbounds (-(u[i, j, k] * ∂xp[i, j, k] + v[i, j, k] * ∂yp[i, j, k] + w[i, j, k] * ∂zp[i, j, k]))
+      @inline pressureWork_ccc(i, j, k, grid) = @inbounds -(ℑxᶜᵃᵃ(i, j, k, grid, p_xAdvFlux_fcc) + ℑyᵃᶜᵃ(i, j, k, grid, p_yAdvFlux_cfc) + ℑzᵃᵃᶜ(i, j, k, grid, p_zAdvFlux_ccf))
       
       totalPressureWork_op = KernelFunctionOperation{Center, Center, Center}(pressureWork_ccc, simulation.model.grid)
    end
@@ -85,7 +86,8 @@ end
 
 function totalProduction(simulation; useNHS = nothing)
    #=
-   Return computed integral, over entire domain, of total KE-production.
+   Compute integral, over entire domain, of total specific KE-production by
+    buoyancy.
    =#
    
    if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
@@ -96,9 +98,7 @@ function totalProduction(simulation; useNHS = nothing)
    
       b, uz = simulation.model.tracers.b, simulation.model.velocities.w
 
-      @inline production_ccc(i, j, k, grid) = @inbounds (b[i, j, k] * uz[i, j, k]) / 2
-      #Note the factor of 1/2 is required for consistency with Oceanostics
-      # functions.
+      @inline production_ccc(i, j, k, grid) = @inbounds b[i, j, k] * ℑzᵃᵃᶜ(i, j, k, grid, uz)
    
       totalProduction_op = KernelFunctionOperation{Center, Center, Center}(production_ccc, simulation.model.grid)
    end
@@ -106,51 +106,50 @@ function totalProduction(simulation; useNHS = nothing)
    compute!(Integral(Field(totalProduction_op)))
 end
 
-function totalPE(simulation, g)
+function totalPE(simulation)
    #=
-   Return computed integral, over entire domain, of total kinetic energy.
+   Compute integral, over entire domain, of total specific potential energy.
    =#
    
-   grid = simulation.model.grid
-   b    = simulation.model.tracers.b
-
-   totalPE_op = KernelFunctionOperation{Center, Center, Center}(totalPE_ccc, grid, b, g)
-
+   totalPE_op = PotentialEnergy(simulation.model)
+   
    compute!(Integral(Field(totalPE_op)))
 end
 
 function totalGravityWork(simulation, g)
    #=
-   Return computed integral, over entire domain, of total gravity work.
+   Compute integral, over entire domain, of total gravity work.
    =#
 
    uz = simulation.model.velocities.w
    
-   @inline gravityWork_ccc(i, j, k, grid) = @inbounds uz[i, j, k]
+   @inline gravityWork_ccc(i, j, k, grid) = @inbounds ℑzᵃᵃᶜ(i, j, k, grid, uz)
       
    totalGravityWork_op = KernelFunctionOperation{Center, Center, Center}(gravityWork_ccc, simulation.model.grid)
 
    compute!(Integral(Field(g * totalGravityWork_op)))
 end
 
-function totalBuoyancyAdvFlux(simulation)
+function totalPEsources(simulation)
    #=
-   Return computed integral, over entire domain, of total advective KE-flux.
+   Compute integral, over entire domain, of total internal specific-PE sources.
    =#
    
    b       = simulation.model.tracers.b
    u, v, w = simulation.model.velocities
-      
-   @compute ∂xb = ∂x((Center, Center, Center), b)
-   @compute ∂yb = ∂y((Center, Center, Center), b)
-   @compute ∂zb = ∂z((Center, Center, Center), b)
-      
-   @inline buoyancyAdvFlux_ccc(i, j, k, grid) = @inbounds ((u[i, j, k] * ∂xb[i, j, k] + v[i, j, k] * ∂yb[i, j, k] + w[i, j, k] * ∂zb[i, j, k]) * grid.z.cᵃᵃᶜ[k])
    
-   totalBuoyancyAdvFlux_op = KernelFunctionOperation{Center, Center, Center}(buoyancyAdvFlux_ccc, simulation.model.grid)
-
-   compute!(Integral(Field(totalBuoyancyAdvFlux_op)))
+   @compute b_xAdvFlux_fcc = u * ∂x(b)
+   @compute b_yAdvFlux_cfc = v * ∂y(b)
+   @compute b_zAdvFlux_ccf = w * ∂z(b)
+   
+   @inline PEsources_ccc(i, j, k, grid) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, b_xAdvFlux_fcc) + ℑyᵃᶜᵃ(i, j, k, grid, b_yAdvFlux_cfc) + ℑzᵃᵃᶜ(i, j, k, grid, b_zAdvFlux_ccf)) * grid.z.cᵃᵃᶜ[k]
+      
+   totalPEsources_op = KernelFunctionOperation{Center, Center, Center}(PEsources_ccc, simulation.model.grid)
+   
+   compute!(Integral(Field(totalPEsources_op)))
 end
+
+@inline b′(i, j, k, grid, b, B) = @inbounds b[i, j, k] - B[i, j, k]
 
 #Functions to compute cylindrical components of perturbation velocity
 @inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
@@ -167,9 +166,10 @@ end
 @inline PKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) + ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
 
 #Function to compute product of b′ and uz′ in single control volume
-@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
+@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (b′(i, j, k, grid, b, B) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
+##@inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
-function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Uφ) ##Ur, Uφ, ∂rUφ)
+function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ) ##, ∂rUφ)
    #=
    Function to compute (1/r times ur′ times uφ′ times Uφ) in single control
     volume.
@@ -185,14 +185,14 @@ function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Uφ) ##Ur, Uφ, ∂r
    ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
    uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
 
-   ur′_ccc       = @inbounds ur′(i, j, k, grid, ur_ccc, 0) #Ur)
+   ur′_ccc       = @inbounds ur′(i, j, k, grid, ur_ccc, Ur)
    uφ′_ccc       = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
    Uφ_over_r_ccc = @inbounds Uφ[i, j, k] / r[i, j, k]
 
    return @inbounds -(Uφ_over_r_ccc * ur′_ccc * uφ′_ccc)
 end
 
-function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Uφ, ∂rUφ) ##Ur, Uφ, ∂rUφ)
+function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
    #=
    Function to compute (negative ur′ times uφ′ times r-derivative of Uφ) in
     single control volume.
@@ -207,7 +207,7 @@ function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Uφ, ∂rUφ) ##Ur, 
    ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
    uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
 
-   ur′_ccc  = @inbounds ur′(i, j, k, grid, ur_ccc, 0) #Ur)
+   ur′_ccc  = @inbounds ur′(i, j, k, grid, ur_ccc, Ur)
    uφ′_ccc  = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
    ∂rUφ_ccc = @inbounds ∂rUφ[i, j, k]
 
@@ -282,8 +282,7 @@ function gyre_PKE(simulation; gyreParameters)
    PKE    = Field(PKE_op)
 
    #Mask areas far from gyre
-   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
-                         IsWithinModelGyreRegion, grid, PKE))
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(IsWithinModelGyreRegion, grid, PKE))
 
    compute!(Integral(PKE, mask = mask))
 end
@@ -297,8 +296,7 @@ function PAPE_to_PKE(simulation, B, Uz)
    grid = simulation.model.grid
    b, w = simulation.model.tracers.b, simulation.model.velocities.w
 
-   PAPE_to_PKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc,
-                                           grid, b, w, B, Uz)
+   PAPE_to_PKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc, grid, b, w, B, Uz)
 
    compute!(Integral(Field(PAPE_to_PKE_op)))
 end
@@ -314,13 +312,11 @@ function gyre_PAPE_to_PKE(simulation; gyreParameters)
    grid = simulation.model.grid
    b, w = simulation.model.tracers.b, simulation.model.velocities.w
 
-   PAPE_to_PKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc,
-                                           grid, b, w, B, Uz)
+   PAPE_to_PKE_op = KernelFunctionOperation{Center, Center, Center}(b′uz′_ccc, grid, b, w, B, Uz)
    PAPE_to_PKE    = Field(PAPE_to_PKE_op)
    
    #Mask areas far from gyre
-   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(
-                         IsWithinModelGyreRegion, grid, PAPE_to_PKE))
+   @compute mask = Field(KernelFunctionOperation{Center, Center, Center}(IsWithinModelGyreRegion, grid, PAPE_to_PKE))
 
    compute!(Integral(PAPE_to_PKE, mask = mask))
 end
@@ -337,8 +333,8 @@ function BTI_transfer(simulation; bkgdParameters)
    Ur   = bkgdParameters.Ur
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
-   
-   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Uφ, ∂rUφ)
+
+   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Ur, Uφ, ∂rUφ)
    
    BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
    
@@ -360,12 +356,9 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   #BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(∂rUφ_ur′_uφ′_ccc, 
-   #                                                      grid, u, v, Uφ, ∂rUφ) ## Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Ur, Uφ, ∂rUφ)
 
-   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Uφ, ∂rUφ)
-   
-   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)
    BTI_transfer    = Field(BTI_transfer_op)
 
    #Mask areas far from gyre
@@ -408,8 +401,7 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, 
-                                                        grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
    BCI_transfer    = Field(BCI_transfer_op)
    
    #Mask areas far from gyre
