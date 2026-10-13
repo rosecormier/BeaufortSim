@@ -8,6 +8,10 @@ using Oceananigans.Operators
 using Oceanostics.KineticEnergyEquation
 using Oceanostics.PotentialEnergyEquation
 
+########################################################
+# DIAGNOSTICS THAT CAN BE SAVED DURING SIMULATION RUNS #
+########################################################
+
 #Function to compute square of a field in single control volume
 @inline ψ²(i, j, k, grid, ψ) = @inbounds ψ[i, j, k]^2
 
@@ -273,165 +277,6 @@ function bkgd_transfer(simulation, Ux_bkgd, Uy_bkgd, Uz_bkgd)
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-# # # # # # # 
-#The individual bkgd terms
-
-function bkgd_transfer_ux′ux′∂xUx(simulation, Ux_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline ux′_fcc(i, j, k, g) = @inbounds u[i, j, k] - Ux_bkgd[i, j, k]
-   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc)
-
-   @compute ∂xUx = ∂x((Center, Center, Center), Ux_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g) * ux′_ccc(i, j, k, g) * ∂xᶜᶜᶜ(i, j, k, g, Ux_bkgd)) # ∂xUx[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_ux′uy′∂yUx(simulation, Ux_bkgd, Uy_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline ux′_fcc(i, j, k, g) = @inbounds u[i, j, k] - Ux_bkgd[i, j, k]
-   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc)
-   @inline uy′_cfc(i, j, k, g) = @inbounds v[i, j, k] - Uy_bkgd[i, j, k]
-   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc)
-
-   @compute ∂yUx = ∂y((Center, Center, Center), Ux_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g) * uy′_ccc(i, j, k, g) * ∂yᶜᶜᶜ(i, j, k, g, Ux_bkgd)) #∂yUx[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_ux′uz′∂zUx(simulation, Ux_bkgd, Uz_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline ux′_fcc(i, j, k, g) = @inbounds u[i, j, k] - Ux_bkgd[i, j, k]
-   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc)
-   @inline uz′_ccf(i, j, k, g) = @inbounds w[i, j, k] - Uz_bkgd[i, j, k]
-   @inline uz′_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf)
-
-   #@compute ∂zUx = ∂z((Center, Center, Center), Ux_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g) * uz′_ccc(i, j, k, g) * ∂zᶜᶜᶜ(i, j, k, g, Ux_bkgd)) #∂zUx[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uy′ux′∂xUy(simulation, Ux_bkgd, Uy_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline ux′_fcc(i, j, k, g) = @inbounds u[i, j, k] - Ux_bkgd[i, j, k]
-   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc)
-   @inline uy′_cfc(i, j, k, g) = @inbounds v[i, j, k] - Uy_bkgd[i, j, k]
-   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc)
-
-   #@compute ∂xUy = ∂x((Center, Center, Center), Uy_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g) * ux′_ccc(i, j, k, g) * ∂xᶜᶜᶜ(i, j, k, g, Uy_bkgd)) #∂xUy[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uy′uy′∂yUy(simulation, Uy_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline uy′_cfc(i, j, k, g) = @inbounds v[i, j, k] - Uy_bkgd[i, j, k]
-   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc)
-
-   #@compute ∂yUy = ∂y((Center, Center, Center), Uy_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g) * uy′_ccc(i, j, k, g) * ∂yᶜᶜᶜ(i, j, k, g, Uy_bkgd)) # ∂yUy[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uy′uz′∂zUy(simulation, Uy_bkgd, Uz_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline uy′_cfc(i, j, k, g) = @inbounds v[i, j, k] - Uy_bkgd[i, j, k]
-   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc)
-   @inline uz′_ccf(i, j, k, g) = @inbounds w[i, j, k] - Uz_bkgd[i, j, k]
-   @inline uz′_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf)
-
-   #@compute ∂zUy = ∂z((Center, Center, Center), Uy_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g) * uz′_ccc(i, j, k, g) * ∂zᶜᶜᶜ(i, j, k, g, Uy_bkgd)) #* ∂zUy[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uz′ux′∂xUz(simulation, Ux_bkgd, Uz_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline ux′_fcc(i, j, k, g) = @inbounds u[i, j, k] - Ux_bkgd[i, j, k]
-   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc)
-   @inline uz′_ccf(i, j, k, g) = @inbounds w[i, j, k] - Uz_bkgd[i, j, k]
-   @inline uz′_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf)
-
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g) * ux′_ccc(i, j, k, g) * ∂xᶜᶜᶜ(i, j, k, g, Uz_bkgd))
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uz′uy′∂yUz(simulation, Uy_bkgd, Uz_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline uy′_cfc(i, j, k, g) = @inbounds v[i, j, k] - Uy_bkgd[i, j, k]
-   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc)
-   @inline uz′_ccf(i, j, k, g) = @inbounds w[i, j, k] - Uz_bkgd[i, j, k]
-   @inline uz′_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf)
-
-   #@compute ∂yUz = ∂y((Center, Center, Center), Uz_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g) * uy′_ccc(i, j, k, g) * ∂yᶜᶜᶜ(i, j, k, g, Uz_bkgd)) # ∂yUz[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-function bkgd_transfer_uz′uz′∂zUz(simulation, Uz_bkgd)
-
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
-
-   @inline uz′_ccf(i, j, k, g) = @inbounds w[i, j, k] - Uz_bkgd[i, j, k]
-   @inline uz′_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf)
-
-   #@compute ∂zUz = ∂z((Center, Center, Center), Uz_bkgd)
-   
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g) * uz′_ccc(i, j, k, g) * ∂zᶜᶜᶜ(i, j, k, g, Uz_bkgd)) #∂zUz[i, j, k])
-   bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
-   
-   compute!(Integral(Field(bkgd_transfer_op)))
-end
-
-# # # # # # # 
-
 function IsWithinGyreRegion(i, j, k, grid, integrand; parameters) 
    #=
    Return true if gridpoint coords are r ≤ (2 * σr) and (only if baroclinic 
@@ -470,7 +315,7 @@ function gyre_PKE(simulation; gyreParameters)
    Return computed integral of PKE, taken over gyre region only.
    =#
 
-   @inline IsWithinModelGyreRegion(i, j, k, grid, integrand) = @inbounds IsWithinGyreRegion(i, j, k, grid, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
    
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -504,7 +349,7 @@ function gyre_PAPE_to_PKE(simulation; gyreParameters)
     perturbation APE to PKE.
    =#
    
-   @inline IsWithinModelGyreRegion(i, j, k, grid, integrand) = @inbounds IsWithinGyreRegion(i, j, k, grid, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
    
    grid = simulation.model.grid
    b, w = simulation.model.tracers.b, simulation.model.velocities.w
@@ -531,7 +376,7 @@ function BTI_transfer(simulation; bkgdParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
    
    BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
    
@@ -544,7 +389,7 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
     in PKE budget.
    =#
 
-   @inline IsWithinModelGyreRegion(i, j, k, grid, integrand) = @inbounds IsWithinGyreRegion(i, j, k, grid, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
 
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -553,7 +398,7 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_ccc(i, j, k, grid) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
 
    BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)
    BTI_transfer    = Field(BTI_transfer_op)
@@ -589,7 +434,7 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
     in PKE budget.
    =#
    
-   @inline IsWithinModelGyreRegion(i, j, k, grid, integrand) = @inbounds IsWithinGyreRegion(i, j, k, grid, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
 
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -606,4 +451,16 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
                          IsWithinModelGyreRegion, grid, BCI_transfer))
 
    compute!(Integral(BCI_transfer, mask = mask))
+end
+
+################################################################
+# DIAGNOSTICS TO BE EVALUATED USING COMPLETE SIMULATION OUTPUT #
+################################################################
+
+function quantify_simulation_nonconservativity(totalKE_timeseries, totalPE_timeseries)
+
+   initialME = totalKE_timeseries[1] + totalPE_timeseries[1]
+   finalME   = totalKE_timeseries[end] + totalPE_timeseries[end]
+   
+   percentage_ME_loss = (1 - (finalME / initialME)) * 100
 end
