@@ -29,10 +29,8 @@ function get_2D_spatial_axis_idcs(const_dimension;
    #=
    Return two arrays of coordinate indices partitioning a 2D slice (constant
     along 'const_dimension').
-   The first array can be used to project a field located at
-    (Center, Center, Center)-points onto the 2D slice; the second array can be
-    used to project a field located at (Center, Center, Face)-points onto the 2D
-    slice.
+   The first array can be used to slice a CenterField; the second array can be
+    used to slice a ZFaceField.
    'xC' (resp. 'yC', 'zC', 'zF') must include 'Hx' (resp. 'Hy', 'Hz', 'Hz') halo
     points at each boundary.
    =#
@@ -41,21 +39,21 @@ function get_2D_spatial_axis_idcs(const_dimension;
 
       if isnothing(x_idx) #Grid is 2D with only y and z axes
          yCzC_idcs = (1, 
-                      (Hy + 1):(length(yC) - (2 * Hy)), 
-                      (Hz + 1):(length(zC) - (2 * Hz))
+                      (Hy + 1):(length(yC) - Hy), 
+                      (Hz + 1):(length(zC) - Hz)
                      )
          yCzF_idcs = (1, 
-                      (Hy + 1):(length(yC) - (2 * Hy)), 
-                      (Hz + 1):(length(zF) - (2 * Hz))
+                      (Hy + 1):(length(yC) - Hy), 
+                      (Hz + 1):(length(zF) - Hz - 1)
                      ) 
       else #Grid is 3D
          yCzC_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) - (2 * Hy)), 
-                      (Hz + 1):(length(zC) - (2 * Hz))
+                      (Hy + 1):(length(yC) - Hy), 
+                      (Hz + 1):(length(zC) - Hz)
                      )
          yCzF_idcs = (x_idx, 
-                      (Hy + 1):(length(yC) - (2 * Hy)), 
-                      (Hz + 1):(length(zF) - (2 * Hz) - 1)
+                      (Hy + 1):(length(yC) - Hy), 
+                      (Hz + 1):(length(zF) - Hz - 1)
                      )
       end
 
@@ -64,22 +62,22 @@ function get_2D_spatial_axis_idcs(const_dimension;
    elseif const_dimension == "y"
 
       if isnothing(y_idx) #Grid is 2D with only x and z axes
-         xCzC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+         xCzC_idcs = ((Hx + 1):(length(xC) - Hx), 
                       1, 
-                      (Hz + 1):(length(zC) - (2 * Hz))
+                      (Hz + 1):(length(zC) - Hz)
                      )
-         xCzF_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+         xCzF_idcs = ((Hx + 1):(length(xC) - Hx), 
                       1, 
-                      (Hz + 1):(length(zF) - (2 * Hz))
+                      (Hz + 1):(length(zF) - Hz - 1)
                      )
       else #Grid is 3D
-         xCzC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+         xCzC_idcs = ((Hx + 1):(length(xC) - Hx), 
                       y_idx, 
-                      (Hz + 1):(length(zC) - (2 * Hz))
+                      (Hz + 1):(length(zC) - Hz)
                      )
-         xCzF_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
+         xCzF_idcs = ((Hx + 1):(length(xC) - Hx), 
                       y_idx, 
-                      (Hz + 1):(length(zF) - (2 * Hz))
+                      (Hz + 1):(length(zF) - Hz - 1)
                      )
       end
 
@@ -88,13 +86,13 @@ function get_2D_spatial_axis_idcs(const_dimension;
    elseif const_dimension == "z"
 
       if isnothing(z_idx) #Grid is 2D with only x and y axes
-         xCyC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
-                      (Hy + 1):(length(yC) - (2 * Hy)),
+         xCyC_idcs = ((Hx + 1):(length(xC) - Hx), 
+                      (Hy + 1):(length(yC) - Hy),
                       1
                      )
       else #Grid is 3D
-         xCyC_idcs = ((Hx + 1):(length(xC) - (2 * Hx)), 
-                      (Hy + 1):(length(yC) - (2 * Hy)), 
+         xCyC_idcs = ((Hx + 1):(length(xC) - Hx), 
+                      (Hy + 1):(length(yC) - Hy), 
                       z_idx
                      )
       end
@@ -140,24 +138,30 @@ function set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs, ax_titles)
 end
 
 function plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, ax_uφ, ax_uz, dictFields,
-                                        axis1, axis2_zC, axis2_zF, colorranges,
+                                        axis1, H_axis1, axis2_zC, H_axis2_zC, 
+                                        axis2_zF, H_axis2_zF, colorranges,
                                         colormap)
                                         
    b, ur, uφ, uz = dictFields["b"], dictFields["ur"], dictFields["uφ"], dictFields["uz"]
 
-   hm_b  = heatmap!(ax_b, axis1, axis2_zC, b, colorrange = colorranges["b"], 
-                    colormap = colormap)
-   hm_ur = heatmap!(ax_ur, axis1, axis2_zC, ur, colorrange = colorranges["ur"],
-                    colormap = colormap)
-   hm_uφ = heatmap!(ax_uφ, axis1, axis2_zC, uφ, colorrange = colorranges["uφ"], 
-                    colormap = colormap)
-   hm_uz = heatmap!(ax_uz, axis1, axis2_zF, uz, colorrange = colorranges["uz"], 
-                    colormap = colormap)
+   hm_b  = heatmap!(ax_b, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], b, 
+                    colorrange = colorranges["b"], colormap = colormap)
+   hm_ur = heatmap!(ax_ur, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], ur,
+                    colorrange = colorranges["ur"], colormap = colormap)
+   hm_uφ = heatmap!(ax_uφ, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], uφ,
+                    colorrange = colorranges["uφ"], colormap = colormap)
+   hm_uz = heatmap!(ax_uz, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zF[(H_axis2_zC + 1):(end - H_axis2_zC)], uz,
+                    colorrange = colorranges["uz"], colormap = colormap)
 
    return hm_b, hm_ur, hm_uφ, hm_uz
 end
 
-function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF, 
+function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
+                                  H_axis2_zC, axis2_zF, H_axis2_zF, 
                                   nearest, ax_kwargs, figtitle; 
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
@@ -182,7 +186,7 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
                                                                    ax_titles)
    
    hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
-     ax_uφ, ax_uz, dictFields, axis1, axis2_zC, axis2_zF, colorranges, colormap)
+     ax_uφ, ax_uz, dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF, colorranges, colormap)
                     
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
@@ -194,7 +198,8 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
    return fig
 end
 
-function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
+function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
+                                  H_axis2_zC, axis2_zF, H_axis2_zF,
                                   nearest, ax_kwargs;
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
@@ -214,7 +219,8 @@ function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
                                                                    ax_titles)
                                   
    hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
-     ax_uφ, ax_uz, dictFields, axis1, axis2_zC, axis2_zF, colorranges, colormap)
+     ax_uφ, ax_uz, dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF,
+     H_axis2_zF, colorranges, colormap)
                     
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
