@@ -162,6 +162,8 @@ Nr, Nφ = 11, 51
 
 φ(x, y) = atan(y, x)
 
-sumSines = (x, y, z) -> @. sin(φ(x, y)) + (1/2) * sin(2*φ(x, y)) + (1/3) * sin(3*φ(x, y)) + (1/4) * sin(4*φ(x, y)) + (1/5) * sin(5*φ(x, y))
+fiveSines = (θ) -> @. sin(θ) + (1/2) * sin(2*θ) + (1/3) * sin(3*θ) + (1/4) * sin(4*θ) + (1/5) * sin(5*θ)
 
-testing(testGridParams, sumSines, Nr, Nφ)
+test2Dsines = (x, y, z) -> @. fiveSines(φ(x, y)) * exp(-(x^2 + y^2)) * z * rand()
+
+testing(testGridParams, test2Dsines, Nr, Nφ)
