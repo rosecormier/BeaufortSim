@@ -1,268 +1,83 @@
 include("LibraryCoordinates.jl")
+include("Parameters.jl")
 
 using Adapt, CSV, CUDA
 using Oceananigans.AbstractOperations
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using SpecialFunctions
+using Random, SpecialFunctions
 
-function N²DoubleTanh(z, parameters)
+#Background-state streamfunction
+@inline Ψ(r, z, p::GyreParams) = (p.U * p.σr / sqrt(2)) .* (1 .- exp.(-(r./p.σr).^2)) .* exp.(0.5 .- (z./p.σz).^2)
+
+#Double-tanh buoyancy function
+@inline buoyancyDoubleTanh(z, p::DoubleTanhStratParams) = @. -(p.gravity / p.ρ₀) * (p.A_s * tanh((z - p.z_s) / p.C_s) + p.A_d * tanh((z - p.z_d) / p.C_d))
+
+#N² corresponding to double-tanh buoyancy function
+@inline N²DoubleTanh(z, p::DoubleTanhStratParams) = @. -(p.gravity / p.ρ₀) * ((p.A_s / p.C_s) * (sech((z - p.z_s) / p.C_s))^2 + (p.A_d / p.C_d) * (sech((z - p.z_d) / p.C_d))^2)
+
+function default_xy_tracerBCs(gridParams::GridParams)
    #=
-   Evaluate, at z, N² corresponding to double-tanh function.
-   =#
-
-   g   = parameters.g
-   ρ₀  = parameters.ρ₀
-   A_s = parameters.A_s
-   C_s = parameters.C_s
-   z_s = parameters.z_s
-   A_d = parameters.A_d
-   C_d = parameters.C_d
-   z_d = parameters.z_d
-
-   N² = @. -(g / ρ₀) * ((A_s / C_s) * (sech((z - z_s) / C_s))^2 
-                        + (A_d / C_d) * (sech((z - z_d) / C_d))^2)
-
-   return N²   
-end
-
-function buoyancyDoubleTanh(z, parameters)
-   #=
-   Evaluate, at z, double-tanh buoyancy function.
-   =#
-
-   g   = parameters.g
-   ρ₀  = parameters.ρ₀
-   A_s = parameters.A_s
-   C_s = parameters.C_s
-   z_s = parameters.z_s
-   A_d = parameters.A_d
-   C_d = parameters.C_d
-   z_d = parameters.z_d
-   
-   b = @. -(g / ρ₀) * (A_s * tanh((z - z_s) / C_s)
-                       + A_d * tanh((z - z_d) / C_d))
-   
-   return b
-end
-
-function TWB_b_anon_function(gyreParams; yFlat = false)
-   #=
-   Return anonymous function to evaluate contribution to background buoyancy 
-    from thermal-wind balance with background velocity.
+   Default boundary conditions in x- and y- directions for "tracer-located"
+    fields (i.e., at cell centers in x and y respectively).
    =#
    
-   f, U, σr, σz = gyreParams.f, gyreParams.U, gyreParams.σr, gyreParams.σz
+   tracerBCs = Dict{DataType, BoundaryCondition}(Periodic => PeriodicBoundaryCondition(),
+                                                 Bounded => GradientBoundaryCondition(0))
+
+   x_BC = tracerBCs[gridParams.topology[1]]
+   y_BC = gridParams.topology[2] == Flat ? nothing : tracerBCs[gridParams.topology[2]]
    
-   if !yFlat #Return 3D version of function
-      TWB_b = (x, y, z) -> -((sqrt(2) * f * U * σr * z / (σz^2))
-                             * exp(0.5 - (z/σz)^2)
-                             * (1 - exp(-(x^2 + y^2) / (σr^2)))
-                            )
-   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
-      TWB_b = (x, z) -> -((sqrt(2) * f * U * σr * z / (σz^2))
-                          * exp(0.5 - (z/σz)^2) * (1 - exp(-(x^2) / (σr^2)))
-                         )
-   end
-   return TWB_b
+   return x_BC, y_BC
 end
 
-function TWB_b_field(grid, gyreParams; returnAsArray = true, yFlat = false)
+#Given appropriate derivatives of a thermal-wind-balanced Ψ, these functions
+# compute the thermal-wind-balanced zonal and meridional velocity components.
+@inline u_TWB_fcc(i, j, k, g, ∂Ψ∂y_fcc_tallField) = @inbounds ∂Ψ∂y_fcc_tallField[i, j, (k + 1)]
+@inline v_TWB_cfc(i, j, k, g, ∂Ψ∂x_cfc_tallField) = @inbounds -∂Ψ∂x_cfc_tallField[i, j, (k + 1)]
+
+#Given appropriate derivatives of a thermal-wind-balanced Ψ, these functions
+# compute the horizontal divergence of flow velocity and diagnose the balanced
+# vertical velocity, respectively.
+@inline divH_u_ccf(i, j, k, g, ∂Ψ∂y_fcc_Field, ∂Ψ∂x_cfc_Field) = @inbounds ∂xᶜᶜᶠ(i, j, k, g, u_TWB_fcc, ∂Ψ∂y_fcc_Field) + ∂yᶜᶜᶠ(i, j, k, g, v_TWB_cfc, ∂Ψ∂x_cfc_Field)
+@inline w_TWB_ccf(i, j, k, g, ∂Ψ∂y_fcc_Field, ∂Ψ∂x_cfc_Field) = @inbounds -divH_u_ccf(i, j, k, g, ∂Ψ∂y_fcc_Field, ∂Ψ∂x_cfc_Field) * Δzᶜᶜᶠ(i, j, k, g)
+
+#These functions compute the linear, thermal-wind-balanced (i.e., dynamic) and
+# double-tanh-stratification contributions to buoyancy, respectively.
+@inline b_linear_ccc(i, j, k, g, p::GyreParams) = @inbounds p.N²_far * g.z.cᵃᵃᶜ[k]
+@inline b_TWB_ccc(i, j, k, g, p::GyreParams, ∂Ψ∂z_ccc_tallField) = @inbounds p.f * ∂Ψ∂z_ccc_tallField[i, j, (k + 1)]
+@inline b_double_tanh_ccc(i, j, k, g, p::DoubleTanhStratParams) = @inbounds buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], p)
+
+function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
+                                                   gyreParams::GyreParams,
+                                                   doubleTanhParams::DoubleTanhStratParams,
+                                                   perturbParams::PerturbationParams;
+                                                   visualizeΨ::Bool = true)
    #=
-   Compute thermal-wind-balance contribution to background buoyancy.
-   Convert to array before returning, if indicated; otherwise, return as a 
-    CenterField on 'grid'.
-   =#
-
-   TWB_b_function = TWB_b_anon_function(gyreParams; yFlat = yFlat)
-
-   @inline b_ccc(i, j, k, g) = @inbounds TWB_b_function(g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j],
-                                                        g.z.cᵃᵃᶜ[k])
-
-   b_op = KernelFunctionOperation{Center, Center, Center}(b_ccc, grid)
-   
-   @compute b = Field(b_op)
-
-   if returnAsArray
-      return adapt(Array, b)
-   elseif !returnAsArray
-      return b
-   end
-end
-
-function TWB_∂b∂z_anon_function(gyreParams; yFlat = false)
-   #=
-   Return anonymous function to evaluate contribution to background z-derivative
-    of buoyancy from thermal-wind balance with background velocity.
-   =#
-   
-   f, U, σr, σz = gyreParams.f, gyreParams.U, gyreParams.σr, gyreParams.σz
-
-   if !yFlat #Return 3D version of function
-      TWB_∂b∂z = (x, y, z) -> @. (-(sqrt(2) * f * U * σr / (σz^2))
-                                  * exp(0.5 - (z/σz)^2)
-                                  * (1 - exp(-(x^2 + y^2) / (σr^2))) 
-                                  * (1 - 2 * (z/σz)^2)
-                                 )
-   elseif yFlat #Return 2D (x, z) version of function, evaluated at y = 0
-      TWB_∂b∂z = (x, z) -> @. (-(sqrt(2) * f * U * σr / (σz^2))
-                               * exp(0.5 - (z/σz)^2)
-                               * (1 - exp(-(x/σr)^2)) 
-                               * (1 - 2 * (z/σz)^2)
-                              )
-   end
-   return TWB_∂b∂z
-end
-
-function TWB_∂b∂z_field(grid, gyreParams; returnAsArray = true, yFlat = false)
-   #=
-   Compute thermal-wind-balance contribution to background z-derivative of 
-    buoyancy.
-   Convert to array before returning, if indicated; otherwise, return as a 
-    ZFaceField on 'grid'.
-   =#                        
-
-   TWB_∂b∂z_function = TWB_∂b∂z_anon_function(gyreParams; yFlat = yFlat)
-
-   @inline ∂b∂z_ccf(i, j, k, g) = @inbounds TWB_∂b∂z_function(g.xᶜᵃᵃ[i],
-                                                              g.yᵃᶜᵃ[j],
-                                                              g.z.cᵃᵃᶠ[k])
-   
-   ∂b∂z_op = KernelFunctionOperation{Center, Center, Face}(∂b∂z_ccf, grid)
-                                                    
-   @compute ∂b∂z = Field(∂b∂z_op)
-   
-   if returnAsArray
-      return adapt(Array, ∂b∂z)
-   elseif !returnAsArray
-      return ∂b∂z
-   end
-end
-
-function buoyancy_BCs(gyreParams, grid, yFlat, ambientStrat; 
-                      Hz = 3, doubleTanhParams = nothing, includeDefaultBCs = false)
-   #=
-   Return appropriate (i.e., preserving gradient-continuity) boundary 
-    conditions on buoyancy at top and bottom of simulation domain.
+   Build a model grid using 'gridParams'.
+   Construct discretely thermal-wind-balanced background Fields (buoyancy and
+    components of velocity) on this grid by first defining a streamfunction on
+    a tall copy of the grid (which has one extra interior gridpoint at each
+    vertical boundary, necessary to properly define buoyancy boundary
+    conditions).
+   Return grid, background Fields, and appropriate (i.e., preserving continuity
+    of background-field gradient) boundary conditions on buoyancy at top and
+    bottom of simulation domain.
    =#
    
-   N²_far = gyreParams.N²_far
-
-   if σz == "infinity" #Barotropic case
-      b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(N²_far),
-				                               bottom = GradientBoundaryCondition(N²_far))
-      
-   else #Baroclinic case
+   #########
+   # Grids #
+   #########
    
-      TWB_∂b∂z_function = TWB_∂b∂z_anon_function(gyreParams; yFlat = yFlat)
-
-      @inline TWB_plus_const_∂b∂z(x, y, z) = @inbounds N²_far .+ TWB_∂b∂z_function(x, y, z)
-
-      z_top = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ))[end - Hz]
-      z_bot = @view no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ))[Hz + 1]
-
-      if ambientStrat == "constant"
-      
-         if !yFlat
-            b̄z_top = (x, y, t) -> TWB_plus_const_∂b∂z(x, y, z_top)
-            b̄z_bot = (x, y, t) -> TWB_plus_const_∂b∂z(x, y, z_bot)
-         elseif yFlat #Note: this case needs to be tested
-            b̄z_top = (x, t) -> TWB_plus_const_∂b∂z(x, 0, z_top)
-            b̄z_bot = (x, t) -> TWB_plus_const_∂b∂z(x, 0, z_bot)
-         end
-         
-         if includeDefaultBCs #Return conditions on all 6 boundaries
-            b̄_BCs = FieldBoundaryConditions(grid, 
-                                             (Center(), Center(), Center()), 
-                                             east = PeriodicBoundaryCondition(), 
-                                             west = PeriodicBoundaryCondition(), 
-                                             north = PeriodicBoundaryCondition(), 
-                                             south = PeriodicBoundaryCondition(), 
-                                             top = GradientBoundaryCondition(b̄z_top), 
-                                             bottom = GradientBoundaryCondition(b̄z_bot))
-         else #Return only non-default conditions
-            b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
-                                          bottom = GradientBoundaryCondition(b̄z_bot))
-         end
-
-      elseif ambientStrat == "doubleTanh"
-
-         if !yFlat
-            b̄z_top = (x, y, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                    .+ TWB_plus_const_∂b∂z(x, y, z_top)
-                                   )
-            b̄z_bot = (x, y, t) -> (N²DoubleTanh(z_bot, doubleTanhParams) 
-                                    .+ TWB_plus_const_∂b∂z(x, y, z_bot)
-                                   )
-         elseif yFlat
-            b̄z_top = (x, t) -> (N²DoubleTanh(z_top, doubleTanhParams)
-                                 .+ TWB_plus_const_∂b∂z(x, 0, z_top)
-                                )
-            b̄z_bot = (x, t) -> (N²DoubleTanh(z_bot, doubleTanhParams)
-                                 .+ TWB_plus_const_∂b∂z(x, 0, z_bot)
-                                )
-         end
-         
-         b̄_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(b̄z_top),
-				                                  bottom = GradientBoundaryCondition(b̄z_bot))
-      end
-   end
-   return b̄_BCs
-end
-
-function bkgd_buoyancy(gyreParams, ambientStrat;
-                       grid = nothing, yFlat = false, 
-                       doubleTanhParams = nothing)
-
-   if σz == "infinity" #Barotropic case
-      if !yFlat
-         B = (x, y, z) -> gyreParams.N²_far * z
-      elseif yFlat
-         B = (x, z) -> gyreParams.N²_far * z
-      end
-      
-   else #Baroclinic case
-      
-      TWB_b_function = TWB_b_anon_function(gyreParams; yFlat = yFlat)
-
-      if ambientStrat == "constant"
-      
-         if !yFlat
-            B = (x, y, z) -> TWB_b_function(x, y, z) + (gyreParams.N²_far * z)
-         elseif yFlat
-            B = (x, z) -> TWB_b_function(x, z) + (gyreParams.N²_far * z)
-         end
-         
-      elseif ambientStrat == "doubleTanh"
-      
-         function B_ccc(i, j, k, g)
-
-            doubleTanh_term = buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], doubleTanhParams)
-            TWB_term        = TWB_b_function(g.xᶜᵃᵃ[i], g.yᵃᶜᵃ[j], g.z.cᵃᵃᶜ[k])
-            linear_term     = gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
-            
-            return doubleTanh_term + TWB_term + linear_term
-         end
-      
-         B_op = KernelFunctionOperation{Center, Center, Center}(B_ccc, grid)
-        
-         @compute B = Field(B_op)
-      end
-   end
-   return B
-end
-
-function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams, 
-                                    cylindrical_Ψ_anon_function, ambientStrat, useGPU;
-                                    Hz = 3, includeDefaultBCs = false,
-                                    visualizePsi = false, doubleTanhParams = nothing)
-
-   cylindrical_Ψ_function = cylindrical_Ψ_anon_function(gyreParams)
+   simGrid  = BuildOceananigansRectilinearGrid(gridParams)
+   tallGrid = BuildTallCopyOceananigansRectilinearGrid(gridParams)
    
-   @inline Ψ_ccf(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_cca(i, j, k, g), g.z.cᵃᵃᶠ[k])
-   @inline Ψ_ffc(i, j, k, g) = @inbounds cylindrical_Ψ_function(r_ffa(i, j, k, g), g.z.cᵃᵃᶜ[k])
+   ################################
+   # Compute the background state #
+   ################################
    
-   tallGrid = build_tall_copy_Oceananigans_RectilinearGrid(gridParams)
+   @inline Ψ_ccf(i, j, k, g) = @inbounds Ψ(r_cca(i, j, k, g), g.z.cᵃᵃᶠ[k], gyreParams)
+   @inline Ψ_ffc(i, j, k, g) = @inbounds Ψ(r_ffa(i, j, k, g), g.z.cᵃᵃᶜ[k], gyreParams)
    
    Ψ_ccf_op = KernelFunctionOperation{Center, Center, Face}(Ψ_ccf, tallGrid)
    Ψ_ffc_op = KernelFunctionOperation{Face, Face, Center}(Ψ_ffc, tallGrid)
@@ -275,254 +90,119 @@ function discrete_Cartesian_TWB_ICs(simGrid, gridParams, gyreParams,
    @compute tall_∂Ψ∂z_ccc_Field   = Field(∂z(tall_Ψ_ccf_Field))
    @compute tall_∂2Ψ∂z2_ccf_Field = Field(∂z(tall_∂Ψ∂z_ccc_Field))
    
-   if visualizePsi
-      visualize_Ψ_and_z_derivs(simGrid, tall_Ψ_ccf_Field, 
-                               tall_∂Ψ∂z_ccc_Field, 
+   if visualizeΨ
+      visualize_Ψ_and_z_derivs(simGrid, tall_Ψ_ccf_Field, tall_∂Ψ∂z_ccc_Field,
                                tall_∂2Ψ∂z2_ccf_Field)
    end
    
-   if useGPU #On GPU, must compute boundary values using CUDA.jl functionality
+   if gridParams.architecture == GPU()
+
+      #On GPU, must compute boundary values using CUDA.jl functionality
 
       ∂2Ψ∂z2_top = CuArray{Float64}(undef, (gridParams.Nx, gridParams.Ny))
       ∂2Ψ∂z2_bot = CuArray{Float64}(undef, (gridParams.Nx, gridParams.Ny))
       
-      @views ∂2Ψ∂z2_top[:, :] .= tall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
+      @views ∂2Ψ∂z2_top[:, :] .= tall_∂2Ψ∂z2_ccf_Field[:, :, 
+                                                       (end - gridParams.Hz)]
       @views ∂2Ψ∂z2_bot[:, :] .= tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
       
-   elseif !useGPU #On CPU, can compute boundary values by direct scalar indexing
+   elseif gridParams.architecture == CPU()
    
-      ∂2Ψ∂z2_top = @view tall_∂2Ψ∂z2_ccf_Field[:, :, (end - Hz)]
-      ∂2Ψ∂z2_bot = @view tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
+      #On CPU, can compute boundary values by direct scalar indexing
+   
+      ∂2Ψ∂z2_top = tall_∂2Ψ∂z2_ccf_Field[:, :, (end - gridParams.Hz)]
+      ∂2Ψ∂z2_bot = tall_∂2Ψ∂z2_ccf_Field[:, :, 2]
    end
    
    #Compute Ψ-derivative Fields at necessary locations to diagnose velocities
    @compute tall_∂Ψ∂x_cfc_Field = Field(∂x(tall_Ψ_ffc_Field))
    @compute tall_∂Ψ∂y_fcc_Field = Field(∂y(tall_Ψ_ffc_Field))
    
-   @inline u_TWB_fcc(i, j, k, g) = @inbounds tall_∂Ψ∂y_fcc_Field[i, j, (k + 1)]
-   @inline v_TWB_cfc(i, j, k, g) = @inbounds -tall_∂Ψ∂x_cfc_Field[i, j, (k + 1)]
+   u_TWB_op = KernelFunctionOperation{Face, Center, Center}(u_TWB_fcc, simGrid, tall_∂Ψ∂y_fcc_Field)
+   v_TWB_op = KernelFunctionOperation{Center, Face, Center}(v_TWB_cfc, simGrid, tall_∂Ψ∂x_cfc_Field)
+   w_TWB_op = KernelFunctionOperation{Center, Center, Face}(w_TWB_ccf, simGrid, tall_∂Ψ∂y_fcc_Field, tall_∂Ψ∂x_cfc_Field)
    
-   u_TWB_op = KernelFunctionOperation{Face, Center, Center}(u_TWB_fcc, simGrid)
-   v_TWB_op = KernelFunctionOperation{Center, Face, Center}(v_TWB_cfc, simGrid)
+   b_x_BC, b_y_BC = default_xy_tracerBCs(gridParams)
 
-   @compute u_TWB = Field(u_TWB_op)
-   @compute v_TWB = Field(v_TWB_op)
-   
-   #Compute horizontal velocity divergence terms
-   @compute ∂u∂x_TWB = Field(∂x(u_TWB))
-   @compute ∂v∂y_TWB = Field(∂y(v_TWB))
+   if gyreParams.doubleTanhAmbientStrat
 
-   @inline ∂w∂z_TWB_ccc(i, j, k, g) = @inbounds -∂u∂x_TWB[i, j, k] - ∂v∂y_TWB[i, j, k]
-   @inline w_TWB_ccf(i, j, k, g) = @inbounds ∂w∂z_TWB_ccc(i, j, k, g) * Δzᶜᶜᶜ(i, j, k, g)
-   
-   w_TWB_op = KernelFunctionOperation{Center, Center, Face}(w_TWB_ccf, simGrid)
-   
-   @compute w_TWB = Field(w_TWB_op)
-   
-   @inline b_linear_ccc(i, j, k, g) = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
-   @inline b_TWB_ccc(i, j, k, g) = @inbounds gyreParams.f * tall_∂Ψ∂z_ccc_Field[i, j, (k + 1)]
-
-   b_linear_op = KernelFunctionOperation{Center, Center, Center}(b_linear_ccc, simGrid)
-   b_TWB_op    = KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, simGrid)
-
-   if ambientStrat == "constant"
+      @inline b_total_doubleTanhAmbientStrat_ccc(i, j, k, g) = @inbounds b_linear_ccc(i, j, k, g, gyreParams) + b_TWB_ccc(i, j, k, g, gyreParams, tall_∂Ψ∂z_ccc_Field) + b_double_tanh_ccc(i, j, k, g, doubleTanhParams)
       
-      @compute b_total = Field(b_linear_op + b_TWB_op)
+      @compute b_total = Field(KernelFunctionOperation{Center, Center, Center}(b_total_doubleTanhAmbientStrat_ccc, simGrid))
       
-      ∂b∂z_top = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_top
-      ∂b∂z_bot = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_bot
-      
-   elseif ambientStrat == "doubleTanh"
-   
-      @inline b_double_tanh_ccc(i, j, k, g) = @inbounds buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], doubleTanhParams)
-      
-      b_double_tanh_op = KernelFunctionOperation{Center, Center, Center}(b_double_tanh_ccc, simGrid)
-      
-      @compute b_total = Field(b_linear_op + b_TWB_op + b_double_tanh_op)
-      
-      N²DoubleTanh_top = @views N²DoubleTanh(simGrid.z.cᵃᵃᶠ[simGrid.Nz + 1], doubleTanhParams)
+      N²DoubleTanh_top = @views N²DoubleTanh(simGrid.z.cᵃᵃᶠ[gridParams.Nz + 1], doubleTanhParams)
       N²DoubleTanh_bot = @views N²DoubleTanh(simGrid.z.cᵃᵃᶠ[1], doubleTanhParams)
       
       ∂b∂z_top = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_top + N²DoubleTanh_top
       ∂b∂z_bot = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_bot + N²DoubleTanh_bot
+      
+   else #Defaults to constant ambient stratification
+      
+      @inline b_total_TWBambientStrat_ccc(i, j, k, g) = @inbounds b_linear_ccc(i, j, k, g, gyreParams) + b_TWB_ccc(i, j, k, g, gyreParams, tall_∂Ψ∂z_ccc_Field)
+      
+      @compute b_total = Field(KernelFunctionOperation{Center, Center, Center}(b_total_TWBambientStrat_ccc, simGrid))
+      
+      ∂b∂z_top = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_top
+      ∂b∂z_bot = @views @. gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_bot
    end
    
-   if includeDefaultBCs #Return conditions, even defaults, on all boundaries
-   
-      if gridParams.Tx == Periodic
-         x_BC = PeriodicBoundaryCondition()
-      elseif gridParams.Tx == Bounded
-         x_BC = GradientBoundaryCondition(0)
-      end
-      
-      if gridParams.Ty == Periodic
-         y_BC = PeriodicBoundaryCondition()
-      elseif gridParams.Ty == Bounded
-         y_BC = GradientBoundaryCondition(0)
-      elseif gridParams.Ty == Flat
-         y_BC = nothing
-      end
-   
-      b_total_BCs = FieldBoundaryConditions(simGrid, (Center(), Center(), Center()),
-                                            east = x_BC, west = x_BC, 
-                                            north = y_BC, south = y_BC, 
-                                            top = GradientBoundaryCondition(∂b∂z_top), 
-                                            bottom = GradientBoundaryCondition(∂b∂z_bot))
-                                          
-      return b_total_BCs
-      
-   else #Return the prognostic variables and only the non-default BCs
-   
-      b_total_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_top),
-                                            bottom = GradientBoundaryCondition(∂b∂z_bot))
-      
-      return b_total, u_TWB, v_TWB, w_TWB, b_total_BCs
-   end
-end
+   b_total_BCs = FieldBoundaryConditions(top = GradientBoundaryCondition(∂b∂z_top),
+                                         bottom = GradientBoundaryCondition(∂b∂z_bot))
 
-function bkgd_velocities(gyreParams; yFlat = false)
-
-   U, σr, σz = gyreParams.U, gyreParams.σr, gyreParams.σz
-
-   if yFlat #2D versions, evaluated at y = 0
-      
-      ū= (x, z) -> 0
+   @compute b_TWB    = Field(KernelFunctionOperation{Center, Center, Center}(b_TWB_ccc, tallGrid, gyreParams, tall_∂Ψ∂z_ccc_Field))
+   @compute b_linear = Field(KernelFunctionOperation{Center, Center, Center}(b_linear_ccc, tallGrid, gyreParams))
    
-      if σz == "infinity" #Barotropic case
-         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) * exp(0.5 - (x/σr)^2))
-      else #Baroclinic case
-         v̄ = (x, z) -> -((sqrt(2) * U * x / σr) 
-                          * exp(0.5 - (x/σr)^2 - (z/σz)^2))
-      end
+   ###################################
+   # Now compute the perturbed state #
+   ###################################
    
-   elseif !yFlat #3D versions
-   
-      if σz == "infinity" #Barotropic case
-         ū = (x, y, z) -> ((sqrt(2) * U * y / σr)
-                            * exp(0.5 - (x^2 + y^2)/(σr^2)))
-         v̄ = (x, y, z) -> -((sqrt(2) * U * x / σr)
-                             * exp(0.5 - (x^2 + y^2)/(σr^2)))
-      else #Baroclinic case
-         ū = (x, y, z) -> ((sqrt(2) * U * y / σr)
-                            * exp(0.5 - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-         v̄ = (x, y, z) -> -((sqrt(2) * U * x / σr)
-                            * exp(0.5 - (x^2 + y^2)/(σr^2) - (z/σz)^2))
-      end
-   end
-   
-   return ū, v̄
-end
-
-function bkgd_B_cylindrical_coords(gyreParams, doubleTanhParams, 
-                                   ambientStrat)
-   #=
-   Return anonymous function to evaluate B at cylindrical coords (r, z).
-   =#
-
-   TWB_b_function = TWB_b_anon_function(gyreParams; yFlat = true)
-
-   if ambientStrat == "constant"
-      B = (r, z) -> TWB_b_function(r, z) + (gyreParams.N²_far .* z)
-   elseif ambientStrat == "doubleTanh"
-      B = (r, z) -> (TWB_b_function(r, z) 
-                     + buoyancyDoubleTanh(z, doubleTanhParams) 
-                     .+ (gyreParams.N²_far .* z)
+   randArray = adapt(CuArray, 2 * (rand(Float64, (gridParams.Nx, 
+                                                  gridParams.Ny, 
+                                                  gridParams.Nz + 3)) 
+                                   .- 0.5)
                     )
-   end
    
-   return B
-end
+   Random.seed!(perturbParams.seed) #For reproducibility
 
-function bkgd_Q_cylindrical_coords(gyreParams, doubleTanhParams, 
-                                   ambientStrat)
-   #=
-   Return anonymous function to evaluate Q at cylindrical coords (r, z).
-   THIS FUNCTION IS WRONG AND NEEDS TO BE UPDATED.
-   =#
+   @inline Ψ_perturbed_ccf(i, j, k, g) = @inbounds ((perturbParams.max_ψ′ * randArray[i, j, k]  + 1) * Ψ(r_cca(i, j, k, g), g.z.cᵃᵃᶠ[k], gyreParams))
+   
+   @compute tall_Ψ_perturbed_ccf_Field = Field(KernelFunctionOperation{Center, Center, Face}(Ψ_perturbed_ccf, tallGrid))
+   
+   #Interpolate...done in steps for GPU compatibility...
+   @inline Ψ_perturbed_ccc(i, j, k, g) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, Ψ_perturbed_ccf)
+   @inline Ψ_perturbed_cfc(i, j, k, g) = @inbounds ℑyᵃᶠᵃ(i, j, k, g, Ψ_perturbed_ccc)
+   @inline Ψ_perturbed_ffc(i, j, k, g) = @inbounds ℑxᶠᵃᵃ(i, j, k, g, Ψ_perturbed_cfc) 
+   
+   @compute tall_Ψ_perturbed_ffc_Field = Field(KernelFunctionOperation{Face, Face, Center}(Ψ_perturbed_ffc, tallGrid))
+   
+   #Compute Ψ-derivative Fields at necessary locations to diagnose buoyancy
+   @compute tall_∂Ψ∂z_perturbed_ccc_Field   = Field(∂z(tall_Ψ_perturbed_ccf_Field))
+   @compute tall_∂2Ψ∂z2_perturbed_ccf_Field = Field(∂z(tall_∂Ψ∂z_perturbed_ccc_Field))
+   
+   #Compute Ψ-derivative Fields at necessary locations to diagnose velocities
+   @compute tall_∂Ψ∂x_perturbed_cfc_Field = Field(∂x(tall_Ψ_perturbed_ffc_Field))
+   @compute tall_∂Ψ∂y_perturbed_fcc_Field = Field(∂y(tall_Ψ_perturbed_ffc_Field))
+   
+   #Operations representing the thermal-wind-balanced, perturbed velocity
+   # components.
+   u_perturbed_TWB_op = KernelFunctionOperation{Face, Center, Center}(u_TWB_fcc, simGrid, tall_∂Ψ∂y_perturbed_fcc_Field)
+   v_perturbed_TWB_op = KernelFunctionOperation{Center, Face, Center}(v_TWB_cfc, simGrid, tall_∂Ψ∂x_perturbed_cfc_Field)
+   w_perturbed_TWB_op = KernelFunctionOperation{Center, Center, Face}(w_TWB_ccf, simGrid, tall_∂Ψ∂y_perturbed_fcc_Field, tall_∂Ψ∂x_perturbed_cfc_Field)
+   
+   if gyreParams.doubleTanhAmbientStrat
 
-   TWB_N²_cyl_coords_function = TWB_∂b∂z_anon_function(gyreParams; yFlat = true)
-   
-   function ∂N²∂z_doubleTanh(z)
-   
-      g   = doubleTanhParams.g
-      ρ₀  = doubleTanhParams.ρ₀
-      A_s = doubleTanhParams.A_s
-      C_s = doubleTanhParams.C_s
-      z_s = doubleTanhParams.z_s
-      A_d = doubleTanhParams.A_d
-      C_d = doubleTanhParams.C_d
-      z_d = doubleTanhParams.z_d
-   
-      ∂N²∂z = @. ((2 * g / ρ₀) 
-                  * ((A_s / C_s^2) * (sech((z - z_s) / C_s))^2 
-                     * tanh((z - z_s) / C_s)
-                     + (A_d / C_d^2) * (sech((z - z_d) / C_d))^2 
-                     * tanh((z - z_d) / C_d)
-                    )
-                 )
-   end
-   
-   f, U   = gyreParams.f, gyreParams.U
-   σr, σz = gyreParams.σr, gyreParams.σz
-   
-   ∂N²∂z_TWB = (r, z) -> (-((sqrt(2) * f * U * σr / (σz^2))
-                              .* (1 .- exp.(-(r./σr).^2)))
-                              .* exp(0.5 .- (z./σz).^2)
-                              .* ((2 / σz^2) .* z .* (2 .* (z./σz).^2 .- 3))
-                         )
-   
-   
-   if ambientStrat == "constant"
-   
-      N2    = (r, z) -> gyreParams.N²_far ##TWB_N²_cyl_coords_function(r, z) + gyreParams.N²_far
-      ∂N2∂z = (r, z) -> 0##∂N²∂z_TWB(r, z)
+      @inline b_perturbed_doubleTanhAmbientStrat_ccc(i, j, k, g) = @inbounds b_linear_ccc(i, j, k, g, gyreParams) + b_TWB_ccc(i, j, k, g, gyreParams, tall_∂Ψ∂z_perturbed_ccc_Field) + b_double_tanh_ccc(i, j, k, g, doubleTanhParams)
       
-   elseif ambientStrat == "doubleTanh"
-   
-      N2    = (r, z) -> (TWB_N²_cyl_coords_function(r, z) 
-                         + N²DoubleTanh(z, doubleTanhParams) 
-                         .+ gyreParams.N²_far
-                        )
-      ∂N2∂z = (r, z) -> ∂N²∂z_TWB(r, z) + ∂N²∂z_doubleTanh(z)
+      @compute b_perturbed = Field(KernelFunctionOperation{Center, Center, Center}(b_perturbed_doubleTanhAmbientStrat_ccc, simGrid))
+      
+   else #Defaults to constant ambient stratification
+      
+      @inline b_perturbed_TWBambientStrat_ccc(i, j, k, g) = @inbounds b_linear_ccc(i, j, k, g, gyreParams) + b_TWB_ccc(i, j, k, g, gyreParams, tall_∂Ψ∂z_perturbed_ccc_Field)
+      
+      @compute b_perturbed = Field(KernelFunctionOperation{Center, Center, Center}(b_perturbed_TWBambientStrat_ccc, simGrid))
    end
    
-   Q = (r, z) -> (1/f) * ((sqrt(8) * U / σr) 
-                             .* exp.(0.5 .- (z./σz).^2)
-                             .* ((1 .- (r./σr).^2) .* exp.(-(r./σr).^2)
-                                 + (f^2 / (2 * N2(r, z) * σz^2)) 
-                                    .* (2 .* (z./σz).^2 .- 1) 
-                                    .* (1 .- exp.(-(r./σr).^2))
-                                 )
-                             )
-                             
-   return Q
-end
-
-function bkgd_Uφ_cylindrical_coords(gyreParams)
-   #=
-   Return anonymous function to evaluate Uφ at cylindrical coords (r, z). If r 
-    is provided as a negative value, it will be treated as abs(r).
-   =#
-   
-   U, σr, σz = gyreParams.U, gyreParams.σr, gyreParams.σz
-
-   Uφ = (r, z) -> (-(sqrt(2) * U / σr) .* abs.(r) .* exp.(0.5 .- (r./σr).^2) 
-                   * exp.(-(z./σz).^2))
-
-   return Uφ
-end
-
-function bkgd_Ψ_cylindrical_coords(gyreParams)
-   #=
-   Return anonymous function to evaluate Ψ at cylindrical coords (r, z).
-   =#
-   
-   U, σr, σz = gyreParams.U, gyreParams.σr, gyreParams.σz
-   
-   Ψ = (r, z) -> ((U * σr / sqrt(2)) .* (1 .- exp.(-(r./σr).^2)) 
-                   .* exp.(0.5 .- (z./σz).^2))
-
-   return Ψ
+   @compute return simGrid, (b_total, Field(u_TWB_op), Field(v_TWB_op), Field(w_TWB_op)), b_total_BCs, (Field(b_perturbed), Field(u_perturbed_TWB_op), Field(v_perturbed_TWB_op), Field(w_perturbed_TWB_op))
 end
 
 function compute_Q_QG_Cartesian(grid, gyreParams, Ux, Uy; Hz = 3)
@@ -555,38 +235,6 @@ function compute_Q_QG_Cartesian(grid, gyreParams, Ux, Uy; Hz = 3)
    return (ζa + f^2 * ∂z2Ψ / N²_far) / f
 end
 
-function compute_Q_QG_cylindrical(grid, gyreParams, Uφ, φcoords; Hz = 3)
-   #=
-   Return background-state QG potential vorticity, computed at cell centres from
-    cylindrical components of velocity.
-   Equivalent to Cartesian formulation.
-   =#
-
-   rcoords = CenterField(grid)
-   Ψ       = CenterField(grid)
-   
-   set!(rcoords, polar_coords_Fields(grid, "c", "c", "c")[1])
-
-   Ψ_function = bkgd_Ψ_cylindrical_coords(gyreParams)
-   
-   zcoords = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))
-   
-   set!(Ψ, Ψ_function(rcoords,
-                      reshape(zcoords[Hz:(length(zcoords) - Hz - 1)],
-                              1, 1, (length(zcoords) - 2 * Hz)
-                             )
-                     )
-       )
-       
-   f, N²_far = gyreParams.f, gyreParams.N²_far
-
-   ∂z2Ψ = ∂z(∂z(Ψ))
-   ζa   = (-(1/rcoords) * (cos(φcoords) * ∂x(rcoords * Uφ) 
-           + sin(φcoords) * ∂y(rcoords * Uφ)) + f)
-
-   return (ζa + f^2 * ∂z2Ψ / N²_far) / f
-end
-
 function compute_Q_Ertel_Cartesian(grid, gyreParams, Ux, Uy, Uz, B)
    #=
    Return background-state Ertel potential vorticity, computed at cell centres
@@ -615,18 +263,4 @@ function integrate_N²_upwards(i, j, k, grid, N²)
    end
 
    return integral
-end
-
-function N²FromData(k, parameters)
-   #=
-   Evaluate N² at z[k] from seasonal data in csv file.
-   =#
-
-   file = CSV.File(joinpath("./Data/",
-                            "N2_Nz$(parameters.Nz)_MLD$(abs(parameters.d_ML)).csv");
-                   header = 2)
-   N²   = Tuple(file[parameters.season])
-   N²_k = N²[k]
-   
-   return N²_k
 end
