@@ -225,25 +225,26 @@ end
 
 ################################################################################
 
-function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams, 
-                                 doubleTanhParams; 
+function visualize_B_and_N²_vs_z(B_total, b_TWB, b_linear, grid, x_idx, y_idx,
+                                 gyreParams, doubleTanhParams; 
                                  Hz = 3, yFlat = false)
 
-   B_total    = no_offset_view(adapt(Array, B)
-                              )[x_idx, y_idx, :]
-   b_TWB      = no_offset_view(TWB_b_field(grid, gyreParams; yFlat = yFlat)
-                              )[x_idx, y_idx, 
-                                (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
+   B_total_slice = no_offset_view(adapt(Array, B_total))[x_idx, y_idx, :]
+   b_TWB_slice  = no_offset_view(adapt(Array, b_TWB)
+                                )[x_idx, y_idx,
+                                  (Hz + 1):(length(grid.z.cᵃᵃᶜ) - Hz)]
    
    ∂B∂z_total_Field = ZFaceField(grid)
+   ∂b∂z_TWB_Field   = ZFaceField(grid)
    
-   set!(∂B∂z_total_Field, ∂z(B))
+   set!(∂B∂z_total_Field, ∂z(B_total))
+   set!(∂b∂z_TWB_Field, ∂z(b_TWB))
    
-   ∂B∂z_total = no_offset_view(adapt(Array, ∂B∂z_total_Field)
-                              )[x_idx, y_idx, :]
-   ∂b∂z_TWB   = no_offset_view(TWB_∂b∂z_field(grid, gyreParams)
-                              )[x_idx, y_idx, 
-                                (Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
+   ∂B∂z_total_slice = no_offset_view(adapt(Array, ∂B∂z_total_Field)
+                                    )[x_idx, y_idx, :]
+   ∂b∂z_TWB_slice   = no_offset_view(adapt(Array, ∂b∂z_TWB_Field)
+                                    )[x_idx, y_idx, 
+                                      (Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
    
    x      = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
    y      = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
@@ -258,28 +259,27 @@ function visualize_B_and_N²_vs_z(B, grid, x_idx, y_idx, gyreParams,
    ax_B  = Axis(fig[2, 1], xlabel = L"$B$ [m/s$^{2}$]", ylabel = L"$z$ [m]")
    ax_N2 = Axis(fig[2, 2], xlabel = L"$N^2$ [s$^{-2}$]", ylabel = L"$z$ [m]")
    
-   lines!(ax_B, B_total, zC_all, label = "Total")
-   scatter!(ax_B, B_total, zC_all, label = "Total (at gridpoints)")
-   #lines!(ax_B, buoyancyDoubleTanh(z, doubleTanhParams), z, 
+   lines!(ax_B, B_total_slice, zC_all, label = "Total")
+   scatter!(ax_B, B_total_slice, zC_all, label = "Total (at gridpoints)")
+   #lines!(ax_B, buoyancyDoubleTanh(zC_all, doubleTanhParams), zC_all, 
    #       label = "From double-tanh function")
-   lines!(ax_B, b_TWB, zC_int, label = "Thermal-wind contribution\n(computed analytically)")
-   lines!(ax_B, N²_far .* zC_int, zC_int, label = "Linear term")
+   lines!(ax_B, b_TWB_slice, zC_int, label = "Thermal-wind contribution")
+   lines!(ax_B, gyreParams.N²_far .* zC_int, zC_int, label = "Linear term")
    
-   lines!(ax_N2, ∂B∂z_total, zF_all, label = "Total")
-   scatter!(ax_N2, ∂B∂z_total, zF_all, label = "Total (at gridpoints)")
-   #lines!(ax_N2, N²DoubleTanh(z, doubleTanhParams), z, 
+   lines!(ax_N2, ∂B∂z_total_slice, zF_all, label = "Total")
+   scatter!(ax_N2, ∂B∂z_total_slice, zF_all, label = "Total (at gridpoints)")
+   #lines!(ax_N2, N²DoubleTanh(zF_all, doubleTanhParams), zF_all, 
    #       label = "From double-tanh function")
-   lines!(ax_N2, ∂b∂z_TWB, zF_int, 
-          label = "Thermal-wind contribution\n(computed analytically)")
-   lines!(ax_N2, N²_far .+ 0 * zF_int, zF_int, label = "Linear term")
-   
+   lines!(ax_N2, ∂b∂z_TWB_slice, zF_int, label = "Thermal-wind contribution")
+   lines!(ax_N2, gyreParams.N²_far .+ 0 * zF_int, zF_int, label = "Linear term")
+
    fig[2, 3] = Legend(fig, ax_B)
    fig[1, 1] = Label(fig, "Background buoyancy", fontsize = 24, 
                      tellwidth = false)
    fig[1, 2] = Label(fig, L"Background $N^2$", fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "b_and_N2_profiles.png"), fig)
+   save(joinpath("./Plots", "b_and_N2_profiles_i$(x_idx)_j$(y_idx)_Nz$(grid.Nz).png"), fig)
 end
 
 ################################################################################
@@ -396,15 +396,20 @@ function visualize_total_QG_energy_budgets(datetime, grid)
    ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
 
    total_KE            = ds[:total_KE][chron_idcs]
-   total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
+   #=total_KE_adv_flux   = ds[:total_KE_adv_flux][chron_idcs]
    total_KE_production = ds[:total_KE_production][chron_idcs] #*0.5
    total_pressure_work = ds[:total_pressure_work][chron_idcs] #0.5
+   =#
    total_PE            = ds[:total_PE][chron_idcs]
-   total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
+   #=total_b_adv_flux    = ds[:total_b_adv_flux][chron_idcs]
    total_gravity_work  = ds[:total_gravity_work][chron_idcs]
-   
+   =#
    total_ME = total_KE + total_PE #Mechanical energy
    
+   percentage_ME_loss = quantify_simulation_nonconservativity(total_KE, total_PE)
+   
+   @printf("Percentage of mechanical energy lost during simulation duration: %.5f", percentage_ME_loss)
+
    fig_ME = Figure(size = (1200, 700))
    ax_ME  = Axis(fig_ME[2, 1]; xlabel = "Time [days]",
                  ylabel = L"[m$^5$ s$^{-2}$]")
@@ -419,7 +424,7 @@ function visualize_total_QG_energy_budgets(datetime, grid)
    axislegend(ax_ME)
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "MEbudget_$(datetime).png"), fig_ME)
-   
+   #=
    #Convert time to s to compute time-derivative of KE
    dt_KE_total = order1_forward_difference(86400 * t, total_KE)
    
@@ -465,38 +470,43 @@ function visualize_total_QG_energy_budgets(datetime, grid)
 
    axislegend(ax_PE_budget, position = :lb)
    save(joinpath("./Plots", "PEbudget_$(datetime).png"), fig_PE_budget)
-
+   =#
    close(ds)
 end
 
 ################################################################################
 
-function visualize_PKE(datetime, grid)
+function visualize_PKE(datetime, grid; visualize_individual_bkgd_terms = false)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
    ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
-   
-   initialKE = ds[:total_KE][chron_idcs][1]
 
-   PKE          = ds[:total_PKE][chron_idcs] / initialKE
-   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][chron_idcs] / initialKE
-   BTI_transfer = ds[:total_BTI_transfer][chron_idcs] / initialKE
-   BCI_transfer = ds[:total_BCI_transfer][chron_idcs] / initialKE
+   #initialKE = ds[:total_KE][chron_idcs][1]
+
+   PKE          = ds[:total_PKE][chron_idcs][2:end] #/ initialKE
+   PAPE_to_PKE  = ds[:total_PAPE_to_PKE][chron_idcs][2:end] #/ initialKE
+   #BTI_transfer = ds[:total_BTI_transfer][chron_idcs][2:end] #/ initialKE
+   #BCI_transfer = ds[:total_BCI_transfer][chron_idcs][2:end] #/ initialKE
+   bkgd_transfer = ds[:total_bkgd_transfer][chron_idcs][2:end]
    
-   PKE          = PKE #.- PKE[1]
-   PAPE_to_PKE  = PAPE_to_PKE #.- PAPE_to_PKE[1]
-   BTI_transfer = BTI_transfer #.- BTI_transfer[1]
-   BCI_transfer = BCI_transfer #.- BCI_transfer[1]
+   total_bkgd_xyx = ds[:total_ux′uy′∂yUx][chron_idcs][2:end]
+   total_bkgd_xzx = ds[:total_ux′uz′∂zUx][chron_idcs][2:end]
+   
+   #=
+   PKE          = PKE
+   PAPE_to_PKE  = PAPE_to_PKE
+   BTI_transfer = BTI_transfer
+   BCI_transfer = BCI_transfer
    
    gyre_PKE          = ds[:gyre_PKE][chron_idcs]
    gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][chron_idcs]
    gyre_BTI_transfer = ds[:gyre_BTI_transfer][chron_idcs]
    gyre_BCI_transfer = ds[:gyre_BCI_transfer][chron_idcs]
    
-   gyre_PKE          = gyre_PKE #.- gyre_PKE[1]
-   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE #.- gyre_PAPE_to_PKE[1]
-   gyre_BTI_transfer = gyre_BTI_transfer #.- gyre_BTI_transfer[1]
-   gyre_BCI_transfer = gyre_BCI_transfer #.- gyre_BCI_transfer[1]
+   gyre_PKE          = gyre_PKE
+   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE
+   gyre_BTI_transfer = gyre_BTI_transfer
+   gyre_BCI_transfer = gyre_BCI_transfer
 
    fig_PKEtotal = Figure(size = (1200, 700))
    ax_PKEtotal  = Axis(fig_PKEtotal[2, 1]; xlabel = "Time [days]",
@@ -522,32 +532,60 @@ function visualize_PKE(datetime, grid)
                      	       fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "PKEgyre_$(datetime).png"), fig_PKEgyre)
-   
+   =#
    #Convert time to s to compute time-derivative of PKE
-   dt_PKE_total = order1_forward_difference(86400 * t, PKE)
+   dt_PKE_total = centered_difference(86400 * t[2:end], PKE)
    
    fig_budget = Figure(size = (1200, 700))
    ax_budget  = Axis(fig_budget[2, 1]; xlabel = "Time [days]",
                      ylabel = L"[s$^{-1}$]")
 
-   scatter!(ax_budget, t[1:end-1], dt_PKE_total, 
-            label = "Time derivative of total PKE", color = :yellowgreen)
-   scatter!(ax_budget, t, PAPE_to_PKE, label = "PAPE to PKE", color = :navy)
-   scatter!(ax_budget, t, BTI_transfer, label = "BTI transfer", 
-            color = :hotpink)
-   scatter!(ax_budget, t, BCI_transfer, label = "BCI transfer", 
-            color = :darkgreen)
-   scatter!(ax_budget, t[1:end-1], 
-           (dt_PKE_total - PAPE_to_PKE[1:end-1] - BTI_transfer[1:end-1]
-            - BCI_transfer[1:end-1]), 
-          label = "Residual", color = :red)
-   axislegend(ax_budget)
+   lines!(ax_budget, t[3:end-1], dt_PKE_total, 
+            label = "Time derivative of total PKE", color = :yellowgreen, linewidth = 2)
+   lines!(ax_budget, t[2:end], PAPE_to_PKE, label = "PAPE to PKE", color = :navy, linewidth = 2)
+   #scatter!(ax_budget, t[2:end], BTI_transfer, label = "BTI transfer", 
+   #         color = :hotpink)
+   #scatter!(ax_budget, t[2:end], BCI_transfer, label = "BCI transfer", 
+   #         color = :darkgreen)
+   #scatter!(ax_budget, t[3:end-1], 
+   #        (dt_PKE_total - PAPE_to_PKE[2:end-1] - BTI_transfer[2:end-1]
+   #         - BCI_transfer[2:end-1]), 
+   #       label = "Residual", color = :red)
+   lines!(ax_budget, t[2:end], bkgd_transfer, label = "Total background transfer", color = :pink, linewidth = 2)
+   lines!(ax_budget, t[2:end], total_bkgd_xyx[1:end], label = "From horizontal shear", color = :pink, linestyle = :dash, linewidth = 2)
+   lines!(ax_budget, t[2:end], total_bkgd_xzx[1:end], label = "From vertical shear", color = :pink, linestyle = :dot, linewidth = 2)
+   lines!(ax_budget, t[3:end-1], (dt_PKE_total - PAPE_to_PKE[2:end-1] - bkgd_transfer[2:end-1]), label = "Residual", color = :red, linewidth = 2)
+   #axislegend(ax_budget)
 
+   fig_budget[2, 2] = Legend(fig_budget, ax_budget)
    fig_budget[1, 1] = Label(fig_budget, "Terms in PKE budget", fontsize = 24,
                             tellwidth = false)
 
    save(joinpath("./Plots", "PKEbudget_$(datetime).png"), fig_budget)
    
+   fig_separated = Figure(size = (1200, 1050))
+   ax_sep_dt     = Axis(fig_separated[2, 1]; ylabel = L"[s$^{-1}$]", 
+                        title = L"$\frac{d}{dt} \iiint$ PKE $dV$")
+   ax_sep_PAPE   = Axis(fig_separated[2, 2], title = L"$\iiint b' u_z'\, dV$")
+   ax_sep_BTI    = Axis(fig_separated[3, 1]; xlabel = "Time [days]", 
+                        ylabel = L"[s$^{-1}$]", title = "Energy conversion due to background horizontal shear")
+   ax_sep_BCI    = Axis(fig_separated[3, 2]; xlabel = "Time [days]", 
+                        title = "Energy conversion due to background vertical shear")
+   
+   scatter!(ax_sep_dt, t[3:end-1], dt_PKE_total, color = :yellowgreen)
+   scatter!(ax_sep_PAPE, t[2:end], PAPE_to_PKE, color = :navy)
+   #=scatter!(ax_sep_BTI, t[2:end], BTI_transfer, color = :hotpink, linewidth = 2)
+   scatter!(ax_sep_BCI, t[2:end], BCI_transfer, color = :darkgreen, linewidth = 2)
+   =#
+   scatter!(ax_sep_BTI, t[2:end], total_bkgd_xyx[1:end], color = :hotpink)
+   scatter!(ax_sep_BCI, t[2:end], total_bkgd_xzx[1:end], color = :darkgreen)
+   
+   fig_separated[1, 1:2] = Label(fig_separated, 
+                                 "Individual terms in PKE budget", 
+                                 fontsize = 24, tellwidth = false)
+
+   save(joinpath("./Plots", "PKEbudgetTerms_$(datetime).png"), fig_separated)
+   #=
    #Convert time to s to compute time-derivative of PKE
    dt_PKE_gyre = order1_forward_difference(86400 * t, gyre_PKE)
 
@@ -574,78 +612,130 @@ function visualize_PKE(datetime, grid)
 			    fontsize = 24, tellwidth = false)
 
    save(joinpath("./Plots", "PKEgyreBudget_$(datetime).png"), fig_gyreBudget)
+   =#
+   
+   if visualize_individual_bkgd_terms
+      
+      total_bkgd_xxx = ds[:total_ux′ux′∂xUx][chron_idcs][2:end]
+      total_bkgd_yxy = ds[:total_uy′ux′∂xUy][chron_idcs][2:end]
+      total_bkgd_yyy = ds[:total_uy′uy′∂yUy][chron_idcs][2:end]
+      total_bkgd_yzy = ds[:total_uy′uz′∂zUy][chron_idcs][2:end]
+      total_bkgd_zxz = ds[:total_uz′ux′∂xUz][chron_idcs][2:end]
+      total_bkgd_zyz = ds[:total_uz′uy′∂yUz][chron_idcs][2:end]
+      total_bkgd_zzz = ds[:total_uz′uz′∂zUz][chron_idcs][2:end]
+      
+      fig_bkgd_terms = Figure(size = (1200, 700))
+      ax_bkgd_terms  = Axis(fig_bkgd_terms[2, 1]; xlabel = "Time [days]", 
+                            ylabel = L"[s$^{-1}$]")
+                            
+      beta_x = lines!(ax_bkgd_terms, t[2:end], total_bkgd_xxx, color = :blue)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_xyx, color = :blue, 
+             linestyle = :dash)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_xzx, color = :blue, 
+             linestyle = :dot)
+   
+      beta_y = lines!(ax_bkgd_terms, t[2:end], total_bkgd_yxy, color = :orange)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_yyy, color = :orange, 
+             linestyle = :dash)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_yzy, color = :orange, 
+             linestyle = :dot)
+   
+      beta_z = lines!(ax_bkgd_terms, t[2:end], total_bkgd_zxz, color = :red)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_zyz, color = :red, 
+             linestyle = :dash)
+      lines!(ax_bkgd_terms, t[2:end], total_bkgd_zzz, color = :red, 
+             linestyle = :dot)
+             
+      #Plot elements for use in legend
+      alpha_x, alpha_y, alpha_z = ([LineElement(color = :gray)],
+                                [LineElement(color = :gray, linestyle = :dash)],
+                                [LineElement(color = :gray, linestyle = :dot)])
+                                
+      legend_group_color     = [beta_x, beta_y, beta_z]
+      legend_group_linestyle = [alpha_x, alpha_y, alpha_z]
+      
+      legend = Legend(fig_bkgd_terms[2, 2], 
+                   [legend_group_linestyle, legend_group_color],
+                   [[L"$x$ (i.e., along-background-flow shear)", 
+                     L"$y$ (i.e., across-background-flow shear)", 
+                     L"$z$ (i.e., vertical background-flow shear)"],
+                    [L"$x$", L"$y$", L"$z$"]],
+                   [L"$\alpha$", L"$\beta$"], nbanks = 1, titleposition = :left)
+                   
+      fig_bkgd_terms[1, 1:2] = Label(fig_bkgd_terms, L"Background-energy-to-PKE terms $\iiint u_{\alpha}′ u_{\beta}′ \frac{\partial U_{\beta}}{\partial x_{\alpha}}\, dV$")
+   
+      save(joinpath("./Plots", "backgroundTransferToPKE_individualTerms_$(datetime).png"), fig_bkgd_terms)
+   end
+
    close(ds)
 end
 
 ################################################################################
 
-function visualize_b_and_ωz(datetime, Δx, Δy; 
-		            x_idx = nothing, y_idx = nothing, z_idx = nothing,
-		            plot_animation = true, t_idx_skip = 1)
+function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid,
+                           B, ζ_bkgd, φ, Hx, Hy, Hz; 
+		                       plot_animation = true, t_idx_skip = 1)
 
-   B  = no_offset_view(adapt(Array, B))[]
-   Ux = no_offset_view(adapt(Array, Ux))[Hx+1:length(x)+Hx, 1, Hz+1:length(zC)+Hz]
-   Uy = no_offset_view(adapt(Array, Uy))
+   outfile_list = glob("./Output/output_$(datetime)*")
+   
+   ds_i = open_dataset(outfile_list[1]; Hx = Hx, Hy = Hy, Hz = Hz)[1]
+   ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list[length(outfile_list)]; Hx = Hx, Hy = Hy, Hz = Hz)
+   
+   ###
+   fig = Figure(size=(2000,800))
+   axPhi = Axis(fig[1,1])
+   axSin = Axis(fig[1,2])
+   axCos = Axis(fig[1,3])
 
-   bkgd_ds = open_bkgd_dataset(bkgd_datetime)
-   B       = bkgd_ds[:B][:, :, :, 1]
-   Ux, Uy  = bkgd_ds[:Ux][:, :, :, 1], bkgd_ds[:Uy][:, :, :, 1]
+   φview = @views φ[:, :, 1]
 
-   outfile_list             = glob("./Output/output_$(datetime)*")
-   ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list[length(outfile_list)])
+   heatmap!(axPhi, x, y, φview)
+   heatmap!(axSin, x, y, sin(φview))
+   heatmap!(axCos, x, y, cos(φview))
+   save("Test.png", fig)
+   
+   ###
 
-   if !isnothing(x_idx)
-
-      B_slice  = @views B[x_idx, :, :]
-      ωb_slice = @views ωz(Ux, Uy, Δx, Δy; x_idx = x_idx)
-
-      b_total_f_slice = @views adapt(Array, ds_f[:b])[x_idx, :, :, Nt]
-      ω_total_f_slice = @views ωz(ds_f[:ux][:, :, :, Nt], ds_f[:uy][:, :, :, Nt], Δx, Δy;
-                                  x_idx = x_idx)
-
-      idx_kwargs           = (x_idx = x_idx,)
-      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z; x_idx = x_idx)
-
-      h_dim, v_dim, const_dim, units = y, z, "x", "km"
-
-   elseif !isnothing(y_idx)
-
-      B_slice  = @views B[:, y_idx, :]
-      ωb_slice = @views ωz(Ux, Uy, Δx, Δy; y_idx = y_idx)
-
-      b_total_f_slice = @views adapt(Array, ds_f[:b])[:, y_idx, :, Nt]
-      ω_total_f_slice = @views ωz(ds_f[:ux][:, :, :, Nt], ds_f[:uy][:, :, :, Nt], Δx, Δy;
-                                  y_idx = y_idx)
-
-      idx_kwargs           = (y_idx = y_idx,)
-      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z; y_idx = y_idx)
-
-      h_dim, v_dim, const_dim, units = x, z, "y", "km"
-
-   elseif !isnothing(z_idx)
-
-      B_slice  = @views B[:, :, z_idx]
-      ωb_slice = @views ωz(Ux, Uy, Δx, Δy; z_idx = z_idx)
-
-      b_total_f_slice = @views adapt(Array, ds_f[:b])[:, :, z_idx, Nt]
-      ω_total_f_slice = ωz(ds_f[:ux][:, :, :, Nt], ds_f[:uy][:, :, :, Nt], Δx, Δy;
-                           z_idx = z_idx)
-
-      idx_kwargs           = (z_idx = z_idx,)
-      nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
-
-      h_dim, v_dim, const_dim, units = x, y, "z", "m"
+   if const_dimension == "x"
+      const_dimension_coords, axis1, axis2_zC, axis2_zF = x, y, zC, zF
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hy, Hz, Hz
+   elseif const_dimension == "y"
+      const_dimension_coords, axis1, axis2_zC, axis2_zF = y, x, zC, zF
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hz, Hz
+   elseif const_dimension == "z"
+      const_dimension_coords, axis1, axis2_zC, axis2_zF = zC, x, y, y
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hy, Hy
    end
 
-   Δb_f_slice = b_total_f_slice .- B_slice
-   Δω_f_slice = ω_total_f_slice .- ωb_slice
+   #If needed for testing, can set halos to 0 here
+   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs("x";
+                                  Hx = 3, Hy = 3, Hz = 3,
+                                  x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
+                                  xC = x, yC = y, zC = zC, zF = zF)
 
-   lims_b_total = get_symm_range_lims(b_total_f_slice; max_fraction = 0.75)
-   lims_ω_total = get_symm_range_lims(ω_total_f_slice; max_fraction = 0.75)
+   B      = no_offset_view(adapt(Array, B))[xyzC_idcs...]
+   ζ_bkgd = no_offset_view(adapt(Array, ζ_bkgd))[xyzC_idcs...]
 
-   lims_Δb = get_symm_range_lims(Δb_f_slice;
+   b_total_i  = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
+   b_total_f  = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
+   ζ_total_i = ds_i[:ζ][xyzC_idcs..., chron_idcs[1]]
+   ζ_total_f = ds_f[:ζ][xyzC_idcs..., chron_idcs[Nt]]
+
+   Δb_i = b_total_i .- B
+   Δb_f = b_total_f .- B
+   Δζ_i = ζ_total_i .- ζ_bkgd
+   Δζ_f = ζ_total_f .- ζ_bkgd
+
+   nearest, ax_kwargs = get_2D_spatial_axis_kwargs(const_dimension,
+                                                   const_dimension_idx, 
+                                                   const_dimension_coords)
+
+   lims_b_total = get_symm_range_lims(b_total_f; max_fraction = 0.75)
+   lims_ζ_total = get_symm_range_lims(ζ_total_f; max_fraction = 0.75)
+
+   lims_Δb = get_symm_range_lims(Δb_f;
                             max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δω = get_symm_range_lims(Δω_f_slice;
+   lims_Δζ = get_symm_range_lims(Δζ_f;
                             max_fraction = 0.75, prescribed_max = 1e-16)
 
    #Plot static images (final frame, by default)
@@ -654,46 +744,50 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
    fig_perturb = Figure(size = (1200, 500))
 
    ax_b_total = Axis(fig_total[2, 1];
-                     title = "Total buoyancy (b)", axis_kwargs...)
-   ax_ω_total = Axis(fig_total[2, 3];
-                     title = "Total vertical vorticity (ζ)", axis_kwargs...)
+                     title = "Total buoyancy (b)", ax_kwargs...)
+   ax_ζ_total = Axis(fig_total[2, 3];
+                     title = "Total vertical vorticity (ζ)", ax_kwargs...)
 
    ax_b_perturb = Axis(fig_perturb[2, 1];
-                       title = "Buoyancy perturbation (b')", axis_kwargs...)
-   ax_ω_perturb = Axis(fig_perturb[2, 3];
+                       title = "Buoyancy perturbation (b')", ax_kwargs...)
+   ax_ζ_perturb = Axis(fig_perturb[2, 3];
                        title = "Vertical vorticity perturbation (ζ')",
-                       axis_kwargs...)
+                       ax_kwargs...)
 
-   hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_f_slice,
+   hm_b_total = heatmap!(ax_b_total, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], b_total_f,
                          colorrange = lims_b_total,
                          colormap = Reverse(:RdBu_5),
                          highclip = :red, lowclip = :blue)
-   hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_f_slice,
-                         colorrange = lims_ω_total,
+   hm_ζ_total = heatmap!(ax_ζ_total, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], ζ_total_f,
+                         colorrange = lims_ζ_total,
                          colormap = Reverse(:RdBu_5),
                          highclip = :red, lowclip = :blue)
 
-   hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_f_slice,
+   hm_b_perturb = heatmap!(ax_b_perturb, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], Δb_f,
                            colorrange = lims_Δb,
                            colormap = Reverse(:RdBu_5),
                            highclip = :red, lowclip = :blue)
-   hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_f_slice,
-                           colorrange = lims_Δω,
+   hm_ζ_perturb = heatmap!(ax_ζ_perturb, axis1[(H_axis1 + 1):(end - H_axis1)], 
+                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], Δζ_f,
+                           colorrange = lims_Δζ,
                            colormap = Reverse(:RdBu_5),
                            highclip = :red, lowclip = :blue)
 
    Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}", label = "1/s")
+   Colorbar(fig_total[2, 4], hm_ζ_total, tickformat = "{:.1e}", label = "1/s")
 
    Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
             label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
+   Colorbar(fig_perturb[2, 4], hm_ζ_perturb, tickformat = "{:.1e}",
             label = "1/s")
    
-   title_total   = @sprintf("Fields at %s = %i %s; t = %.2f days",
-                            const_dim, nearest, units, times[Nt])
-   title_perturb = @sprintf("Perturbation fields at %s = %i %s; t = %.2f days",
-                            const_dim, nearest, units, times[Nt])
+   title_total   = @sprintf("Fields at %s = %i km; t = %.2f days",
+                            const_dimension, nearest, times[Nt])
+   title_perturb = @sprintf("Perturbation fields at %s = %i km; t = %.2f days",
+                            const_dimension, nearest, times[Nt])
 
    fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
                                tellwidth = false)
@@ -701,15 +795,13 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
                                tellwidth = false)
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots",
-                 "bzeta_total_$(const_dim)$(nearest)_tf_$(datetime).png"),
-        fig_total)
-   save(joinpath("./Plots",
-                 "bzeta_perturbs_$(const_dim)$(nearest)_tf_$(datetime).png"),
-        fig_perturb)
+   save(joinpath("./Plots", "bzeta_total_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total)
+   save(joinpath("./Plots", "bzeta_perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_perturb)
  
+   close(ds_i)
    close(ds_f)
    
+   #=
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
       fig_total   = Figure(size = (1200, 500))
@@ -814,6 +906,7 @@ function visualize_b_and_ωz(datetime, Δx, Δy;
             "bzeta_perturbs_$(const_dim)$(nearest)_$(datetime).mp4"),
            video_perturb)
    end
+   =#
 end
 
 ################################################################################
@@ -864,15 +957,18 @@ function visualize_fields_2D_slice(datetime, const_dimension,
 
    if const_dimension == "x"
       const_dimension_coords, axis1, axis2_zC, axis2_zF = x, y, zC, zF
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hy, Hz, Hz
    elseif const_dimension == "y"
       const_dimension_coords, axis1, axis2_zC, axis2_zF = y, x, zC, zF
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hz, Hz
    elseif const_dimension == "z"
       const_dimension_coords, axis1, axis2_zC, axis2_zF = zC, x, y, y
+      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hy, Hy
    end
 
-   #halos 0 only for testing
+   #If needed for testing, can set halos to 0 here
    xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension;
-                                  Hx = 0, Hy = 0, Hz = 0,
+                                  Hx = Hx, Hy = Hy, Hz = Hz,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
@@ -908,7 +1004,8 @@ function visualize_fields_2D_slice(datetime, const_dimension,
    fig_total_i = plot_fig_heatmaps_b_ur_uφ_uz(
               Dict("b" => b_total_i, "ur" => ur_total_i, "uφ" => uφ_total_i, 
                    "uz" => uz_total_i), 
-              axis1, axis2_zC, axis2_zF, nearest, ax_kwargs, 
+              axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF,
+              nearest, ax_kwargs, 
               "Fields at $(const_dimension) = $(nearest) km; initial condition";
               ax_titles = Dict("b" => L"Total buoyancy ($b$)",
                                "ur" => L"Total radial velocity ($u_r$)", 
@@ -918,7 +1015,8 @@ function visualize_fields_2D_slice(datetime, const_dimension,
    fig_total_f = plot_fig_heatmaps_b_ur_uφ_uz(
               Dict("b" => b_total_f, "ur" => ur_total_f, "uφ" => uφ_total_f, 
                    "uz" => uz_total_f), 
-              axis1, axis2_zC, axis2_zF, nearest, ax_kwargs, 
+              axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF,
+              nearest, ax_kwargs, 
               "Fields at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days";
               ax_titles = Dict("b" => L"Total buoyancy ($b$)",
                                "ur" => L"Total radial velocity ($u_r$)", 
@@ -927,7 +1025,8 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                          )
    fig_pert_i  = plot_fig_heatmaps_b_ur_uφ_uz(
               Dict("b" => Δb_i, "ur" => Δur_i, "uφ" => Δuφ_i, "uz" => Δuz_i), 
-              axis1, axis2_zC, axis2_zF, nearest, ax_kwargs, 
+              axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF,
+              nearest, ax_kwargs, 
               "Perturbation fields at $(const_dimension) = $(nearest) km; initial condition";
               ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
                                "ur" => L"Radial velocity perturbation ($u_r'$)", 
@@ -936,7 +1035,8 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                          )
    fig_pert_f  = plot_fig_heatmaps_b_ur_uφ_uz(
               Dict("b" => Δb_f, "ur" => Δur_f, "uφ" => Δuφ_f, "uz" => Δuz_f), 
-              axis1, axis2_zC, axis2_zF, nearest, ax_kwargs, 
+              axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF,
+              nearest, ax_kwargs, 
               "Perturbation fields at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days";
               ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
                                "ur" => L"Radial velocity perturbation ($u_r'$)", 
@@ -945,14 +1045,11 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                          )
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", 
-        "fields_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_total_i)
-   save(joinpath("./Plots", 
-        "fields_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total_f)
-   save(joinpath("./Plots", 
-        "perturbs_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_pert_i)
-   save(joinpath("./Plots",
-        "perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_pert_f)
+   save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_total_i)
+   save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total_f)
+   save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_pert_i)
+   save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_pert_f)
+   
    close(ds_i)
    close(ds_f)
 
@@ -986,8 +1083,9 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       
       fig_total = set_up_anim_heatmaps_b_ur_uφ_uz(
                Dict("b" => b_total, "ur" => ur_total, "uφ" => uφ_total, 
-                    "uz" => uz_total), axis1, axis2_zC, axis2_zF, 
-                                  nearest, ax_kwargs; 
+                    "uz" => uz_total), 
+                                  axis1, H_axis1, axis2_zC, H_axis2_zC, 
+                                  axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
                                                    "uφ" => L"$u_{\phi}$", 
@@ -998,8 +1096,9 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                                      "uz" => get_symm_range_lims(uz_total_f)), 
                                   colormap = Reverse(:RdBu_5))
       fig_pert = set_up_anim_heatmaps_b_ur_uφ_uz(
-               Dict("b" => Δb, "ur" => Δur, "uφ" => Δuφ, "uz" => Δuz), axis1,
-                                  axis2_zC, axis2_zF, nearest, ax_kwargs; 
+               Dict("b" => Δb, "ur" => Δur, "uφ" => Δuφ, "uz" => Δuz), 
+                                  axis1, H_axis1, axis2_zC, H_axis2_zC, 
+                                  axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
                                                    "uφ" => L"$u_{\phi}$", 
@@ -1067,14 +1166,11 @@ function visualize_fields_2D_slice(datetime, const_dimension,
          n[] = i
       end
 
-      save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_$(datetime).mp4"), 
-                    video_total)
-      save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_$(datetime).mp4"), 
-                    video_pert)
+      save(joinpath("./Plots", "fields_$(const_dimension)$(nearest)_$(datetime).mp4"), video_total)
+      save(joinpath("./Plots", "perturbs_$(const_dimension)$(nearest)_$(datetime).mp4"), video_pert)
       
       if plot_speed_animation
-         save(joinpath("./Plots", "horizontalSpeed_$(const_dim)$(nearest)_$(datetime).mp4"), 
-                       video_speed)
+         save(joinpath("./Plots", "horizontalSpeed_$(const_dim)$(nearest)_$(datetime).mp4"), video_speed)
       end
       
       close(ds)
@@ -1083,7 +1179,123 @@ end
 
 ################################################################################
 
-function plot_NonhydrostaticModel_pressures(model; x_idx = nothing, y_idx = nothing, z_idx = nothing, Hx = 3, Hy = 3, Hz = 3)
+function plot_rzMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, 
+                                fieldName; 
+                                Hx = nothing, Hy = nothing, Hz = nothing)
+   #=
+   Compute azimuthal Fourier transform of 'scalarField', which lives on an
+    Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
+    Nr x Nφ x Nz cylindrical grid. 
+   By default, 'scalarField' is assumed to include the same halos as 'grid'.
+   Compute the combined radial + vertical mean, then plot the average azimuthal
+    spectrum.
+   =#
+   
+   kφs, rzMean_φFFTfield = compute_φFFT_of_sim_data(scalarField, grid,
+                                                    gridParams, Nr, Nφ;
+                                                    Hx = Hx, Hy = Hy, Hz = Hz,
+                                                    rAvg = true, zAvg = true)
+   
+   FFT_vec = rzMean_φFFTfield[1, :, 1] #Index to remove singleton dimensions
+   Nkφ     = length(FFT_vec)
+   
+   fig = Figure(size = (1200, 700))
+   ax  = Axis(fig[2, 1]; xlabel = "Azimuthal wavenumber",
+                      ylabel = "Fourier component")
+                      
+   scatter!(ax, kφs, (abs2.(FFT_vec) ./ Nkφ), color = :black)
+   
+   fig[1, 1] = Label(fig, 
+                     L"$rz$-averaged azimuthal Fourier components of %$(fieldName)",
+                     fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "rzMeanAzimuthalSpectrum_$(fieldName).png"), fig)
+end
+
+################################################################################
+
+function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldName;
+                               Hx = nothing, Hy = nothing, Hz = nothing)
+   #=
+   Compute azimuthal Fourier transform of 'scalarField', which lives on an
+    Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
+    Nr x Nφ x Nz cylindrical grid. 
+   By default, 'scalarField' is assumed to include the same halos as 'grid'.
+   Compute the radial mean, then plot the r-averaged azimuthal spectrum as a
+    heatmap in {kφ} x {z} space.
+   =#
+   
+   if isnothing(Hz)
+      Hz = gridParams.Hz
+   end
+
+   kφs, rMean_φFFTfield = compute_φFFT_of_sim_data(scalarField, grid,
+                                                   gridParams, Nr, Nφ;
+                                                   Hx = Hx, Hy = Hy, Hz = Hz,
+                                                   rAvg = true, zAvg = false)
+   
+   FFT_array = rMean_φFFTfield[1, :, :] #Index to remove singleton dimension
+   Nkφ       = length(FFT_array[:, 1])
+   
+   fig = Figure(size = (1200, 700))
+   ax  = Axis(fig[2, 1]; xlabel = "Azimuthal wavenumber", ylabel = "z [m]")
+
+   hm = heatmap!(ax, kφs, grid.z.cᵃᵃᶜ[1:(end - Hz)], (abs2.(FFT_array) ./ Nkφ),
+                 colormap = :Reds)
+   
+   Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
+   
+   fig[1, 1] = Label(fig, L"$r$-averaged Fourier azimuthal components of %$(fieldName)",
+                     fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "rMeanAzimuthalSpectrum_$(fieldName).png"), fig)
+end
+
+################################################################################
+
+function plot_zMean_φDFT_field(scalarField, grid, gridParams, Lr, Nr, Nφ,
+                               fieldName;
+                               Hx = nothing, Hy = nothing, Hz = nothing)
+   #=
+   Compute azimuthal Fourier transform of 'scalarField', which lives on an
+    Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
+    Nr x Nφ x Nz cylindrical grid. 
+   By default, 'scalarField' is assumed to include the same halos as 'grid'.
+   Compute the vertical mean, then plot the z-averaged azimuthal spectrum as a
+    heatmap in {r} x {kφ} space.
+   =#
+
+   kφs, zMean_φFFTfield = compute_φFFT_of_sim_data(scalarField, grid,
+                                                   gridParams, Nr, Nφ;
+                                                   Hx = Hx, Hy = Hy, Hz = Hz,
+                                                   rAvg = false, zAvg = true)
+   
+   FFT_array = zMean_φFFTfield[:, :, 1] #Index to remove singleton dimension
+   Nkφ       = length(FFT_array[1, :])
+   
+   r_coords = construct_uniform_polar_grid(Lr, Nr, Nφ)[1]
+   
+   fig = Figure(size = (1200, 700))
+   ax  = Axis(fig[2, 1]; xlabel = "r [m]", ylabel = "Azimuthal wavenumber")
+
+   hm = heatmap!(ax, r_coords, kφs, (abs2.(FFT_array) ./ Nkφ), colormap = :Reds)
+   
+   Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
+   
+   fig[1, 1] = Label(fig, L"$z$-averaged Fourier azimuthal components of %$(fieldName)",
+                     fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "zMeanAzimuthalSpectrum_$(fieldName).png"), fig)
+end
+
+################################################################################
+
+function plot_NonhydrostaticModel_pressures(model; 
+               x_idx = nothing, y_idx = nothing, z_idx = nothing, 
+               Hx = 3, Hy = 3, Hz = 3)
 
    #Note: this function needs to be updated to generalize to plots on a constant-x or constant-z slice. Only handles constant-y case right now.
 
