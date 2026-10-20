@@ -1,3 +1,5 @@
+include("Parameters.jl")
+
 using CSV
 using Oceananigans
 using Oceananigans.AbstractOperations
@@ -30,59 +32,53 @@ end
 
 function build_custom_z_grid(z_grid_type, Lz, Nz) 
 
-   custom_z_grids = Dict("uniform" => (-Lz, 0),
-                         "chebyshev" => k -> chebyshev_spaced_faces(k, -Lz, 
-                                                                    Nz + 1)
+   custom_z_grids = Dict(:uniform => (-Lz, 0),
+                         :chebyshev => k -> chebyshev_spaced_faces(k, -Lz,
+                                                                   Nz + 1)
                         )
    
    return custom_z_grids[z_grid_type]
 end
 
-function build_Oceananigans_RectilinearGrid(gridParams)
+function BuildOceananigansRectilinearGrid(p::GridParams)
    #=
-   Instantiate an Oceananigans RectilinearGrid that directly uses 'gridParams'.
+   Instantiate an Oceananigans RectilinearGrid that directly uses specified
+    GridParams.
    Should be used as, e.g., the model grid for a simulation.
    =#
    
-   Nx, Ny, Nz = gridParams.Nx, gridParams.Ny, gridParams.Nz
-   Lr, Lz     = gridParams.Lr, gridParams.Lz
-   
-   grid = RectilinearGrid(gridParams.architecture,
-                          topology = (gridParams.Tx, gridParams.Ty, Bounded),
-                          size = (Nx, Ny, Nz), 
-                          x = (-Lr, Lr), 
-                          y = (-Lr, Lr), 
-                          z = build_custom_z_grid(gridParams.z_grid_type, 
-                                                  Lz, Nz),
-                          halo = (gridParams.Hx, gridParams.Hy, gridParams.Hz)
+   grid = RectilinearGrid(p.architecture,
+                          topology = p.topology,
+                          size = (p.Nx, p.Ny, p.Nz), 
+                          x = (-p.Lr, p.Lr), 
+                          y = (-p.Lr, p.Lr), 
+                          z = build_custom_z_grid(p.z_grid_type, p.Lz, p.Nz),
+                          halo = (p.Hx, p.Hy, p.Hz)
                          )
 end
 
-function build_tall_copy_Oceananigans_RectilinearGrid(gridParams)
+function BuildTallCopyOceananigansRectilinearGrid(p::GridParams)
    #=
    Instantiate an Oceananigans RectilinearGrid that is in every way identical
-    to 'build_Oceananigans_RectilinearGrid(gridParams)' except that one halo
-    point at each vertical boundary is converted to an interior point.
-   I.e., the tall copy has vertical size 'gridParams.Nz + 2' and vertical halo
-    size 'gridParams.Hz - 1'.
+    to 'build_Oceananigans_RectilinearGrid(p)' except that one halo point at
+    each vertical boundary is converted to an interior point.
+   I.e., the tall copy has vertical size 'p.Nz + 2' and vertical halo size
+    'p.Hz - 1'.
    =#
    
-   regularGrid = build_Oceananigans_RectilinearGrid(gridParams)
-
-   Nx, Ny, Nz = gridParams.Nx, gridParams.Ny, gridParams.Nz
-   Hx, Hy, Hz = gridParams.Hx, gridParams.Hy, gridParams.Hz
-   Lr, Lz     = gridParams.Lr, gridParams.Lz
+   regularGrid = BuildOceananigansRectilinearGrid(p)
 
    #Get zFace-coordinates for tall grid
-   zF = @view no_offset_view(adapt(Array, regularGrid.z.cᵃᵃᶠ))[Hz:(end - (Hz - 1))]
+   zF = @view no_offset_view(adapt(Array, regularGrid.z.cᵃᵃᶠ)
+                            )[p.Hz:(end - (p.Hz - 1))]
 
-   tallGrid = RectilinearGrid(gridParams.architecture, 
-                              topology = (gridParams.Tx, gridParams.Ty, Bounded), 
-                              size = (Nx, Ny, Nz + 2), 
-                              x = (-Lr, Lr), 
-                              y = (-Lr, Lr), 
+   tallGrid = RectilinearGrid(p.architecture,
+                              topology = p.topology, 
+                              size = (p.Nx, p.Ny, p.Nz + 2), 
+                              x = (-p.Lr, p.Lr), 
+                              y = (-p.Lr, p.Lr), 
                               z = zF, 
-                              halo = (Hx, Hy, Hz - 1)
+                              halo = (p.Hx, p.Hy, p.Hz - 1)
                              )
 end
 
@@ -197,18 +193,6 @@ function compute_Cart_coords(r, φ, z)
    return x, y, z
 end
 
-function xy_vector_to_rφ(vx, vy, grid, useGPU)
-   #=
-   Given Cartesian (x, y) components of a vector, stored at 
-    {Face, Center, Center} and {Center, Face, Center} respectively, 
-    compute the vector's projection to polar (r, φ) coordinates.
-   Return both polar components at {Center, Center, Center} on 'grid'.
-   =#
-
-   r, φ = polar_coords_Fields(grid, "c", "c", "c")
-
-   @compute vr = @at (Center, Center, Center) (vx * cos(φ)) + (vy * sin(φ))
-   @compute vφ = @at (Center, Center, Center) (vy * cos(φ)) - (vx * sin(φ))
-
-   return vr, vφ
-end
+#r- and φ-components of a vector given in (x, y)-coordinates
+@inline vector_r_component_ccc(i, j, k, g, ux, uy) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux) * cos(φ_cca(i, j, k, g)) + ℑyᵃᶜᵃ(i, j, k, g, uy) * sin(φ_cca(i, j, k, g))
+@inline vector_φ_component_ccc(i, j, k, g, ux, uy) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy) * cos(φ_cca(i, j, k, g)) - ℑxᶜᵃᵃ(i, j, k, g, ux) * sin(φ_cca(i, j, k, g))
