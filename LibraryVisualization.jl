@@ -455,8 +455,9 @@ end
 
 function CenterField_ωr(grid, uφ_Field, uz_Field, rCenterField, φCenterField)
    #=
-   Provided Cartesian velocity-component Fields (XFaceField, etc.) on 'grid', 
-    compute and return radial vorticity component as a CenterField on 'grid'.
+   Provided azimuthal and vertical velocity-component Fields as CenterField and
+    ZFaceField, respectively, on 'grid', compute and return radial vorticity
+    component as a CenterField on 'grid'.
    Useful for computing vorticity directly on Oceananigans grid, including at
     simulation runtime.
    =#
@@ -464,6 +465,7 @@ function CenterField_ωr(grid, uφ_Field, uz_Field, rCenterField, φCenterField)
    @inline S(i, j, k, g) = @inbounds sin(φCenterField)[i, j, k]
    @inline C(i, j, k, g) = @inbounds cos(φCenterField)[i, j, k]
 
+   #To do: fix staggered grid locations
    @inline ωr_ccc(i, j, k, g) = @inbounds ((C(i, j, k, g) 
                                             * ∂y(uz_Field)[i, j, k] 
                                             - S(i, j, k, g) 
@@ -480,26 +482,19 @@ function CenterField_ωr(grid, uφ_Field, uz_Field, rCenterField, φCenterField)
    return ωr
 end
 
-function ωz(ux, uy, x, y; x_idx = nothing, y_idx = nothing, z_idx = nothing)
+function CenterField_ζ(grid, ux_Field, uy_Field)
    #=
-   Compute only the vertical component of vorticity, via centered differencing, 
-    on a 2D slice.
+   Useful for computing vorticity directly on Oceananigans grid, including at
+    simulation runtime.
    =#
-
-   if !isnothing(x_idx)
-      ΔuyΔx = centered_difference(x[(x_idx - 1):(x_idx + 1)], 
-                                  uy[(x_idx - 1):(x_idx + 1), :, :])
-      ΔuxΔy = centered_difference(y, ux[x_idx, :, :])
-   elseif !isnothing(y_idx)
-      ΔuyΔx = centered_difference(x, uy[:, y_idx, :])
-      ΔuxΔy = centered_difference(y[(y_idx - 1):(y_idx + 1)], 
-                                  ux[:, (y_idx -1):(y_idx + 1), :])
-   elseif !isnothing(z_idx)
-      ΔuyΔx = centered_difference(x, uy[:, :, z_idx])
-      ΔuxΔy = centered_difference(y, ux[:, :, z_idx])
-   end
    
-   ωz = ΔuyΔx .- ΔuxΔy
+   @inline ux_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux_Field)
+   @inline uy_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy_Field)
+
+   @inline ζ_ccc(i, j, k, g) = @inbounds (∂xᶜᶜᶜ(i, j, k, g, uy_ccc) 
+                                          - ∂yᶜᶜᶜ(i, j, k, g, ux_ccc))
+
+   @compute return Field(KernelFunctionOperation{Center, Center, Center}(ζ_ccc, grid))
 end
 
 function pointwise_q_Ertel(i, j, k, b, ux, uy, uz, f, xC, yC, zC)
