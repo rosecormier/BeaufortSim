@@ -7,24 +7,48 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceanostics.KineticEnergyEquation
 using Oceanostics.PotentialEnergyEquation
+using Oceanostics.TurbulentKineticEnergyEquation
+
+####################
+# HELPER FUNCTIONS #
+####################
+
+#Compute square of a field in single control volume
+@inline ψ²(i, j, k, grid, ψ) = @inbounds ψ[i, j, k]^2
+
+#Compute total specific KE in single control volume
+@inline KE_ccc(i, j, k, grid, u, v, w) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)) / 2
+
+#Compute 2-norm of a perturbation field
+@inline perturbation_norm(field, bkgd_field) = @inbounds norm(field - bkgd_field)
+
+#Compute square of a perturbation field in single control volume
+@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
+
+@inline b′(i, j, k, grid, b, B) = @inbounds b[i, j, k] - B[i, j, k]
+
+#Functions to compute cylindrical components of perturbation velocity
+@inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
+@inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
+@inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
+
+#Function to compute PKE in single control volume
+@inline PKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) + ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
+
+#Function to compute product of b′ and uz′ in single control volume
+@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (b′(i, j, k, grid, b, B) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
+##@inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
 ########################################################
 # DIAGNOSTICS THAT CAN BE SAVED DURING SIMULATION RUNS #
 ########################################################
-
-#Function to compute square of a field in single control volume
-@inline ψ²(i, j, k, grid, ψ) = @inbounds ψ[i, j, k]^2
-
-#Function to compute total KE in single control volume
-@inline KE_ccc(i, j, k, grid, u, v, w) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)) / 2
 
 function totalKE(simulation)
    #=
    Compute integral, over entire domain, of total specific kinetic energy.
    =#
 
-   u, v, w = simulation.model.velocities
-
+   u, v, w    = simulation.model.velocities
    totalKE_op = KineticEnergy(simulation.model, u, v, w)
    
    compute!(Integral(Field(totalKE_op)))
@@ -55,7 +79,7 @@ function totalKEadvFlux(simulation; useOceanostics = false)
    compute!(Integral(Field(totalKEadvFlux_op)))
 end
 
-function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
+function totalPressureWork(simulation, modelParams::ModelParams; useOceanostics = false)
    #=
    Compute integral, over entire domain, of total pressure work.
    =#
@@ -66,16 +90,16 @@ function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    
    elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
    
-      if useNHS
+      #Get kinematic pressure 'p'
+      if modelParams.useNonhydrostaticModel
          p = simulation.model.pressures.pNHS + simulation.model.pressures.pHY′
-      elseif !useNHS
+      elseif !modelParams.useNonhydrostaticModel
          p = simulation.model.pressure.pHY′
       end
-      #Note 'p' is a kinematic pressure
       
       u, v, w = simulation.model.velocities
       
-      #Note: These fields need to be explicitly computed (i.e., can't use ∂xᶠᶜᶜ and the other operator functions), but I can't figure out why!
+      #Note: These fields need to be explicitly computed (i.e., can't use ∂xᶠᶜᶜ and the other operator functions in the below inlined function), but I can't figure out why!
       @compute p_xAdvFlux_fcc = u * ∂x(p)
       @compute p_yAdvFlux_cfc = v * ∂y(p)
       @compute p_zAdvFlux_ccf = w * ∂z(p)
@@ -88,17 +112,17 @@ function totalPressureWork(simulation; useNHS = nothing, useOceanostics = false)
    compute!(Integral(Field(totalPressureWork_op)))
 end
 
-function totalProduction(simulation; useNHS = nothing)
+function totalKEProduction(simulation, modelParams::ModelParams; useOceanostics = false)
    #=
    Compute integral, over entire domain, of total specific KE-production by
     buoyancy.
    =#
    
-   if useNHS #Nonhydrostatic model; fine to use Oceanostics' KFO
+   if useOceanostics #Note this requires a NonhydrostaticModel
    
       totalProduction_op = BuoyancyProduction(simulation.model)
       
-   elseif !useNHS #Hydrostatic free-surface model; Oceanostics version breaks
+   elseif !useOceanostics #Can run with Nonhydrostatic or HydrostaticFreeSurface
    
       b, uz = simulation.model.tracers.b, simulation.model.velocities.w
 
@@ -152,26 +176,6 @@ function totalPEsources(simulation)
    
    compute!(Integral(Field(totalPEsources_op)))
 end
-
-@inline b′(i, j, k, grid, b, B) = @inbounds b[i, j, k] - B[i, j, k]
-
-#Functions to compute cylindrical components of perturbation velocity
-@inline ur′(i, j, k, grid, ur, Ur) = @inbounds ur[i, j, k] - Ur[i, j, k]
-@inline uφ′(i, j, k, grid, uφ, Uφ) = @inbounds uφ[i, j, k] - Uφ[i, j, k]
-@inline uz′(i, j, k, grid, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
-
-#Function to compute 2-norm of a perturbation field
-@inline perturbation_norm(field, bkgd_field) = @inbounds norm(field - bkgd_field)
-
-#Function to compute square of a perturbation field
-@inline ψ′²(i, j, k, grid, ψ, ψ̄) = @inbounds (ψ[i, j, k] - ψ̄[i, j, k])^2
-
-#Function to compute PKE in single control volume
-@inline PKE_ccc(i, j, k, grid, u, v, w, Ux, Uy, Uz) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, Ux) +	ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, Uy) + ℑzᵃᵃᶜ(i, j, k, grid, ψ′², w, Uz)) / 2
-
-#Function to compute product of b′ and uz′ in single control volume
-@inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (b′(i, j, k, grid, b, B) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
-##@inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
 function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ) ##, ∂rUφ)
    #=
@@ -366,7 +370,7 @@ end
 function BTI_transfer(simulation; bkgdParameters)
    #=
    Return computed integral, over entire domain, of BTI-transfer term in PKE
-    budget.
+    budget for a purely azimuthal background flow.
    =#
    
    grid    = simulation.model.grid
@@ -386,7 +390,7 @@ end
 function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    #=
    Return computed integral, taken over gyre region only, of BTI-transfer term
-    in PKE budget.
+    in PKE budget for a purely azimuthal background flow.
    =#
 
    @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
@@ -451,6 +455,16 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
                          IsWithinModelGyreRegion, grid, BCI_transfer))
 
    compute!(Integral(BCI_transfer, mask = mask))
+end
+
+function TKEProduction(simulation, Ux, Uy, Uz)
+
+   grid    = simulation.model.grid
+   u, v, w = simulation.model.velocities
+
+   TKE_production_op = TurbulentKineticEnergyShearProductionRate(simulation.model; U = Ux, V = Uy, W = Uz, grid = grid)
+   
+   compute!(Integral(Field(TKE_production_op)))
 end
 
 ################################################################
