@@ -8,21 +8,24 @@ using OffsetArrays, Printf
 
 @inline ζz_abs_ffc(i, j, k, g, f, u, v) = @inbounds f + ζ₃ᶠᶠᶜ(i, j, k, g, u, v)
 
-function check_inertial_stability(grid, f, u, v; 
+function check_inertial_stability(model, f; 
 		                              plot_ζz_abs = false, 
+                                  gridParams = nothing,
                                   x_idx = nothing, 
 			                            y_idx = nothing, 
                                   z_idx = nothing)
   
-   ζz_abs_KernOp = KernelFunctionOperation{Face, Face, Center}(ζz_abs_ffc, grid, f, u, v)
+   grid    = model.grid
+   u, v, w = model.velocities
    
-   @compute ζz_abs = Field(ζz_abs_KernOp)
+   @compute ζz_abs = Field(KernelFunctionOperation{Face, Face, Center}(ζz_abs_ffc, grid, f, u, v))
 
    if any(z -> z < 0, ζz_abs)
       print("Warning: system is inertially unstable.\n")
    end
 
    if plot_ζz_abs
+      Hx, Hy, Hz = gridParams.Hx, gridParams.Hy, gridParams.Hz
 
       mkpath("./Plots") #Make visualization directory if nonexistent
       
@@ -38,8 +41,7 @@ function check_inertial_stability(grid, f, u, v;
 
          ζz_abs_slice = interior(ζz_abs)[x_idx, :, :]
 
-         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "x";
-                                                           x_idx = x_idx)
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs("x", x_idx, x)
 
          h_dim, v_dim, const_dim, units = y, z, "x", "km"
 
@@ -47,8 +49,7 @@ function check_inertial_stability(grid, f, u, v;
 
          ζz_abs_slice = interior(ζz_abs)[:, y_idx, :]
 
-         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "y";
-                                                           y_idx = y_idx)
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs("y", y_idx, y)
 
          h_dim, v_dim, const_dim, units = x, z, "y", "km"
 
@@ -56,8 +57,7 @@ function check_inertial_stability(grid, f, u, v;
 
          ζz_abs_slice = interior(ζz_abs)[:, :, z_idx]
 
-         nearest, axis_kwargs = get_2D_spatial_axis_kwargs(x, y, z, "z";
-							                                             z_idx = z_idx)
+         nearest, axis_kwargs = get_2D_spatial_axis_kwargs("z", z_idx, z)
 
          h_dim, v_dim, const_dim, units = x, y, "z", "m"
       end
@@ -78,16 +78,18 @@ function check_inertial_stability(grid, f, u, v;
    end
 end
 
-function check_gravitational_stability(b, grid; 
+function check_gravitational_stability(model; 
                                        plot_∂b∂z = false,
 		                                   x_idx = nothing, 
                                        y_idx = nothing, 
                                        z_idx = nothing,
                                        Hx = 3, Hy = 3, Hz = 3)
    
-   ∂b∂z = ZFaceField(grid)
-   set!(∂b∂z, ∂z(b))
-
+   grid = model.grid
+   b    = model.tracers.b
+   
+   @compute ∂b∂z = Field(∂z(b))
+   
    if any(n -> n < 0, interior(∂b∂z))
       print("Warning: system is gravitationally unstable.\n")
    end
