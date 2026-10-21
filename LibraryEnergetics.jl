@@ -1,7 +1,5 @@
-using Adapt
 using LinearAlgebra: norm
 using Oceananigans
-using Oceananigans.Architectures
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -37,13 +35,12 @@ using Oceanostics.TurbulentKineticEnergyEquation
 
 #Function to compute product of b′ and uz′ in single control volume
 @inline b′uz′_ccc(i, j, k, grid, b, uz, B, Uz) = @inbounds (b′(i, j, k, grid, b, B) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
-##@inbounds ((b[i, j, k] - B[i, j, k]) * ℑzᵃᵃᶜ(i, j, k, grid, uz′, uz, Uz))
 
 ########################################################
 # DIAGNOSTICS THAT CAN BE SAVED DURING SIMULATION RUNS #
 ########################################################
 
-function totalKE(simulation)
+function total_KE(simulation)
    #=
    Compute integral, over entire domain, of total specific kinetic energy.
    =#
@@ -54,7 +51,7 @@ function totalKE(simulation)
    compute!(Integral(Field(totalKE_op)))
 end
 
-function totalKEadvFlux(simulation; useOceanostics = false)
+function total_KE_advective_flux(simulation; useOceanostics = false)
    #=
    Compute integral, over entire domain, of total advective flux of specific KE.
    =#
@@ -79,7 +76,7 @@ function totalKEadvFlux(simulation; useOceanostics = false)
    compute!(Integral(Field(totalKEadvFlux_op)))
 end
 
-function totalPressureWork(simulation, modelParams::ModelParams; useOceanostics = false)
+function total_pressure_work(simulation, modelParams::ModelParams; useOceanostics = false)
    #=
    Compute integral, over entire domain, of total pressure work.
    =#
@@ -112,7 +109,8 @@ function totalPressureWork(simulation, modelParams::ModelParams; useOceanostics 
    compute!(Integral(Field(totalPressureWork_op)))
 end
 
-function totalKEProduction(simulation, modelParams::ModelParams; useOceanostics = false)
+function total_KE_production(simulation, modelParams::ModelParams; 
+                             useOceanostics = false)
    #=
    Compute integral, over entire domain, of total specific KE-production by
     buoyancy.
@@ -134,7 +132,7 @@ function totalKEProduction(simulation, modelParams::ModelParams; useOceanostics 
    compute!(Integral(Field(totalProduction_op)))
 end
 
-function totalPE(simulation)
+function total_PE(simulation)
    #=
    Compute integral, over entire domain, of total specific potential energy.
    =#
@@ -144,7 +142,7 @@ function totalPE(simulation)
    compute!(Integral(Field(totalPE_op)))
 end
 
-function totalGravityWork(simulation, g)
+function total_gravity_work(simulation, gravitational_acceleration)
    #=
    Compute integral, over entire domain, of total gravity work.
    =#
@@ -155,10 +153,10 @@ function totalGravityWork(simulation, g)
       
    totalGravityWork_op = KernelFunctionOperation{Center, Center, Center}(gravityWork_ccc, simulation.model.grid)
 
-   compute!(Integral(Field(g * totalGravityWork_op)))
+   compute!(Integral(Field(gravitational_acceleration * totalGravityWork_op)))
 end
 
-function totalPEsources(simulation)
+function total_internal_PE_sources(simulation)
    #=
    Compute integral, over entire domain, of total internal specific-PE sources.
    =#
@@ -177,7 +175,7 @@ function totalPEsources(simulation)
    compute!(Integral(Field(totalPEsources_op)))
 end
 
-function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ) ##, ∂rUφ)
+function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ)
    #=
    Function to compute (1/r times ur′ times uφ′ times Uφ) in single control
     volume.
@@ -200,7 +198,7 @@ function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ) ##, ∂rUφ
    return @inbounds -(Uφ_over_r_ccc * ur′_ccc * uφ′_ccc)
 end
 
-function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
+function negative_∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
    #=
    Function to compute (negative ur′ times uφ′ times r-derivative of Uφ) in
     single control volume.
@@ -222,10 +220,12 @@ function neg∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rUφ)
    return @inbounds -(∂rUφ_ccc * ur′_ccc * uφ′_ccc)
 end
 
-function neg∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ)
+function negative_∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ)
    #=
    Function to compute (negative uφ′ times uz′ times z-derivative of Uφ) in 
     single control volume.
+   For a purely azimuthal background flow, this is the BCI term in the PKE
+    budget.
    =#
 
    φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
@@ -243,7 +243,7 @@ function neg∂zUφ_uφ′_uz′_ccc(i, j, k, grid, ux, uy, uz, Uφ, Uz, ∂zUφ
    return @inbounds -(∂zUφ_ccc * uφ′_ccc * uz′_ccc)
 end
 
-function bkgd_transfer(simulation, Ux_bkgd, Uy_bkgd, Uz_bkgd)
+function bkgd_to_PKE_transfer(simulation, Ux_bkgd, Uy_bkgd, Uz_bkgd)
    #=
    Return computed integral, over entire domain, of background-transfer term in PKE
     budget.
@@ -281,22 +281,17 @@ function bkgd_transfer(simulation, Ux_bkgd, Uy_bkgd, Uz_bkgd)
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function IsWithinGyreRegion(i, j, k, grid, integrand; parameters) 
+function IsWithinGyreRegion(i, j, k, grid, integrand, p::GyreParams) 
    #=
-   Return true if gridpoint coords are r ≤ (2 * σr) and (only if baroclinic 
-    background state) -(2 * σz) ≤ z; return false if gridpoint is outside this
-    region.
+   Return true if gridpoint coords are r ≤ (2 * σr) and -(2 * σz) ≤ z; return
+    false if gridpoint is outside this region.
    =#
-   
-   σr, σz = parameters.σr, parameters.σz
-   
-   isWithinGyreRegion = @inbounds (-(2 * σr) ≤ grid.yᵃᶜᵃ[j] ≤ (2 * σr)
-                                   && -sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2) ≤
+
+   isWithinGyreRegion = @inbounds (-(2 * p.σr) ≤ grid.yᵃᶜᵃ[j] ≤ (2 * p.σr)
+                                   && -sqrt((2 * p.σr)^2 - grid.yᵃᶜᵃ[j]^2) ≤
                                       grid.xᶜᵃᵃ[i] ≤ 
-                                      sqrt((2 * σr)^2 - grid.yᵃᶜᵃ[j]^2)
-                                   && (σz == "infinity"
-                                       || -(2 * σz) ≤ grid.z.cᵃᵃᶜ[k] ≤ 0
-                                      )
+                                      sqrt((2 * p.σr)^2 - grid.yᵃᶜᵃ[j]^2)
+                                   && -(2 * p.σz) ≤ grid.z.cᵃᵃᶜ[k] ≤ 0
                                   )
    return isWithinGyreRegion
 end
@@ -314,12 +309,12 @@ function PKE(simulation, Ux, Uy, Uz)
    compute!(Integral(Field(PKE_op)))
 end
 
-function gyre_PKE(simulation; gyreParameters)
+function gyre_PKE(simulation, p::GyreParams)
    #=
    Return computed integral of PKE, taken over gyre region only.
    =#
 
-   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand, p)
    
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -347,13 +342,13 @@ function PAPE_to_PKE(simulation, B, Uz)
    compute!(Integral(Field(PAPE_to_PKE_op)))
 end
 
-function gyre_PAPE_to_PKE(simulation; gyreParameters)
+function gyre_PAPE_to_PKE(simulation, p::GyreParams)
    #=
    Return computed integral, taken over gyre region only, of conversion from 
     perturbation APE to PKE.
    =#
    
-   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand, p)
    
    grid = simulation.model.grid
    b, w = simulation.model.tracers.b, simulation.model.velocities.w
@@ -380,20 +375,20 @@ function BTI_transfer(simulation; bkgdParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + negative_∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
    
    BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)#, u, v, Ur, Uφ, ∂rUφ)
    
    compute!(Integral(Field(BTI_transfer_op)))
 end
 
-function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
+function gyre_BTI_transfer(simulation, p::GyreParams; bkgdParameters)
    #=
    Return computed integral, taken over gyre region only, of BTI-transfer term
     in PKE budget for a purely azimuthal background flow.
    =#
 
-   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand, p)
 
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -402,7 +397,7 @@ function gyre_BTI_transfer(simulation; bkgdParameters, gyreParameters)
    Uφ   = bkgdParameters.Uφ
    ∂rUφ = bkgdParameters.∂rUφ
 
-   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + neg∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
+   BTI_transfer_ccc(i, j, k, g) = ur′_uφ′_Uφ_over_r_ccc(i, j, k, g, u, v, Ur, Uφ) + negative_∂rUφ_ur′_uφ′_ccc(i, j, k, g, u, v, Ur, Uφ, ∂rUφ)
 
    BTI_transfer_op = KernelFunctionOperation{Center, Center, Center}(BTI_transfer_ccc, grid)
    BTI_transfer    = Field(BTI_transfer_op)
@@ -427,18 +422,18 @@ function BCI_transfer(simulation; bkgdParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(negative_∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
 
    compute!(Integral(Field(BCI_transfer_op)))
 end
 
-function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
+function gyre_BCI_transfer(simulation, p::GyreParams; bkgdParameters)
    #=
    Return computed integral, taken over gyre region only, of BCI-transfer term
     in PKE budget.
    =#
    
-   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand; parameters = gyreParameters)
+   @inline IsWithinModelGyreRegion(i, j, k, g, integrand) = @inbounds IsWithinGyreRegion(i, j, k, g, integrand, p)
 
    grid    = simulation.model.grid
    u, v, w = simulation.model.velocities
@@ -447,7 +442,7 @@ function gyre_BCI_transfer(simulation; bkgdParameters, gyreParameters)
    Uz   = bkgdParameters.Uz
    ∂zUφ = bkgdParameters.∂zUφ
    
-   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(neg∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
+   BCI_transfer_op = KernelFunctionOperation{Center, Center, Center}(negative_∂zUφ_uφ′_uz′_ccc, grid, u, v, w, Uφ, Uz, ∂zUφ)
    BCI_transfer    = Field(BCI_transfer_op)
    
    #Mask areas far from gyre
@@ -471,7 +466,8 @@ end
 # DIAGNOSTICS TO BE EVALUATED USING COMPLETE SIMULATION OUTPUT #
 ################################################################
 
-function quantify_simulation_nonconservativity(totalKE_timeseries, totalPE_timeseries)
+function quantify_simulation_nonconservativity(totalKE_timeseries,
+                                               totalPE_timeseries)
 
    initialME = totalKE_timeseries[1] + totalPE_timeseries[1]
    finalME   = totalKE_timeseries[end] + totalPE_timeseries[end]
