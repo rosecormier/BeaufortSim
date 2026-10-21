@@ -1,12 +1,6 @@
 include("LibraryCoordinates.jl")
+include("LibraryEnergetics.jl")
 include("LibraryVisualization.jl")
-
-################################################################################
-# FROM PKE BUDGET: THE INDIVIDUAL TERMS ui′uj′∂jUi (CARTESIAN INDICES) THAT    #
-#  CONTRIBUTE TO THE TOTAL BACKGROUND-ENERGY CONVERSION.                       # 
-# FOR ANY GENERIC BACKGROUND FLOW, THE SUM OF THESE NINE TERMS SHOULD EQUAL    #
-# THE SUM OF THE BTI- AND BCI-CONVERSION TERMS.                                #
-################################################################################
 
 @inline ux′_fcc(i, j, k, g, ux, Ux) = @inbounds ux[i, j, k] - Ux[i, j, k]
 @inline ux′_ccc(i, j, k, g, ux, Ux) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc, ux, Ux)
@@ -14,6 +8,13 @@ include("LibraryVisualization.jl")
 @inline uy′_ccc(i, j, k, g, uy, Uy) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc, uy, Uy)
 @inline uz′_ccf(i, j, k, g, uz, Uz) = @inbounds uz[i, j, k] - Uz[i, j, k]
 @inline uz′_ccc(i, j, k, g, uz, Uz) = @inbounds ℑzᵃᵃᶜ(i, j, k, g, uz′_ccf, uz, Uz)
+
+################################################################################
+# FROM PKE BUDGET: THE INDIVIDUAL TERMS ui′uj′∂jUi (CARTESIAN INDICES) THAT    #
+#  CONTRIBUTE TO THE TOTAL BACKGROUND-ENERGY CONVERSION.                       # 
+# FOR ANY GENERIC BACKGROUND FLOW, THE SUM OF THESE NINE TERMS SHOULD EQUAL    #
+# THE SUM OF THE BTI- AND BCI-CONVERSION TERMS.                                #
+################################################################################
 
 function bkgd_transfer_ux′ux′∂xUx(simulation, Ux_bkgd)
 
