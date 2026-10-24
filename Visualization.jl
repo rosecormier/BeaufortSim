@@ -493,20 +493,10 @@ function visualize_PKE(datetime, grid; visualize_individual_bkgd_terms = false)
    total_bkgd_xzx = ds[:total_ux′uz′∂zUx][chron_idcs][2:end]
    
    #=
-   PKE          = PKE
-   PAPE_to_PKE  = PAPE_to_PKE
-   BTI_transfer = BTI_transfer
-   BCI_transfer = BCI_transfer
-   
    gyre_PKE          = ds[:gyre_PKE][chron_idcs]
    gyre_PAPE_to_PKE  = ds[:gyre_PAPE_to_PKE][chron_idcs]
    gyre_BTI_transfer = ds[:gyre_BTI_transfer][chron_idcs]
    gyre_BCI_transfer = ds[:gyre_BCI_transfer][chron_idcs]
-   
-   gyre_PKE          = gyre_PKE
-   gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE
-   gyre_BTI_transfer = gyre_BTI_transfer
-   gyre_BCI_transfer = gyre_BCI_transfer
 
    fig_PKEtotal = Figure(size = (1200, 700))
    ax_PKEtotal  = Axis(fig_PKEtotal[2, 1]; xlabel = "Time [days]",
@@ -673,28 +663,13 @@ end
 ################################################################################
 
 function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid,
-                           B, ζ_bkgd, φ, Hx, Hy, Hz; 
+                           B, ζ_bkgd, Hx, Hy, Hz; 
 		                       plot_animation = true, t_idx_skip = 1)
 
    outfile_list = glob("./Output/output_$(datetime)*")
    
    ds_i = open_dataset(outfile_list[1]; Hx = Hx, Hy = Hy, Hz = Hz)[1]
    ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list[length(outfile_list)]; Hx = Hx, Hy = Hy, Hz = Hz)
-   
-   ###
-   fig = Figure(size=(2000,800))
-   axPhi = Axis(fig[1,1])
-   axSin = Axis(fig[1,2])
-   axCos = Axis(fig[1,3])
-
-   φview = @views φ[:, :, 1]
-
-   heatmap!(axPhi, x, y, φview)
-   heatmap!(axSin, x, y, sin(φview))
-   heatmap!(axCos, x, y, cos(φview))
-   save("Test.png", fig)
-   
-   ###
 
    if const_dimension == "x"
       const_dimension_coords, axis1, axis2_zC, axis2_zF = x, y, zC, zF
@@ -708,16 +683,15 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
    end
 
    #If needed for testing, can set halos to 0 here
-   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs("x";
-                                  Hx = 3, Hy = 3, Hz = 3,
-                                  x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
+   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension, const_dimension_idx;
+                                  Hx = Hx, Hy = Hy, Hz = Hz,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
    B      = no_offset_view(adapt(Array, B))[xyzC_idcs...]
    ζ_bkgd = no_offset_view(adapt(Array, ζ_bkgd))[xyzC_idcs...]
 
-   b_total_i  = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
-   b_total_f  = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
+   b_total_i = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
+   b_total_f = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
    ζ_total_i = ds_i[:ζ][xyzC_idcs..., chron_idcs[1]]
    ζ_total_f = ds_f[:ζ][xyzC_idcs..., chron_idcs[Nt]]
 
@@ -730,183 +704,113 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
                                                    const_dimension_idx, 
                                                    const_dimension_coords)
 
-   lims_b_total = get_symm_range_lims(b_total_f; max_fraction = 0.75)
-   lims_ζ_total = get_symm_range_lims(ζ_total_f; max_fraction = 0.75)
+   #lims_Δb = get_symm_range_lims(Δb_f)
+   #lims_Δζ = get_symm_range_lims(Δζ_f)
 
-   lims_Δb = get_symm_range_lims(Δb_f;
-                            max_fraction = 0.75, prescribed_max = 1e-16)
-   lims_Δζ = get_symm_range_lims(Δζ_f;
-                            max_fraction = 0.75, prescribed_max = 1e-16)
-
-   #Plot static images (final frame, by default)
-
-   fig_total   = Figure(size = (1200, 500))
-   fig_perturb = Figure(size = (1200, 500))
-
-   ax_b_total = Axis(fig_total[2, 1];
-                     title = "Total buoyancy (b)", ax_kwargs...)
-   ax_ζ_total = Axis(fig_total[2, 3];
-                     title = "Total vertical vorticity (ζ)", ax_kwargs...)
-
-   ax_b_perturb = Axis(fig_perturb[2, 1];
-                       title = "Buoyancy perturbation (b')", ax_kwargs...)
-   ax_ζ_perturb = Axis(fig_perturb[2, 3];
-                       title = "Vertical vorticity perturbation (ζ')",
-                       ax_kwargs...)
-
-   hm_b_total = heatmap!(ax_b_total, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], b_total_f,
-                         colorrange = lims_b_total,
-                         colormap = Reverse(:RdBu_5),
-                         highclip = :red, lowclip = :blue)
-   hm_ζ_total = heatmap!(ax_ζ_total, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], ζ_total_f,
-                         colorrange = lims_ζ_total,
-                         colormap = Reverse(:RdBu_5),
-                         highclip = :red, lowclip = :blue)
-
-   hm_b_perturb = heatmap!(ax_b_perturb, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], Δb_f,
-                           colorrange = lims_Δb,
-                           colormap = Reverse(:RdBu_5),
-                           highclip = :red, lowclip = :blue)
-   hm_ζ_perturb = heatmap!(ax_ζ_perturb, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], Δζ_f,
-                           colorrange = lims_Δζ,
-                           colormap = Reverse(:RdBu_5),
-                           highclip = :red, lowclip = :blue)
-
-   Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}", label = "m/s²")
-   Colorbar(fig_total[2, 4], hm_ζ_total, tickformat = "{:.1e}", label = "1/s")
-
-   Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
-            label = "m/s²")
-   Colorbar(fig_perturb[2, 4], hm_ζ_perturb, tickformat = "{:.1e}",
-            label = "1/s")
-   
-   title_total   = @sprintf("Fields at %s = %i km; t = %.2f days",
-                            const_dimension, nearest, times[Nt])
-   title_perturb = @sprintf("Perturbation fields at %s = %i km; t = %.2f days",
-                            const_dimension, nearest, times[Nt])
-
-   fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
-                               tellwidth = false)
-   fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
-                               tellwidth = false)
+   #Plot static images (first and final frames, by default)
+                               
+   fig_total_i = plot_fig_heatmaps_b_ζ(Dict("b" => b_total_i, 
+                                            "ζ" => ζ_total_i),
+                                       axis1, H_axis1, axis2_zC, H_axis2_zC, 
+                                       axis2_zF, H_axis2_zF,
+                                       nearest, ax_kwargs, 
+              "Fields at $(const_dimension) = $(nearest) km; initial condition";
+              ax_titles = Dict("b" => L"Total buoyancy ($b$)",
+                               "ζ" => L"Total vertical vorticity ($\zeta$)")
+                                      )
+   fig_total_f = plot_fig_heatmaps_b_ζ(Dict("b" => b_total_f, 
+                                            "ζ" => ζ_total_f), 
+                                       axis1, H_axis1, axis2_zC, H_axis2_zC,
+                                       axis2_zF, H_axis2_zF, 
+                                       nearest, ax_kwargs, 
+    "Fields at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days"; 
+              ax_titles = Dict("b" => L"Total buoyancy ($b$)",
+                               "ζ" => L"Total vertical vorticity ($\zeta$)")
+                                      )
+   fig_perturb_i = plot_fig_heatmaps_b_ζ(Dict("b" => Δb_i, 
+                                              "ζ" => Δζ_i),
+                                       axis1, H_axis1, axis2_zC, H_axis2_zC, 
+                                       axis2_zF, H_axis2_zF,
+                                       nearest, ax_kwargs, 
+              "Perturbations at $(const_dimension) = $(nearest) km; initial condition";
+              ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
+                               "ζ" => L"Vertical vorticity perturbation ($\zeta'$)")
+                                      )
+   fig_perturb_f = plot_fig_heatmaps_b_ζ(Dict("b" => Δb_f, 
+                                              "ζ" => Δζ_f), 
+                                       axis1, H_axis1, axis2_zC, H_axis2_zC,
+                                       axis2_zF, H_axis2_zF, 
+                                       nearest, ax_kwargs, 
+    "Perturbations at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days"; 
+              ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
+                               "ζ" => L"Vertical vorticity perturbation ($\zeta'$)")
+                                      )
 
    mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "bzeta_total_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total)
-   save(joinpath("./Plots", "bzeta_perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_perturb)
+   save(joinpath("./Plots", "bzeta_total_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_total_i)
+   save(joinpath("./Plots", "bzeta_total_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_total_f)
+   save(joinpath("./Plots", "bzeta_perturbs_$(const_dimension)$(nearest)_ti_$(datetime).png"), fig_perturb_i)
+   save(joinpath("./Plots", "bzeta_perturbs_$(const_dimension)$(nearest)_tf_$(datetime).png"), fig_perturb_f)
  
    close(ds_i)
    close(ds_f)
    
-   #=
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
-      fig_total   = Figure(size = (1200, 500))
-      fig_perturb = Figure(size = (1200, 500))
+      ds, x, y, zC, zF, times, Nt, chron_idcs = open_dataset(outfile_list,
+                                                      Hx = Hx, Hy = Hy, Hz = Hz)
 
-      ax_b_total = Axis(fig_total[2, 1];
-                        title = "Total buoyancy (b)", axis_kwargs...)
-      ax_ω_total = Axis(fig_total[2, 3];
-                        title = "Total vertical vorticity (ζ)", axis_kwargs...)
+      n = Observable(1)
+      
+      b_total = @lift ds[:b][xyzC_idcs..., chron_idcs[$n]]
+      ζ_total = @lift ds[:ζ][xyzC_idcs..., chron_idcs[$n]]
 
-      ax_b_perturb = Axis(fig_perturb[2, 1];
-                          title = "Buoyancy perturbation (b')", axis_kwargs...)
-      ax_ω_perturb = Axis(fig_perturb[2, 3];
-                          title = "Vertical vorticity perturbation (ζ')",
-                          axis_kwargs...)
+      Δb = @lift $b_total .- B
+      Δζ = @lift $ζ_total .- ζ_bkgd
+      
+      fig_total = set_up_anim_heatmaps_b_ζ(
+               Dict("b" => b_total, "ζ" => ζ_total), 
+               axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF, nearest, ax_kwargs;
+                                  colorranges = Dict("b" => get_symm_range_lims(b_total_f),
+                                                     "ζ" => get_symm_range_lims(ζ_total_f)) 
+                                  )
+      fig_pert = set_up_anim_heatmaps_b_ζ(
+               Dict("b" => Δb, "ζ" => Δζ), 
+               axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
+                                  ax_titles = Dict("b" => L"$b'$", "ζ" => L"$\zeta'$"),
+                                  colorranges = Dict("b" => get_symm_range_lims(Δb_f),
+                                                     "ζ" => get_symm_range_lims(Δζ_f)) 
+                                  )
+                                  
+      title_total = @lift "Fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
+      title_pert  = @lift "Perturbation fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
 
-      video_total   = VideoStream(fig_total, format = "mp4", framerate = 6)
-      video_perturb = VideoStream(fig_perturb, format = "mp4", framerate = 6)
+      fig_total[1, 1:4] = Label(fig_total, title_total, fontsize = 24,
+                                tellwidth = false)
+      fig_pert[1, 1:4]  = Label(fig_pert, title_pert, fontsize = 24, 
+                                tellwidth = false)
+                                
+      frames = 1:Nt
 
-      file_idx = 1
+      video_total = VideoStream(fig_total, format = "mp4", framerate = 6)
+      video_pert  = VideoStream(fig_pert, format = "mp4", framerate = 6)
 
-      while file_idx < length(outfile_list)
-        
-         outfilename = outfile_list[file_idx] 
+      for i = 1:t_idx_skip:frames[end]
          
-         ds, x, y, zC, zF, times, Nt_file, chron_idcs = open_dataset(outfilename)
+         print(i, " of ", Nt, "\n")
+         
+         recordframe!(video_total)
+         recordframe!(video_pert)
 
-         ux = @views adapt(Array, ds[:ux])[:, :, :, :]
-         uy = @views adapt(Array, ds[:uy])[:, :, :, :]
-
-         if !isnothing(x_idx)
-            b_total_tseries_slice = @views adapt(Array, ds[:b])[x_idx, :, :, :]
-         elseif !isnothing(y_idx)
-            b_total_tseries_slice = @views adapt(Array, ds[:b])[:, y_idx, :, :]
-         elseif !isnothing(z_idx)
-            b_total_tseries_slice = @views adapt(Array, ds[:b])[:, :, z_idx, :]
-         end
-
-         n = Observable(1)
-
-         b_total_n_slice = @lift b_total_tseries_slice[:, :, $n]
-         ω_total_n_slice = @lift ωz(ds[:ux][:, :, :, $n], ds[:uy][:, :, :, $n],
-                                 Δx, Δy; idx_kwargs...)
-
-         Δb_n_slice = @lift $b_total_n_slice .- B_slice
-         Δω_n_slice = @lift $ω_total_n_slice .- ωb_slice
-
-         hm_b_total = heatmap!(ax_b_total, h_dim, v_dim, b_total_n_slice,
-                            colorrange = lims_b_total,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-         hm_ω_total = heatmap!(ax_ω_total, h_dim, v_dim, ω_total_n_slice,
-                            colorrange = lims_ω_total,
-                            colormap = Reverse(:RdBu_5),
-                            highclip = :red, lowclip = :blue)
-
-         hm_b_perturb = heatmap!(ax_b_perturb, h_dim, v_dim, Δb_n_slice,
-                              colorrange = lims_Δb,
-                              colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
-         hm_ω_perturb = heatmap!(ax_ω_perturb, h_dim, v_dim, Δω_n_slice,
-                              colorrange = lims_Δω,
-                              colormap = Reverse(:RdBu_5),
-                              highclip = :red, lowclip = :blue)
-
-         Colorbar(fig_total[2, 2], hm_b_total, tickformat = "{:.1e}",
-               label = "m/s²")
-         Colorbar(fig_total[2, 4], hm_ω_total, tickformat = "{:.1e}",
-               label = "1/s")
-
-         Colorbar(fig_perturb[2, 2], hm_b_perturb, tickformat = "{:.1e}",
-               label = "m/s²")
-         Colorbar(fig_perturb[2, 4], hm_ω_perturb, tickformat = "{:.1e}",
-               label = "1/s")
-
-         title_total = @lift @sprintf("Fields at %s = %i %s; t = %.2f days",
-                                   const_dim, nearest, units, times[$n])
-         title_perturb = @lift @sprintf(
-                            "Perturbation fields at %s = %i %s; t = %.2f days",
-                            const_dim, nearest, units, times[$n])
-
-         fig_total[1, 1:4]   = Label(fig_total, title_total, fontsize = 24,
-                                  tellwidth = false)
-         fig_perturb[1, 1:4] = Label(fig_perturb, title_perturb, fontsize = 24,
-                                  tellwidth = false)
- 
-         for i = 1:t_idx_skip:Nt_file
-            recordframe!(video_total)
-            recordframe!(video_perturb)
-            yield()
-            n[] = i
-         end
-
-         close(ds)
-         file_idx += 1
+         yield()
+         n[] = i
       end
 
-      save(joinpath("./Plots",
-            "bzeta_total_$(const_dim)$(nearest)_$(datetime).mp4"),
-           video_total)
-      save(joinpath("./Plots",
-            "bzeta_perturbs_$(const_dim)$(nearest)_$(datetime).mp4"),
-           video_perturb)
+      save(joinpath("./Plots", "bzeta_$(const_dimension)$(nearest)_$(datetime).mp4"), video_total)
+      save(joinpath("./Plots", "bzeta_$(const_dimension)$(nearest)_$(datetime).mp4"), video_pert)
+
+      close(ds)
    end
-   =#
 end
 
 ################################################################################
@@ -969,7 +873,6 @@ function visualize_fields_2D_slice(datetime, const_dimension,
    #If needed for testing, can set halos to 0 here
    xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension;
                                   Hx = Hx, Hy = Hy, Hz = Hz,
-                                  x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
    B  = no_offset_view(adapt(Array, B))[xyzC_idcs...]
@@ -1000,6 +903,9 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                                                    const_dimension_coords)
 
    #Plot static images of initial and final frames
+
+   print(typeof(Dict("b" => b_total_i, "ur" => ur_total_i, "uφ" => uφ_total_i, 
+                   "uz" => uz_total_i)))
 
    fig_total_i = plot_fig_heatmaps_b_ur_uφ_uz(
               Dict("b" => b_total_i, "ur" => ur_total_i, "uφ" => uφ_total_i, 
@@ -1085,29 +991,25 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                Dict("b" => b_total, "ur" => ur_total, "uφ" => uφ_total, 
                     "uz" => uz_total), 
                                   axis1, H_axis1, axis2_zC, H_axis2_zC, 
-                                  axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
-                                  ax_titles = Dict("b" => L"$b$", 
-                                                   "ur" => L"$u_r$", 
-                                                   "uφ" => L"$u_{\phi}$", 
-                                                   "uz" => L"$u_z$"),
+                                  axis2_zF, H_axis2_zF, nearest, ax_kwargs;
                                   colorranges = Dict("b" => get_symm_range_lims(b_total_f),
                                                      "ur" => get_symm_range_lims(ur_total_f), 
                                                      "uφ" => get_symm_range_lims(uφ_total_f), 
                                                      "uz" => get_symm_range_lims(uz_total_f)), 
-                                  colormap = Reverse(:RdBu_5))
+                                  )
       fig_pert = set_up_anim_heatmaps_b_ur_uφ_uz(
                Dict("b" => Δb, "ur" => Δur, "uφ" => Δuφ, "uz" => Δuz), 
                                   axis1, H_axis1, axis2_zC, H_axis2_zC, 
                                   axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
-                                  ax_titles = Dict("b" => L"$b$", 
-                                                   "ur" => L"$u_r$", 
-                                                   "uφ" => L"$u_{\phi}$", 
-                                                   "uz" => L"$u_z$"),
+                                  ax_titles = Dict("b" => L"$b'$", 
+                                                   "ur" => L"$u_r'$", 
+                                                   "uφ" => L"$u_{\phi}'$", 
+                                                   "uz" => L"$u_z'$"),
                                   colorranges = Dict("b" => get_symm_range_lims(Δb_f),
                                                      "ur" => get_symm_range_lims(Δur_f), 
                                                      "uφ" => get_symm_range_lims(Δuφ_f), 
                                                      "uz" => get_symm_range_lims(Δuz_f)), 
-                                  colormap = Reverse(:RdBu_5))
+                                  )
 
       title_total = @lift "Fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
       title_pert  = @lift "Perturbation fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
