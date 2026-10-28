@@ -103,6 +103,8 @@ end
 # FUNCTIONS TO CONVERT BETWEEN CYLINDRICAL AND CARTESIAN COORDINATES #
 ######################################################################
 
+@inline r_cc_2D(i, j, grid) = @inbounds sqrt((grid.xᶜᵃᵃ[i])^2 + (grid.yᵃᶜᵃ[j])^2)
+
 @inline r_cca(i, j, k, grid) = @inbounds sqrt((grid.xᶜᵃᵃ[i])^2 + (grid.yᵃᶜᵃ[j])^2)
 @inline r_cfa(i, j, k, grid) = @inbounds sqrt((grid.xᶜᵃᵃ[i])^2 + (grid.yᵃᶠᵃ[j])^2)
 @inline r_fca(i, j, k, grid) = @inbounds sqrt((grid.xᶠᵃᵃ[i])^2 + (grid.yᵃᶜᵃ[j])^2)
