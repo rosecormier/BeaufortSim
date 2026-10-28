@@ -13,16 +13,16 @@ const EarthRotationRate         = 7.2921e-5 * (second^(-1))
    topology::Tuple = (Bounded, Bounded, Bounded)
    
    #Numbers of gridpoints
-   Nx::Int64 = 12
-   Ny::Int64 = 12
-   Nz::Int64 = 10
+   Nx::Int64 = 512
+   Ny::Int64 = 512
+   Nz::Int64 = 100
    
    #Halo sizes
    Hx::Int64 = 3
    Hy::Int64 = 3
    Hz::Int64 = 3
    
-   #Axis lengths
+   #Axis sizes
    Lr::Float64 = 1e3 * kilometer
    Lz::Float64 = 1 * kilometer
    
@@ -43,7 +43,7 @@ end
    σz::Float64  = 300.0 * meter                     #Vertical gyre length scale
    
    #Ambient (i.e., excluding gyre's TWB contribution) N²-value at z -> -infty
-   N²_far::Float64 = 5e-5 * second^(-2)
+   N²_far::Float64 = 1e-4 * second^(-2)
    
    doubleTanhAmbientStrat::Bool = false
    #If false, defaults to constant ambient stratification (note that a TWB
@@ -53,7 +53,7 @@ end
 @kwdef struct PerturbationParams
 
    #Maximum relative amplitude of initial streamfunction perturbation
-   max_ψ′::Float64 = 0.0
+   max_ψ′::Float64 = 1e-2
    
    seed::Int64 = 12345 #Random number seed for reproducibility
 end
@@ -84,11 +84,10 @@ end
 @kwdef struct VisParams
    
    #Whether to run visualization functions
-   vis_const_x       = true
-   vis_const_y       = false
-   vis_const_z       = true
-   vis_norms         = false
-   vis_energetics    = false
-   vis_z_grid        = false #Note: currently can only be done on CPU
-   vis_q_timeseries  = false
+   vis_const_x    = true
+   vis_const_y    = false
+   vis_const_z    = true
+   vis_norms      = true
+   vis_energetics = true
+   vis_z_grid     = false #Note: currently can only be done on CPU
 end
