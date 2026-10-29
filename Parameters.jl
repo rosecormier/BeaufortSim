@@ -90,4 +90,5 @@ end
    vis_norms      = true
    vis_energetics = true
    vis_z_grid     = false #Note: currently can only be done on CPU
+   vis_B_and_N²   = true
 end
