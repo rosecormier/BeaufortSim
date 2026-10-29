@@ -565,8 +565,8 @@ end
 
 function CenterField_ζ(grid, ux_Field, uy_Field)
    #=
-   Useful for computing vorticity directly on Oceananigans grid, including at
-    simulation runtime.
+   Useful for computing vertical vorticity directly on Oceananigans grid,
+    including at simulation runtime.
    =#
    
    @inline ux_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux_Field)
@@ -576,6 +576,27 @@ function CenterField_ζ(grid, ux_Field, uy_Field)
                                           - ∂yᶜᶜᶜ(i, j, k, g, ux_ccc))
 
    @compute return Field(KernelFunctionOperation{Center, Center, Center}(ζ_ccc, grid))
+end
+
+function CenterField_ζ′(grid, ux_Field, uy_Field, Ux, Uy)
+   #=
+   Useful for computing vertical perturbation vorticity directly on Oceananigans
+    grid, including at simulation runtime.
+   =#
+
+   @inline ux′_fcc(i, j, k, g) = @inbounds ux_Field[i, j, k] - Ux[i, j, k]
+   @inline uy′_cfc(i, j, k, g) = @inbounds uy_Field[i, j, k] - Uy[i, j, k]
+   
+   @compute ux′_fcc_Field = Field(KernelFunctionOperation{Face, Center, Center}(ux′_fcc, grid))
+   @compute uy′_cfc_Field = Field(KernelFunctionOperation{Center, Face, Center}(uy′_cfc, grid))
+   
+   @inline ux′_ccc(i, j, k, g) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc_Field)
+   @inline uy′_ccc(i, j, k, g) = @inbounds ℑyᵃᶜᵃ(i, j, k, g, uy′_cfc_Field)
+
+   @inline ζ′_ccc(i, j, k, g) = @inbounds (∂xᶜᶜᶜ(i, j, k, g, uy′_ccc) 
+                                          - ∂yᶜᶜᶜ(i, j, k, g, ux′_ccc))
+   
+   @compute return Field(KernelFunctionOperation{Center, Center, Center}(ζ′_ccc, grid))
 end
 
 function pointwise_q_Ertel(i, j, k, b, ux, uy, uz, f, xC, yC, zC)
