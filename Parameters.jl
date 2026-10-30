@@ -78,17 +78,23 @@ end
    Δt_checkpt::Float64            = 250 * day #Checkpoint interval
    align_time_step::Bool          = false
    minimum_relative_step::Float64 = 1e-9
-
+   
+   output_file_extension::String = "nc"
+   
+   save_PKE_full_domain_budget_terms::Bool            = true
+   save_PKE_gyre_budget_terms::Bool                   = true
+   save_individual_Cartesian_bkgd_energy_to_PKE_terms = true
+   save_total_ME_budgets_terms::Bool                  = true
 end
 
 @kwdef struct VisParams
    
    #Whether to run visualization functions
-   vis_const_x    = true
-   vis_const_y    = false
-   vis_const_z    = true
-   vis_norms      = true
-   vis_energetics = true
-   vis_z_grid     = false #Note: currently can only be done on CPU
-   vis_B_and_N²   = true
+   vis_const_x::Bool    = false
+   vis_const_y::Bool    = false
+   vis_const_z::Bool    = false
+   vis_norms::Bool      = false
+   vis_energetics::Bool = true
+   vis_z_grid::Bool     = false #Note: currently can only be done on CPU
+   vis_B_and_N²::Bool   = false
 end

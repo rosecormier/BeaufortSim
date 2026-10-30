@@ -2,6 +2,8 @@ include("LibraryCoordinates.jl")
 include("LibraryEnergetics.jl")
 include("LibraryVisualization.jl")
 
+using Oceananigans
+
 @inline ux′_fcc(i, j, k, g, ux, Ux) = @inbounds ux[i, j, k] - Ux[i, j, k]
 @inline ux′_ccc(i, j, k, g, ux, Ux) = @inbounds ℑxᶜᵃᵃ(i, j, k, g, ux′_fcc, ux, Ux)
 @inline uy′_cfc(i, j, k, g, uy, Uy) = @inbounds uy[i, j, k] - Uy[i, j, k]
@@ -16,100 +18,109 @@ include("LibraryVisualization.jl")
 # THE SUM OF THE BTI- AND BCI-CONVERSION TERMS.                                #
 ################################################################################
 
-function bkgd_transfer_ux′ux′∂xUx(simulation, Ux_bkgd)
+function bkgd_transfer_ux′ux′∂xUx(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Ux         = backgroundFields[:Ux]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, u, Ux_bkgd) * ux′_ccc(i, j, k, g, u, Ux_bkgd) * ∂xᶜᶜᶜ(i, j, k, g, Ux_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, ux, Ux) * ux′_ccc(i, j, k, g, ux, Ux) * ∂xᶜᶜᶜ(i, j, k, g, Ux))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_ux′uy′∂yUx(simulation, Ux_bkgd, Uy_bkgd)
+function bkgd_transfer_ux′uy′∂yUx(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Ux, Uy     = backgroundFields[:Ux], backgroundFields[:Uy]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, u, Ux_bkgd) * uy′_ccc(i, j, k, g, v, Uy_bkgd) * ∂yᶜᶜᶜ(i, j, k, g, Ux_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, ux, Ux) * uy′_ccc(i, j, k, g, uy, Uy) * ∂yᶜᶜᶜ(i, j, k, g, Ux))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_ux′uz′∂zUx(simulation, Ux_bkgd, Uz_bkgd)
+function bkgd_transfer_ux′uz′∂zUx(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Ux, Uz = backgroundFields[:Ux], backgroundFields[:Uz]
    
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, u, Ux_bkgd) * uz′_ccc(i, j, k, g, w, Uz_bkgd) * ∂zᶜᶜᶜ(i, j, k, g, Ux_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(ux′_ccc(i, j, k, g, ux, Ux) * uz′_ccc(i, j, k, g, uz, Uz) * ∂zᶜᶜᶜ(i, j, k, g, Ux))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uy′ux′∂xUy(simulation, Ux_bkgd, Uy_bkgd)
+function bkgd_transfer_uy′ux′∂xUy(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Ux, Uy     = backgroundFields[:Ux], backgroundFields[:Uy]
    
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, v, Uy_bkgd) * ux′_ccc(i, j, k, g, u, Ux_bkgd) * ∂xᶜᶜᶜ(i, j, k, g, Uy_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, uy, Uy) * ux′_ccc(i, j, k, g, ux, Ux) * ∂xᶜᶜᶜ(i, j, k, g, Uy))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uy′uy′∂yUy(simulation, Uy_bkgd)
+function bkgd_transfer_uy′uy′∂yUy(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Uy         = backgroundFields[:Uy]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, v, Uy_bkgd) * uy′_ccc(i, j, k, g, v, Uy_bkgd) * ∂yᶜᶜᶜ(i, j, k, g, Uy_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, uy, Uy) * uy′_ccc(i, j, k, g, uy, Uy) * ∂yᶜᶜᶜ(i, j, k, g, Uy))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uy′uz′∂zUy(simulation, Uy_bkgd, Uz_bkgd)
+function bkgd_transfer_uy′uz′∂zUy(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Uy, Uz     = backgroundFields[:Uy], backgroundFields[:Uz]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, v, Uy_bkgd) * uz′_ccc(i, j, k, g, w, Uz_bkgd) * ∂zᶜᶜᶜ(i, j, k, g, Uy_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uy′_ccc(i, j, k, g, uy, Uy) * uz′_ccc(i, j, k, g, uz, Uz) * ∂zᶜᶜᶜ(i, j, k, g, Uy))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uz′ux′∂xUz(simulation, Ux_bkgd, Uz_bkgd)
+function bkgd_transfer_uz′ux′∂xUz(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Ux, Uz     = backgroundFields[:Ux], backgroundFields[:Uz]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, w, Uz_bkgd) * ux′_ccc(i, j, k, g, u, Ux_bkgd) * ∂xᶜᶜᶜ(i, j, k, g, Uz_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, uz, Uz) * ux′_ccc(i, j, k, g, ux, Ux) * ∂xᶜᶜᶜ(i, j, k, g, Uz))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uz′uy′∂yUz(simulation, Uy_bkgd, Uz_bkgd)
+function bkgd_transfer_uz′uy′∂yUz(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Uy, Uz     = backgroundFields[:Uy], backgroundFields[:Uz]
    
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, w, Uz_bkgd) * uy′_ccc(i, j, k, g, v, Uy_bkgd) * ∂yᶜᶜᶜ(i, j, k, g, Uz_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, uz, Uz) * uy′_ccc(i, j, k, g, uy, Uy) * ∂yᶜᶜᶜ(i, j, k, g, Uz))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))
 end
 
-function bkgd_transfer_uz′uz′∂zUz(simulation, Uz_bkgd)
+function bkgd_transfer_uz′uz′∂zUz(simulation, backgroundFields)
 
-   grid    = simulation.model.grid
-   u, v, w = simulation.model.velocities
+   grid       = simulation.model.grid
+   ux, uy, uz = simulation.model.velocities
+   Uz         = backgroundFields[:Uz]
 
-   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, w, Uz_bkgd) * uz′_ccc(i, j, k, g, w, Uz_bkgd) * ∂zᶜᶜᶜ(i, j, k, g, Uz_bkgd))
+   bkgd_transfer_ccc(i, j, k, g) = @inbounds -(uz′_ccc(i, j, k, g, uz, Uz) * uz′_ccc(i, j, k, g, uz, Uz) * ∂zᶜᶜᶜ(i, j, k, g, Uz))
    bkgd_transfer_op = KernelFunctionOperation{Center, Center, Center}(bkgd_transfer_ccc, grid)
    
    compute!(Integral(Field(bkgd_transfer_op)))

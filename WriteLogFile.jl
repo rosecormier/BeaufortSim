@@ -1,4 +1,13 @@
-function WriteLogFile(simulation, duration, logfilepath, outfilepath, gridParams::GridParams, gyreParams::GyreParams, stratParams::DoubleTanhStratParams, perturbParams::PerturbationParams, simParams::SimulationParams)
+function WriteLogFile(simulation, duration, runLabel::String, 
+                      gridParams::GridParams, gyreParams::GyreParams, 
+                      stratParams::DoubleTanhStratParams, 
+                      perturbParams::PerturbationParams, 
+                      simParams::SimulationParams)
+
+   logfilepath = joinpath("./Logs", "log_$(runLabel).txt")
+   
+   #Make path if nonexistent
+   mkpath(dirname(logfilepath))
 
    open(logfilepath, "w") do file
    
@@ -30,7 +39,6 @@ function WriteLogFile(simulation, duration, logfilepath, outfilepath, gridParams
       #write(file, "Δt, tf = $(Δt), $(tf) \n\n")
       write(file, "Total number of iterations = $(iteration(simulation)) \n")
       write(file, "Simulation runtime = $(duration) \n")
-      write(file, "Output filesize = $(pretty_filesize(filesize(outfilepath)))")
    end
 
 end
