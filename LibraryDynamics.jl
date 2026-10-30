@@ -1,6 +1,8 @@
 include("LibraryCoordinates.jl")
 include("Parameters.jl")
 
+using Random
+
 #Background-state streamfunction
 @inline Ψ(r::Float64, z::Float64, p::GyreParams) = (p.U * p.σr / sqrt(2)) .* (exp.(-(r./p.σr).^2)) .* exp.(0.5 .- (z./p.σz).^2)
 
