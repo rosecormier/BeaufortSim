@@ -138,14 +138,22 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
    #######################################
    
    Random.seed!(perturbParams.seed) #For reproducibility
-   
-   randArray = adapt(CuArray, 2 * (rand(Float64, (gridParams.Nx, 
-                                                  gridParams.Ny, 
-                                                  gridParams.Nz + 1)) 
-                                   .- 0.5)
-                    )
 
-   @inline Ψperturbedᶜᶜᶠ(i, j, k, g) = @inbounds (perturbParams.max_ψ′ * randArray[i, j, k] + 1) * Ψᶜᶜᶠ(i, j, k, g)
+   if gridParams.architecture == GPU()
+      randArray = CuArray{Float64}(undef, (gridParams.Nx, 
+                                           gridParams.Ny, 
+                                           gridParams.Nz + 1)
+                                  ) 
+      rand!(randArray)
+   elseif gridParams.architecture == CPU()
+      randArray = rand(Float64, 
+                       (gridParams.Nx, gridParams.Ny, gridParams.Nz + 1))
+   end
+   
+   randField = ZFaceField(grid)
+   set!(randField, 2 * randArray .- 0.5)
+   
+   @inline Ψperturbedᶜᶜᶠ(i, j, k, g) = @inbounds (perturbParams.max_ψ′ * randField[i,j,k] + 1) * Ψᶜᶜᶠ(i, j, k, g)
    @compute Ψperturbed_ccf_Field = Field(KernelFunctionOperation{Center, Center, Face}(Ψperturbedᶜᶜᶠ, grid))
    
    @inline Ψperturbedᶜᶠᶠ(i, j, k, g) = @inbounds ℑyᵃᶠᵃ(i, j, k, g, Ψperturbed_ccf_Field)
