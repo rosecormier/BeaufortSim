@@ -1,4 +1,6 @@
 include("LibraryCoordinates.jl")
+include("LibraryEnergetics.jl")
+include("LibraryOptionalSimOutputs.jl")
 include("Parameters.jl")
 
 using Oceananigans
@@ -64,7 +66,7 @@ function StandardSimulationOutputFields(model, backgroundFields)
 	                 uy = uy,
 	                 uz = uz,
 	                 b = model.tracers.b,
-                   ζ = CenterField_ζ′(model.grid, ux, uy, backgroundFields[:Ux], backgroundFields[:Uy])
+                   ζ = CenterField_ζ(model.grid, ux, uy)
                   )
 
    ux′_norm(model) = perturbation_norm(ux, backgroundFields[:Ux])
@@ -85,7 +87,9 @@ function StandardSimulationOutputFields(model, backgroundFields)
    return FieldOutputs, scalarOutputs
 end
 
-function EnergyDiagnosticOutputs(s::Simulation, simParams::SimulationParams, gyreParams::GyreParams, backgroundFields)
+function EnergyDiagnosticOutputs(s::Simulation, 
+                                 simParams::SimulationParams, 
+                                 gyreParams::GyreParams, backgroundFields)
 
    energy_diagnostics = (; )
    
@@ -100,10 +104,10 @@ function EnergyDiagnosticOutputs(s::Simulation, simParams::SimulationParams, gyr
    end
    if simParams.save_PKE_gyre_budget_terms
       energy_diagnostics = merge(energy_diagnostics,
-                                 (gyre_PKE            = gyre_PKE(s, gyreParams),
-                                  gyre_PAPE_to_PKE    = gyre_PAPE_to_PKE(s, gyreParams),
-                                  gyre_BTI_transfer   = gyre_BTI_transfer(s, gyreParams, backgroundFields),
-                                  gyre_BCI_transfer   = gyre_BCI_transfer(s, gyreParams, backgroundFields)
+                                 (gyre_PKE          = gyre_PKE(s, gyreParams),
+                                  gyre_PAPE_to_PKE  = gyre_PAPE_to_PKE(s, gyreParams),
+                                  gyre_BTI_transfer = gyre_BTI_transfer(s, gyreParams, backgroundFields),
+                                  gyre_BCI_transfer = gyre_BCI_transfer(s, gyreParams, backgroundFields)
                                  )
                                 )
    end
@@ -129,7 +133,6 @@ function EnergyDiagnosticOutputs(s::Simulation, simParams::SimulationParams, gyr
                                   total_pressure_work = total_pressure_work(s, modelParams),
                                   total_KE_production = total_KE_production(s, modelParams),
                                   total_PE            = total_PE(s),
-                                  total_int_PE_source = total_internal_PE_sources(s),
                                   total_gravity_work  = total_gravity_work(s, GravitationalAcceleration)
                                  )
                                 )
@@ -204,6 +207,7 @@ function CreateSimulation(model, Δt, tf, Δt_save, simParams::SimulationParams,
                                 Field_outputs;
                                 filename = outputFieldsFilePath,
                                 schedule = TimeInterval(Δt_save),
+                                indices = (:, :, :),
                                 array_type = Array{Float64},
                                 with_halos = true,
                                 file_splitting = FileSizeLimit(30GiB),
