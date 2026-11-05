@@ -1,5 +1,4 @@
 include("LibraryCoordinates.jl")
-include("Visualization.jl")
 
 using AbstractFFTs
 using Interpolations
@@ -134,36 +133,3 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
       return kφs, simFieldφFFT
    end
 end
-
-function testing(gridParams, testFunctionAnon, Nr, Nφ)
-
-   testGrid = build_Oceananigans_RectilinearGrid(gridParams)
-
-   testField = CenterField(testGrid)
-   
-   @inline testFunctionInstance(x, y, z) = testFunctionAnon(x, y, z)
-   
-   set!(testField, testFunctionInstance)
-   fill_halo_regions!(testField)
-   
-   plot_rzMean_φDFT_field(testField, testGrid, gridParams, Nr, Nφ, "testField")
-   plot_rMean_φDFT_field(testField, testGrid, gridParams, Nr, Nφ, "testField")
-   plot_zMean_φDFT_field(testField, testGrid, gridParams, gridParams.Lr, Nr, Nφ, "testField")
-end
-
-testGridParams = (architecture = CPU(),
-                  Tx = Bounded, Ty = Bounded, Tz = Bounded,
-                  Nx = 18, Ny = 12, Nz = 11,
-                  Hx = 3, Hy = 3, Hz = 3,
-                  Lr = 1, Lz = 1,
-                  z_grid_type = "uniform")
-                  
-Nr, Nφ = 11, 51
-
-φ(x, y) = atan(y, x)
-
-fiveSines = (θ) -> @. sin(θ) + (1/2) * sin(2*θ) + (1/3) * sin(3*θ) + (1/4) * sin(4*θ) + (1/5) * sin(5*θ)
-
-test2Dsines = (x, y, z) -> @. fiveSines(φ(x, y)) * exp(-(x^2 + y^2)) * z * rand()
-
-testing(testGridParams, test2Dsines, Nr, Nφ)
