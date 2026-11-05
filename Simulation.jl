@@ -1,17 +1,15 @@
 include("LibraryCoordinates.jl")
 include("LibraryDynamics.jl")
-include("LibraryEnergetics.jl")
-include("LibraryOptionalSimOutputs.jl")
 include("LibraryStability.jl")
 include("LibraryVisualization.jl")
 include("Parameters.jl")
+include("ReadSimulationOutputs.jl")
 include("SimulationSetup.jl")
 include("Visualization.jl")
 include("WriteLogFile.jl")
 
 using CUDA
 using Dates: canonicalize, format, now
-#using Oceananigans
 using Oceananigans.Coriolis
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
@@ -82,13 +80,8 @@ end
 
 BInterior, UxInterior, UyInterior, UzInterior = backgroundFieldInteriors
 
-#Fill prognostic fields.
-#Note: Must 'set!' in separate lines because we are setting with Fields, not
-# functions.
-set!(model.velocities.u, UxInterior)
-set!(model.velocities.v, UyInterior)
-set!(model.velocities.w, UzInterior)
-set!(model.tracers.b, BInterior)
+#Fill prognostic-variable Fields
+set!(model, b = BInterior, u = UxInterior, v = UyInterior, w = UzInterior)
 
 fill_halo_regions!(model.tracers.b)
 fill_halo_regions!(model.velocities.u)
@@ -134,6 +127,7 @@ fill_halo_regions!(Uy)
 fill_halo_regions!(Uz)
 fill_halo_regions!(B)
 
+#Set the background vorticity field values
 ζ_bkgd = CenterField(model.grid)
 set!(ζ_bkgd, ∂x(Uy) - ∂y(Ux))
 
@@ -145,9 +139,9 @@ set!(ζ_bkgd, ∂x(Uy) - ∂y(Ux))
 set!(∂rUφ, cos(φ) * ∂x(Uφ) + sin(φ) * ∂y(Uφ))
 set!(∂zUφ, ∂z(Uφ))
 
-#Store everything in one tuple to pass to diagnostic functions
+#Store everything in one tuple to pass to diagnostic and visualization functions
 backgroundFields = (Ux = Ux, Uy = Uy, Ur = Ur, Uφ = Uφ, Uz = Uz, B = B,
-                    ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
+                    ζ_bkgd = ζ_bkgd, ∂rUφ = ∂rUφ, ∂zUφ = ∂zUφ)
 
 #############################
 # SET UP AND RUN SIMULATION #
@@ -155,8 +149,8 @@ backgroundFields = (Ux = Ux, Uy = Uy, Ur = Ur, Uφ = Uφ, Uz = Uz, B = B,
 
 b_initial, u_initial, v_initial, w_initial = initialFields
 
-#To do: check that this is equiv to setting in separate lines
-set!(model, b = b_initial, u = u_initial, v = v_initial, w = w_initial) #Set perturbed ICs
+#Set perturbed ICs
+set!(model, b = b_initial, u = u_initial, v = v_initial, w = w_initial)
 
 fill_halo_regions!(model.tracers.b)
 fill_halo_regions!(model.velocities.u)
@@ -176,7 +170,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model;
                                                        )
 
 run!(simulation; pickup = false)
-#     pickup = joinpath("./Checkpoints", "checkpoint_261026-145018_iteration36000.jld2"))
+#     pickup = joinpath("./Checkpoints", "checkpoint_261103-073112_iteration72000.jld2"))
 
 duration = canonicalize(now() - datetimestart)
 
@@ -185,7 +179,6 @@ pad_filenames(datetimenow)
 pad_filenames(datetimenow; prefix = "energetics")
 pad_filenames(datetimenow; prefix = "scalars")
 
-#Save parameters to logfile - need to fix path args
 WriteLogFile(simulation, duration, datetimenow, gridParams, 
              gyreParams, doubleTanhStratParams, perturbParams, simParams)
 
@@ -193,31 +186,33 @@ WriteLogFile(simulation, duration, datetimenow, gridParams,
 # RUN VISUALIZATION #
 #####################
 
-#Fouriertesting(datetimenow, model, gridParams)
+Fouriertesting(datetimenow, model, gridParams)
 
 if visParams.vis_const_x
-   visualize_fields_2D_slice(datetimenow, "x", x_idx, B, Ur, Uφ, Uz, gridParams.Hx, gridParams.Hy, gridParams.Hz;
-                             t_idx_skip = t_idx_skip, 
-                             plot_speed_animation = false, 
-                             plot_animation = true)
-   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, B, ζ_bkgd,
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, backgroundFields, 
+                             gridParams.Hx, gridParams.Hy, gridParams.Hz;
+                             t_idx_skip = t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, backgroundFields,
                      gridParams.Hx, gridParams.Hy, gridParams.Hz; 
-                     plot_animation = false)
+                     plot_animation = true)
 end
 
 if visParams.vis_const_y
-   visualize_fields_2D_slice(datetimenow, "y", y_idx, B, Ur, Uφ, Uz, gridParams.Hx, gridParams.Hy, gridParams.Hz; 
-                             t_idx_skip = t_idx_skip) 
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, backgroundFields, 
+                             gridParams.Hx, gridParams.Hy, gridParams.Hz; 
+                             t_idx_skip = t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "y", y_idx, model.grid, backgroundFields,
+                     gridParams.Hx, gridParams.Hy, gridParams.Hz; 
+                     plot_animation = true)
 end
 
 if visParams.vis_const_z
-   visualize_fields_2D_slice(datetimenow, "z", z_idx, B, Ur, Uφ, Uz, gridParams.Hx, gridParams.Hy, gridParams.Hz; 
-                             t_idx_skip = t_idx_skip, 
-                             plot_speed_animation = false, 
-                             plot_animation = true)
-   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, B, ζ_bkgd,
+   visualize_fields_2D_slice(datetimenow, "z", backgroundFields, 
+                             gridParams.Hx, gridParams.Hy, gridParams.Hz;
+                             t_idx_skip = t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, backgroundFields,
                      gridParams.Hx, gridParams.Hy, gridParams.Hz;
-                     plot_animation = false)
+                     plot_animation = true)
 end
 
 if visParams.vis_norms
@@ -233,8 +228,8 @@ if visParams.vis_norms
 end
 
 if visParams.vis_energetics
-   visualize_total_QG_energy_budgets(datetimenow, model.grid)
-   visualize_PKE(datetimenow, model.grid; visualize_individual_bkgd_terms = true)
+   visualize_ME(datetimenow, model.grid, simParams)
+   visualize_PKE(datetimenow, model.grid, simParams)
 end
 
 if visParams.vis_z_grid
