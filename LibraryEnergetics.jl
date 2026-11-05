@@ -1,5 +1,5 @@
 using LinearAlgebra: norm
-using Oceananigans
+#using Oceananigans
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -157,44 +157,25 @@ function total_gravity_work(simulation, gravitational_acceleration)
    compute!(Integral(Field(gravitational_acceleration * totalGravityWork_op)))
 end
 
-function total_internal_PE_sources(simulation)
-   #=
-   Compute integral, over entire domain, of total internal specific-PE sources.
-   =#
-   
-   b          = simulation.model.tracers.b
-   ux, uy, uz = simulation.model.velocities
-   
-   @compute b_xAdvFlux_fcc = ux * ∂x(b)
-   @compute b_yAdvFlux_cfc = uy * ∂y(b)
-   @compute b_zAdvFlux_ccf = uz * ∂z(b)
-   
-   @inline PEsources_ccc(i, j, k, grid) = @inbounds (ℑxᶜᵃᵃ(i, j, k, grid, b_xAdvFlux_fcc) + ℑyᵃᶜᵃ(i, j, k, grid, b_yAdvFlux_cfc) + ℑzᵃᵃᶜ(i, j, k, grid, b_zAdvFlux_ccf)) * grid.z.cᵃᵃᶜ[k]
-      
-   totalPEsources_op = KernelFunctionOperation{Center, Center, Center}(PEsources_ccc, simulation.model.grid)
-   
-   compute!(Integral(Field(totalPEsources_op)))
-end
-
 function ur′_uφ′_Uφ_over_r_ccc(i, j, k, grid, ux, uy, Ur, Uφ)
    #=
    Function to compute (1/r times ur′ times uφ′ times Uφ) in single control
     volume.
    =#
 
-   r = @inbounds sqrt(xnodes(grid, Center())[i, j, k]^2 + ynodes(grid, Center())[i, j, k]^2)
-   φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
-                      ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center()))
-                     )
+   #r = @inbounds sqrt(xnodes(grid, Center())[i, j, k]^2 + ynodes(grid, Center())[i, j, k]^2)
+   #φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
+   #                   ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center()))
+   #                  )
 
    ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
    uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
-   ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
-   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
+   ur_ccc = @inbounds (ux_ccc * cos(φ_cca(i, j, k, grid))) + (uy_ccc * sin(φ_cca(i, j, k, grid))) #(ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
+   uφ_ccc = @inbounds (uy_ccc * cos(φ_cca(i, j, k, grid))) - (ux_ccc * sin(φ_cca(i, j, k, grid))) #(uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
 
    ur′_ccc       = @inbounds ur′(i, j, k, grid, ur_ccc, Ur)
    uφ′_ccc       = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
-   Uφ_over_r_ccc = @inbounds Uφ[i, j, k] / r[i, j, k]
+   Uφ_over_r_ccc = @inbounds Uφ[i, j, k] / r_cca(i, j, k, grid) ##r[i, j, k]
 
    return @inbounds -(Uφ_over_r_ccc * ur′_ccc * uφ′_ccc)
 end
@@ -205,14 +186,18 @@ function negative_∂rUφ_ur′_uφ′_ccc(i, j, k, grid, ux, uy, Ur, Uφ, ∂rU
     single control volume.
    =#
 
-   φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
-                      ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center()))
-                     )
+   #φ = @inbounds atan(ℑyᵃᶜᵃ(i, j, k, grid, ynodes(grid, Center())),
+   #                   ℑxᶜᵃᵃ(i, j, k, grid, xnodes(grid, Center()))
+   #                  )
 
    ux_ccc = @inbounds ℑxᶜᵃᵃ(i, j, k, grid, ux)
    uy_ccc = @inbounds ℑyᵃᶜᵃ(i, j, k, grid, uy)
-   ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
-   uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
+   ur_ccc = @inbounds (ux_ccc * cos(φ_cca(i, j, k, grid))) + (uy_ccc * sin(φ_cca(i, j, k, grid))) #(ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
+   uφ_ccc = @inbounds (uy_ccc * cos(φ_cca(i, j, k, grid))) - (ux_ccc * sin(φ_cca(i, j, k, grid))) #(uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
+
+   
+   #ur_ccc = @inbounds (ux_ccc * cos(φ)) + (uy_ccc * sin(φ))
+   #uφ_ccc = @inbounds (uy_ccc * cos(φ)) - (ux_ccc * sin(φ))
 
    ur′_ccc  = @inbounds ur′(i, j, k, grid, ur_ccc, Ur)
    uφ′_ccc  = @inbounds uφ′(i, j, k, grid, uφ_ccc, Uφ)
