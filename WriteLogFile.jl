@@ -1,4 +1,4 @@
-function WriteLogFile(simulation, duration, runLabel::String, 
+function WriteLogFile(simulation, Δt, Δt_save, tf, duration, runLabel::String,
                       gridParams::GridParams, gyreParams::GyreParams, 
                       stratParams::DoubleTanhStratParams, 
                       perturbParams::PerturbationParams, 
@@ -36,7 +36,7 @@ function WriteLogFile(simulation, duration, runLabel::String,
       write(file, "align_time_step = $(simParams.align_time_step) \n")
       write(file, "minimum_relative_step = $(simParams.minimum_relative_step) \n\n")
       
-      #write(file, "Δt, tf = $(Δt), $(tf) \n\n")
+      write(file, "Δt, Δt_save, tf = $(Δt), $(Δt_save), $(tf) \n\n")
       write(file, "Total number of iterations = $(iteration(simulation)) \n")
       write(file, "Simulation runtime = $(duration) \n")
    end

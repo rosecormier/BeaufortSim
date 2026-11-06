@@ -38,7 +38,7 @@ end
 
    lat::Float64 = 74.0                              #Latitude (deg. N)
    f::Float64   = 2 * EarthRotationRate * sind(lat) #Coriolis frequency (s^{-1})
-   U::Float64   = 5e-2 * (meter/second^2)           #Maximum gyre speed (at surface)
+   U::Float64   = 1e-1 * (meter/second^2)           #Maximum gyre speed (at surface)
    σr::Float64  = 250 * kilometer                   #Radial gyre length scale
    σz::Float64  = 300.0 * meter                     #Vertical gyre length scale
    
@@ -53,7 +53,7 @@ end
 @kwdef struct PerturbationParams
 
    #Maximum relative amplitude of initial streamfunction perturbation
-   max_ψ′::Float64 = 1e-2
+   max_ψ′::Float64 = 1e-4
    
    seed::Int64 = 12345 #Random number seed for reproducibility
 end
@@ -79,22 +79,23 @@ end
    align_time_step::Bool          = false
    minimum_relative_step::Float64 = 1e-9
    
-   output_file_extension::String = "nc"
+   output_Fields_file_extension::String = "jld2"
    
    save_PKE_full_domain_budget_terms::Bool            = true
-   save_PKE_gyre_budget_terms::Bool                   = true
+   save_PKE_gyre_budget_terms::Bool                   = false
    save_individual_Cartesian_bkgd_energy_to_PKE_terms = true
    save_total_ME_budgets_terms::Bool                  = true
 end
 
 @kwdef struct VisParams
    
-   #Whether to run visualization functions
-   vis_const_x::Bool    = false
-   vis_const_y::Bool    = false
-   vis_const_z::Bool    = false
-   vis_norms::Bool      = false
-   vis_energetics::Bool = true
-   vis_z_grid::Bool     = false #Note: currently can only be done on CPU
-   vis_B_and_N²::Bool   = false
+   #Whether to run various visualization functions
+   do_Fourier_mode_decomp::Bool = true
+   vis_const_x::Bool            = false
+   vis_const_y::Bool            = false
+   vis_const_z::Bool            = false
+   vis_norms::Bool              = false
+   vis_energetics::Bool         = false
+   vis_z_grid::Bool             = false #Note: currently can only be done on CPU
+   vis_B_and_N²::Bool           = false
 end

@@ -5,8 +5,8 @@ using Oceananigans.AbstractOperations, Oceananigans.Fields
 # HELPER FUNCTIONS TO PLOT 2D SLICES OF PRIMITIVE OR DIAGNOSTIC VARIABLES #
 ###########################################################################
 
-function get_symm_range_lims(scalar_field; 
-                             max_fraction = 1, prescribed_max = 1e-16)
+function get_symm_range_lims(scalar_field, max_fraction = 1;
+                             prescribed_max = 1e-16)
    #=
    Given a scalar field, extract appropriate limits for a colorbar that is
     symmetric about 0.
@@ -157,7 +157,8 @@ end
 
 function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
                                   H_axis2_zC, axis2_zF, H_axis2_zF, 
-                                  nearest, ax_kwargs, figtitle; 
+                                  nearest, ax_kwargs, figtitle, 
+                                  colorbar_max_fraction; 
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
                                                    "uφ" => L"$u_{\phi}$", 
@@ -173,7 +174,8 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
    #Default to symmetric colorranges based on limits of data
    for key in keys(dictFields)
       if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key])
+         colorranges[key] = get_symm_range_lims(dictFields[key],
+                                                colorbar_max_fraction)
       end
    end
    
@@ -197,7 +199,7 @@ end
 
 function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
                                   H_axis2_zC, axis2_zF, H_axis2_zF,
-                                  nearest, ax_kwargs;
+                                  nearest, ax_kwargs, colorbar_max_fraction;
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
                                                    "uφ" => L"$u_{\phi}$", 
@@ -208,7 +210,8 @@ function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
    #Default to symmetric colorranges based on limits of data
    for key in keys(dictFields)
       if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key])
+         colorranges[key] = get_symm_range_lims(dictFields[key],
+                                                colorbar_max_fraction)
       end
    end
    
@@ -254,9 +257,10 @@ function plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, H_axis1,
 end
 
 function plot_fig_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC,
-                               axis2_zF, H_axis2_zF, nearest, ax_kwargs, 
-                               figtitle; ax_titles = Dict("b" => L"$b$", 
-                                                          "ζ" => L"$\zeta$"), 
+                               axis2_zF, H_axis2_zF, nearest, ax_kwargs,
+                               figtitle, colorbar_max_fraction;
+                               ax_titles = Dict("b" => L"$b$", 
+                                                "ζ" => L"$\zeta$"), 
                                colorranges = Dict(), 
                                colormap = Reverse(:RdBu_5))
    #=
@@ -267,7 +271,8 @@ function plot_fig_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC
    #Default to symmetric colorranges based on limits of data
    for key in keys(dictFields)
       if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key])
+         colorranges[key] = get_symm_range_lims(dictFields[key],
+                                                colorbar_max_fraction)
       end
    end
    
@@ -296,7 +301,8 @@ function set_up_anim_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC,
    #Default to symmetric colorranges based on limits of data
    for key in keys(dictFields)
       if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key])
+         colorranges[key] = get_symm_range_lims(dictFields[key],
+                                                colorbar_max_fraction)
       end
    end
    

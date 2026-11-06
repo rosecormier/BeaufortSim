@@ -22,14 +22,14 @@ function construct_uniform_polar_grid(Lr, Nr, Nφ)
    return r_gridpoints, φ_gridpoints
 end
 
-function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
+function compute_φFFT_of_sim_Field(simField, grid, gridParams, Nr, Nφ;
                                   Hx = nothing, Hy = nothing, Hz = nothing,
                                   rAvg = false, zAvg = false)
    #=
    Compute the Nφ-point azimuthal Fourier transform of 'simField' (which need
-    not actually be a prognostic field of a simulation, but does need to be
-    defined on an Oceananigans Grid) by first interpolating to a uniformly-
-    spaced grid in cylindrical coordinates.
+    not actually be a prognostic field of a simulation, but does need to be an
+    Oceananigans Field defined on an Oceananigans Grid) by first interpolating
+    to a uniformly-spaced grid in cylindrical coordinates.
    Default returns a 3D Nr x Nkφ x Nz field, but options 'rAvg' and 'zAvg'
     perform r- and z-averaging, respectively, before returning.
    =#
@@ -45,12 +45,14 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
       Hz = gridParams.Hz
    end
 
-   #First, construct a uniformly spaced (Nr x Nφ x Nz) grid
+   ####################################################
+   # Construct a uniformly spaced (Nr x Nφ x Nz) grid #
+   ####################################################
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
    rCylGrid, φCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
 
-   #Read in the coordinates of Oceananigans gridpoints
+   #Read in the coordinates of Oceananigans (Cartesian) gridpoints
    
    if location(simField)[1] == Center
       xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
@@ -85,6 +87,10 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
                                                       φCylGrid,
                                                       zCartVec)
 
+   ###############################################################
+   # Perform the interpolation of data to the uniform-polar grid #
+   ###############################################################
+
    #Construct an uninitialized Array to store interpolated data
    interpolated_data = Array{Float64}(undef, size(xCylGrid)[1], 
                                       size(xCylGrid)[2], length(zCylGrid))
@@ -106,6 +112,10 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
       
       interpolated_data[:, :, k] = interpolated_k
    end
+   
+   ##########################
+   # Take the azimuthal FFT #
+   ##########################
 
    kφs = (rfftfreq(Nφ, 2π * Nφ)) ./ 2π #The azimuthal wavenumbers of the FFT
    
@@ -117,6 +127,10 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
          simFieldφFFT[i, :, k] = rfft(interpolated_data[i, :, k]) #[Real] DFT
       end
    end
+
+   ############################################
+   # Average, if specified, and return result #
+   ############################################
 
    if rAvg
    
@@ -133,3 +147,68 @@ function compute_φFFT_of_sim_data(simField, grid, gridParams, Nr, Nφ;
       return kφs, simFieldφFFT
    end
 end
+
+function compute_φFFT_of_sim_FieldTimeSeries(simFieldTimeSeries, grid,
+           gridParams, Nr, Nφ;
+           Hx = nothing, Hy = nothing, Hz = nothing, rAvg = false, zAvg = false)
+   #=
+   Compute the Nφ-point azimuthal Fourier transform of 'simFieldTimeSeries' at 
+    every time by first interpolating to a uniformly-spaced grid in cylindrical
+    coordinates.
+   Return timeseries of the azimuthal-mode projections.
+   Default returns 3D Nr x Nkφ x Nz x Nt timeseries, but options 'rAvg' and
+    'zAvg' perform r- and z-averaging, respectively, before returning.
+   =#
+   
+   #If halos not otherwise specified, set them to 'grid' halo sizes
+   if isnothing(Hx)
+      Hx = gridParams.Hx
+   end
+   if isnothing(Hy)
+      Hy = gridParams.Hy
+   end
+   if isnothing(Hz)
+      Hz = gridParams.Hz
+   end
+   
+   ####################################################
+   # Construct a uniformly spaced (Nr x Nφ x Nz) grid #
+   ####################################################
+   
+   #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
+   rCylGrid, φCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
+
+   #Read in the coordinates of Oceananigans (Cartesian) gridpoints
+   
+   if location(simFieldTimeSeries)[1][1] == Center
+      xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
+   elseif location(simFieldTimeSeries)[1][1] == Face
+      xCartVec = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx)]
+   end
+
+   if location(simFieldTimeSeries)[1][2] == Center
+      yCartVec = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy)]
+   elseif location(simFieldTimeSeries)[1][2] == Face
+      yCartVec = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy)]
+   end
+
+   if location(simFieldTimeSeries)[1][3] == Center
+      zCartVec = no_offset_view(grid.z.cᵃᵃᶜ)[(Hz + 1):(end - Hz)]
+   elseif location(simFieldTimeSeries)[1][3] == Face
+      zCartVec = no_offset_view(grid.z.cᵃᵃᶠ)[(Hz + 1):(end - Hz)]
+   end
+   
+   #Tile xCartVec and yCartVec along complementary dimensions, such that each
+   # point (x[i], y[j]) on the Oceananigans horizontal grid is represented by
+   # (xCartGrid[i, j], yCartGrid[i, j]). Then tile zCartVec in both x- and
+   # y-directions to match.
+   
+   xCartGrid = repeat(xCartVec, inner = [length(yCartVec)])
+   yCartGrid = repeat(yCartVec, outer = [length(xCartVec)])
+   zCartGrid = repeat(zCartVec, inner = [length(yCartVec)], 
+                      outer = [length(xCartVec)])
+
+   #Cartesian coordinates of the points on the cylindrically uniform grid
+   xCylGrid, yCylGrid, zCylGrid = compute_Cart_coords(rCylGrid,
+                                                      φCylGrid,
+                                                      zCartVec)
