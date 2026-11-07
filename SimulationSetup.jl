@@ -91,7 +91,7 @@ function EnergyDiagnosticOutputs(s::Simulation,
                                  simParams::SimulationParams, 
                                  gyreParams::GyreParams, backgroundFields)
 
-   energy_diagnostics = (; )
+   energy_diagnostics = (;)
    
    if simParams.save_PKE_full_domain_budget_terms
       energy_diagnostics = merge(energy_diagnostics,
@@ -137,6 +137,8 @@ function EnergyDiagnosticOutputs(s::Simulation,
                                  )
                                 )
    end
+   
+   return energy_diagnostics
 end
 
 function CreateSimulation(model, Δt, tf, Δt_save, simParams::SimulationParams,
@@ -183,7 +185,7 @@ function CreateSimulation(model, Δt, tf, Δt_save, simParams::SimulationParams,
                                                 )
                                   )
                                   
-      energy_writer = NetCDFWriter(model, energetics_outputs,
+   energy_writer = NetCDFWriter(model, energetics_outputs,
                              filename = energeticsFilePath,
                              schedule = TimeInterval(Δt_save),
                              array_type = Array{Float64},
