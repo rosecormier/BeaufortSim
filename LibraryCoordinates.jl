@@ -42,9 +42,7 @@ end
 
 function BuildOceananigansRectilinearGrid(p::GridParams)
    #=
-   Instantiate an Oceananigans RectilinearGrid that directly uses specified
-    GridParams.
-   Should be used as, e.g., the model grid for a simulation.
+   Instantiate an Oceananigans RectilinearGrid with specified GridParams.
    =#
    
    grid = RectilinearGrid(p.architecture,
@@ -55,31 +53,6 @@ function BuildOceananigansRectilinearGrid(p::GridParams)
                           z = build_custom_z_grid(p.z_grid_type, p.Lz, p.Nz),
                           halo = (p.Hx, p.Hy, p.Hz)
                          )
-end
-
-function BuildTallCopyOceananigansRectilinearGrid(p::GridParams)
-   #=
-   Instantiate an Oceananigans RectilinearGrid that is in every way identical
-    to 'build_Oceananigans_RectilinearGrid(p)' except that one halo point at
-    each vertical boundary is converted to an interior point.
-   I.e., the tall copy has vertical size 'p.Nz + 2' and vertical halo size
-    'p.Hz - 1'.
-   =#
-   
-   regularGrid = BuildOceananigansRectilinearGrid(p)
-
-   #Get zFace-coordinates for tall grid
-   zF = @view no_offset_view(adapt(Array, regularGrid.z.cᵃᵃᶠ)
-                            )[p.Hz:(end - (p.Hz - 1))]
-
-   tallGrid = RectilinearGrid(p.architecture,
-                              topology = p.topology, 
-                              size = (p.Nx, p.Ny, p.Nz + 2), 
-                              x = (-p.Lr, p.Lr), 
-                              y = (-p.Lr, p.Lr), 
-                              z = zF, 
-                              halo = (p.Hx, p.Hy, p.Hz - 1)
-                             )
 end
 
 function save_zC_values(z_grid, grid)
