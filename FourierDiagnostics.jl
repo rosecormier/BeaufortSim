@@ -135,10 +135,8 @@ function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
    simFieldφFFT = Array{ComplexF64}(undef, Nr, length(kφs),
                                     length(zCoordsCylGrid))
    
-   for k in 1:length(zCoordsCylGrid) #Loop over z-coords
-   
-      for i in 1:length(rCoordsCylGrid) #Loop over r-coords
-      
+   for k in 1:length(zCoordsCylGrid)
+      for i in 1:length(rCoordsCylGrid)
          simFieldφFFT[i, :, k] = rfft(interpolated_data[i, :, k])
       end
    end
@@ -164,11 +162,10 @@ function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
 end
 
 function compute_φFFT_of_sim_Field(simField::AbstractArray, 
-                                   xCartVec, yCartVec, zCartVec, gridParams, 
+                                   xCoordsCartGrid, yCoordsCartGrid, zCoordsCartGrid, gridParams, 
                                    Nr::Int64, Nφ::Int64;
                                    rCoordsCylGrid = nothing,
-                                   φCoordsCylGrid = nothing,
-                                   Hx = nothing, Hy = nothing, Hz = nothing,
+                                   φCoordsCylGrid = nothing, kφs = nothing,
                                    rAvg = false, zAvg = false,
                                    returnModulusSquared = true)
    #=
@@ -192,66 +189,42 @@ function compute_φFFT_of_sim_Field(simField::AbstractArray,
    if (isnothing(rCoordsCylGrid) || isnothing(φCoordsCylGrid))
       rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
    end
- 
-   #Read in the coordinates of Oceananigans (Cartesian) gridpoints
-   
-   #=
-   if location(simField)[1] == Center
-      xCartVec = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
-   elseif location(simField)[1] == Face
-      xCartVec = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx)]
-   end
-
-   if location(simField)[2] == Center
-      yCartVec = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy)]
-   elseif location(simField)[2] == Face
-      yCartVec = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy)]
-   end
-
-   if location(simField)[3] == Center
-      zCartVec = no_offset_view(grid.z.cᵃᵃᶜ)[(Hz + 1):(end - Hz)]
-   elseif location(simField)[3] == Face
-      zCartVec = no_offset_view(grid.z.cᵃᵃᶠ)[(Hz + 1):(end - Hz)]
-   end
-   =#
    
    #Tile xCartVec and yCartVec along complementary dimensions, such that each
    # point (x[i], y[j]) on the Oceananigans horizontal grid is represented by
    # (xCartGrid[i, j], yCartGrid[i, j]). Then tile zCartVec in both x- and
    # y-directions to match.
    
-   xCartGrid = repeat(xCartVec, inner = [length(yCartVec)])
-   yCartGrid = repeat(yCartVec, outer = [length(xCartVec)])
-   zCartGrid = repeat(zCartVec, inner = [length(yCartVec)], 
-                      outer = [length(xCartVec)])
+   xCoordsCartGridTiled = repeat(xCoordsCartGrid, inner = [length(yCoordsCartGrid)])
+   yCoordsCartGridTiled = repeat(yCoordsCartGrid, outer = [length(xCoordsCartGrid)])
+   zCoordsCartGridTiled = repeat(zCoordsCartGrid, inner = [length(yCoordsCartGrid)], 
+                      outer = [length(xCoordsCartGrid)])
 
    #Cartesian coordinates of the points on the cylindrically uniform grid
-   xCylGrid, yCylGrid, zCylGrid = compute_Cart_coords(rCoordsCylGrid,
-                                                      φCoordsCylGrid,
-                                                      zCartVec)
+   xCoordsCylGrid, yCoordsCylGrid, zCoordsCylGrid = compute_Cart_coords(rCoordsCylGrid, φCoordsCylGrid, zCoordsCartGrid)
 
    ###############################################################
    # Perform the interpolation of data to the uniform-polar grid #
    ###############################################################
 
    #Construct an uninitialized Array to store interpolated data
-   interpolated_data = Array{Float64}(undef, size(xCylGrid)[1], 
-                                      size(xCylGrid)[2], length(zCylGrid))
+   interpolated_data = Array{Float64}(undef, size(xCoordsCylGrid)[1], 
+                                      size(xCoordsCylGrid)[2], length(zCoordsCylGrid))
    
    #Interpolate data at each z-level. Interpolation only needs to be done in 2D
-   # (since zCylGrid == zCartGrid).
+   # (since zCoordsCylGrid == zCoordsCartGrid).
    
-   for k in 1:length(zCylGrid)
+   for k in 1:length(zCoordsCylGrid)
 
       #Create a linear interpolation object without extrapolation
       interp = Interpolations.scale(Interpolations.interpolate(
                               simField[:, :, k],
                               BSpline(Interpolations.Linear())), 
-                        (xCartVec, yCartVec)
+                        (xCoordsCartGrid, yCoordsCartGrid)
                                    )
 
       #Interpolate 'simField' to CylGrid points
-      interpolated_k = interp.(xCylGrid, yCylGrid)
+      interpolated_k = interp.(xCoordsCylGrid, yCoordsCylGrid)
       
       interpolated_data[:, :, k] = interpolated_k
    end
@@ -260,41 +233,47 @@ function compute_φFFT_of_sim_Field(simField::AbstractArray,
    # Take the azimuthal FFT #
    ##########################
 
-   kφs = (rfftfreq(Nφ, 2π * Nφ)) ./ 2π #The azimuthal wavenumbers of the FFT
+   #Get the azimuthal wavenumbers of the FFT
+   if isnothing(kφs)
+      kφs = φWavenumbers(Nφ)
+   end
    
    #Construct an uninitialized Array to store Fourier-transformed data
-   simFieldφFFT = Array{ComplexF64}(undef, Nr, length(kφs), length(zCylGrid))
+   simFieldφFFT = Array{ComplexF64}(undef, Nr, length(kφs), length(zCoordsCylGrid))
    
-   for k in 1:length(zCylGrid) #Loop over z-coords
-   
-      for i in 1:length(rCoordsCylGrid) #Loop over r-coords
-      
-         simFieldφFFT[i, :, k] = rfft(interpolated_data[i, :, k]) #[Real] DFT
+   for k in 1:length(zCoordsCylGrid)
+      for i in 1:length(rCoordsCylGrid)
+         simFieldφFFT[i, :, k] = rfft(interpolated_data[i, :, k])
       end
    end
 
-   ############################################
-   # Average, if specified, and return result #
-   ############################################
+   ############################################################################
+   # Average if specified and return result with singleton dimensions removed #
+   ############################################################################
 
-   if rAvg
+   if returnModulusSquared
    
-      if zAvg
-         #return kφs,
-         if returnModulusSquared
-            return abs2.(mean(simFieldφFFT, dims = (1, 3))[1,:,1,:])
+      if rAvg
+         if zAvg
+            return abs2.(mean(simFieldφFFT, dims = (1, 3))[1, :, 1])
          end
-      elseif !zAvg
-         #return kφs, 
-         return mean(simFieldφFFT, dims = 1)
       end
-      
-   elseif (!rAvg && zAvg)
-      #return kφs, 
-      return mean(simFieldφFFT, dims = 3)
    
-   else
-      #return kφs,
-      return simFieldφFFT
+   elseif !returnModulusSquared #Return the complex-valued modes themselves
+   
+      if rAvg
+   
+         if zAvg
+            return mean(simFieldφFFT, dims = (1, 3))[1, :, 1]
+         elseif !zAvg
+            return mean(simFieldφFFT, dims = 1)[1, :, :]
+         end
+      
+      elseif (!rAvg && zAvg)
+         return mean(simFieldφFFT, dims = 3)[:, :, 1]
+   
+      else
+         return simFieldφFFT
+      end
    end
 end
