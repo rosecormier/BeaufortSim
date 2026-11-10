@@ -30,9 +30,9 @@ perturbParams         = cudaconvert(PerturbationParams())
 simParams             = SimulationParams()
 visParams             = VisParams()
 
-const Δt = 600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf = 600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
-#=
+const Δt = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf = parse(Float64, ARGS[2]) #Simulation stop time (s)
+
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -40,16 +40,11 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-const Δt_save = 600
 
 #Plot 2D slices at these indices
-const x_idx = gridParams.Hx + (gridParams.Nx ÷ 2)
-const y_idx = gridParams.Hy + (gridParams.Ny ÷ 2)
-const z_idx = gridParams.Hz + gridParams.Nz
-
-#Step size for animations and timeseries
-const t_idx_skip = 1
+const x_idx = gridParams.Nx ÷ 2
+const y_idx = gridParams.Ny ÷ 2
+const z_idx = gridParams.Nz
 
 #########################
 # SET UP GRID AND MODEL #
@@ -99,7 +94,7 @@ check_gravitational_stability(model)
 ######################################################
 
 datetimestart = now()
-datetimenow   = "261105-143352" #format(datetimestart, "yymmdd-HHMMSS")
+datetimenow   = format(datetimestart, "yymmdd-HHMMSS")
 
 print("Date-time label: $(datetimenow)", "\n")
 
@@ -148,7 +143,7 @@ backgroundFields = (Ux = Ux, Uy = Uy, Ur = Ur, Uφ = Uφ, Uz = Uz, B = B,
 #############################
 # SET UP AND RUN SIMULATION #
 #############################
-#=
+
 b_initial, u_initial, v_initial, w_initial = initialFields
 
 #Set perturbed ICs
@@ -162,8 +157,10 @@ fill_halo_regions!(model.pressures)
 
 simulation = CreateSimulation(model, Δt, tf, Δt_save, simParams, modelParams, gyreParams, backgroundFields, datetimenow)
 
-#Make path if nonexistent (all other paths will be generated ad hoc)
+#Make paths if nonexistent
 mkpath("./Checkpoints")
+mkpath("./Logs")
+mkpath("./Output")
 
 simulation.output_writers[:checkpointer] = Checkpointer(model; 
                                                         schedule = TimeInterval(simParams.Δt_checkpt),
@@ -177,45 +174,42 @@ run!(simulation; pickup = false)
 duration = canonicalize(now() - datetimestart)
 
 #Append zeros to filenames so they can be accessed in chronological order
-pad_filenames(datetimenow)
-pad_filenames(datetimenow; prefix = "energetics")
-pad_filenames(datetimenow; prefix = "scalars")
+PadFilenames(datetimenow)
+PadFilenames(datetimenow; prefix = "energetics")
+PadFilenames(datetimenow; prefix = "scalars")
 
 WriteLogFile(simulation, Δt, Δt_save, tf, duration, datetimenow, gridParams,
              gyreParams, doubleTanhStratParams, perturbParams, simParams)
-=#
+
 #####################
 # RUN VISUALIZATION #
 #####################
 
 if visParams.do_Fourier_mode_decomp
-   Fouriertesting(datetimenow, model, gridParams, backgroundFields)
+   plot_rzMean_φDFT_perturbs_timeseries(datetimenow, grid, gridParams, backgroundFields, visParams.Nr, visParams.Nφ; t_idx_skip = visParams.t_idx_skip)
 end
 
 if visParams.vis_const_x
-   visualize_fields_2D_slice(datetimenow, "x", x_idx, backgroundFields, 
-                             gridParams.Hx, gridParams.Hy, gridParams.Hz;
-                             t_idx_skip = t_idx_skip)
-   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, backgroundFields,
-                     gridParams.Hx, gridParams.Hy, gridParams.Hz; 
+   #visualize_fields_2D_slice(datetimenow, "x", x_idx, backgroundFields, 
+   #                          gridParams.Hx, gridParams.Hy, gridParams.Hz;
+   #                          t_idx_skip = visParams.t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, gridParams, simParams, backgroundFields; 
                      plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
 if visParams.vis_const_y
    visualize_fields_2D_slice(datetimenow, "y", y_idx, backgroundFields, 
                              gridParams.Hx, gridParams.Hy, gridParams.Hz; 
-                             t_idx_skip = t_idx_skip)
-   visualize_b_and_ζ(datetimenow, "y", y_idx, model.grid, backgroundFields,
-                     gridParams.Hx, gridParams.Hy, gridParams.Hz; 
-                     plot_animation = true)
+                             t_idx_skip = visParams.t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "y", y_idx, model.grid, gridParams, simParams, backgroundFields; 
+                     plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
 if visParams.vis_const_z
-   visualize_fields_2D_slice(datetimenow, "z", z_idx, backgroundFields, 
-                             gridParams.Hx, gridParams.Hy, gridParams.Hz;
-                             t_idx_skip = t_idx_skip)
-   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, backgroundFields,
-                     gridParams.Hx, gridParams.Hy, gridParams.Hz;
+   #visualize_fields_2D_slice(datetimenow, "z", z_idx, backgroundFields, 
+   #                          gridParams.Hx, gridParams.Hy, gridParams.Hz;
+   #                          t_idx_skip = visParams.t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, gridParams, simParams, backgroundFields;
                      plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
@@ -228,7 +222,7 @@ if visParams.vis_norms
                    idxStartLinGrowth_uy = 2, idxEndLinGrowth_uy = 5,
                    idxStartLinGrowth_uz = 2, idxEndLinGrowth_uz = 5,
                    idxStartPlot = 2, idxEndPlot = -1, 
-                   growth_rate = "timeseries", t_skip_idx = t_idx_skip)
+                   growth_rate = "timeseries", t_skip_idx = visParams.t_idx_skip)
 end
 
 if visParams.vis_energetics
