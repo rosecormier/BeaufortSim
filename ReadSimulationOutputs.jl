@@ -5,7 +5,7 @@ using Oceananigans.OutputReaders
 # FUNCTIONS TO HANDLE NETCDF DATASETS #
 #######################################
 
-function pad_filenames(datetime; prefix = "output")
+function PadFilenames(datetime; prefix = "output")
    #=
    Prefix filenames with zeros until alphanumeric order of filenames is the same
     as chronological order of data intervals contained by the respective files.
@@ -24,7 +24,7 @@ function pad_filenames(datetime; prefix = "output")
    return glob("./Output/$(prefix)_$(datetime)*")
 end
 
-function sort_times(unsortedTimes)
+function SortTimes(unsortedTimes)
    #=
    Ordered t-values and indices to sort other data chronologically (essential if
     simulation was ever picked up from a checkpoint).
@@ -36,57 +36,40 @@ function sort_times(unsortedTimes)
    return t, sorting_indices
 end
 
-function load_times_in_days(dataset)
+function LoadTimesInDays(dataset)
 
    unsorted_t               = dataset[:time][:] ./ 86400
-   t, chronological_indices = sort_times(unsorted_t)
+   t, chronological_indices = SortTimes(unsorted_t)
    Nt                       = length(t)
    
    return t, Nt, chronological_indices
 end
 
-function open_nc_dataset(outfilename; Hx = 3, Hy = 3, Hz = 3)
+function OpenNCDataset(outfilename)
    #=
    Open a generic NetCDF dataset output by Oceananigans simulation.
-   Return the dataset itself as well as gridpoints and timeseries info.   
+   Return the dataset itself as well as timeseries info.   
    =#
 
    ds = NCDataset(outfilename)
 
-   x, y, z = nothing, nothing, nothing #Defaults in case any dimension is Flat
-   
-   #Load coords of non-Flat dimensions; convert them to km for readability
+   t, Nt, chronological_indices = LoadTimesInDays(ds)
 
-   if length(ds[:x_caa]) > 1
-      x = ds[:x_caa][:] ./ 1000
-   end
-
-   if length(ds[:y_aca]) > 1
-      y = ds[:y_aca][:] ./1000
-   end
-   
-   if length(ds[:z_aac]) > 1
-      zC = ds[:z_aac][:] ./ 1000
-      zF = ds[:z_aaf][:] ./ 1000
-   end
-
-   t, Nt, chronological_indices = load_times_in_days(ds)
-
-   return ds, x, y, zC, zF, t, Nt, chronological_indices
+   return ds, t, Nt, chronological_indices
 end
 
-function open_energetics_dataset(energeticsfilename)
+function OpenEnergeticsDataset(energeticsfilename)
    
    energetics_ds                = NCDataset(energeticsfilename)
-   t, Nt, chronological_indices = load_times_in_days(energetics_ds)
+   t, Nt, chronological_indices = LoadTimesInDays(energetics_ds)
 
    return energetics_ds, t, Nt, chronological_indices
 end
 
-function open_scalars_dataset(scalarfilename)
+function OpenScalarsDataset(scalarfilename)
 
    scalars_ds                   = NCDataset(scalarfilename)
-   t, Nt, chronological_indices = load_times_in_days(scalars_ds)
+   t, Nt, chronological_indices = LoadTimesInDays(scalars_ds)
 
    return scalars_ds, t, Nt, chronological_indices
 end
