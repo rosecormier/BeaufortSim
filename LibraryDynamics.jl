@@ -1,7 +1,7 @@
 include("LibraryCoordinates.jl")
 include("Parameters.jl")
 
-using Random
+using CUDA, Random
 
 #Background-state streamfunction
 @inline Ψ(r::Float64, z::Float64, p::GyreParams) = (p.U * p.σr / sqrt(2)) .* (exp.(-(r./p.σr).^2)) .* exp.(0.5 .- (z./p.σz).^2)
@@ -19,6 +19,9 @@ using Random
 
 @inline ΔFΔzᵃᵃᶜ_2D(i, j, g, k::Float64, Fᵃᵃᶠ_minus, Fᵃᵃᶠ_plus) = @inbounds (Fᵃᵃᶠ_plus[i, j, convert(Int64, k + 0.5)] - Fᵃᵃᶠ_minus[i, j, convert(Int64, k - 0.5)]) / (g.z.cᵃᵃᶠ[convert(Int64, k + 0.5)] - g.z.cᵃᵃᶠ[convert(Int64, k - 0.5)])
 @inline ΔFΔzᵃᵃᶠ_2D(i, j, g, k::Float64, Fᵃᵃᶜ_minus, Fᵃᵃᶜ_plus) = @inbounds (Fᵃᵃᶜ_plus[i, j, convert(Int64, k + 0.5)] - Fᵃᵃᶜ_minus[i, j, convert(Int64, k - 0.5)]) / (g.z.cᵃᵃᶜ[convert(Int64, k + 0.5)] - g.z.cᵃᵃᶜ[convert(Int64, k - 0.5)])
+
+#Add background and perturbation streamfunctions
+@inline GeneralψPerturbedᶜᶜᶠ(i, j, k, g, Ψᶜᶜᶠ, ψ′) = @inbounds ψ′[i, j, k] * Ψᶜᶜᶠ(i, j, k, g)
 
 function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
                                                    gyreParams::GyreParams,
@@ -109,13 +112,15 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
    ##############################################################
    # Diagnose thermal-wind buoyancy and its boundary conditions #
    ##############################################################
-
-   @inline LinearBᵃᵃᶜ(i, j, k, g)                 = @inbounds gyreParams.N²_far * g.z.cᵃᵃᶜ[k]
+   
+   Lz = gridParams.Lz #Because we can't pass 'gridParams' to a KernelFunction
+   
+   @inline LinearBᵃᵃᶜ(i, j, k, g)                 = @inbounds gyreParams.N²_far * (g.z.cᵃᵃᶜ[k] + Lz / 2)
    @inline ThermalWindBᶜᶜᶜ(i, j, k, g)            = @inbounds gyreParams.f * ∂Ψ∂z_ccc_Field[i, j, k]
    @inline TotalConstAmbientStratBᶜᶜᶜ(i, j, k, g) = @inbounds LinearBᵃᵃᶜ(i, j, k, g) + ThermalWindBᶜᶜᶜ(i, j, k, g)
       
    @compute b_TWB = Field(KernelFunctionOperation{Center, Center, Center}(TotalConstAmbientStratBᶜᶜᶜ, grid))
-      
+   
    @inline ∂b∂z(i, j, g, ∂2Ψ∂z2_ccf_Field) = @inbounds gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_ccf_Field[i, j]
    
    @compute ∂b∂z_bot = Field(KernelFunctionOperation{Center, Center, Nothing}(∂b∂z, grid, bot_∂2Ψ∂z2_ccf))
@@ -139,22 +144,44 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
    
    Random.seed!(perturbParams.seed) #For reproducibility
 
-   if gridParams.architecture == GPU()
-      randArray = CuArray{Float64}(undef, (gridParams.Nx, 
-                                           gridParams.Ny, 
-                                           gridParams.Nz + 1)
-                                  ) 
-      rand!(randArray)
-   elseif gridParams.architecture == CPU()
-      randArray = rand(Float64, 
-                       (gridParams.Nx, gridParams.Ny, gridParams.Nz + 1))
+   perturb_scale_Field = ZFaceField(grid)
+   
+   if perturbParams.sum_of_modes_perturbation
+   
+      if gridParams.architecture == GPU()
+         phasesArray = CuArray{Float64}(undef, perturbParams.number_of_initial_modes)
+         rand!(phasesArray)
+      elseif gridParams.architecture == CPU()
+         phasesArray = rand(Float64, perturbParams.number_of_initial_modes)
+      end
+      
+      s = 0.0
+      
+      function compute_s(s)
+         id = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+         if id ≤ perturbParams.number_of_initial_modes
+            s += 2π * id * phasesArray[id]
+         end
+         return nothing
+      end
+      
+      @inline perturbScale(i, j, k, g) = @inbounds perturbParams.max_ψ′ * cos(s * φ_cca(i, j, k, g)) + 1
+      
+      @compute perturb_scale_Field = Field(KernelFunctionOperation{Center, Center, Face}(perturbScale, grid))
+   
+   elseif !perturbParams.sum_of_modes_perturbation
+   
+      if gridParams.architecture == GPU()
+         randArray = CuArray{Float64}(undef, (gridParams.Nx, gridParams.Ny, gridParams.Nz + 1)) 
+         rand!(randArray)
+      elseif gridParams.architecture == CPU()
+         randArray = rand(Float64, (gridParams.Nx, gridParams.Ny, gridParams.Nz + 1))
+      end
+   
+      set!(perturb_scale_Field, perturbParams.max_ψ′ * (2 * randArray .- 0.5) .+ 1)
    end
-   
-   randField = ZFaceField(grid)
-   set!(randField, 2 * randArray .- 0.5)
-   
-   @inline Ψperturbedᶜᶜᶠ(i, j, k, g) = @inbounds (perturbParams.max_ψ′ * randField[i,j,k] + 1) * Ψᶜᶜᶠ(i, j, k, g)
-   @compute Ψperturbed_ccf_Field = Field(KernelFunctionOperation{Center, Center, Face}(Ψperturbedᶜᶜᶠ, grid))
+
+   @compute Ψperturbed_ccf_Field = Field(KernelFunctionOperation{Center, Center, Face}(GeneralψPerturbedᶜᶜᶠ, grid, Ψᶜᶜᶠ, perturb_scale_Field))
    
    @inline Ψperturbedᶜᶠᶠ(i, j, k, g) = @inbounds ℑyᵃᶠᵃ(i, j, k, g, Ψperturbed_ccf_Field)
    @compute Ψperturbed_cff_Field = Field(KernelFunctionOperation{Center, Face, Face}(Ψperturbedᶜᶠᶠ, grid))
