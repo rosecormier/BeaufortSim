@@ -17,63 +17,6 @@ update_theme!(theme_latexfonts(), fontsize = 16)
 
 ################################################################################
 
-function Fouriertesting(datetimenow, model, gridParams, backgroundFields)
-
-   outfile_paths = glob("./Output/output_$(datetimenow)*")
-   
-   b_TS = LoadFieldTimeseries("b", datetimenow) #FieldTimeSeries("./Output/output_$(datetimenow)", "b"; backend = OnDisk())
-   ux_TS = FieldTimeSeries("./Output/output_$(datetimenow)", "ux"; backend = OnDisk())
-   uy_TS = FieldTimeSeries("./Output/output_$(datetimenow)", "uy"; backend = OnDisk())
-   uz_TS = FieldTimeSeries("./Output/output_$(datetimenow)", "uz"; backend = OnDisk())
-   
-   b_f = b_TS[end]
-   ux_f = ux_TS[end]
-   uy_f = uy_TS[end]
-   uz_f = uz_TS[end]
-
-   B = adapt(Array, interior(backgroundFields[:B]))
-   
-   print(b_TS)
-   
-   n = Observable(1)
-      
-   b′ = @lift b_TS[$n] .- B
-   
-   Nt = length(b_TS)
-   frames = 1:Nt
-
-   t_idx_skip = 1
-   for i = 1:t_idx_skip:frames[end]
-         
-      print(i, " of ", Nt, "\n")
-         
-      yield()
-      n[] = i
-   end
-   
-   
-   plot_rMean_φDFT_field(uy_TS[end], model.grid, gridParams, 10, 8, "uy")
-   #=
-   plot_rzMean_φDFT_field(b_TS[end], model.grid, gridParams, 500, 20, "buoyancy")
-   plot_rMean_φDFT_field(b_TS[end], model.grid, gridParams, 500, 20, "buoyancy")
-   plot_zMean_φDFT_field(b_TS[end], model.grid, gridParams, 500, 20, "buoyancy")
-
-   plot_rzMean_φDFT_field(ux_TS[end], model.grid, gridParams, 500, 20, "ux")
-   plot_rMean_φDFT_field(ux_TS[end], model.grid, gridParams, 500, 20, "ux")
-   plot_zMean_φDFT_field(ux_TS[end], model.grid, gridParams, 500, 20, "ux")
-
-   plot_rzMean_φDFT_field(uy_TS[end], model.grid, gridParams, 500, 20, "uy")
-   plot_rMean_φDFT_field(uy_TS[end], model.grid, gridParams, 500, 20, "uy")
-   plot_zMean_φDFT_field(uy_TS[end], model.grid, gridParams, 500, 20, "uy")
-   
-   plot_rzMean_φDFT_field(uz_TS[end], model.grid, gridParams, 500, 20, "uz")
-   plot_rMean_φDFT_field(uz_TS[end], model.grid, gridParams, 500, 20, "uz")
-   plot_zMean_φDFT_field(uz_TS[end], model.grid, gridParams, 500, 20, "uz")
-   =#
-end
-
-################################################################################
-
 function visualize_Ψ_and_z_derivs(simGrid, tall_Ψ_ccf_Field, 
                                   tall_∂Ψ∂z_ccc_Field, tall_∂2Ψ∂z2_ccf_Field)
 
@@ -185,7 +128,7 @@ function visualize_norms(datetime;
 		idxStartPlot = 2, idxEndPlot = -1,
     growth_rate = "linear_best_fit", t_skip_idx = 1)
 
-   scalars_ds, times, Nt, chron_idcs = open_scalars_dataset(glob("./Output/scalars_$(datetime)*"))
+   scalars_ds, times, Nt, chron_idcs = OpenScalarsDataset(glob("./Output/scalars_$(datetime)*"))
    
    if idxEndPlot < 0
       idxEndPlot = Nt + idxEndPlot #Make idxEndPlot a positive integer
@@ -286,7 +229,7 @@ end
 function visualize_ME(datetime, grid, simParams::SimulationParams)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
-   ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
+   ds, t, Nt, chron_idcs = OpenEnergeticsDataset(outfile_list)
 
    total_KE = ds[:total_KE][chron_idcs]
    total_PE = ds[:total_PE][chron_idcs]
@@ -384,7 +327,7 @@ end
 function visualize_PKE(datetime, grid, simParams::SimulationParams)
 
    outfile_list          = glob("./Output/energetics_$(datetime)*")
-   ds, t, Nt, chron_idcs = open_energetics_dataset(outfile_list)
+   ds, t, Nt, chron_idcs = OpenEnergeticsDataset(outfile_list)
 
    if simParams.save_PKE_full_domain_budget_terms
    
@@ -615,44 +558,56 @@ end
 
 ################################################################################
 
-function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid,
-                           backgroundFields, Hx, Hy, Hz; 
+function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid, gridParams, simParams,
+                           backgroundFields; 
 		                       plot_animation = true, t_idx_skip = 1, 
                            colorbar_max_fraction = 1)
    #=
    Plot 2D slices of buoyancy and vertical component of vorticity. 
    By default, data are assumed to exclude halos.
    =#
-
-   outfile_list = glob("./Output/output_$(datetime)*")
    
-   ds_i = open_nc_dataset(outfile_list[1]; Hx = Hx, Hy = Hy, Hz = Hz)[1]
-   ds_f, x, y, zC, zF, times, Nt, chron_idcs = open_nc_dataset(outfile_list[length(outfile_list)]; Hx = Hx, Hy = Hy, Hz = Hz)
-
-   if const_dimension == "x"
-      const_dimension_coords, axis1, axis2_zC, axis2_zF = x, y, zC, zF
-      H_axis1, H_axis2_zC, H_axis2_zF                   = Hy, Hz, Hz
-   elseif const_dimension == "y"
-      const_dimension_coords, axis1, axis2_zC, axis2_zF = y, x, zC, zF
-      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hz, Hz
-   elseif const_dimension == "z"
-      const_dimension_coords, axis1, axis2_zC, axis2_zF = zC, x, y, y
-      H_axis1, H_axis2_zC, H_axis2_zF                   = Hx, Hy, Hy
-   end
-
    #If needed for testing, can set halos to 0 here
-   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dimension, const_dimension_idx;
-                                  Hx = Hx, Hy = Hy, Hz = Hz,
-                                  xC = x, yC = y, zC = zC, zF = zF)
+   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(grid, gridParams, const_dimension, const_dimension_idx)
 
    B      = no_offset_view(adapt(Array, backgroundFields[:B]))[xyzC_idcs...]
    ζ_bkgd = no_offset_view(adapt(Array, backgroundFields[:ζ_bkgd])
                           )[xyzC_idcs...]
-
-   b_total_i = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
-   b_total_f = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
-   ζ_total_i = ds_i[:ζ][xyzC_idcs..., chron_idcs[1]]
-   ζ_total_f = ds_f[:ζ][xyzC_idcs..., chron_idcs[Nt]]
+   
+   if simParams.output_Fields_file_extension == "nc"
+      
+      outfile_list = glob("./Output/output_$(datetime)*")
+   
+      ds_i                        = OpenNCDataset(outfile_list[1])[1]
+      ds_f, times, Nt, chron_idcs = OpenNCDataset(outfile_list[length(outfile_list)])
+      
+      b_total_i = ds_i[:b][xyzC_idcs..., chron_idcs[1]]
+      b_total_f = ds_f[:b][xyzC_idcs..., chron_idcs[Nt]]
+      ζ_total_i = ds_i[:ζ][xyzC_idcs..., chron_idcs[1]]
+      ζ_total_f = ds_f[:ζ][xyzC_idcs..., chron_idcs[Nt]]
+      
+   elseif simParams.output_Fields_file_extension == "jld2"
+      
+      b_TS = LoadFieldTimeseries("b", datetime)
+      ζ_TS = LoadFieldTimeseries("ζ", datetime)
+      
+      b_total_i = b_TS[1][xyzC_idcs...]
+      b_total_f = b_TS[1][xyzC_idcs...]
+      ζ_total_i = ζ_total_i[xyzC_idcs...]
+      ζ_total_f = ζ_total_f[xyzC_idcs...]
+   end
+   
+   x = xᶜInt(grid, gridParams) ./ 1000
+   y = yᶜInt(grid, gridParams) ./ 1000 
+   z = zᶜInt(grid, gridParams) ./ 1000
+   
+   if const_dimension == "x"
+      const_dimension_coords, axis1, axis2 = x, y, z
+   elseif const_dimension == "y"
+      const_dimension_coords, axis1, axis2 = y, x, z
+   elseif const_dimension == "z"
+      const_dimension_coords, axis1, axis2 = z, x, y
+   end
 
    Δb_i = b_total_i .- B
    Δb_f = b_total_f .- B
@@ -667,9 +622,7 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
                                
    fig_total_i = plot_fig_heatmaps_b_ζ(Dict("b" => b_total_i, 
                                             "ζ" => ζ_total_i),
-                                       axis1, H_axis1, axis2_zC, H_axis2_zC, 
-                                       axis2_zF, H_axis2_zF,
-                                       nearest, ax_kwargs, 
+                                       axis1, axis2, nearest, ax_kwargs, 
               "Fields at $(const_dimension) = $(nearest) km; initial condition",
               colorbar_max_fraction;
               ax_titles = Dict("b" => L"Total buoyancy ($b$)",
@@ -677,9 +630,7 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
                                       )
    fig_total_f = plot_fig_heatmaps_b_ζ(Dict("b" => b_total_f, 
                                             "ζ" => ζ_total_f), 
-                                       axis1, H_axis1, axis2_zC, H_axis2_zC,
-                                       axis2_zF, H_axis2_zF, 
-                                       nearest, ax_kwargs, 
+                                       axis1, axis2, nearest, ax_kwargs, 
     "Fields at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days",
               colorbar_max_fraction; 
               ax_titles = Dict("b" => L"Total buoyancy ($b$)",
@@ -687,9 +638,7 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
                                       )
    fig_perturb_i = plot_fig_heatmaps_b_ζ(Dict("b" => Δb_i, 
                                               "ζ" => Δζ_i),
-                                       axis1, H_axis1, axis2_zC, H_axis2_zC, 
-                                       axis2_zF, H_axis2_zF,
-                                       nearest, ax_kwargs, 
+                                       axis1, axis2, nearest, ax_kwargs, 
               "Perturbations at $(const_dimension) = $(nearest) km; initial condition",
               colorbar_max_fraction;
               ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
@@ -697,9 +646,7 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
                                       )
    fig_perturb_f = plot_fig_heatmaps_b_ζ(Dict("b" => Δb_f, 
                                               "ζ" => Δζ_f), 
-                                       axis1, H_axis1, axis2_zC, H_axis2_zC,
-                                       axis2_zF, H_axis2_zF, 
-                                       nearest, ax_kwargs, 
+                                       axis1, axis2, nearest, ax_kwargs,
     "Perturbations at $(const_dimension) = $(nearest) km; t = $(@sprintf("%.2f", times[Nt])) days",
               colorbar_max_fraction;
               ax_titles = Dict("b" => L"Buoyancy perturbation ($b'$)",
@@ -717,7 +664,7 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
    
    if plot_animation #Plot animated fields, slicing timeseries at t_idx_skip
 
-      ds, x, y, zC, zF, times, Nt, chron_idcs = open_nc_dataset(outfile_list, Hx = Hx, Hy = Hy, Hz = Hz)
+      ds, times, Nt, chron_idcs = OpenNCDataset(outfile_list)
 
       n = Observable(1)
       
@@ -727,15 +674,13 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
       Δb = @lift $b_total .- B
       Δζ = @lift $ζ_total .- ζ_bkgd
       
-      fig_total = set_up_anim_heatmaps_b_ζ(
-               Dict("b" => b_total, "ζ" => ζ_total), 
-               axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF, nearest, ax_kwargs;
+      fig_total = set_up_anim_heatmaps_b_ζ(Dict("b" => b_total, "ζ" => ζ_total), 
+               axis1, axis2, nearest, ax_kwargs;
                                   colorranges = Dict("b" => get_symm_range_lims(b_total_f),
                                                      "ζ" => get_symm_range_lims(ζ_total_f)) 
                                   )
-      fig_pert = set_up_anim_heatmaps_b_ζ(
-               Dict("b" => Δb, "ζ" => Δζ), 
-               axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF, nearest, ax_kwargs; 
+      fig_pert = set_up_anim_heatmaps_b_ζ(Dict("b" => Δb, "ζ" => Δζ), 
+               axis1, axis2, nearest, ax_kwargs; 
                                   ax_titles = Dict("b" => L"$b'$", "ζ" => L"$\zeta'$"),
                                   colorranges = Dict("b" => get_symm_range_lims(Δb_f),
                                                      "ζ" => get_symm_range_lims(Δζ_f)) 
@@ -1069,11 +1014,114 @@ function plot_rzMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ,
    scatter!(ax, kφs, (abs2.(FFT_vec) ./ Nkφ), color = :black)
    
    fig[1, 1] = Label(fig, 
-                     L"$rz$-averaged azimuthal Fourier components of %$(fieldName)",
+                     L"$r$- and $z$-averaged Fourier components of $(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "rzMeanAzimuthalSpectrum_$(fieldName).png"), fig)
+end
+
+################################################################################
+
+function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, gridParams, 
+                                              backgroundFields, Nr, Nφ; 
+                                              t_idx_skip = 1)
+
+   outfile_paths = glob("./Output/output_$(datetimenow)*")
+   
+   b_TS  = LoadFieldTimeseries("b", datetime)
+   ux_TS = LoadFieldTimeseries("ux", datetime)
+   uy_TS = LoadFieldTimeseries("uy", datetime)
+   uz_TS = LoadFieldTimeseries("uz", datetime)
+   
+   times = b_TS.times
+   
+   B  = adapt(Array, interior(backgroundFields[:B]))
+   Ux = adapt(Array, interior(backgroundFields[:Ux]))
+   Uy = adapt(Array, interior(backgroundFields[:Uy]))
+   Uz = adapt(Array, interior(backgroundFields[:Uz]))
+   
+   rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(gridParams.Lr,
+                                                                 Nr, Nφ)
+   
+   xC_vec = no_offset_view(grid.xᶜᵃᵃ)[(gridParams.Hx + 1):(end - gridParams.Hx)]
+   xF_vec = no_offset_view(grid.xᶠᵃᵃ)[(gridParams.Hx + 1):(end - gridParams.Hx)]
+   yC_vec = no_offset_view(grid.yᵃᶜᵃ)[(gridParams.Hy + 1):(end - gridParams.Hy)]
+   yF_vec = no_offset_view(grid.yᵃᶠᵃ)[(gridParams.Hy + 1):(end - gridParams.Hy)]
+   zC_vec = no_offset_view(grid.z.cᵃᵃᶜ)[(gridParams.Hz + 1):(end - gridParams.Hz)]
+   zF_vec = no_offset_view(grid.z.cᵃᵃᶠ)[(gridParams.Hz + 1):(end - gridParams.Hz)]
+   
+   kφs = φWavenumbers(Nφ)
+   Nt  = length(times)
+   
+   b′_φFFT  = Array{Float64}(undef, Nt, length(kφs))
+   ux′_φFFT = Array{Float64}(undef, Nt, length(kφs))
+   uy′_φFFT = Array{Float64}(undef, Nt, length(kφs))
+   uz′_φFFT = Array{Float64}(undef, Nt, length(kφs))
+   
+   for n in 1:t_idx_skip:Nt
+   
+      b′_φFFT[n, :]  = compute_φFFT_of_sim_Field(b_TS[n] - B, 
+                                     xC_vec, yC_vec, zC_vec, gridParams, Nr, Nφ;
+                                     rCoordsCylGrid = rCoordsCylGrid,
+                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
+                                     rAvg = true, zAvg = true)
+      ux′_φFFT[n, :] = compute_φFFT_of_sim_Field(ux_TS[n] - Ux, 
+                                     xF_vec, yC_vec, zC_vec, gridParams, Nr, Nφ;
+                                     rCoordsCylGrid = rCoordsCylGrid,
+                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
+                                     rAvg = true, zAvg = true)
+      uy′_φFFT[n, :] = compute_φFFT_of_sim_Field(uy_TS[n] - Uy, 
+                                     xC_vec, yF_vec, zC_vec, gridParams, Nr, Nφ;
+                                     rCoordsCylGrid = rCoordsCylGrid,
+                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
+                                     rAvg = true, zAvg = true)
+      uz′_φFFT[n, :] = compute_φFFT_of_sim_Field(uz_TS[n] - Uz, 
+                                     xC_vec, yC_vec, zF_vec, gridParams, Nr, Nφ;
+                                     rCoordsCylGrid = rCoordsCylGrid,
+                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
+                                     rAvg = true, zAvg = true)
+                                     
+   end
+   
+   fig_b′_modes  = Figure(size = (600, 600))
+   fig_ux′_modes = Figure(size = (600, 600))
+   fig_uy′_modes = Figure(size = (600, 600))
+   fig_uz′_modes = Figure(size = (600, 600))
+   
+   ax_b′_modes  = Axis(fig_b′_modes[2, 1]; xlabel = L"$t$ [days]", ylabel = L"$k_{\phi}$")
+   ax_ux′_modes = Axis(fig_ux′_modes[2, 1]; xlabel = L"$t$ [days]", ylabel = L"$k_{\phi}$")
+   ax_uy′_modes = Axis(fig_uy′_modes[2, 1]; xlabel = L"$t$ [days]", ylabel = L"$k_{\phi}$")
+   ax_uz′_modes = Axis(fig_uz′_modes[2, 1]; xlabel = L"$t$ [days]", ylabel = L"$k_{\phi}$")
+   
+   hm_b′_modes  = heatmap!(ax_b′_modes, times./86400, kφs, b′_φFFT, 
+         colorrange = get_nonnegative_range_lims(b′_φFFT, max_fraction = 0.75),
+         colormap = :Reds)
+   hm_ux′_modes = heatmap!(ax_ux′_modes, times./86400, kφs, ux′_φFFT, 
+         colorrange = get_nonnegative_range_lims(ux′_φFFT, max_fraction = 0.75),
+         colormap = :Reds)
+   hm_uy′_modes = heatmap!(ax_uy′_modes, times./86400, kφs, uy′_φFFT,
+         colorrange = get_nonnegative_range_lims(uy′_φFFT, max_fraction = 0.75),
+         colormap = :Reds)
+   hm_uz′_modes = heatmap!(ax_uz′_modes, times./86400, kφs, uz′_φFFT,
+         colorrange = get_nonnegative_range_lims(uz′_φFFT, max_fraction = 0.75),
+         colormap = :Reds)
+   
+   Colorbar(fig_b′_modes[3, 1], hm_b′_modes, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_ux′_modes[3, 1], hm_ux′_modes, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_uy′_modes[3, 1], hm_uy′_modes, tickformat = "{:.1e}", vertical = false)
+   Colorbar(fig_uz′_modes[3, 1], hm_uz′_modes, tickformat = "{:.1e}", vertical = false)
+   
+   fig_b′_modes[1, 1]  = Label(fig_b′_modes, L"$r$- and $z$-averaged Fourier components of $b'$", fontsize = 24, tellwidth = false)
+   fig_ux′_modes[1, 1] = Label(fig_ux′_modes, L"$r$- and $z$-averaged Fourier components of $u_x'$", fontsize = 24, tellwidth = false)
+   fig_uy′_modes[1, 1] = Label(fig_uy′_modes, L"$r$- and $z$-averaged Fourier components of $u_y'$", fontsize = 24, tellwidth = false)
+   fig_uz′_modes[1, 1] = Label(fig_uz′_modes, L"$r$- and $z$-averaged Fourier components of $u_z'$", fontsize = 24, tellwidth = false)
+   
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "b_FourierModes_$(datetime).png"), fig_b′_modes)
+   save(joinpath("./Plots", "ux_FourierModes_$(datetime).png"), fig_ux′_modes)
+   save(joinpath("./Plots", "uy_FourierModes_$(datetime).png"), fig_uy′_modes)
+   save(joinpath("./Plots", "uz_FourierModes_$(datetime).png"), fig_uz′_modes)
 end
 
 ################################################################################
@@ -1109,7 +1157,7 @@ function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldNam
    
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
    
-   fig[1, 1] = Label(fig, L"$r$-averaged Fourier azimuthal components of %$(fieldName)",
+   fig[1, 1] = Label(fig, L"$r$-averaged Fourier components of $(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -1147,7 +1195,7 @@ function plot_zMean_φDFT_field(scalarField, grid, gridParams::GridParams, Nr,
    
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
    
-   fig[1, 1] = Label(fig, L"$z$-averaged Fourier azimuthal components of %$(fieldName)",
+   fig[1, 1] = Label(fig, L"$z$-averaged Fourier components of $(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
