@@ -30,7 +30,14 @@ function WriteLogFile(simulation, Δt, Δt_save, tf, duration, runLabel::String,
       end   
       
       write(file, "Max. ψ′ = $(perturbParams.max_ψ′) \n")
-      write(file, "Random-number seed = $(perturbParams.seed)\n\n")
+      write(file, "Random-number seed = $(perturbParams.seed)\n")
+
+      if perturbParams.sum_of_modes_perturbation
+         write(file, "Initial perturbation type = modal sum\n")
+         write(file, "Number of modes seeded = $(perturbParams.number_of_initial_modes)\n\n")
+      else
+         write(file, "Initial perturbation type = white noise\n\n")
+      end
       
       write(file, "Checkpoint interval = $(simParams.Δt_checkpt) \n")
       write(file, "align_time_step = $(simParams.align_time_step) \n")
