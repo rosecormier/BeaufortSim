@@ -1,8 +1,5 @@
 using LinearAlgebra: norm
-#using Oceananigans
-using Oceananigans.Fields
-using Oceananigans.Grids
-using Oceananigans.Operators
+using Oceananigans.Fields, Oceananigans.Grids, Oceananigans.Operators
 using Oceanostics.KineticEnergyEquation
 using Oceanostics.PotentialEnergyEquation
 using Oceanostics.TurbulentKineticEnergyEquation
