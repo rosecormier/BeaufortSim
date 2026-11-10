@@ -1,6 +1,4 @@
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Units
+using Oceananigans.Architectures, Oceananigans.Grids, Oceananigans.Units
 
 #Geophysical constants
 const GravitationalAcceleration = -9.80665 * meter * (second^2)
@@ -56,6 +54,10 @@ end
    max_ψ′::Float64 = 1e-4
    
    seed::Int64 = 12345 #Random number seed for reproducibility
+   
+   sum_of_modes_perturbation::Bool = true
+   
+   number_of_initial_modes::Int64 = 10
 end
 
 @kwdef struct DoubleTanhStratParams
@@ -79,23 +81,30 @@ end
    align_time_step::Bool          = false
    minimum_relative_step::Float64 = 1e-9
    
-   output_Fields_file_extension::String = "jld2"
+   output_Fields_file_extension::String = "nc"
    
    save_PKE_full_domain_budget_terms::Bool            = true
    save_PKE_gyre_budget_terms::Bool                   = false
-   save_individual_Cartesian_bkgd_energy_to_PKE_terms = true
-   save_total_ME_budgets_terms::Bool                  = true
+   save_individual_Cartesian_bkgd_energy_to_PKE_terms = false
+   save_total_ME_budgets_terms::Bool                  = false
 end
 
 @kwdef struct VisParams
    
    #Whether to run various visualization functions
-   do_Fourier_mode_decomp::Bool = true
-   vis_const_x::Bool            = false
+   do_Fourier_mode_decomp::Bool = false
+   vis_const_x::Bool            = true
    vis_const_y::Bool            = false
-   vis_const_z::Bool            = false
+   vis_const_z::Bool            = true
    vis_norms::Bool              = false
    vis_energetics::Bool         = false
    vis_z_grid::Bool             = false #Note: currently can only be done on CPU
    vis_B_and_N²::Bool           = false
+   
+   #Step size for animations and timeseries
+   t_idx_skip = 1
+   
+   #Size of uniformly polar grid for Fourier decompositions
+   Nr::Int64 = 10
+   Nφ::Int64 = 8
 end
