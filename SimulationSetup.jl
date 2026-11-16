@@ -68,6 +68,11 @@ function StandardSimulationOutputFields(model, backgroundFields)
 	                 b = model.tracers.b,
                    ζ = CenterField_ζ(model.grid, ux, uy)
                   )
+                  
+   if simParams.output_Fields_file_extension == "jld2"
+      pointwise_PKE = KernelFunctionOperation{Center, Center, Center}(PKE_ccc, model.grid, ux, uy, uz, backgroundFields[:Ux], backgroundFields[:Uy], backgroundFields[:Uz])
+      FieldOutputs = merge(FieldOutputs, (PKE = pointwise_PKE,))
+   end
 
    ux′_norm(model) = perturbation_norm(ux, backgroundFields[:Ux])
    uy′_norm(model) = perturbation_norm(uy, backgroundFields[:Uy])
