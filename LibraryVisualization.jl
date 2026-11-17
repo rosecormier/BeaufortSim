@@ -1,12 +1,19 @@
 using Adapt, CairoMakie, CUDA, Glob, LinearAlgebra
 using Oceananigans.AbstractOperations, Oceananigans.Fields
 
+@inline xᶜInt(grid, p::GridParams) = no_offset_view(grid.xᶜᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
+@inline xᶠInt(grid, p::GridParams) = no_offset_view(grid.xᶠᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
+@inline yᶜInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶜᵃ)[(p.Hy + 1):(end - p.Hy)]
+@inline yᶠInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶠᵃ)[(p.Hy + 1):(end - p.Hy)]
+@inline zᶜInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶜ)[(p.Hz + 1):(end - p.Hz)]
+@inline zᶠInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶠ)[(p.Hz + 1):(end - p.Hz)]
+
 ###########################################################################
 # HELPER FUNCTIONS TO PLOT 2D SLICES OF PRIMITIVE OR DIAGNOSTIC VARIABLES #
 ###########################################################################
 
-function get_symm_range_lims(scalar_field, max_fraction = 1;
-                             prescribed_max = 1e-16)
+function get_symm_range_lims(scalar_field;
+                             max_fraction = 1, prescribed_max = 1e-16)
    #=
    Given a scalar field, extract appropriate limits for a colorbar that is
     symmetric about 0.
@@ -19,39 +26,59 @@ function get_symm_range_lims(scalar_field, max_fraction = 1;
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
 
-function get_2D_spatial_axis_idcs(const_dimension, const_dimension_idx;
-                                  Hx = 3, Hy = 3, Hz = 3,
-                                  xC = nothing, yC = nothing, zC = nothing,
-                                  zF = nothing)         
+function get_nonnegative_range_lims(scalar_field;
+                                    max_fraction = 1, prescribed_max = 1e-16)
+   #=
+   Given a scalar field, extract appropriate upper limit for a colorbar whose
+    lower limit is 0.
+   Scale the absolute maximum of the data by 'max_fraction'.
+   If the absolute maximum of the data is less than 'prescribed_max', treat
+    'prescribed_max' as the absolute maximum of the data instead.
+   =#
+   
+   field_max  = max(maximum(abs.(scalar_field)), prescribed_max)
+   field_lims = [0, (max_fraction * field_max)]
+end
+
+function get_nonpositive_range_lims(scalar_field;
+                                    max_fraction = 1, prescribed_min = -1e-16)
+   #=
+   Given a scalar field, extract appropriate upper limit for a colorbar whose
+    lower limit is 0.
+   Scale the absolute maximum of the data by 'max_fraction'.
+   If the absolute maximum of the data is less than 'prescribed_max', treat
+    'prescribed_max' as the absolute maximum of the data instead.
+   =#
+   
+   field_min  = min(minimum(scalar_field), prescribed_min)
+   field_lims = [(max_fraction * field_min), 0]
+end
+
+function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension, const_dimension_idx)         
    #=
    Return two arrays of coordinate indices partitioning a 2D slice (constant
     along 'const_dimension').
    The first array can be used to slice a CenterField; the second array can be
     used to slice a ZFaceField.
-   'xC' (resp. 'yC', 'zC', 'zF') must include 'Hx' (resp. 'Hy', 'Hz', 'Hz') halo
-    points at each boundary.
    =#
+
+   Hx, Hy, Hz = gridParams.Hx, gridParams.Hy, gridParams.Hz
+   
+   xC, yC = xᶜInt(grid, gridParams), yᶜInt(grid, gridParams)
+   zC, zF = zᶜInt(grid, gridParams), zᶠInt(grid, gridParams)
 
    if const_dimension == "x"
 
       if length(xC) == 1 #Grid is 2D with only y and z axes
-         yCzC_idcs = (1, 
-                      (Hy + 1):(length(yC) - Hy), 
-                      (Hz + 1):(length(zC) - Hz)
-                     )
-         yCzF_idcs = (1, 
-                      (Hy + 1):(length(yC) - Hy), 
-                      (Hz + 1):(length(zF) - Hz - 1)
-                     ) 
+         yCzC_idcs = (1, (Hy + 1):(gridParams.Ny + Hy),
+                      (Hz + 1):(gridParams.Nz + Hz))
+         yCzF_idcs = (1, (Hy + 1):(gridParams.Ny + Hy),
+                      (Hz + 1):(gridParams.Nz + Hz + 1))
       elseif length(xC) > 1 #Grid is 3D
-         yCzC_idcs = (const_dimension_idx, 
-                      (Hy + 1):(length(yC) - Hy), 
-                      (Hz + 1):(length(zC) - Hz)
-                     )
-         yCzF_idcs = (const_dimension_idx, 
-                      (Hy + 1):(length(yC) - Hy), 
-                      (Hz + 1):(length(zF) - Hz - 1)
-                     )
+         yCzC_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
+                      (Hz + 1):(gridParams.Nz + Hz))
+         yCzF_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
+                      (Hz + 1):(gridParams.Nz + Hz)) #+ 1))
       end
 
       return yCzC_idcs, yCzF_idcs
@@ -59,23 +86,15 @@ function get_2D_spatial_axis_idcs(const_dimension, const_dimension_idx;
    elseif const_dimension == "y"
 
       if length(yC) == 1 #Grid is 2D with only x and z axes
-         xCzC_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      1, 
-                      (Hz + 1):(length(zC) - Hz)
-                     )
-         xCzF_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      1, 
-                      (Hz + 1):(length(zF) - Hz - 1)
-                     )
+         xCzC_idcs = ((Hx + 1):(gridParams.Nx + Hx), 1,
+                      (Hz + 1):(gridParams.Nz + Hz))
+         xCzF_idcs = ((Hx + 1):(gridParams.Nx + Hx), 1,
+                      (Hz + 1):(gridParams.Nz + Hz + 1))
       elseif length(yC) > 1 #Grid is 3D
-         xCzC_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      const_dimension_idx, 
-                      (Hz + 1):(length(zC) - Hz)
-                     )
-         xCzF_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      const_dimension_idx,
-                      (Hz + 1):(length(zF) - Hz - 1)
-                     )
+         xCzC_idcs = ((Hx + 1):(gridParams.Nx + Hx), const_dimension_idx,
+                      (Hz + 1):(gridParams.Nz + Hz))
+         xCzF_idcs = ((Hx + 1):(gridParams.Nx + Hx), const_dimension_idx,
+                      (Hz + 1):(gridParams.Nz + Hz + 1))
       end
 
       return xCzC_idcs, xCzF_idcs
@@ -83,15 +102,11 @@ function get_2D_spatial_axis_idcs(const_dimension, const_dimension_idx;
    elseif const_dimension == "z"
 
       if length(zC) == 1 #Grid is 2D with only x and y axes
-         xCyC_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      (Hy + 1):(length(yC) - Hy),
-                      1
-                     )
+         xCyC_idcs = ((Hx + 1):(gridParams.Nx + Hx),
+                      (Hy + 1):(gridParams.Ny + Hy), 1)
       elseif length(zC) > 1 #Grid is 3D
-         xCyC_idcs = ((Hx + 1):(length(xC) - Hx), 
-                      (Hy + 1):(length(yC) - Hy), 
-                      const_dimension_idx
-                     )
+         xCyC_idcs = ((Hx + 1):(gridParams.Nx + Hx), 
+                      (Hy + 1):(gridParams.Ny + Hy), const_dimension_idx)
       end
 
       return xCyC_idcs, xCyC_idcs #zC or zF is irrelevant on a constant-z slice
@@ -135,28 +150,42 @@ function set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs, ax_titles)
 end
 
 function plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, ax_uφ, ax_uz, dictFields,
-                                        axis1, H_axis1, axis2_zC, H_axis2_zC, 
-                                        axis2_zF, H_axis2_zF, colorranges,
-                                        colormap)
+                                        axis1, axis2_zC, axis2_zF, colorranges,
+                                        colormap; fixed_colorbar = false)
+                                        
+   if fixed_colorbar #Default to symmetric colorranges based on limits of data
+      
+      for key in keys(dictFields)
+         if !(key in keys(colorranges))
+            colorranges[key] = get_symm_range_lims(dictFields[key], max_fraction = colorbar_max_fraction)
+         end
+      end
+      
+      hm_b  = heatmap!(ax_b, axis1, axis2_zC, dictFields["b"], 
+                       colorrange = colorranges["b"], colormap = colormap)
+      hm_ur = heatmap!(ax_ur, axis1, axis2_zC, dictFields["ur"],
+                       colorrange = colorranges["ur"], colormap = colormap)
+      hm_uφ = heatmap!(ax_uφ, axis1, axis2_zC, dictFields["uφ"],
+                       colorrange = colorranges["uφ"], colormap = colormap)
+      hm_uz = heatmap!(ax_uz, axis1, axis2_zF, dictFields["uz"],
+                       colorrange = colorranges["uz"], colormap = colormap)
 
-   hm_b  = heatmap!(ax_b, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], dictFields["b"], 
-                    colorrange = colorranges["b"], colormap = colormap)
-   hm_ur = heatmap!(ax_ur, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], dictFields["ur"],
-                    colorrange = colorranges["ur"], colormap = colormap)
-   hm_uφ = heatmap!(ax_uφ, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], dictFields["uφ"],
-                    colorrange = colorranges["uφ"], colormap = colormap)
-   hm_uz = heatmap!(ax_uz, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                    axis2_zF[(H_axis2_zC + 1):(end - H_axis2_zC)], dictFields["uz"],
-                    colorrange = colorranges["uz"], colormap = colormap)
+   elseif !fixed_colorbar #Colorbar adjusts on every frame
+      
+      hm_b  = heatmap!(ax_b, axis1, axis2_zC, dictFields["b"],
+                       colormap = colormap)
+      hm_ur = heatmap!(ax_ur, axis1, axis2_zC, dictFields["ur"],
+                       colormap = colormap)
+      hm_uφ = heatmap!(ax_uφ, axis1, axis2_zC, dictFields["uφ"],
+                       colormap = colormap)
+      hm_uz = heatmap!(ax_uz, axis1, axis2_zF, dictFields["uz"],
+                       colormap = colormap)
+   end
 
    return hm_b, hm_ur, hm_uφ, hm_uz
 end
 
-function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
-                                  H_axis2_zC, axis2_zF, H_axis2_zF, 
+function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
                                   nearest, ax_kwargs, figtitle, 
                                   colorbar_max_fraction; 
                                   ax_titles = Dict("b" => L"$b$", 
@@ -171,11 +200,9 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
     single figure.
    =#
    
-   #Default to symmetric colorranges based on limits of data
-   for key in keys(dictFields)
+   for key in keys(dictFields) #Default to symmetric colorranges based on limits of data
       if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key],
-                                                colorbar_max_fraction)
+         colorranges[key] = get_symm_range_lims(dictFields[key], max_fraction = colorbar_max_fraction)
       end
    end
    
@@ -183,9 +210,8 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
                                                                    ax_titles)
    
    hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
-                                     ax_uφ, ax_uz, dictFields, axis1, H_axis1, 
-                                     axis2_zC, H_axis2_zC, axis2_zF, H_axis2_zF,
-                                     colorranges, colormap)
+                                     ax_uφ, ax_uz, dictFields, axis1, axis2_zC,
+                                     axis2_zF, colorranges, colormap)
                     
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
@@ -197,31 +223,22 @@ function plot_fig_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
    return fig
 end
 
-function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, H_axis1, axis2_zC,
-                                  H_axis2_zC, axis2_zF, H_axis2_zF,
+function set_up_anim_heatmaps_b_ur_uφ_uz(dictFields, axis1, axis2_zC, axis2_zF,
                                   nearest, ax_kwargs, colorbar_max_fraction;
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ur" => L"$u_r$", 
                                                    "uφ" => L"$u_{\phi}$", 
                                                    "uz" => L"$u_z$"),
-                                  colorranges = Dict(), 
+                                  colorranges = Dict(), fixed_colorbar = false,
                                   colormap = Reverse(:RdBu_5))
-   
-   #Default to symmetric colorranges based on limits of data
-   for key in keys(dictFields)
-      if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key],
-                                                colorbar_max_fraction)
-      end
-   end
    
    fig, ax_b, ax_ur, ax_uφ, ax_uz = set_up_fig_heatmaps_b_ur_uφ_uz(ax_kwargs,
                                                                    ax_titles)
-                                  
+
    hm_b, hm_ur, hm_uφ, hm_uz = plot_frame_heatmaps_b_ur_uφ_uz(ax_b, ax_ur, 
-     ax_uφ, ax_uz, dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF,
-     H_axis2_zF, colorranges, colormap)
-                    
+     ax_uφ, ax_uz, dictFields, axis1, axis2_zC, axis2_zF, colorranges, colormap;
+     fixed_colorbar = fixed_colorbar)
+
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ur, tickformat = "{:.1e}", label = "m/s")
    Colorbar(fig[3, 2], hm_uφ, tickformat = "{:.1e}", label = "m/s")
@@ -240,24 +257,33 @@ function set_up_fig_heatmaps_b_ζ(ax_kwargs, ax_titles)
    return fig, ax_b, ax_ζ
 end
 
-function plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, H_axis1,
-                                 axis2_zC, H_axis2_zC,  axis2_zF, H_axis2_zF,
-                                 colorranges, colormap)
+function plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, axis2,
+                                 colorranges, colormap; fixed_colorbar = false)
+                                 
+   if fixed_colorbar #Default to symmetric colorranges based on limits of data
+   
+      for key in keys(dictFields)
+         if !(key in keys(colorranges))
+            colorranges[key] = get_symm_range_lims(dictFields[key], max_fraction = colorbar_max_fraction)
+         end
+      end
+      
+      hm_b = heatmap!(ax_b, axis1, axis2, dictFields["b"],
+                      colorrange = colorranges["b"], colormap = colormap)
+      hm_ζ = heatmap!(ax_ζ, axis1, axis2, dictFields["ζ"],
+                      colorrange = colorranges["ζ"], colormap = colormap)
+                   
+   elseif !fixed_colorbar #Colorbar adjusts on every frame
 
-   hm_b = heatmap!(ax_b, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                   axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], 
-                   dictFields["b"], colorrange = colorranges["b"], 
-                   colormap = colormap)
-   hm_ζ = heatmap!(ax_ζ, axis1[(H_axis1 + 1):(end - H_axis1)], 
-                   axis2_zC[(H_axis2_zC + 1):(end - H_axis2_zC)], 
-                   dictFields["ζ"], colorrange = colorranges["ζ"], 
-                   colormap = colormap)
+      hm_b = heatmap!(ax_b, axis1, axis2, dictFields["b"], colormap = colormap)
+      hm_ζ = heatmap!(ax_ζ, axis1, axis2, dictFields["ζ"], colormap = colormap)
+   end
 
    return hm_b, hm_ζ
 end
 
-function plot_fig_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC,
-                               axis2_zF, H_axis2_zF, nearest, ax_kwargs,
+function plot_fig_heatmaps_b_ζ(dictFields, axis1,
+                               axis2, nearest, ax_kwargs,
                                figtitle, colorbar_max_fraction;
                                ax_titles = Dict("b" => L"$b$", 
                                                 "ζ" => L"$\zeta$"), 
@@ -267,20 +293,10 @@ function plot_fig_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC
    Given arrays of data for fields b and ζ, plot heatmaps of both variables, on
     the slice defined by "nearest" and "ax_kwargs", together in a single figure.
    =#
-   
-   #Default to symmetric colorranges based on limits of data
-   for key in keys(dictFields)
-      if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key],
-                                                colorbar_max_fraction)
-      end
-   end
-   
+
    fig, ax_b, ax_ζ = set_up_fig_heatmaps_b_ζ(ax_kwargs, ax_titles)
    
-   hm_b, hm_ζ = plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, H_axis1, 
-                                        axis2_zC, H_axis2_zC, axis2_zF, 
-                                        H_axis2_zF, colorranges, colormap)
+   hm_b, hm_ζ = plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, axis2, colorranges, colormap)
                     
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ζ, tickformat = "{:.1e}", label = "1/s")
@@ -290,26 +306,17 @@ function plot_fig_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC
    return fig
 end
 
-function set_up_anim_heatmaps_b_ζ(dictFields, axis1, H_axis1, axis2_zC,
-                                  H_axis2_zC, axis2_zF, H_axis2_zF,
+function set_up_anim_heatmaps_b_ζ(dictFields, axis1, axis2,
                                   nearest, ax_kwargs;
                                   ax_titles = Dict("b" => L"$b$", 
                                                    "ζ" => L"$\zeta$"),
-                                  colorranges = Dict(), 
+                                  colorranges = Dict(), fixed_colorbar = false,
                                   colormap = Reverse(:RdBu_5))
-   
-   #Default to symmetric colorranges based on limits of data
-   for key in keys(dictFields)
-      if !(key in keys(colorranges))
-         colorranges[key] = get_symm_range_lims(dictFields[key],
-                                                colorbar_max_fraction)
-      end
-   end
    
    fig, ax_b, ax_ζ = set_up_fig_heatmaps_b_ζ(ax_kwargs, ax_titles)
                                   
-   hm_b, hm_ζ = plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, H_axis1, axis2_zC, H_axis2_zC, axis2_zF,
-     H_axis2_zF, colorranges, colormap)
+   hm_b, hm_ζ = plot_frame_heatmaps_b_ζ(ax_b, ax_ζ, dictFields, axis1, axis2,
+     colorranges, colormap; fixed_colorbar = fixed_colorbar)
                     
    Colorbar(fig[2, 2], hm_b, tickformat = "{:.1e}", label = "m/s²")
    Colorbar(fig[2, 4], hm_ζ, tickformat = "{:.1e}", label = "1/s")
@@ -736,37 +743,6 @@ function ∂r_q(q, x, y, zk, all_z)
 end
 
 #=
-function buoyancy_L(x,y,z,N²,f,Umax,D,Lⱼ,z0,y0)
-    Bba = @. 2*f*Umax*Lⱼ/D^2
-    Bbb = @. (tanh((y-y0)/Lⱼ)+1)
-    Bbc = @. (z-z0) * exp(-(z-z0)^2/D^2)
-    b_L = N².*z.+ Bba.* Bbc .* transpose(Bbb)   #Left Boundary = N²*z
-return b_L
-end
-
-function buoyancy_R(x,y,z,N²,f,Umax,D,Lⱼ,z0,y0)
-    Bba = @. 2*f*Umax*Lⱼ/D^2
-    Bbb = @. (tanh((y-y0)/Lⱼ) - 1)
-    Bbc = @. (z-z0) * exp(-(z-z0)^2/D^2)
-    b_R = N².*z .+ Bba.* Bbc .* transpose(Bbb)   #Right Boundary = N²*z
-return b_R
-end
-
-function buoyancy_C(x,y,z,N²,f,Umax,D,Lⱼ,z0,y0)
-    Bba = @. 2*f*Umax*Lⱼ/D^2
-    Bbb = @. (tanh((y-y0)/Lⱼ))
-    Bbc = @. (z-z0) * exp(-(z-z0)^2/D^2)
-    b_C = N².*z.+ Bba.* Bbc .* transpose(Bbb)   #Center = N²*z
-return b_C
-end
-
-function vel_B(x,y,z,N²,f,Umax,D,Lⱼ,z0,y0)
-    Uba = @. Umax/cosh((y-y0)/Lⱼ)^2
-    Ubb = @. exp(-(z-z0)^2/D^2)
-    Ub= Ubb*transpose(Uba)   #background velocity field
-return Ub
-end
-
 function density_from_buoyancy(b, ρ₀)
     # Compute the density (ρ) from the buoyancy (b) and reference density (ρ₀)
     ρ = @. ρ₀ * (1 - b / 9.81)
