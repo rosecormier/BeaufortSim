@@ -680,8 +680,8 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
          
       elseif simParams.output_Fields_file_extension == "jld2"
       
-         b_total = @lift b_TS[$n][xyzC_idcs...]
-         ζ_total = @lift ζ_TS[$n][xyzC_idcs...]
+         b_total = @lift no_offset_view(adapt(Array, b_TS[$n]))[xyzC_idcs...]
+         ζ_total = @lift no_offset_view(adapt(Array, ζ_TS[$n]))[xyzC_idcs...]
       end
 
       Δb = @lift $b_total .- B
@@ -805,14 +805,14 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       times = b_TS.times ./ 86400
       Nt    = length(times)
       
-      b_total_i  = b_TS[1][xyzC_idcs...]
-      b_total_f  = b_TS[Nt][xyzC_idcs...]
-      ur_total_i = ur_TS[1][xyzC_idcs...]
-      ur_total_f = ur_TS[Nt][xyzC_idcs...]
-      uφ_total_i = uφ_TS[1][xyzC_idcs...]
-      uφ_total_f = uφ_TS[Nt][xyzC_idcs...]
-      uz_total_i = uz_TS[1][xyzF_idcs...]
-      uz_total_f = uz_TS[Nt][xyzF_idcs...]
+      b_total_i  = no_offset_view(adapt(Array,b_TS[1]))[xyzC_idcs...]
+      b_total_f  = no_offset_view(adapt(Array,b_TS[Nt]))[xyzC_idcs...]
+      ur_total_i = no_offset_view(adapt(Array,ur_TS[1]))[xyzC_idcs...]
+      ur_total_f = no_offset_view(adapt(Array,ur_TS[Nt]))[xyzC_idcs...]
+      uφ_total_i = no_offset_view(adapt(Array,uφ_TS[1]))[xyzC_idcs...]
+      uφ_total_f = no_offset_view(adapt(Array,uφ_TS[Nt]))[xyzC_idcs...]
+      uz_total_i = no_offset_view(adapt(Array,uz_TS[1]))[xyzF_idcs...]
+      uz_total_f = no_offset_view(adapt(Array,uz_TS[Nt]))[xyzF_idcs...]
    end
    
    x  = xᶜInt(grid, gridParams) ./ 1000
@@ -923,10 +923,10 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       
       elseif simParams.output_Fields_file_extension == "jld2"
       
-         b_total  = @lift b_TS[$n][xyzC_idcs...]
-         ur_total = @lift ur_TS[$n][xyzC_idcs...]
-         uφ_total = @lift uφ_TS[$n][xyzC_idcs...]
-         uz_total = @lift uz_TS[$n][xyzF_idcs...]
+         b_total  = @lift no_offset_view(adapt(Array, b_TS[$n]))[xyzC_idcs...]
+         ur_total = @lift no_offset_view(adapt(Array, ur_TS[$n]))[xyzC_idcs...]
+         uφ_total = @lift no_offset_view(adapt(Array, uφ_TS[$n]))[xyzC_idcs...]
+         uz_total = @lift no_offset_view(adapt(Array, uz_TS[$n]))[xyzF_idcs...]
       end
 
       Δb  = @lift $b_total .- B
