@@ -78,7 +78,7 @@ function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension,
          yCzC_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
                       (Hz + 1):(gridParams.Nz + Hz))
          yCzF_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
-                      (Hz + 1):(gridParams.Nz + Hz)) #+ 1))
+                      (Hz + 1):(gridParams.Nz + Hz + 1))
       end
 
       return yCzC_idcs, yCzF_idcs
