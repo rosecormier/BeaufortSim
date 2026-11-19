@@ -30,9 +30,9 @@ perturbParams         = cudaconvert(PerturbationParams())
 simParams             = SimulationParams()
 visParams             = VisParams()
 
-const Δt = parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf = parse(Float64, ARGS[2]) #Simulation stop time (s)
-
+const Δt = 600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf = 600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
+#=
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -40,6 +40,9 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
+=#
+
+const Δt_save = 600
 
 #Plot 2D slices at these indices
 const x_idx = gridParams.Nx ÷ 2
@@ -155,6 +158,8 @@ fill_halo_regions!(model.velocities.v)
 fill_halo_regions!(model.velocities.w)
 fill_halo_regions!(model.pressures)
 
+plot_rzMean_φDFT_field(model.velocities.u, grid, gridParams, visParams.Nr, visParams.Nφ, datetimenow) 
+
 simulation = CreateSimulation(model, Δt, tf, Δt_save, simParams, modelParams, gyreParams, backgroundFields, datetimenow)
 
 #Make paths if nonexistent
@@ -190,26 +195,28 @@ if visParams.do_Fourier_mode_decomp
 end
 
 if visParams.vis_const_x
-   #visualize_fields_2D_slice(datetimenow, "x", x_idx, backgroundFields, 
-   #                          gridParams.Hx, gridParams.Hy, gridParams.Hz;
-   #                          t_idx_skip = visParams.t_idx_skip)
-   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, gridParams, simParams, backgroundFields; 
+   visualize_fields_2D_slice(datetimenow, "x", x_idx, model.grid, gridParams,
+                             backgroundFields;
+                             t_idx_skip = visParams.t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "x", x_idx, model.grid, gridParams, simParams,
+                     backgroundFields; 
                      plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
 if visParams.vis_const_y
-   visualize_fields_2D_slice(datetimenow, "y", y_idx, backgroundFields, 
-                             gridParams.Hx, gridParams.Hy, gridParams.Hz; 
+   visualize_fields_2D_slice(datetimenow, "y", y_idx, model.grid, gridParams,
+                             backgroundFields;
                              t_idx_skip = visParams.t_idx_skip)
    visualize_b_and_ζ(datetimenow, "y", y_idx, model.grid, gridParams, simParams, backgroundFields; 
                      plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
 if visParams.vis_const_z
-   #visualize_fields_2D_slice(datetimenow, "z", z_idx, backgroundFields, 
-   #                          gridParams.Hx, gridParams.Hy, gridParams.Hz;
-   #                          t_idx_skip = visParams.t_idx_skip)
-   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, gridParams, simParams, backgroundFields;
+   visualize_fields_2D_slice(datetimenow, "z", z_idx, model.grid, gridParams,
+                             backgroundFields;
+                             t_idx_skip = visParams.t_idx_skip)
+   visualize_b_and_ζ(datetimenow, "z", z_idx, model.grid, gridParams, simParams,
+                     backgroundFields;
                      plot_animation = true, colorbar_max_fraction = 0.75)
 end
 
@@ -226,7 +233,7 @@ if visParams.vis_norms
 end
 
 if visParams.vis_energetics
-   visualize_ME(datetimenow, model.grid, simParams)
+   #visualize_ME(datetimenow, model.grid, simParams)
    visualize_PKE(datetimenow, model.grid, simParams)
 end
 

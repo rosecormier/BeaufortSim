@@ -1055,7 +1055,7 @@ function plot_rzMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ,
    scatter!(ax, kφs, (abs2.(FFT_vec) ./ Nkφ), color = :black)
    
    fig[1, 1] = Label(fig, 
-                     L"$r$- and $z$-averaged Fourier components of $(fieldName)",
+                     L"$r$- and $z$-averaged Fourier components of %$(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -1267,7 +1267,7 @@ function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldNam
    
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
    
-   fig[1, 1] = Label(fig, L"$r$-averaged Fourier components of $(fieldName)",
+   fig[1, 1] = Label(fig, L"$r$-averaged Fourier components of %$(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent
@@ -1305,7 +1305,7 @@ function plot_zMean_φDFT_field(scalarField, grid, gridParams::GridParams, Nr,
    
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
    
-   fig[1, 1] = Label(fig, L"$z$-averaged Fourier components of $(fieldName)",
+   fig[1, 1] = Label(fig, L"$z$-averaged Fourier components of %$(fieldName)",
                      fontsize = 24, tellwidth = false)
    
    mkpath("./Plots") #Make visualization directory if nonexistent

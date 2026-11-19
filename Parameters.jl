@@ -11,9 +11,9 @@ const EarthRotationRate         = 7.2921e-5 * (second^(-1))
    topology::Tuple = (Bounded, Bounded, Bounded)
    
    #Numbers of gridpoints
-   Nx::Int64 = 512
-   Ny::Int64 = 512
-   Nz::Int64 = 100
+   Nx::Int64 = 52
+   Ny::Int64 = 52
+   Nz::Int64 = 10
    
    #Halo sizes
    Hx::Int64 = 3
@@ -36,7 +36,7 @@ end
 
    lat::Float64 = 74.0                              #Latitude (deg. N)
    f::Float64   = 2 * EarthRotationRate * sind(lat) #Coriolis frequency (s^{-1})
-   U::Float64   = 1e-1 * (meter/second^2)           #Maximum gyre speed (at surface)
+   U::Float64   = 5e-2 * (meter/second^2)           #Maximum gyre speed (at surface)
    σr::Float64  = 250 * kilometer                   #Radial gyre length scale
    σz::Float64  = 300.0 * meter                     #Vertical gyre length scale
    
@@ -49,7 +49,6 @@ end
 end
 
 @kwdef struct PerturbationParams
-
    #Maximum relative amplitude of initial streamfunction perturbation
    max_ψ′::Float64 = 1e-4
    
@@ -57,7 +56,7 @@ end
    
    sum_of_modes_perturbation::Bool = true
    
-   number_of_initial_modes::Int64 = 10
+   number_of_initial_modes::Int64 = 2
 end
 
 @kwdef struct DoubleTanhStratParams
@@ -81,7 +80,7 @@ end
    align_time_step::Bool          = false
    minimum_relative_step::Float64 = 1e-9
    
-   output_Fields_file_extension::String = "nc"
+   output_Fields_file_extension::String = "jld2"
    
    save_PKE_full_domain_budget_terms::Bool            = true
    save_PKE_gyre_budget_terms::Bool                   = false
@@ -93,9 +92,9 @@ end
    
    #Whether to run various visualization functions
    do_Fourier_mode_decomp::Bool = false
-   vis_const_x::Bool            = true
+   vis_const_x::Bool            = false
    vis_const_y::Bool            = false
-   vis_const_z::Bool            = true
+   vis_const_z::Bool            = false
    vis_norms::Bool              = false
    vis_energetics::Bool         = false
    vis_z_grid::Bool             = false #Note: currently can only be done on CPU
