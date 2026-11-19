@@ -176,22 +176,25 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
       @compute perturb_scale_Field = Field(KernelFunctionOperation{Center, Center, Face}(perturbScale, grid))
       =#
       
-      #= doesnt work
       @compute φField = Field(KernelFunctionOperation{Center, Center, Face}(φ_cca, grid))
       
       anglesArray = adapt(Array, interior(φField))
-      #Try initializing with 0s instead
       
+      #Try initializing with 0s instead
       perturbStructure = Array{Float64}(undef, size(anglesArray))
+      perturbStructure2 = zeros(Float64, size(anglesArray))
+      print(perturbStructure2)
       
       CUDA.@allowscalar for kφ in 1:perturbParams.number_of_initial_modes
          perturbStructure[:, :, :] .+= cos.(kφ * anglesArray[:, :, :] .+ 2π * phasesArray[kφ])
+         perturbStructure2[:, :, :] .+= cos.(kφ * anglesArray[:, :, :] .+ 2π * phasesArray[kφ])
       end
       
-      CUDA.@allowscalar perturbScale = perturbParams.max_ψ′ * (1 .+ perturbStructure / perturbParams.number_of_initial_modes)
+      print(perturbStructure == perturbStructure2)
+      
+      CUDA.@allowscalar perturbScale = perturbParams.max_ψ′ * (1 .+ perturbStructure2 / perturbParams.number_of_initial_modes)
       
       set!(perturb_scale_Field, perturbScale)
-      =#
       
       #=
       @compute φField = Field(KernelFunctionOperation{Center, Center, Face}(φ_cca, grid))
