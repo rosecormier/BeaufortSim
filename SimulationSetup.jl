@@ -8,9 +8,9 @@ using Oceananigans.Units
 
 function Progress(s::Simulation, modelParams::ModelParams)
 
-   u_absmax             = maximum(abs, s.model.velocities.u)
-   w_absmax             = maximum(abs, s.model.velocities.w)
-   b_absmax             = maximum(abs, s.model.tracers.b)
+   u_absmax = maximum(abs, s.model.velocities.u)
+   w_absmax = maximum(abs, s.model.velocities.w)
+   b_absmax = maximum(abs, s.model.tracers.b)
    
    if modelParams.useNonhydrostaticModel
       pHY′_absmax          = maximum(abs, s.model.pressures.pHY′)

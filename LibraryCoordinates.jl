@@ -1,17 +1,26 @@
 include("Parameters.jl")
 
-using CSV
-using Oceananigans
-using Oceananigans.AbstractOperations
-using Oceananigans.Fields
+using CSV, Oceananigans
+using Oceananigans.AbstractOperations, Oceananigans.Fields
 using OffsetArrays: no_offset_view
 using Tables
+
+##############################################################
+# FUNCTIONS TO ACCESS INTERIOR OCEANANIGANS-GRID COORDINATES #
+##############################################################
+
+@inline xᶜInt(grid, p::GridParams) = no_offset_view(grid.xᶜᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
+@inline xᶠInt(grid, p::GridParams) = no_offset_view(grid.xᶠᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
+@inline yᶜInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶜᵃ)[(p.Hy + 1):(end - p.Hy)]
+@inline yᶠInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶠᵃ)[(p.Hy + 1):(end - p.Hy)]
+@inline zᶜInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶜ)[(p.Hz + 1):(end - p.Hz)]
+@inline zᶠInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶠ)[(p.Hz + 1):(end - p.Hz)]
 
 ##############################################
 # FUNCTIONS TO BUILD/SAVE OCEANANIGANS GRIDS #
 ##############################################
 
-function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
+function ChebyshevSpacedFaces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
 
    Lξ = ξ_max - ξ_min
    
@@ -30,11 +39,10 @@ function chebyshev_spaced_faces(i, ξ_min, Nξ; ξ_max = 0.0, ξ0 = 0.0)
    return i_face
 end
 
-function build_custom_z_grid(z_grid_type, Lz, Nz) 
+function BuildCustom_zGrid(z_grid_type, Lz, Nz) 
 
    custom_z_grids = Dict(:uniform => (-Lz, 0),
-                         :chebyshev => k -> chebyshev_spaced_faces(k, -Lz,
-                                                                   Nz + 1)
+                         :chebyshev => k -> ChebyshevSpacedFaces(k, -Lz, Nz + 1)
                         )
    
    return custom_z_grids[z_grid_type]
@@ -50,7 +58,7 @@ function BuildOceananigansRectilinearGrid(p::GridParams)
                           size = (p.Nx, p.Ny, p.Nz), 
                           x = (-p.Lr, p.Lr), 
                           y = (-p.Lr, p.Lr), 
-                          z = build_custom_z_grid(p.z_grid_type, p.Lz, p.Nz),
+                          z = BuildCustom_zGrid(p.z_grid_type, p.Lz, p.Nz),
                           halo = (p.Hx, p.Hy, p.Hz)
                          )
 end
@@ -88,69 +96,7 @@ end
 @inline φ_fca(i, j, k, grid) = @inbounds atan(grid.yᵃᶜᵃ[j], grid.xᶠᵃᵃ[i])
 @inline φ_ffa(i, j, k, grid) = @inbounds atan(grid.yᵃᶠᵃ[j], grid.xᶠᵃᵃ[i])
 
-function polar_coords_Fields(grid, xLoc, yLoc, zLoc)
-   #=
-   Compute polar (r, φ) coordinates for each (x, y)-point at specified 'loc' on
-    'grid'; return 'r' and 'φ' as Fields (at appropriate location 'loc') on
-    'grid'.
-   =#
-   
-   if (xLoc == "c" || xLoc == "Center")
-   
-      if (yLoc == "c" || yLoc == "Center")
-      
-         if (zLoc == "c" || z == "Center")
-            r_op = KernelFunctionOperation{Center, Center, Center}(r_cca, grid)
-            φ_op = KernelFunctionOperation{Center, Center, Center}(φ_cca, grid)
-         elseif (zLoc == "f" || zLoc == "Face")
-            r_op = KernelFunctionOperation{Center, Center, Face}(r_cca, grid)
-            φ_op = KernelFunctionOperation{Center, Center, Face}(φ_cca, grid)
-         end
-         
-      elseif (yLoc == "f" || yLoc == "Face")
-         
-         if (zLoc == "c" || zLoc == "Center")
-            r_op = KernelFunctionOperation{Center, Face, Center}(r_cfa, grid)
-            φ_op = KernelFunctionOperation{Center, Face, Center}(φ_cfa, grid)
-         elseif (zLoc == "f" || zLoc == "Face")
-            r_op = KernelFunctionOperation{Center, Face, Face}(r_cfa, grid)
-            φ_op = KernelFunctionOperation{Center, Face, Face}(φ_cfa, grid)
-         end
-         
-      end
-   
-   elseif (xLoc == "f" || xLoc == "Face")
-   
-      if (yLoc == "c" || yLoc == "Center")
-      
-         if (zLoc == "c" || zLoc == "Center")
-            r_op = KernelFunctionOperation{Face, Center, Center}(r_fca, grid)
-            φ_op = KernelFunctionOperation{Face, Center, Center}(φ_fca, grid)
-         elseif (zLoc == "f" || zLoc == "Face")
-            r_op = KernelFunctionOperation{Face, Center, Face}(r_fca, grid)
-            φ_op = KernelFunctionOperation{Face, Center, Face}(φ_fca, grid)
-         end
-         
-      elseif (yLoc == "f" || yLoc == "Face")
-         
-         if (zLoc == "c" || zLoc == "Center")
-            r_op = KernelFunctionOperation{Face, Face, Center}(r_ffa, grid)
-            φ_op = KernelFunctionOperation{Face, Face, Center}(φ_ffa, grid)
-         elseif (zLoc == "f" || zLoc == "Face")
-            r_op = KernelFunctionOperation{Face, Face, Face}(r_ffa, grid)
-            φ_op = KernelFunctionOperation{Face, Face, Face}(φ_ffa, grid)
-         end
-      
-      end
-   end
-   
-   @compute r = Field(r_op)
-   @compute φ = Field(φ_op)
-
-   return r, φ
-end
-
-function compute_Cart_coords(r, φ, z)
+function ComputeCartesianCoords(r, φ, z)
    #=
    Given cylindrical (r, φ, z) coordinates of point(s), compute representation
    in Cartesian (x, y, z) coordinates.
@@ -160,7 +106,7 @@ function compute_Cart_coords(r, φ, z)
    y = Array{Float64}(undef, length(r), length(φ))
    
    #If r and φ both 'StepRangeLen', must loop over one of them (can't broadcast)
-   for r_idx in 1:1:length(r)
+   for r_idx in 1:length(r)
       x[r_idx, :] = r[r_idx] * cos.(φ)
       y[r_idx, :] = r[r_idx] * sin.(φ)
    end

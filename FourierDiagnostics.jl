@@ -1,20 +1,18 @@
 include("LibraryCoordinates.jl")
 
 using AbstractFFTs, Interpolations
-using Oceananigans.BoundaryConditions
-using Oceananigans.Grids
+using Oceananigans.BoundaryConditions, Oceananigans.Grids
 using Oceananigans
 using OffsetArrays: no_offset_view
 using Statistics
 
-function construct_uniform_polar_grid(Lr, Nr, Nφ)
+function ConstructUniformPolarGrid(Lr::Float64, Nr::Int64, Nφ::Int64)
    #=
    Return Nr evenly spaced gridpoints between 'dr' and 'Lr', and Nφ evenly
     spaced gridpoints between 0 and 2π (without double-counting φ % 2π = 0).
    =#
 
-   dr = Lr / (Nr + 1)
-   dφ = 2π / Nφ
+   dr, dφ = Lr / (Nr + 1), 2π / Nφ
 
    r_gridpoints = dr:dr:(Lr - dr)
    φ_gridpoints = 0:dφ:(2π - dφ)
@@ -24,11 +22,10 @@ end
 
 @inline φWavenumbers(Nφ::Int64) = (rfftfreq(Nφ, 2π * Nφ)) ./ 2π
 
-function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
+function compute_φFFT_of_sim_Field(simField::AbstractField, grid, p::GridParams,
                                    Nr::Int64, Nφ::Int64;
                                    rCoordsCylGrid = nothing,
                                    φCoordsCylGrid = nothing, kφs = nothing,
-                                   Hx = nothing, Hy = nothing, Hz = nothing,
                                    rAvg = false, zAvg = false)
    #=
    Compute the Nφ-point azimuthal Fourier transform of 'simField' (which need
@@ -39,44 +36,33 @@ function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
     perform r- and z-averaging, respectively, before returning.
    =#
 
-   #If halos not otherwise specified, set them to 'grid' halo sizes
-   if isnothing(Hx)
-      Hx = gridParams.Hx
-   end
-   if isnothing(Hy)
-      Hy = gridParams.Hy
-   end
-   if isnothing(Hz)
-      Hz = gridParams.Hz
-   end
-
    ####################################################
    # Construct a uniformly spaced (Nr x Nφ x Nz) grid #
    ####################################################
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
    if (isnothing(rCoordsCylGrid) || isnothing(φCoordsCylGrid))
-      rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
+      rCoordsCylGrid, φCoordsCylGrid = ConstructUniformPolarGrid(p.Lr, Nr, Nφ)
    end
  
    #Read in the coordinates of Oceananigans (Cartesian) gridpoints
    
    if location(simField)[1] == Center
-      xCoordsCartGrid = no_offset_view(grid.xᶜᵃᵃ)[(Hx + 1):(end - Hx)]
+      xCoordsCartGrid = xᶜInt(grid, p)
    elseif location(simField)[1] == Face
-      xCoordsCartGrid = no_offset_view(grid.xᶠᵃᵃ)[(Hx + 1):(end - Hx)]
+      xCoordsCartGrid = xᶠInt(grid, p)
    end
 
    if location(simField)[2] == Center
-      yCoordsCartGrid = no_offset_view(grid.yᵃᶜᵃ)[(Hy + 1):(end - Hy)]
+      yCoordsCartGrid = yᶜInt(grid, p)
    elseif location(simField)[2] == Face
-      yCoordsCartGrid = no_offset_view(grid.yᵃᶠᵃ)[(Hy + 1):(end - Hy)]
+      yCoordsCartGrid = yᶠInt(grid, p)
    end
 
    if location(simField)[3] == Center
-      zCoordsCartGrid = no_offset_view(grid.z.cᵃᵃᶜ)[(Hz + 1):(end - Hz)]
+      zCoordsCartGrid = zᶜInt(grid, p)
    elseif location(simField)[3] == Face
-      zCoordsCartGrid = no_offset_view(grid.z.cᵃᵃᶠ)[(Hz + 1):(end - Hz)]
+      zCoordsCartGrid = zᶠInt(grid, p)
    end
    
    #Tile xCoordsCartGrid and yCoordsCartGrid along complementary dimensions,
@@ -93,7 +79,7 @@ function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
                                  outer = [length(xCoordsCartGrid)])
 
    #Cartesian coordinates of the points on the cylindrically uniform grid
-   xCoordsCylGrid, yCoordsCylGrid, zCoordsCylGrid = compute_Cart_coords(rCoordsCylGrid, φCoordsCylGrid, zCoordsCartGrid)
+   xCoordsCylGrid, yCoordsCylGrid, zCoordsCylGrid = ComputeCartesianCoords(rCoordsCylGrid, φCoordsCylGrid, zCoordsCartGrid)
 
    ###############################################################
    # Perform the interpolation of data to the uniform-polar grid #
@@ -162,7 +148,8 @@ function compute_φFFT_of_sim_Field(simField::AbstractField, grid, gridParams,
 end
 
 function compute_φFFT_of_sim_Field(simField::AbstractArray, 
-                                   xCoordsCartGrid, yCoordsCartGrid, zCoordsCartGrid, gridParams, 
+                                   xCoordsCartGrid, yCoordsCartGrid, 
+                                   zCoordsCartGrid, p::GridParams, 
                                    Nr::Int64, Nφ::Int64;
                                    rCoordsCylGrid = nothing,
                                    φCoordsCylGrid = nothing, kφs = nothing,
@@ -187,7 +174,7 @@ function compute_φFFT_of_sim_Field(simField::AbstractArray,
    
    #Get the r- and φ-gridpoints, in polar coordinates, of a uniform polar grid
    if (isnothing(rCoordsCylGrid) || isnothing(φCoordsCylGrid))
-      rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)
+      rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(p.Lr, Nr, Nφ)
    end
    
    #Tile xCartVec and yCartVec along complementary dimensions, such that each
@@ -198,10 +185,10 @@ function compute_φFFT_of_sim_Field(simField::AbstractArray,
    xCoordsCartGridTiled = repeat(xCoordsCartGrid, inner = [length(yCoordsCartGrid)])
    yCoordsCartGridTiled = repeat(yCoordsCartGrid, outer = [length(xCoordsCartGrid)])
    zCoordsCartGridTiled = repeat(zCoordsCartGrid, inner = [length(yCoordsCartGrid)], 
-                      outer = [length(xCoordsCartGrid)])
+                                 outer = [length(xCoordsCartGrid)])
 
    #Cartesian coordinates of the points on the cylindrically uniform grid
-   xCoordsCylGrid, yCoordsCylGrid, zCoordsCylGrid = compute_Cart_coords(rCoordsCylGrid, φCoordsCylGrid, zCoordsCartGrid)
+   xCoordsCylGrid, yCoordsCylGrid, zCoordsCylGrid = ComputeCartesianCoords(rCoordsCylGrid, φCoordsCylGrid, zCoordsCartGrid)
 
    ###############################################################
    # Perform the interpolation of data to the uniform-polar grid #

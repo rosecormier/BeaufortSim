@@ -568,8 +568,8 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
    =#
 
    #Only need {Center, Center, Center} indices for these fields
-   xyzC_idcs = get_2D_spatial_axis_idcs(grid, gridParams, const_dimension,
-                                        const_dimension_idx)[1]
+   xyzC_idcs = Get2DSpatialAxisIndices(grid, gridParams, const_dimension,
+                                       const_dimension_idx)[1]
 
    B      = no_offset_view(adapt(Array, backgroundFields[:B]))[xyzC_idcs...]
    ζ_bkgd = no_offset_view(adapt(Array, backgroundFields[:ζ_bkgd]))[xyzC_idcs...]
@@ -689,14 +689,14 @@ function visualize_b_and_ζ(datetime, const_dimension, const_dimension_idx, grid
       
       fig_total = set_up_anim_heatmaps_b_ζ(Dict("b" => b_total, "ζ" => ζ_total), 
                axis1, axis2, nearest, ax_kwargs;
-               colorranges = Dict("b" => get_symm_range_lims(b_total_f),
-                                  "ζ" => get_symm_range_lims(ζ_total_f)) 
+               colorranges = Dict("b" => GetSymmetricRangeLims(b_total_f),
+                                  "ζ" => GetSymmetricRangeLims(ζ_total_f)) 
                                           )
       fig_pert = set_up_anim_heatmaps_b_ζ(Dict("b" => Δb, "ζ" => Δζ), 
                axis1, axis2, nearest, ax_kwargs; 
                ax_titles = Dict("b" => L"$b'$", "ζ" => L"$\zeta'$"),
-               colorranges = Dict("b" => get_symm_range_lims(Δb_f),
-                                  "ζ" => get_symm_range_lims(Δζ_f)) 
+               colorranges = Dict("b" => GetSymmetricRangeLims(Δb_f),
+                                  "ζ" => GetSymmetricRangeLims(Δζ_f)) 
                                          )
                                   
       title_total = @lift "Fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
@@ -770,9 +770,9 @@ function visualize_fields_2D_slice(datetime, const_dimension,
    Plot 2D slices of prognostic fields and, optionally, horizontal speed.
    =#
    
-   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(grid, gridParams, 
-                                                   const_dimension,
-                                                   const_dimension_idx)
+   xyzC_idcs, xyzF_idcs = Get2DSpatialAxisIndices(grid, gridParams, 
+                                                  const_dimension,
+                                                  const_dimension_idx)
                                                    
    B  = no_offset_view(adapt(Array, backgroundFields[:B]))[xyzC_idcs...]
    Ur = no_offset_view(adapt(Array, backgroundFields[:Ur]))[xyzC_idcs...]
@@ -906,7 +906,7 @@ function visualize_fields_2D_slice(datetime, const_dimension,
          
          speed_f = sqrt.(ur_total_f.^2 .+ uφ_total_f.^2)
          
-         lims_speed    = get_symm_range_lims(speed_f)
+         lims_speed    = GetSymmetricRangeLims(speed_f)
          lims_speed[1] = 0
       end
       
@@ -939,10 +939,10 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                     "uz" => uz_total), 
                axis1, axis2_zC, axis2_zF, nearest, ax_kwargs, 
                colorbar_max_fraction;
-               colorranges = Dict("b" => get_symm_range_lims(b_total_f),
-                                  "ur" => get_symm_range_lims(ur_total_f), 
-                                  "uφ" => get_symm_range_lims(uφ_total_f), 
-                                  "uz" => get_symm_range_lims(uz_total_f)), 
+               colorranges = Dict("b" => GetSymmetricRangeLims(b_total_f),
+                                  "ur" => GetSymmetricRangeLims(ur_total_f), 
+                                  "uφ" => GetSymmetricRangeLims(uφ_total_f), 
+                                  "uz" => GetSymmetricRangeLims(uz_total_f)), 
                                  )
       fig_pert = set_up_anim_heatmaps_b_ur_uφ_uz(
                Dict("b" => Δb, "ur" => Δur, "uφ" => Δuφ, "uz" => Δuz), 
@@ -950,10 +950,10 @@ function visualize_fields_2D_slice(datetime, const_dimension,
                colorbar_max_fraction; 
                ax_titles = Dict("b" => L"$b'$", "ur" => L"$u_r'$", 
                                 "uφ" => L"$u_{\phi}'$", "uz" => L"$u_z'$"),
-               colorranges = Dict("b" => get_symm_range_lims(Δb_f),
-                                  "ur" => get_symm_range_lims(Δur_f), 
-                                  "uφ" => get_symm_range_lims(Δuφ_f), 
-                                  "uz" => get_symm_range_lims(Δuz_f)), 
+               colorranges = Dict("b" => GetSymmetricRangeLims(Δb_f),
+                                  "ur" => GetSymmetricRangeLims(Δur_f), 
+                                  "uφ" => GetSymmetricRangeLims(Δuφ_f), 
+                                  "uz" => GetSymmetricRangeLims(Δuz_f)), 
                                  )
 
       title_total = @lift "Fields at $(const_dimension) = $(@sprintf("%.2f", nearest)) km; t = $(@sprintf("%.2f", times[$n])) days"
@@ -1139,16 +1139,16 @@ function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, gridParams,
    ax_uz′_modes = Axis(fig_uz′_modes[2, 1]; xlabel = L"$t$ [days]", ylabel = L"$k_{\phi}$")
    
    hm_b′_modes  = heatmap!(ax_b′_modes, times, kφs, log10.(b′_φFFT),
-         colorrange = get_nonpositive_range_lims(log10.(b′_φFFT); prescribed_min = -20, max_fraction = 0.75),
+         colorrange = GetNonpositiveRangeLims(log10.(b′_φFFT); prescribed_min = -20, max_fraction = 0.75),
          colormap = :Reds)
    hm_ux′_modes = heatmap!(ax_ux′_modes, times, kφs, log10.(ux′_φFFT),
-         colorrange = get_nonpositive_range_lims(log10.(ux′_φFFT); prescribed_min = -20, max_fraction = 0.75),
+         colorrange = GetNonpositiveRangeLims(log10.(ux′_φFFT); prescribed_min = -20, max_fraction = 0.75),
          colormap = :Reds)
    hm_uy′_modes = heatmap!(ax_uy′_modes, times, kφs, log10.(uy′_φFFT),
-         colorrange = get_nonpositive_range_lims(log10.(uy′_φFFT); prescribed_min = -20, max_fraction = 0.75),
+         colorrange = GetNonpositiveRangeLims(log10.(uy′_φFFT); prescribed_min = -20, max_fraction = 0.75),
          colormap = :Reds)
    hm_uz′_modes = heatmap!(ax_uz′_modes, times, kφs, log10.(uz′_φFFT),
-         colorrange = get_nonpositive_range_lims(log10.(uz′_φFFT); prescribed_min = -20, max_fraction = 0.75),
+         colorrange = GetNonpositiveRangeLims(log10.(uz′_φFFT); prescribed_min = -20, max_fraction = 0.75),
          colormap = :Reds)
    
    Colorbar(fig_b′_modes[3, 1], hm_b′_modes, vertical = false)
@@ -1487,13 +1487,13 @@ function visualize_q_2D_slice(datetime, const_dim, const_idx, f;
       axis1, axis2_zC, axis2_zF = x, y, y
    end
 
-   xyzC_idcs, xyzF_idcs = get_2D_spatial_axis_idcs(const_dim;
+   xyzC_idcs, xyzF_idcs = Get2DSpatialAxisIndices(const_dim;
                                   Hx = 1, Hy = 1, Hz = 1,
                                   x_idx = x_idx, y_idx = y_idx, z_idx = z_idx,
                                   xC = x, yC = y, zC = zC, zF = zF)
 
    q_f    = adapt(Array, comp_ds[:q_Ertel])[xyzC_idcs..., chron_idcs[Nt]]
-   lims_q = get_symm_range_lims(q_f)
+   lims_q = GetSymmetricRangeLims(q_f)
    
    close(ds_f)
    
@@ -1568,7 +1568,7 @@ function visualize_q_const_y(datetime, Δx, Δy, Δz, f, y_idx)
 
    q_xz_f = comp_ds["q"][:, y_idx, z_plt:end, Nt]
 
-   lims_q = get_symm_range_lims(q_xz_f)
+   lims_q = GetSymmetricRangeLims(q_xz_f)
 
    y_nearest, axis_kwargs_xz = get_2D_spatial_axis_kwargs(x, y, z; y_idx = y_idx)
 
@@ -1613,7 +1613,7 @@ function visualize_q_const_z(datetime, Δx, Δy, Δz, f, z_idx)
 
    q_xy_f = comp_ds["q"][:, :, z_idx, Nt]
 
-   lims_q = get_symm_range_lims(q_xy_f)
+   lims_q = GetSymmetricRangeLims(q_xy_f)
 
    depth_nearest, axis_kwargs_xy = get_2D_spatial_axis_kwargs(x, y, z; z_idx = z_idx)
 

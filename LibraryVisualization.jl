@@ -1,19 +1,14 @@
+include("LibraryCoordinates.jl")
+
 using Adapt, CairoMakie, CUDA, Glob, LinearAlgebra
 using Oceananigans.AbstractOperations, Oceananigans.Fields
-
-@inline xᶜInt(grid, p::GridParams) = no_offset_view(grid.xᶜᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
-@inline xᶠInt(grid, p::GridParams) = no_offset_view(grid.xᶠᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
-@inline yᶜInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶜᵃ)[(p.Hy + 1):(end - p.Hy)]
-@inline yᶠInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶠᵃ)[(p.Hy + 1):(end - p.Hy)]
-@inline zᶜInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶜ)[(p.Hz + 1):(end - p.Hz)]
-@inline zᶠInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶠ)[(p.Hz + 1):(end - p.Hz)]
 
 ###########################################################################
 # HELPER FUNCTIONS TO PLOT 2D SLICES OF PRIMITIVE OR DIAGNOSTIC VARIABLES #
 ###########################################################################
 
-function get_symm_range_lims(scalar_field;
-                             max_fraction = 1, prescribed_max = 1e-16)
+function GetSymmetricRangeLims(scalar_field;
+                               max_fraction = 1, prescribed_max = 1e-16)
    #=
    Given a scalar field, extract appropriate limits for a colorbar that is
     symmetric about 0.
@@ -26,8 +21,8 @@ function get_symm_range_lims(scalar_field;
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
 
-function get_nonnegative_range_lims(scalar_field;
-                                    max_fraction = 1, prescribed_max = 1e-16)
+function GetNonnegativeRangeLims(scalar_field;
+                                 max_fraction = 1, prescribed_max = 1e-16)
    #=
    Given a scalar field, extract appropriate upper limit for a colorbar whose
     lower limit is 0.
@@ -40,8 +35,8 @@ function get_nonnegative_range_lims(scalar_field;
    field_lims = [0, (max_fraction * field_max)]
 end
 
-function get_nonpositive_range_lims(scalar_field;
-                                    max_fraction = 1, prescribed_min = -1e-16)
+function GetNonpositiveRangeLims(scalar_field;
+                                 max_fraction = 1, prescribed_min = -1e-16)
    #=
    Given a scalar field, extract appropriate upper limit for a colorbar whose
     lower limit is 0.
@@ -54,7 +49,8 @@ function get_nonpositive_range_lims(scalar_field;
    field_lims = [(max_fraction * field_min), 0]
 end
 
-function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension, const_dimension_idx)         
+function Get2DSpatialAxisIndices(grid, p::GridParams, const_dimension,
+                                 const_dimension_idx)         
    #=
    Return two arrays of coordinate indices partitioning a 2D slice (constant
     along 'const_dimension').
@@ -62,23 +58,19 @@ function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension,
     used to slice a ZFaceField.
    =#
 
-   Hx, Hy, Hz = gridParams.Hx, gridParams.Hy, gridParams.Hz
-   
-   xC, yC = xᶜInt(grid, gridParams), yᶜInt(grid, gridParams)
-   zC, zF = zᶜInt(grid, gridParams), zᶠInt(grid, gridParams)
+   xC, yC = xᶜInt(grid, p), yᶜInt(grid, p)
+   zC, zF = zᶜInt(grid, p), zᶠInt(grid, p)
 
    if const_dimension == "x"
 
       if length(xC) == 1 #Grid is 2D with only y and z axes
-         yCzC_idcs = (1, (Hy + 1):(gridParams.Ny + Hy),
-                      (Hz + 1):(gridParams.Nz + Hz))
-         yCzF_idcs = (1, (Hy + 1):(gridParams.Ny + Hy),
-                      (Hz + 1):(gridParams.Nz + Hz + 1))
+         yCzC_idcs = (1, (p.Hy + 1):(p.Ny + p.Hy), (p.Hz + 1):(p.Nz + p.Hz))
+         yCzF_idcs = (1, (p.Hy + 1):(p.Ny + p.Hy), (p.Hz + 1):(p.Nz + p.Hz + 1))
       elseif length(xC) > 1 #Grid is 3D
-         yCzC_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
-                      (Hz + 1):(gridParams.Nz + Hz))
-         yCzF_idcs = (const_dimension_idx, (Hy + 1):(gridParams.Ny + Hy),
-                      (Hz + 1):(gridParams.Nz + Hz + 1))
+         yCzC_idcs = (const_dimension_idx, (p.Hy + 1):(p.Ny + p.Hy),
+                      (p.Hz + 1):(p.Nz + p.Hz))
+         yCzF_idcs = (const_dimension_idx, (p.Hy + 1):(p.Ny + p.Hy),
+                      (p.Hz + 1):(p.Nz + p.Hz + 1))
       end
 
       return yCzC_idcs, yCzF_idcs
@@ -86,15 +78,13 @@ function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension,
    elseif const_dimension == "y"
 
       if length(yC) == 1 #Grid is 2D with only x and z axes
-         xCzC_idcs = ((Hx + 1):(gridParams.Nx + Hx), 1,
-                      (Hz + 1):(gridParams.Nz + Hz))
-         xCzF_idcs = ((Hx + 1):(gridParams.Nx + Hx), 1,
-                      (Hz + 1):(gridParams.Nz + Hz + 1))
+         xCzC_idcs = ((p.Hx + 1):(p.Nx + p.Hx), 1, (p.Hz + 1):(p.Nz + p.Hz))
+         xCzF_idcs = ((p.Hx + 1):(p.Nx + p.Hx), 1, (p.Hz + 1):(p.Nz + p.Hz + 1))
       elseif length(yC) > 1 #Grid is 3D
-         xCzC_idcs = ((Hx + 1):(gridParams.Nx + Hx), const_dimension_idx,
-                      (Hz + 1):(gridParams.Nz + Hz))
-         xCzF_idcs = ((Hx + 1):(gridParams.Nx + Hx), const_dimension_idx,
-                      (Hz + 1):(gridParams.Nz + Hz + 1))
+         xCzC_idcs = ((p.Hx + 1):(p.Nx + p.Hx), const_dimension_idx,
+                      (p.Hz + 1):(p.Nz + p.Hz))
+         xCzF_idcs = ((p.Hx + 1):(p.Nx + p.Hx), const_dimension_idx,
+                      (p.Hz + 1):(p.Nz + p.Hz + 1))
       end
 
       return xCzC_idcs, xCzF_idcs
@@ -102,11 +92,10 @@ function get_2D_spatial_axis_idcs(grid, gridParams::GridParams, const_dimension,
    elseif const_dimension == "z"
 
       if length(zC) == 1 #Grid is 2D with only x and y axes
-         xCyC_idcs = ((Hx + 1):(gridParams.Nx + Hx),
-                      (Hy + 1):(gridParams.Ny + Hy), 1)
+         xCyC_idcs = ((p.Hx + 1):(p.Nx + p.Hx), (p.Hy + 1):(p.Ny + p.Hy), 1)
       elseif length(zC) > 1 #Grid is 3D
-         xCyC_idcs = ((Hx + 1):(gridParams.Nx + Hx), 
-                      (Hy + 1):(gridParams.Ny + Hy), const_dimension_idx)
+         xCyC_idcs = ((p.Hx + 1):(p.Nx + p.Hx), 
+                      (p.Hy + 1):(p.Ny + p.Hy), const_dimension_idx)
       end
 
       return xCyC_idcs, xCyC_idcs #zC or zF is irrelevant on a constant-z slice

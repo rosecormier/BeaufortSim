@@ -162,7 +162,7 @@ end
 # DERIVATIVES W.R.T. POLAR COORDINATES #
 ########################################
 
-@inline φ_ccc_vals(grid) = @inbounds polar_coords_Fields(grid, "c", "c", "c")[2]
+@inline φ_ccc_vals(grid) = Field(KernelFunctionOperation{Center, Center, Center}(φ_cca, grid))
 
 @inline ∂p∂φ_over_r(grid, p) = -sin(φ_ccc_vals(grid)) * ∂x(p) + cos(φ_ccc_vals(grid)) * ∂y(p)
 
