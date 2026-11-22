@@ -152,13 +152,12 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
       phasesArray = rand(Float64, perturbParams.number_of_initial_modes)
       
       @compute φField = Field(KernelFunctionOperation{Center, Center, Face}(φ_cca, grid))
-      
-      anglesArray = adapt(Array, interior(φField))
+      φArray          = adapt(Array, interior(φField))
 
-      perturbStructure = zeros(Float64, size(anglesArray))
+      perturbStructure = zeros(Float64, size(φArray))
       
       CUDA.@allowscalar for kφ in 1:perturbParams.number_of_initial_modes
-         perturbStructure[:, :, :] .+= cos.(kφ * anglesArray[:, :, :] .+ 2π * phasesArray[kφ])
+         perturbStructure[:, :, :] .+= cos.(kφ * φArray[:, :, :] .+ 2π * phasesArray[kφ])
       end
       
       CUDA.@allowscalar perturbScale = perturbParams.max_ψ′ * (perturbStructure / perturbParams.number_of_initial_modes) .+ 1
