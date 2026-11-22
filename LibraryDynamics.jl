@@ -148,65 +148,22 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
    perturb_scale_Field = ZFaceField(grid)
    
    if perturbParams.sum_of_modes_perturbation
-   
-      if gridParams.architecture == GPU()
-         phasesArray = CuArray{Float64}(undef, perturbParams.number_of_initial_modes)
-         rand!(phasesArray)
-      elseif gridParams.architecture == CPU()
-         phasesArray = rand(Float64, perturbParams.number_of_initial_modes)
-      end
       
-      #= Works sort of
-      modes_sum_coeff = 1.0
-      phase_shift     = 0.0
-      
-      CUDA.@allowscalar for id in 1:perturbParams.number_of_initial_modes
-         print(modes_sum_coeff, "\n", phase_shift, "\n")
-         phase_shift += 2π * id * phasesArray[id]
-         print(modes_sum_coeff, "\n", phase_shift, "\n")
-      end
-      
-      modes_sum_coeff_Field = CenterField(grid)
-      phase_shift_Field = CenterField(grid)
-      set!(modes_sum_coeff_Field, modes_sum_coeff)
-      set!(phase_shift_Field, phase_shift)
-      
-      @inline perturbScale(i, j, k, g) = @inbounds perturbParams.max_ψ′ * (cos(modes_sum_coeff_Field[i,j,k] * φ_cca(i, j, k, g) + phase_shift_Field[i,j,k]) + 1)
-      
-      @compute perturb_scale_Field = Field(KernelFunctionOperation{Center, Center, Face}(perturbScale, grid))
-      =#
+      phasesArray = rand(Float64, perturbParams.number_of_initial_modes)
       
       @compute φField = Field(KernelFunctionOperation{Center, Center, Face}(φ_cca, grid))
       
       anglesArray = adapt(Array, interior(φField))
-      
-      #Try initializing with 0s instead
-      perturbStructure = Array{Float64}(undef, size(anglesArray))
-      perturbStructure2 = zeros(Float64, size(anglesArray))
-      print(perturbStructure2)
+
+      perturbStructure = zeros(Float64, size(anglesArray))
       
       CUDA.@allowscalar for kφ in 1:perturbParams.number_of_initial_modes
          perturbStructure[:, :, :] .+= cos.(kφ * anglesArray[:, :, :] .+ 2π * phasesArray[kφ])
-         perturbStructure2[:, :, :] .+= cos.(kφ * anglesArray[:, :, :] .+ 2π * phasesArray[kφ])
       end
       
-      print(perturbStructure == perturbStructure2)
-      
-      CUDA.@allowscalar perturbScale = perturbParams.max_ψ′ * (1 .+ perturbStructure2 / perturbParams.number_of_initial_modes)
+      CUDA.@allowscalar perturbScale = perturbParams.max_ψ′ * (perturbStructure / perturbParams.number_of_initial_modes) .+ 1
       
       set!(perturb_scale_Field, perturbScale)
-      
-      #=
-      @compute φField = Field(KernelFunctionOperation{Center, Center, Face}(φ_cca, grid))
-      
-      perturbStructure = ZFaceField(grid)
-      
-      CUDA.@allowscalar for kφ in 1:perturbParams.number_of_initial_modes
-         perturbStructure .+= cos.(kφ * φField .+ 2π * phasesArray[kφ])
-      end
-
-      normalizedPerturbStructure = CUDA.@allowscalar 1 .+ perturbStructure / perturbParams.number_of_initial_modes
-      =#
       
    elseif !perturbParams.sum_of_modes_perturbation
    
