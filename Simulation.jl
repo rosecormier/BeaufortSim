@@ -30,9 +30,9 @@ perturbParams         = cudaconvert(PerturbationParams())
 simParams             = SimulationParams()
 visParams             = VisParams()
 
-const Δt = 600 #parse(Float64, ARGS[1]) #Simulation timestep (s)
-const tf = 600 #parse(Float64, ARGS[2]) #Simulation stop time (s)
-#=
+const Δt = parse(Float64, ARGS[1]) #Simulation timestep (s)
+const tf = parse(Float64, ARGS[2]) #Simulation stop time (s)
+
 #Set save interval
 if parse(Float64, ARGS[3]) < tf / 250
    print("Save interval too small for given duration. Using tf/250 instead.")
@@ -40,9 +40,6 @@ if parse(Float64, ARGS[3]) < tf / 250
 else
    const Δt_save = parse(Float64, ARGS[3])
 end
-=#
-
-const Δt_save = 600
 
 #Plot 2D slices at these indices
 const x_idx = gridParams.Nx ÷ 2
@@ -157,8 +154,6 @@ fill_halo_regions!(model.velocities.u)
 fill_halo_regions!(model.velocities.v)
 fill_halo_regions!(model.velocities.w)
 fill_halo_regions!(model.pressures)
-
-plot_rzMean_φDFT_field(model.velocities.u, grid, gridParams, visParams.Nr, visParams.Nφ, datetimenow) 
 
 simulation = CreateSimulation(model, Δt, tf, Δt_save, simParams, modelParams, gyreParams, backgroundFields, datetimenow)
 
