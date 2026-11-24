@@ -17,7 +17,7 @@ function GetSymmetricRangeLims(scalar_field;
     'prescribed_max' as the absolute maximum of the data instead.
    =#
    
-   field_max  = max(maximum(abs.(scalar_field)), prescribed_max)
+   field_max  = CUDA.@allowscalar max(maximum(abs.(scalar_field)), prescribed_max)
    field_lims = [-(max_fraction * field_max), (max_fraction * field_max)]
 end
 
@@ -31,7 +31,7 @@ function GetNonnegativeRangeLims(scalar_field;
     'prescribed_max' as the absolute maximum of the data instead.
    =#
    
-   field_max  = max(maximum(abs.(scalar_field)), prescribed_max)
+   field_max  = CUDA.@allowscalar max(maximum(abs.(scalar_field)), prescribed_max)
    field_lims = [0, (max_fraction * field_max)]
 end
 
@@ -45,7 +45,7 @@ function GetNonpositiveRangeLims(scalar_field;
     'prescribed_max' as the absolute maximum of the data instead.
    =#
    
-   field_min  = min(minimum(scalar_field), prescribed_min)
+   field_min  = CUDA.@allowscalar min(minimum(scalar_field), prescribed_min)
    field_lims = [(max_fraction * field_min), 0]
 end
 
