@@ -20,11 +20,15 @@ using CUDA, Random
 @inline ΔFΔzᵃᵃᶜ_2D(i, j, g, k::Float64, Fᵃᵃᶠ_minus, Fᵃᵃᶠ_plus) = @inbounds (Fᵃᵃᶠ_plus[i, j, convert(Int64, k + 0.5)] - Fᵃᵃᶠ_minus[i, j, convert(Int64, k - 0.5)]) / (g.z.cᵃᵃᶠ[convert(Int64, k + 0.5)] - g.z.cᵃᵃᶠ[convert(Int64, k - 0.5)])
 @inline ΔFΔzᵃᵃᶠ_2D(i, j, g, k::Float64, Fᵃᵃᶜ_minus, Fᵃᵃᶜ_plus) = @inbounds (Fᵃᵃᶜ_plus[i, j, convert(Int64, k + 0.5)] - Fᵃᵃᶜ_minus[i, j, convert(Int64, k - 0.5)]) / (g.z.cᵃᵃᶜ[convert(Int64, k + 0.5)] - g.z.cᵃᵃᶜ[convert(Int64, k - 0.5)])
 
-#Add background and perturbation streamfunctions
+#Scale background streamfunction by perturbation ψ′
 @inline GeneralψPerturbedᶜᶜᶠ(i, j, k, g, Ψᶜᶜᶠ, ψ′) = @inbounds ψ′[i, j, k] * Ψᶜᶜᶠ(i, j, k, g)
+
+#Double-tanh buoyancy function
+@inline buoyancyDoubleTanh(z, p::DoubleTanhStratParams) = @. -(p.gravity / p.ρ₀) * (p.A_s * tanh((z - p.z_s) / p.C_s) + p.A_d * tanh((z - p.z_d) / p.C_d))
 
 function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
                                                    gyreParams::GyreParams,
+                                                   doubleTanhStratParams::DoubleTanhStratParams,
                                                    perturbParams::PerturbationParams,
                                                    visParams::VisParams;
                                                    x_idx = nothing, 
@@ -115,11 +119,18 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
    
    Lz = gridParams.Lz #Because we can't pass 'gridParams' to a KernelFunction
    
-   @inline LinearBᵃᵃᶜ(i, j, k, g)                 = @inbounds gyreParams.N²_far * (g.z.cᵃᵃᶜ[k] + Lz / 2)
-   @inline ThermalWindBᶜᶜᶜ(i, j, k, g)            = @inbounds gyreParams.f * ∂Ψ∂z_ccc_Field[i, j, k]
-   @inline TotalConstAmbientStratBᶜᶜᶜ(i, j, k, g) = @inbounds LinearBᵃᵃᶜ(i, j, k, g) + ThermalWindBᶜᶜᶜ(i, j, k, g)
-      
-   @compute b_TWB = Field(KernelFunctionOperation{Center, Center, Center}(TotalConstAmbientStratBᶜᶜᶜ, grid))
+   @inline LinearBᵃᵃᶜ(i, j, k, g)      = @inbounds gyreParams.N²_far * (g.z.cᵃᵃᶜ[k] + Lz / 2)
+   @inline DoubleTanhBᵃᵃᶜ(i, j, k, g)  = @inbounds buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], doubleTanhStratParams)
+   @inline ThermalWindBᶜᶜᶜ(i, j, k, g) = @inbounds gyreParams.f * ∂Ψ∂z_ccc_Field[i, j, k]
+   
+   @inline TotalConstAmbientStratBᶜᶜᶜ(i, j, k, g)      = @inbounds LinearBᵃᵃᶜ(i, j, k, g) + ThermalWindBᶜᶜᶜ(i, j, k, g)
+   @inline TotalDoubleTanhAmbientStratBᶜᶜᶜ(i, j, k, g) = @inbounds LinearBᵃᵃᶜ(i, j, k, g) + DoubleTanhBᵃᵃᶜ(i, j, k, g) + ThermalWindBᶜᶜᶜ(i, j, k, g)
+
+   if gyreParams.doubleTanhAmbientStrat
+      @compute b_TWB = Field(KernelFunctionOperation{Center, Center, Center}(TotalDoubleTanhAmbientStratBᶜᶜᶜ, grid))
+   else
+      @compute b_TWB = Field(KernelFunctionOperation{Center, Center, Center}(TotalConstAmbientStratBᶜᶜᶜ, grid))
+   end
    
    @inline ∂b∂z(i, j, g, ∂2Ψ∂z2_ccf_Field) = @inbounds gyreParams.N²_far + gyreParams.f * ∂2Ψ∂z2_ccf_Field[i, j]
    
@@ -201,11 +212,6 @@ function GridAndDiscretelyBalancedBackgroundFields(gridParams::GridParams,
            (b_perturbed, u_perturbed, v_perturbed, w_perturbed)
           )
 end
-
-@inline b_double_tanh_ccc(i, j, k, g, p::DoubleTanhStratParams) = @inbounds buoyancyDoubleTanh(g.z.cᵃᵃᶜ[k], p)
-
-#Double-tanh buoyancy function
-@inline buoyancyDoubleTanh(z, p::DoubleTanhStratParams) = @. -(p.gravity / p.ρ₀) * (p.A_s * tanh((z - p.z_s) / p.C_s) + p.A_d * tanh((z - p.z_d) / p.C_d))
 
 #N² corresponding to double-tanh buoyancy function
 @inline N²DoubleTanh(z, p::DoubleTanhStratParams) = @. -(p.gravity / p.ρ₀) * ((p.A_s / p.C_s) * (sech((z - p.z_s) / p.C_s))^2 + (p.A_d / p.C_d) * (sech((z - p.z_d) / p.C_d))^2)
