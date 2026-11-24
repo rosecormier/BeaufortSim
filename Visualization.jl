@@ -17,49 +17,6 @@ update_theme!(theme_latexfonts(), fontsize = 16)
 
 ################################################################################
 
-function visualize_Ψ_and_z_derivs(simGrid, tall_Ψ_ccf_Field, 
-                                  tall_∂Ψ∂z_ccc_Field, tall_∂2Ψ∂z2_ccf_Field)
-
-   fig    = Figure(size = (1400, 700))
-   ax_dz0 = Axis(fig[1, 1], xlabel = L"$\Psi$ [m^2/s]", ylabel = L"$z$ [m]")
-   ax_dz1 = Axis(fig[1, 2], xlabel = L"$d\Psi /dz$ [m/s]", ylabel = L"$z$ [m]")
-   ax_dz2 = Axis(fig[1, 3], xlabel = L"$d^2 \Psi /dz^2$ [1/s]", 
-                 ylabel = L"$z$ [m]")
-  
-   lines!(ax_dz0, no_offset_view(adapt(Array, tall_Ψ_ccf_Field[28, 28, :])), 
-          no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), label = "Ψ_ccf_Field")
-   scatter!(ax_dz0, no_offset_view(adapt(Array, tall_Ψ_ccf_Field[28, 28, :])),
-            no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), 
-            label = "Ψ_ccf_Field (at gridpoints)")
-     
-   lines!(ax_dz1, no_offset_view(adapt(Array, tall_∂Ψ∂z_ccc_Field[28, 28, :])),
-          no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), 
-          label = "∂Ψ∂z_ccc_Field")
-   scatter!(ax_dz1, 
-            no_offset_view(adapt(Array, tall_∂Ψ∂z_ccc_Field[28, 28, :])), 
-            no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶜ)), 
-            label = "∂Ψ∂z_ccc_Field (at gridpoints)")
-  
-   lines!(ax_dz2, 
-          no_offset_view(adapt(Array, tall_∂2Ψ∂z2_ccf_Field[28, 28, :])), 
-          no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), 
-          label = "∂2Ψ∂z2_ccf_Field")
-   scatter!(ax_dz2, 
-            no_offset_view(adapt(Array, tall_∂2Ψ∂z2_ccf_Field[28, 28, :])), 
-            no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)), 
-            label = "∂2Ψ∂z2_ccf_Field (at gridpoints)")
-   lines!(ax_dz2, 
-          no_offset_view(adapt(Array, 
-                               Field(∂z(tall_∂Ψ∂z_ccc_Field))[28, 28, :])
-                        ), no_offset_view(adapt(Array, simGrid.z.cᵃᵃᶠ)),
-          label = "z-deriv of ∂Ψ∂z_ccc_Field")
-     
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "initialConditionPsi.png"), fig)
-end
-
-################################################################################
-
 function visualize_B_and_N²_vs_z(B_total, b_TWB, b_linear, grid, x_idx, y_idx,
                                  gyreParams, doubleTanhParams, Hz)
 
@@ -79,7 +36,7 @@ function visualize_B_and_N²_vs_z(B_total, b_TWB, b_linear, grid, x_idx, y_idx,
    ∂b∂z_TWB_slice   = no_offset_view(adapt(Array, ∂b∂z_TWB_Field)
                                     )[x_idx, y_idx, 
                                       (Hz + 1):(length(grid.z.cᵃᵃᶠ) - Hz)]
-   
+
    x      = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[x_idx]
    y      = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[y_idx]
    zC_int = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ)
@@ -114,6 +71,33 @@ function visualize_B_and_N²_vs_z(B_total, b_TWB, b_linear, grid, x_idx, y_idx,
    
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "b_and_N2_profiles_i$(x_idx)_j$(y_idx)_Nz$(grid.Nz).png"), fig)
+end
+
+################################################################################
+
+function visualize_B_and_Uφ_vs_r_and_z(datetime, grid, p::GridParams, B, Uφ)
+   
+   @compute B_0  = Field(InterpolatedOperation(B, y = 0))
+   @compute Uφ_0 = Field(InterpolatedOperation(Uφ, y = 0))
+   
+   fig   = Figure(size = (1400, 700))
+   ax_B  = Axis(fig[1, 1], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]",
+                title = "Background buoyancy")
+   ax_Uφ = Axis(fig[1, 2], xlabel = L"$r$ [km]", ylabel = L"$z$ [m]",
+                title = "Background azimuthal velocity")
+   
+   hm_B  = heatmap!(ax_B, xᶜInt(grid, p), zᶜInt(grid, p), B_0,
+                    colorrange = GetSymmetricRangeLims(B_0),
+                    colormap = Reverse(:RdBu_5))
+   hm_Uφ = heatmap!(ax_Uφ, xᶜInt(grid, p), zᶜInt(grid, p), Uφ_0,
+                    colorrange = GetNonpositiveRangeLims(Uφ_0),
+                    colormap = :Blues)
+            
+   Colorbar(fig[2, 1], hm_B, tickformat = "{:.1e}", label = L"m/s$^2$")
+   Colorbar(fig[2, 2], hm_Uφ, tickformat = "{:.1e}", label = L"m/s")
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "background_fields_$(datetime).png"), fig)
 end
 
 ################################################################################
@@ -734,33 +718,6 @@ end
 
 ################################################################################
 
-function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
-
-   zc = znodes(grid, Center())
-   zf = znodes(grid, Face())
-   Δz = zspacings(grid, Center())
-   
-   fig  = Figure(size=(1200, 600))
-   axz  = Axis(fig[1, 1], title = "z-grid")
-   axΔz = Axis(fig[2, 1]; xlabel = "z (m)", ylabel = "z-spacing (m)")
-
-   lines!(axz, [zmin, zmax], [0, 0], color = :gray)
-   scatter!(axz, zf, 0 * zf, marker = :vline, color = :gray, markersize = 20)
-   scatter!(axz, zc, 0 * zc)
-   hidedecorations!(axz)
-   hidespines!(axz)
-
-   scatter!(axΔz, zc, Δz)
-   hidespines!(axΔz, :t, :r)
-
-   rowsize!(fig.layout, 1, Relative(0.1))
-
-   mkpath("./Plots") #Make visualization directory if nonexistent
-   save(joinpath("./Plots", "zgrid_$(datetime).png"), fig)
-end
-
-################################################################################
-
 function visualize_fields_2D_slice(datetime, const_dimension, 
                                    const_dimension_idx, grid, gridParams, backgroundFields;
                                    plot_animation = true, t_idx_skip = 1,
@@ -805,14 +762,14 @@ function visualize_fields_2D_slice(datetime, const_dimension,
       times = b_TS.times ./ 86400
       Nt    = length(times)
       
-      b_total_i  = no_offset_view(adapt(Array,b_TS[1]))[xyzC_idcs...]
-      b_total_f  = no_offset_view(adapt(Array,b_TS[Nt]))[xyzC_idcs...]
-      ur_total_i = no_offset_view(adapt(Array,ur_TS[1]))[xyzC_idcs...]
-      ur_total_f = no_offset_view(adapt(Array,ur_TS[Nt]))[xyzC_idcs...]
-      uφ_total_i = no_offset_view(adapt(Array,uφ_TS[1]))[xyzC_idcs...]
-      uφ_total_f = no_offset_view(adapt(Array,uφ_TS[Nt]))[xyzC_idcs...]
-      uz_total_i = no_offset_view(adapt(Array,uz_TS[1]))[xyzF_idcs...]
-      uz_total_f = no_offset_view(adapt(Array,uz_TS[Nt]))[xyzF_idcs...]
+      b_total_i  = no_offset_view(adapt(Array, b_TS[1]))[xyzC_idcs...]
+      b_total_f  = no_offset_view(adapt(Array, b_TS[Nt]))[xyzC_idcs...]
+      ur_total_i = no_offset_view(adapt(Array, ur_TS[1]))[xyzC_idcs...]
+      ur_total_f = no_offset_view(adapt(Array, ur_TS[Nt]))[xyzC_idcs...]
+      uφ_total_i = no_offset_view(adapt(Array, uφ_TS[1]))[xyzC_idcs...]
+      uφ_total_f = no_offset_view(adapt(Array, uφ_TS[Nt]))[xyzC_idcs...]
+      uz_total_i = no_offset_view(adapt(Array, uz_TS[1]))[xyzF_idcs...]
+      uz_total_f = no_offset_view(adapt(Array, uz_TS[Nt]))[xyzF_idcs...]
    end
    
    x  = xᶜInt(grid, gridParams) ./ 1000
@@ -1028,9 +985,8 @@ end
 
 ################################################################################
 
-function plot_rzMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, 
-                                fieldName; 
-                                Hx = nothing, Hy = nothing, Hz = nothing)
+function plot_rzMean_φDFT_field(scalarField, grid, p::GridParams, Nr, Nφ,
+                                fieldName)
    #=
    Compute azimuthal Fourier transform of 'scalarField', which lives on an
     Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
@@ -1040,10 +996,8 @@ function plot_rzMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ,
     spectrum.
    =#
    
-   kφs, rzMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid,
-                                                     gridParams, Nr, Nφ;
-                                                     Hx = Hx, Hy = Hy, Hz = Hz,
-                                                     rAvg = true, zAvg = true)
+   kφs, rzMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid, p, Nr,
+                                                     Nφ; rAvg = true, zAvg = true)
    
    FFT_vec = rzMean_φFFTfield[1, :, 1] #Index to remove singleton dimensions
    Nkφ     = length(FFT_vec)
@@ -1064,8 +1018,10 @@ end
 
 ################################################################################
 
-function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, gridParams, 
-                                              backgroundFields, Nr, Nφ; 
+function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, 
+                                              gridParams::GridParams, 
+                                              visParams::VisParams, 
+                                              backgroundFields; 
                                               t_idx_skip = 1)
 
    outfile_paths = glob("./Output/output_$(datetimenow)*")
@@ -1082,15 +1038,13 @@ function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, gridParams,
    Uy = adapt(Array, interior(backgroundFields[:Uy]))
    Uz = adapt(Array, interior(backgroundFields[:Uz]))
    
-   rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(gridParams.Lr,
-                                                                 Nr, Nφ)
+   Lr, Nr, Nφ = gridParams.Lr, visParams.Nr, visParams.Nφ
    
-   xC_vec = no_offset_view(grid.xᶜᵃᵃ)[(gridParams.Hx + 1):(end - gridParams.Hx)]
-   xF_vec = no_offset_view(grid.xᶠᵃᵃ)[(gridParams.Hx + 1):(end - gridParams.Hx)]
-   yC_vec = no_offset_view(grid.yᵃᶜᵃ)[(gridParams.Hy + 1):(end - gridParams.Hy)]
-   yF_vec = no_offset_view(grid.yᵃᶠᵃ)[(gridParams.Hy + 1):(end - gridParams.Hy)]
-   zC_vec = no_offset_view(grid.z.cᵃᵃᶜ)[(gridParams.Hz + 1):(end - gridParams.Hz)]
-   zF_vec = no_offset_view(grid.z.cᵃᵃᶠ)[(gridParams.Hz + 1):(end - gridParams.Hz)]
+   rCoordsCylGrid, φCoordsCylGrid = construct_uniform_polar_grid(Lr, Nr, Nφ)
+   
+   xᶜ, xᶠ = xᶜInt(grid, gridParams), xᶠInt(grid, gridParams)
+   yᶜ, yᶠ = yᶜInt(grid, gridParams), yᶠInt(grid, gridParams)
+   zᶜ, zᶠ = zᶜInt(grid, gridParams), zᶠInt(grid, gridParams)
    
    kφs = φWavenumbers(Nφ)
    Nt  = length(times)
@@ -1102,26 +1056,26 @@ function plot_rzMean_φDFT_perturbs_timeseries(datetime, grid, gridParams,
    
    for n in 1:t_idx_skip:Nt
    
-      b′_φFFT[n, :]  = compute_φFFT_of_sim_Field(b_TS[n] - B, 
-                                     xC_vec, yC_vec, zC_vec, gridParams, Nr, Nφ;
+      b′_φFFT[n, :]  = compute_φFFT_of_sim_Field(b_TS[n] - B, xᶜ, yᶜ, zᶜ,
+                                     gridParams, Nr, Nφ;
                                      rCoordsCylGrid = rCoordsCylGrid,
-                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
-                                     rAvg = true, zAvg = true)
-      ux′_φFFT[n, :] = compute_φFFT_of_sim_Field(ux_TS[n] - Ux, 
-                                     xF_vec, yC_vec, zC_vec, gridParams, Nr, Nφ;
+                                     φCoordsCylGrid = φCoordsCylGrid,
+                                     kφs = kφs, rAvg = true, zAvg = true)
+      ux′_φFFT[n, :] = compute_φFFT_of_sim_Field(ux_TS[n] - Ux, xᶠ, yᶜ, zᶜ,
+                                     gridParams, Nr, Nφ;
                                      rCoordsCylGrid = rCoordsCylGrid,
-                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
-                                     rAvg = true, zAvg = true)
-      uy′_φFFT[n, :] = compute_φFFT_of_sim_Field(uy_TS[n] - Uy, 
-                                     xC_vec, yF_vec, zC_vec, gridParams, Nr, Nφ;
+                                     φCoordsCylGrid = φCoordsCylGrid,
+                                     kφs = kφs, rAvg = true, zAvg = true)
+      uy′_φFFT[n, :] = compute_φFFT_of_sim_Field(uy_TS[n] - Uy, xᶜ, yᶠ, zᶜ,
+                                     gridParams, Nr, Nφ;
                                      rCoordsCylGrid = rCoordsCylGrid,
-                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
-                                     rAvg = true, zAvg = true)
-      uz′_φFFT[n, :] = compute_φFFT_of_sim_Field(uz_TS[n] - Uz, 
-                                     xC_vec, yC_vec, zF_vec, gridParams, Nr, Nφ;
+                                     φCoordsCylGrid = φCoordsCylGrid,
+                                     kφs = kφs, rAvg = true, zAvg = true)
+      uz′_φFFT[n, :] = compute_φFFT_of_sim_Field(uz_TS[n] - Uz, xᶜ, yᶜ, zᶠ,
+                                     gridParams, Nr, Nφ;
                                      rCoordsCylGrid = rCoordsCylGrid,
-                                     φCoordsCylGrid = φCoordsCylGrid, kφs = kφs,
-                                     rAvg = true, zAvg = true)       
+                                     φCoordsCylGrid = φCoordsCylGrid,
+                                     kφs = kφs, rAvg = true, zAvg = true)       
    end
    
    ################
@@ -1236,8 +1190,8 @@ end
 
 ################################################################################
 
-function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldName;
-                               Hx = nothing, Hy = nothing, Hz = nothing)
+function plot_rMean_φDFT_field(scalarField, grid, p::GridParams, Nr, Nφ,
+                               fieldName)
    #=
    Compute azimuthal Fourier transform of 'scalarField', which lives on an
     Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
@@ -1246,14 +1200,9 @@ function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldNam
    Compute the radial mean, then plot the r-averaged azimuthal spectrum as a
     heatmap in {kφ} x {z} space.
    =#
-   
-   if isnothing(Hz)
-      Hz = gridParams.Hz
-   end
 
-   kφs, rMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid,
-                                                    gridParams, Nr, Nφ;
-                                                    Hx = Hx, Hy = Hy, Hz = Hz,
+   kφs, rMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid, p, Nr,
+                                                    Nφ;
                                                     rAvg = true, zAvg = false)
    
    FFT_array = rMean_φFFTfield[1, :, :] #Index to remove singleton dimension
@@ -1262,7 +1211,7 @@ function plot_rMean_φDFT_field(scalarField, grid, gridParams, Nr, Nφ, fieldNam
    fig = Figure(size = (1200, 700))
    ax  = Axis(fig[2, 1]; xlabel = "Azimuthal wavenumber", ylabel = "z [m]")
 
-   hm = heatmap!(ax, kφs, grid.z.cᵃᵃᶜ[1:(end - Hz)], (abs2.(FFT_array) ./ Nkφ),
+   hm = heatmap!(ax, kφs, zᶜInt(grid, p), (abs2.(FFT_array) ./ Nkφ),
                  colormap = :Reds)
    
    Colorbar(fig[2, 2], hm, tickformat = "{:.1e}", label = "Fourier component")
@@ -1276,9 +1225,8 @@ end
 
 ################################################################################
 
-function plot_zMean_φDFT_field(scalarField, grid, gridParams::GridParams, Nr, 
-                               Nφ, fieldName;
-                               Hx = nothing, Hy = nothing, Hz = nothing)
+function plot_zMean_φDFT_field(scalarField, grid, p::GridParams, Nr, Nφ,
+                               fieldName)
    #=
    Compute azimuthal Fourier transform of 'scalarField', which lives on an
     Oceananigans rectilinear 'grid', by first interpolating to a uniformly spaced
@@ -1288,15 +1236,14 @@ function plot_zMean_φDFT_field(scalarField, grid, gridParams::GridParams, Nr,
     heatmap in {r} x {kφ} space.
    =#
 
-   kφs, zMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid,
-                                                    gridParams, Nr, Nφ;
-                                                    Hx = Hx, Hy = Hy, Hz = Hz,
+   kφs, zMean_φFFTfield = compute_φFFT_of_sim_Field(scalarField, grid, p, Nr,
+                                                    Nφ;
                                                     rAvg = false, zAvg = true)
    
    FFT_array = zMean_φFFTfield[:, :, 1] #Index to remove singleton dimension
    Nkφ       = length(FFT_array[1, :])
    
-   r_coords = construct_uniform_polar_grid(gridParams.Lr, Nr, Nφ)[1]
+   r_coords = construct_uniform_polar_grid(p.Lr, Nr, Nφ)[1]
    
    fig = Figure(size = (1200, 700))
    ax  = Axis(fig[2, 1]; xlabel = "r [m]", ylabel = "Azimuthal wavenumber")
@@ -1310,6 +1257,33 @@ function plot_zMean_φDFT_field(scalarField, grid, gridParams::GridParams, Nr,
    
    mkpath("./Plots") #Make visualization directory if nonexistent
    save(joinpath("./Plots", "zMeanAzimuthalSpectrum_$(fieldName).png"), fig)
+end
+
+################################################################################
+
+function visualize_z_grid(datetime, grid, zmin; zmax = 0.0)
+
+   zc = znodes(grid, Center())
+   zf = znodes(grid, Face())
+   Δz = zspacings(grid, Center())
+   
+   fig  = Figure(size=(1200, 600))
+   axz  = Axis(fig[1, 1], title = "z-grid")
+   axΔz = Axis(fig[2, 1]; xlabel = "z (m)", ylabel = "z-spacing (m)")
+
+   lines!(axz, [zmin, zmax], [0, 0], color = :gray)
+   scatter!(axz, zf, 0 * zf, marker = :vline, color = :gray, markersize = 20)
+   scatter!(axz, zc, 0 * zc)
+   hidedecorations!(axz)
+   hidespines!(axz)
+
+   scatter!(axΔz, zc, Δz)
+   hidespines!(axΔz, :t, :r)
+
+   rowsize!(fig.layout, 1, Relative(0.1))
+
+   mkpath("./Plots") #Make visualization directory if nonexistent
+   save(joinpath("./Plots", "zgrid_$(datetime).png"), fig)
 end
 
 ################################################################################
