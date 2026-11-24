@@ -9,12 +9,12 @@ using Tables
 # FUNCTIONS TO ACCESS INTERIOR OCEANANIGANS-GRID COORDINATES #
 ##############################################################
 
-@inline xᶜInt(grid, p::GridParams) = no_offset_view(grid.xᶜᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
-@inline xᶠInt(grid, p::GridParams) = no_offset_view(grid.xᶠᵃᵃ)[(p.Hx + 1):(end - p.Hx)]
-@inline yᶜInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶜᵃ)[(p.Hy + 1):(end - p.Hy)]
-@inline yᶠInt(grid, p::GridParams) = no_offset_view(grid.yᵃᶠᵃ)[(p.Hy + 1):(end - p.Hy)]
-@inline zᶜInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶜ)[(p.Hz + 1):(end - p.Hz)]
-@inline zᶠInt(grid, p::GridParams) = no_offset_view(grid.z.cᵃᵃᶠ)[(p.Hz + 1):(end - p.Hz)]
+@inline xᶜInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.xᶜᵃᵃ))[(p.Hx + 1):(end - p.Hx)]
+@inline xᶠInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.xᶠᵃᵃ))[(p.Hx + 1):(end - p.Hx)]
+@inline yᶜInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.yᵃᶜᵃ))[(p.Hy + 1):(end - p.Hy)]
+@inline yᶠInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.yᵃᶠᵃ))[(p.Hy + 1):(end - p.Hy)]
+@inline zᶜInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.z.cᵃᵃᶜ))[(p.Hz + 1):(end - p.Hz)]
+@inline zᶠInt(grid, p::GridParams) = no_offset_view(adapt(Array, grid.z.cᵃᵃᶠ))[(p.Hz + 1):(end - p.Hz)]
 
 ##############################################
 # FUNCTIONS TO BUILD/SAVE OCEANANIGANS GRIDS #
